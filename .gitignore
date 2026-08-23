@@ -1,0 +1,26 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Local databases
+*.sqlite
+*.sqlite3
+
+# Data and runtime artifacts
+data/raw/
+data/cache/
+artifacts/
+tmp/
