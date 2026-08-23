@@ -1,0 +1,58 @@
+{
+  "source_repository": "sports-edge-ai",
+  "source_remote": "https://github.com/miiiigs/sports-edge-ai.git",
+  "source_commit": "f379088d31888b29688a3905f5f07c3dbac30e60",
+  "source_ref": "origin/main",
+  "import_timestamp_utc": "2026-08-23T20:15:44Z",
+  "authority_order": [
+    "direct user instructions in the current task",
+    "latest client PDFs (01-tennis-build-spec.pdf, 03-thirty-day-plan.pdf)",
+    "matching Markdown only where it does not conflict with the PDFs",
+    "reset / migration guidance in the pasted handoff note",
+    "earlier repository implementation and historical experiments"
+  ],
+  "artifacts": [
+    {
+      "source_path": "initial_data/00-developer-brief.pdf",
+      "destination_path": "specs/00-developer-brief.pdf",
+      "git_blob_sha": "91b4e4db32c647503e71d3132f4ec7bd44a7bf8e",
+      "sha256": "71e1908c2a430a6508e4be99f8b0b70a95b12ed0439102992338a55fadeba821"
+    },
+    {
+      "source_path": "initial_data/01-tennis-build-spec.pdf",
+      "destination_path": "specs/01-tennis-build-spec.pdf",
+      "git_blob_sha": "176327cf3f6b5a8172e13dc59e0d39882502b54c",
+      "sha256": "e847604fd722dcb730c8b6c2ffc7a7177f526b94261f0e830fe617f6455e282d"
+    },
+    {
+      "source_path": "initial_data/03-thirty-day-plan.pdf",
+      "destination_path": "specs/03-thirty-day-plan.pdf",
+      "git_blob_sha": "a69b54282bc16841a8626f5f99f37fc224b9c0b7",
+      "sha256": "17cb604c26f540d46029d81aeb31525d9257b05f00d813dfe8b3483cc7c311ac"
+    },
+    {
+      "source_path": "initial_data/tennis-build-spec.md",
+      "destination_path": "specs/tennis-build-spec.md",
+      "git_blob_sha": "01254c0d42ce11a19ed2251fff9795dc00704812",
+      "sha256": "bfd900c78d39fb44daab8f54f39724374c9fb7654c1a998485b7c9ead7b02744"
+    },
+    {
+      "source_path": "initial_data/developer-setup-costs-and-30-day-plan.md",
+      "destination_path": "specs/developer-setup-costs-and-30-day-plan.md",
+      "git_blob_sha": "fb2d3e4473c2876447ad516152aa0b1f07e8df25",
+      "sha256": "49e22c034491c4fd9f6f55f23578d3cace41ced6a184d01eacddf07ac6503ae3"
+    },
+    {
+      "source_path": "research/spec_migration/NEW_SPEC_AUTHORITY_ORDER_2026-08-15.md",
+      "destination_path": "specs/authority/NEW_SPEC_AUTHORITY_ORDER_2026-08-15.md",
+      "git_blob_sha": "b8658e338c79cb16b607d9b403bbddca6f5f80db",
+      "sha256": "a9c1bb2b3b1c97b9b0fb6fce599b84347c799a0511d05c90ddb1261e0997796e"
+    },
+    {
+      "source_path": "research/spec_migration/FULL_SPEC_ALIGNMENT_AUDIT_2026-08-17.md",
+      "destination_path": "specs/authority/FULL_SPEC_ALIGNMENT_AUDIT_2026-08-17.md",
+      "git_blob_sha": "a724f6679db274f28c74816b041e367db930e530",
+      "sha256": "07779f0f76be5f8bf5b8a23e42d4777c0870e970e85176ba37b2e0e3b7e1115a"
+    }
+  ]
+}
