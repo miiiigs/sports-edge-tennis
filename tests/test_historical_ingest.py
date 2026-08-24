@@ -46,7 +46,7 @@ def test_historical_ingest_is_idempotent_and_logs_unmatched(db: psycopg.Connecti
         source_system="SACKMANN",
         source_name="Jeff Sackmann tennis_atp historical matches",
         dataset_type="historical_matches",
-        season=2026,
+        season=2024,
     )
     match_quality_path = tmp_path / "match_quality.json"
     match_unmatched_path = tmp_path / "match_unmatched.json"
@@ -83,7 +83,7 @@ def test_historical_ingest_is_idempotent_and_logs_unmatched(db: psycopg.Connecti
         source_system="TENNIS_DATA",
         source_name="Tennis-Data historical odds archive",
         dataset_type="historical_odds",
-        season=2026,
+        season=2024,
     )
     odds_quality_path = tmp_path / "odds_quality.json"
     odds_unmatched_path = tmp_path / "odds_unmatched.json"
@@ -108,7 +108,7 @@ def test_point_in_time_query_excludes_future_results(db: psycopg.Connection, tmp
         source_system="SACKMANN",
         source_name="Jeff Sackmann tennis_atp historical matches",
         dataset_type="historical_matches",
-        season=2026,
+        season=2024,
     )
     ingest_sackmann_document(
         db,
@@ -128,7 +128,16 @@ def test_point_in_time_query_excludes_future_results(db: psycopg.Connection, tmp
         """
     ).fetchone()[0]
 
-    query_time = datetime(2026, 8, 25, 12, 0, tzinfo=UTC)
+    query_time = db.execute(
+        """
+        SELECT match_start_at
+        FROM match_versions
+        WHERE match_id = %s
+        ORDER BY as_of DESC, source_observed_at DESC
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()[0]
     version_count = db.execute(
         """
         SELECT count(*)

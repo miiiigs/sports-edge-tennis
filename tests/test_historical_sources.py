@@ -16,7 +16,7 @@ def test_parse_sackmann_fixture_file():
         source_system="SACKMANN",
         source_name="Jeff Sackmann tennis_atp historical matches",
         dataset_type="historical_matches",
-        season=2026,
+        season=2024,
     )
     outcome = parse_sackmann_csv(document)
     assert len(outcome.records) == 2

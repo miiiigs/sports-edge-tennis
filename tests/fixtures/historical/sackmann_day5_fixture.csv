@@ -1,3 +1,3 @@
 tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round,comment,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_bpSaved,l_bpFaced
-2026-610,Sample Masters,Hard,56,M,20260824,2026-08-25,1,1001,Rafael Nadal,1002,Novak Djokovic,6-4 7-5,3,R32,,8,2,68,43,33,14,4,6,5,3,63,39,28,12,3,7
-2026-700,Sample Challenger,Clay,32,C,20260824,2026-08-26,11,2001,Ben Shelton,2002,Learner Tien,6-3 6-4,3,R16,,10,1,59,35,29,12,2,4,3,1,55,31,22,10,1,3
+2024-610,Sample Masters,Hard,56,M,20240824,2024-08-25,1,1001,Rafael Nadal,1002,Novak Djokovic,6-4 7-5,3,R32,,8,2,68,43,33,14,4,6,5,3,63,39,28,12,3,7
+2024-700,Sample Challenger,Clay,32,C,20240824,2024-08-26,11,2001,Ben Shelton,2002,Learner Tien,6-3 6-4,3,R16,,10,1,59,35,29,12,2,4,3,1,55,31,22,10,1,3
