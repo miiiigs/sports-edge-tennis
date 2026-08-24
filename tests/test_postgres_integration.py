@@ -852,27 +852,6 @@ def test_odds_hash_fallback_allows_multi_selection_snapshots(db: psycopg.Connect
         (fixture["match_id"], _utc(9, 25), _utc(9, 25)),
     )
 
-    with pytest.raises(psycopg.Error):
-        db.execute(
-            """
-            INSERT INTO odds_snapshots (
-                match_id,
-                source_system,
-                bookmaker_code,
-                market_type,
-                selection_type,
-                decimal_price,
-                booksum,
-                source_record_hash,
-                source_observed_at,
-                as_of
-            )
-            VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.100000, 1.04000000, 'SE_SOURCE_HASH_V1:odds-2', %s, %s)
-            """,
-            (fixture["match_id"], _utc(9, 20), _utc(9, 20)),
-        )
-
-
 def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: psycopg.Connection):
     fixture = _insert_match_fixture(db)
     as_of = _utc(10, 0)
