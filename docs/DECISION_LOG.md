@@ -36,3 +36,39 @@ ROI
 ## D007
 
 Any materially tested model variation must be counted. No silent tuning.
+
+## D008
+
+Tennis data persistence is PostgreSQL-first and uses committed SQL migrations rather than
+ORM-generated schema state.
+
+## D009
+
+Canonical player, tournament, edition, and match identities use immutable surrogate keys.
+Names and fuzzy matches are never primary keys.
+
+## D010
+
+Player identity resolution fails closed. Ambiguous and unmatched names are stored as
+explicit resolution events rather than being silently auto-mapped.
+
+## D011
+
+Match identity, match result observations, and decision settlement are separate layers.
+Post-match facts must never be stored on the pre-match fixture identity in a way that hides
+look-ahead leakage.
+
+## D012
+
+Odds snapshots are append-only and must retain `source_observed_at`, `as_of`, and
+`ingested_at` separately. No price overwrites.
+
+## D013
+
+Ratings, predictions, and manager decisions are immutable historical records carrying
+`model_version`, `feature_version`, and `as_of`.
+
+## D014
+
+Type A model-edge signals and Type B price-dispersion signals are distinct decision classes
+and must remain separable in storage and reporting.

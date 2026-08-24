@@ -15,3 +15,9 @@ phase and must not be performed during repository bootstrap.
 ## BLK-3
 
 Live sharp-reference provider is unresolved. Blocked until a later scoped task.
+
+## BLK-4
+
+No disposable local PostgreSQL runtime was available in this task environment (`psql`
+missing; Docker daemon unavailable). The schema foundation was therefore validated
+statically rather than by applying migrations to an empty local database.
