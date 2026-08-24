@@ -1,0 +1,190 @@
+import json
+import re
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DB_ROOT = REPO_ROOT / "db"
+MANIFEST_PATH = DB_ROOT / "migrations" / "manifest.json"
+UP_MIGRATION_PATH = DB_ROOT / "migrations" / "0001_tennis_data_foundation.up.sql"
+DOWN_MIGRATION_PATH = DB_ROOT / "migrations" / "0001_tennis_data_foundation.down.sql"
+SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
+
+
+def _read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _normalized_sql(text: str) -> str:
+    text = re.sub(r"--.*", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip().lower()
+
+
+def _table_block(sql: str, table_name: str) -> str:
+    pattern = rf"create table {table_name} \((.*?)\);"
+    match = re.search(pattern, sql, flags=re.IGNORECASE | re.DOTALL)
+    assert match, f"missing table {table_name}"
+    return match.group(1).lower()
+
+
+def _type_block(sql: str, type_name: str) -> str:
+    pattern = rf"create type {type_name} as enum \((.*?)\);"
+    match = re.search(pattern, sql, flags=re.IGNORECASE | re.DOTALL)
+    assert match, f"missing enum {type_name}"
+    return match.group(1).lower()
+
+
+def test_migration_manifest_is_ordered_and_files_exist():
+    manifest = json.loads(_read_text(MANIFEST_PATH))
+    migrations = manifest["migrations"]
+    versions = [entry["version"] for entry in migrations]
+    assert versions == sorted(versions)
+    assert len(versions) == len(set(versions))
+    assert migrations[0]["up"] == "db/migrations/0001_tennis_data_foundation.up.sql"
+    assert migrations[0]["down"] == "db/migrations/0001_tennis_data_foundation.down.sql"
+    assert migrations[0]["schema_snapshot"] == "db/schema/0001_tennis_data_foundation.sql"
+    assert UP_MIGRATION_PATH.exists()
+    assert DOWN_MIGRATION_PATH.exists()
+    assert SCHEMA_SNAPSHOT_PATH.exists()
+
+
+def test_schema_snapshot_matches_bootstrap_migration():
+    assert _normalized_sql(_read_text(UP_MIGRATION_PATH)) == _normalized_sql(
+        _read_text(SCHEMA_SNAPSHOT_PATH)
+    )
+
+
+def test_schema_contains_required_tables_and_temporal_columns():
+    sql = _read_text(UP_MIGRATION_PATH)
+    required_tables = [
+        "ingest_runs",
+        "players",
+        "player_source_ids",
+        "player_aliases",
+        "identity_resolution_events",
+        "identity_resolution_candidates",
+        "tournaments",
+        "tournament_editions",
+        "matches",
+        "match_versions",
+        "match_version_sources",
+        "match_result_observations",
+        "match_stat_observations",
+        "odds_snapshots",
+        "rating_snapshots",
+        "predictions",
+        "decisions",
+        "decision_clv",
+        "data_health_checks",
+    ]
+    for table_name in required_tables:
+        assert f"create table {table_name} (" in sql.lower()
+
+    match_versions = _table_block(sql, "match_versions")
+    for column in ("match_start_at", "source_observed_at", "as_of", "ingested_at"):
+        assert column in match_versions
+
+    odds_snapshots = _table_block(sql, "odds_snapshots")
+    for column in ("source_observed_at", "as_of", "ingested_at"):
+        assert column in odds_snapshots
+
+    predictions = _table_block(sql, "predictions")
+    assert "prediction_locked_at" in predictions
+
+
+def test_player_identity_constraints_are_fail_closed():
+    sql = _read_text(UP_MIGRATION_PATH).lower()
+    players = _table_block(sql, "players")
+    assert "canonical_name text not null" in players
+    assert "primary key" in players
+    assert "canonical_name primary key" not in players
+
+    player_source_ids = _table_block(sql, "player_source_ids")
+    assert "unique (source_system, source_player_id)" in player_source_ids
+
+    identity_resolution = _table_block(sql, "identity_resolution_events")
+    assert "resolved_player_id bigint references players(player_id)" in identity_resolution
+
+    identity_resolution_candidates = _table_block(sql, "identity_resolution_candidates")
+    assert (
+        "identity_resolution_event_id bigint not null references "
+        "identity_resolution_events(identity_resolution_event_id)" in identity_resolution_candidates
+    )
+    assert "player_id bigint not null references players(player_id)" in identity_resolution_candidates
+    assert "unique (identity_resolution_event_id, player_id)" in identity_resolution_candidates
+    assert "create function validate_identity_resolution_candidate_state" in sql
+    assert "create constraint trigger trg_identity_resolution_candidates_candidate_state" in sql
+
+    resolution_status = _type_block(sql, "identity_resolution_status")
+    for value in ("'resolved'", "'unmatched'", "'ambiguous'"):
+        assert value in resolution_status
+
+
+def test_match_probability_and_odds_constraints_are_encoded():
+    sql = _read_text(UP_MIGRATION_PATH).lower()
+
+    match_versions = _table_block(sql, "match_versions")
+    assert "check (player_1_id <> player_2_id)" in match_versions
+
+    predictions = _table_block(sql, "predictions")
+    assert "win_probability numeric(8, 6)" in predictions
+    assert "win_probability >= 0 and win_probability <= 1" in predictions
+    assert "prediction_status = 'abstained'" in predictions
+
+    odds_snapshots = _table_block(sql, "odds_snapshots")
+    assert "decimal_price numeric(12, 6) not null check (decimal_price > 1)" in odds_snapshots
+    assert "market_type <> 'match_winner'" in odds_snapshots
+    assert "nulls not distinct" in sql
+    assert "create unique index uq_match_stat_source_record" in sql
+    assert "source_record_id,\n        match_id,\n        player_id,\n        observation_kind,\n        source_observed_at" in _read_text(UP_MIGRATION_PATH)
+    assert "create unique index uq_odds_snapshots_source_hash" in sql
+
+
+def test_predictions_remain_blind_and_decisions_separate_type_a_type_b():
+    sql = _read_text(UP_MIGRATION_PATH).lower()
+    predictions = _table_block(sql, "predictions")
+    forbidden_prediction_fields = [
+        "market_decimal_price",
+        "sharp_reference_price",
+        "price_bookmaker_code",
+        "devig_method",
+    ]
+    for field in forbidden_prediction_fields:
+        assert field not in predictions
+
+    signal_type = _type_block(sql, "signal_type")
+    assert "'type_a_model_edge'" in signal_type
+    assert "'type_b_price_dispersion'" in signal_type
+
+    decisions = _table_block(sql, "decisions")
+    assert "decision_status decision_status not null" in decisions
+    assert "reason_code decision_reason_code not null default 'none'" in decisions
+    assert "signal_type signal_type not null" in decisions
+    assert "created_at >= prediction_locked_at" not in decisions
+    assert "created_at >= as_of" in decisions
+    assert "reason_code not in ('none', 'veto_triggered')" in decisions
+    assert "when selection_type in ('player_1', 'side_1') then selection_side is not distinct from 1" in decisions
+    assert "when selection_type in ('player_2', 'side_2') then selection_side is not distinct from 2" in decisions
+
+    decision_settlements = _table_block(sql, "decision_settlements")
+    assert "settled_at timestamptz" in decision_settlements
+    assert "settled_at is null or settled_at >= created_at" not in decision_settlements
+
+
+def test_readme_and_docs_reflect_postgres_foundation():
+    readme = _read_text(REPO_ROOT / "README.md")
+    data_model = _read_text(REPO_ROOT / "docs" / "DATA_MODEL.md")
+    point_in_time = _read_text(REPO_ROOT / "docs" / "POINT_IN_TIME.md")
+    decision_log = _read_text(REPO_ROOT / "docs" / "DECISION_LOG.md")
+    db_readme = _read_text(DB_ROOT / "README.md")
+
+    assert "db/" in readme
+    assert "append-only" in data_model.lower()
+    assert "sha-256" in data_model.lower()
+    assert "match_version_sources" in data_model
+    assert "as_of <= T" in point_in_time
+    assert "created_at may fall before or after prediction_locked_at" in point_in_time
+    assert "github actions" in db_readme.lower()
+    assert "match_version_sources" in decision_log
+    assert "PostgreSQL" in db_readme

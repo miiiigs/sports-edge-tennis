@@ -9,7 +9,9 @@ repository, runtime, and database, fully separated from the football platform.
 
 ## Current State
 
-Repository bootstrap only. No model, data, or market functionality is implemented yet.
+Repository bootstrap plus PostgreSQL schema foundation, including committed PostgreSQL 16
+integration validation in CI. No historical ingest, model, market, or production runtime
+functionality is implemented yet.
 
 ## Not Yet Implemented
 
@@ -43,6 +45,7 @@ Unfinished functionality is not marketed as complete.
 ```text
 specs/   canonical requirement artifacts and source manifest
 docs/    governance, status, architecture, traceability
+db/      PostgreSQL migrations, schema snapshot, and database foundation docs
 src/sports_edge_tennis/   package source
-tests/   isolation and architecture tests
+tests/   isolation, architecture, and schema-foundation tests
 ```

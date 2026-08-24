@@ -1,0 +1,13 @@
+{
+  "dialect": "postgresql",
+  "migration_tooling": "explicit-sql-manifest",
+  "migrations": [
+    {
+      "version": "0001",
+      "name": "tennis_data_foundation",
+      "up": "db/migrations/0001_tennis_data_foundation.up.sql",
+      "down": "db/migrations/0001_tennis_data_foundation.down.sql",
+      "schema_snapshot": "db/schema/0001_tennis_data_foundation.sql"
+    }
+  ]
+}

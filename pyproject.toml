@@ -13,6 +13,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = [
+    "psycopg[binary]>=3.2",
     "pytest>=8",
 ]
 
