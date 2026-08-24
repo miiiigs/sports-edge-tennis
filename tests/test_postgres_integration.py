@@ -15,7 +15,7 @@ POSTGRES_DSN = os.environ.get("TEST_POSTGRES_DSN") or os.environ.get("DATABASE_U
 
 
 def _utc(hour: int, minute: int = 0) -> datetime:
-    return datetime(2026, 8, 24, hour, minute, tzinfo=timezone.utc)
+    return datetime(2026, 8, 23, hour, minute, tzinfo=timezone.utc)
 
 
 def _run_psql(dsn: str, sql_path: Path) -> None:
