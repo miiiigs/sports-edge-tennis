@@ -164,6 +164,9 @@ def test_predictions_remain_blind_and_decisions_separate_type_a_type_b():
     assert "created_at >= prediction_locked_at" not in decisions
     assert "created_at >= as_of" in decisions
     assert "reason_code not in ('none', 'veto_triggered')" in decisions
+    assert "selection_type not in ('player_1', 'player_2', 'side_1', 'side_2')" in decisions
+    assert "selection_side = 1 and selection_type in ('player_1', 'side_1')" in decisions
+    assert "selection_side = 2 and selection_type in ('player_2', 'side_2')" in decisions
 
     decision_settlements = _table_block(sql, "decision_settlements")
     assert "settled_at timestamptz" in decision_settlements

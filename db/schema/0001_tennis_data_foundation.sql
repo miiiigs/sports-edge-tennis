@@ -463,6 +463,14 @@ CREATE TABLE decisions (
         OR selection_type IS NOT NULL
     ),
     CHECK (
+        selection_side IS NULL
+        OR selection_type NOT IN ('PLAYER_1', 'PLAYER_2', 'SIDE_1', 'SIDE_2')
+        OR (
+            (selection_side = 1 AND selection_type IN ('PLAYER_1', 'SIDE_1'))
+            OR (selection_side = 2 AND selection_type IN ('PLAYER_2', 'SIDE_2'))
+        )
+    ),
+    CHECK (
         market_type <> 'MATCH_WINNER'
         OR selection_type IS NULL
         OR line_value IS NULL

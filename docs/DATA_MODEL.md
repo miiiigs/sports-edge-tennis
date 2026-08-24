@@ -123,6 +123,8 @@ raw observations.
   - Separate manager/price layer.
   - Records `BET`, `NO_BET`, and `VETOED`.
   - Distinguishes `TYPE_A_MODEL_EDGE` from `TYPE_B_PRICE_DISPERSION`.
+  - Side-labelled selections must remain internally coherent: `PLAYER_1` / `SIDE_1` pair only
+    with `selection_side = 1`, and `PLAYER_2` / `SIDE_2` pair only with `selection_side = 2`.
 - `decision_agents`
   - Per-agent participation record for each decision.
 - `decision_settlements`

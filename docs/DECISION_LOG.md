@@ -90,3 +90,9 @@ lives in `match_source_ids`, while append-only version lineage lives in
 Schema changes are not considered validated until the committed PostgreSQL 16 integration
 suite passes in GitHub Actions against an empty disposable database through UP, runtime
 constraints, DOWN, and clean re-UP.
+
+## D018
+
+Side-labelled market selections must agree with their stored side number:
+`PLAYER_1` / `SIDE_1` map to `selection_side = 1`, and `PLAYER_2` / `SIDE_2` map to
+`selection_side = 2`.

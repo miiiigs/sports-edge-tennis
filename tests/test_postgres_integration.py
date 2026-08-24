@@ -616,6 +616,81 @@ def test_match_stat_provenance_allows_row_fanout_and_later_observations(db: psyc
     )
 
 
+def test_match_stat_hash_fallback_allows_row_fanout_and_later_observations(
+    db: psycopg.Connection,
+):
+    fixture = _insert_match_fixture(db)
+
+    db.execute(
+        """
+        INSERT INTO match_stat_observations (
+            match_id,
+            player_id,
+            source_system,
+            source_record_hash,
+            observation_kind,
+            service_points_played,
+            first_serve_points_won,
+            second_serve_points_won,
+            source_observed_at,
+            as_of
+        )
+        VALUES
+            (%s, %s, 'TENNIS_DATA', 'SE_SOURCE_HASH_V1:match-stat-1', 'RAW_SOURCE', 60, 30, 15, %s, %s),
+            (%s, %s, 'TENNIS_DATA', 'SE_SOURCE_HASH_V1:match-stat-1', 'RAW_SOURCE', 58, 28, 14, %s, %s)
+        """,
+        (
+            fixture["match_id"],
+            fixture["player_1_id"],
+            _utc(9, 10),
+            _utc(9, 10),
+            fixture["match_id"],
+            fixture["player_2_id"],
+            _utc(9, 10),
+            _utc(9, 10),
+        ),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO match_stat_observations (
+                match_id,
+                player_id,
+                source_system,
+                source_record_hash,
+                observation_kind,
+                service_points_played,
+                first_serve_points_won,
+                second_serve_points_won,
+                source_observed_at,
+                as_of
+            )
+            VALUES (%s, %s, 'TENNIS_DATA', 'SE_SOURCE_HASH_V1:match-stat-1', 'RAW_SOURCE', 60, 30, 15, %s, %s)
+            """,
+            (fixture["match_id"], fixture["player_1_id"], _utc(9, 10), _utc(9, 10)),
+        )
+
+    db.execute(
+        """
+        INSERT INTO match_stat_observations (
+            match_id,
+            player_id,
+            source_system,
+            source_record_hash,
+            observation_kind,
+            service_points_played,
+            first_serve_points_won,
+            second_serve_points_won,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, %s, 'TENNIS_DATA', 'SE_SOURCE_HASH_V1:match-stat-1', 'RAW_SOURCE', 61, 31, 15, %s, %s)
+        """,
+        (fixture["match_id"], fixture["player_1_id"], _utc(9, 15), _utc(9, 15)),
+    )
+
+
 def test_odds_snapshot_provenance_allows_multi_selection_snapshots(db: psycopg.Connection):
     fixture = _insert_match_fixture(db)
 
@@ -704,6 +779,97 @@ def test_odds_snapshot_provenance_allows_multi_selection_snapshots(db: psycopg.C
             VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 1.000000, 1.00000000, 'snap-2', %s, %s)
             """,
             (fixture["match_id"], _utc(9, 10), _utc(9, 10)),
+        )
+
+
+def test_odds_hash_fallback_allows_multi_selection_snapshots(db: psycopg.Connection):
+    fixture = _insert_match_fixture(db)
+
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id,
+            source_system,
+            bookmaker_code,
+            market_type,
+            selection_type,
+            decimal_price,
+            booksum,
+            source_record_hash,
+            source_observed_at,
+            as_of
+        )
+        VALUES
+            (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.100000, 1.04000000, 'SE_SOURCE_HASH_V1:odds-1', %s, %s),
+            (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_2', 1.780000, 1.04000000, 'SE_SOURCE_HASH_V1:odds-1', %s, %s)
+        """,
+        (
+            fixture["match_id"],
+            _utc(9, 20),
+            _utc(9, 20),
+            fixture["match_id"],
+            _utc(9, 20),
+            _utc(9, 20),
+        ),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO odds_snapshots (
+                match_id,
+                source_system,
+                bookmaker_code,
+                market_type,
+                selection_type,
+                decimal_price,
+                booksum,
+                source_record_hash,
+                source_observed_at,
+                as_of
+            )
+            VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.100000, 1.04000000, 'SE_SOURCE_HASH_V1:odds-1', %s, %s)
+            """,
+            (fixture["match_id"], _utc(9, 20), _utc(9, 20)),
+        )
+
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id,
+            source_system,
+            bookmaker_code,
+            market_type,
+            selection_type,
+            decimal_price,
+            booksum,
+            source_record_hash,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.050000, 1.03000000, 'SE_SOURCE_HASH_V1:odds-1', %s, %s)
+        """,
+        (fixture["match_id"], _utc(9, 25), _utc(9, 25)),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO odds_snapshots (
+                match_id,
+                source_system,
+                bookmaker_code,
+                market_type,
+                selection_type,
+                decimal_price,
+                booksum,
+                source_record_hash,
+                source_observed_at,
+                as_of
+            )
+            VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.100000, 1.04000000, 'SE_SOURCE_HASH_V1:odds-2', %s, %s)
+            """,
+            (fixture["match_id"], _utc(9, 20), _utc(9, 20)),
         )
 
 
@@ -1070,6 +1236,126 @@ def test_decisions_enforce_status_reason_and_signal_integrity(db: psycopg.Connec
         (fixture["match_id"], as_of + timedelta(minutes=2), locked_at + timedelta(minutes=2), as_of + timedelta(minutes=12)),
     )
 
+    db.execute(
+        """
+        INSERT INTO decisions (
+            match_id,
+            signal_type,
+            decision_status,
+            reason_code,
+            market_type,
+            selection_type,
+            selection_side,
+            line_value,
+            consensus_probability,
+            consensus_fair_odds,
+            market_decimal_price,
+            sharp_reference_price,
+            price_source_system,
+            price_bookmaker_code,
+            devig_method,
+            devig_fair_odds,
+            edge_pct,
+            min_acceptable_odds,
+            active_agent_count,
+            model_version,
+            feature_version,
+            variant_id,
+            as_of,
+            prediction_locked_at,
+            created_at
+        )
+        VALUES (
+            %s,
+            'TYPE_B_PRICE_DISPERSION',
+            'BET',
+            'NONE',
+            'GAME_HANDICAP',
+            'SIDE_1',
+            1,
+            -2.500,
+            0.540000,
+            1.851852,
+            2.020000,
+            1.950000,
+            'ODDS_API',
+            'PINNACLE',
+            'power',
+            1.970000,
+            0.090000,
+            1.930000,
+            1,
+            'm1',
+            'f1',
+            'side-1-ok',
+            %s,
+            %s,
+            %s
+        )
+        """,
+        (fixture["match_id"], as_of + timedelta(minutes=3), locked_at + timedelta(minutes=3), as_of + timedelta(minutes=13)),
+    )
+
+    db.execute(
+        """
+        INSERT INTO decisions (
+            match_id,
+            signal_type,
+            decision_status,
+            reason_code,
+            market_type,
+            selection_type,
+            selection_side,
+            line_value,
+            consensus_probability,
+            consensus_fair_odds,
+            market_decimal_price,
+            sharp_reference_price,
+            price_source_system,
+            price_bookmaker_code,
+            devig_method,
+            devig_fair_odds,
+            edge_pct,
+            min_acceptable_odds,
+            active_agent_count,
+            model_version,
+            feature_version,
+            variant_id,
+            as_of,
+            prediction_locked_at,
+            created_at
+        )
+        VALUES (
+            %s,
+            'TYPE_B_PRICE_DISPERSION',
+            'BET',
+            'NONE',
+            'GAME_HANDICAP',
+            'SIDE_2',
+            2,
+            2.500,
+            0.520000,
+            1.923077,
+            2.040000,
+            1.980000,
+            'ODDS_API',
+            'PINNACLE',
+            'power',
+            1.990000,
+            0.060000,
+            1.950000,
+            1,
+            'm1',
+            'f1',
+            'side-2-ok',
+            %s,
+            %s,
+            %s
+        )
+        """,
+        (fixture["match_id"], as_of + timedelta(minutes=4), locked_at + timedelta(minutes=4), as_of + timedelta(minutes=14)),
+    )
+
     with pytest.raises(psycopg.Error):
         db.execute(
             """
@@ -1103,6 +1389,128 @@ def test_decisions_enforce_status_reason_and_signal_integrity(db: psycopg.Connec
             )
             """,
             (fixture["match_id"], as_of, locked_at, as_of + timedelta(minutes=1)),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO decisions (
+                match_id,
+                signal_type,
+                decision_status,
+                reason_code,
+                market_type,
+                selection_type,
+                selection_side,
+                line_value,
+                consensus_probability,
+                consensus_fair_odds,
+                market_decimal_price,
+                sharp_reference_price,
+                price_source_system,
+                price_bookmaker_code,
+                devig_method,
+                devig_fair_odds,
+                edge_pct,
+                min_acceptable_odds,
+                active_agent_count,
+                model_version,
+                feature_version,
+                variant_id,
+                as_of,
+                prediction_locked_at,
+                created_at
+            )
+            VALUES (
+                %s,
+                'TYPE_B_PRICE_DISPERSION',
+                'BET',
+                'NONE',
+                'GAME_HANDICAP',
+                'SIDE_1',
+                2,
+                -2.500,
+                0.540000,
+                1.851852,
+                2.020000,
+                1.950000,
+                'ODDS_API',
+                'PINNACLE',
+                'power',
+                1.970000,
+                0.090000,
+                1.930000,
+                1,
+                'm1',
+                'f1',
+                'side-1-bad',
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (fixture["match_id"], as_of + timedelta(minutes=5), locked_at + timedelta(minutes=5), as_of + timedelta(minutes=15)),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO decisions (
+                match_id,
+                signal_type,
+                decision_status,
+                reason_code,
+                market_type,
+                selection_type,
+                selection_side,
+                line_value,
+                consensus_probability,
+                consensus_fair_odds,
+                market_decimal_price,
+                sharp_reference_price,
+                price_source_system,
+                price_bookmaker_code,
+                devig_method,
+                devig_fair_odds,
+                edge_pct,
+                min_acceptable_odds,
+                active_agent_count,
+                model_version,
+                feature_version,
+                variant_id,
+                as_of,
+                prediction_locked_at,
+                created_at
+            )
+            VALUES (
+                %s,
+                'TYPE_B_PRICE_DISPERSION',
+                'BET',
+                'NONE',
+                'GAME_HANDICAP',
+                'SIDE_2',
+                1,
+                2.500,
+                0.520000,
+                1.923077,
+                2.040000,
+                1.980000,
+                'ODDS_API',
+                'PINNACLE',
+                'power',
+                1.990000,
+                0.060000,
+                1.950000,
+                1,
+                'm1',
+                'f1',
+                'side-2-bad',
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (fixture["match_id"], as_of + timedelta(minutes=6), locked_at + timedelta(minutes=6), as_of + timedelta(minutes=16)),
         )
 
     with pytest.raises(psycopg.Error):
