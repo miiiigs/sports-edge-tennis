@@ -29,9 +29,9 @@ def _odds_workbook(tmp_path: Path) -> Path:
             "B365L",
         ]
     )
-    sheet.append(["2026-08-25", "Sample Masters", "Hard", "R32", 3, "Nadal R.", "Djokovic N.", 1.8, 2.1])
-    sheet.append(["2026-08-25", "Sample Masters", "Hard", "R32", 3, "Mystery P.", "Ghost G.", 1.9, 1.9])
-    sheet.append(["2026-08-25", "Sample Masters", "Hard", "R32", 3, "Nadal R.", "Djokovic N.", 0.0, 2.1])
+    sheet.append(["2024-08-25", "Sample Masters", "Hard", "R32", 3, "Nadal R.", "Djokovic N.", 1.8, 2.1])
+    sheet.append(["2024-08-25", "Sample Masters", "Hard", "R32", 3, "Mystery P.", "Ghost G.", 1.9, 1.9])
+    sheet.append(["2024-08-25", "Sample Masters", "Hard", "R32", 3, "Nadal R.", "Djokovic N.", 0.0, 2.1])
     workbook.save(workbook_path)
     return workbook_path
 
