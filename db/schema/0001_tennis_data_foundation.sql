@@ -463,12 +463,11 @@ CREATE TABLE decisions (
         OR selection_type IS NOT NULL
     ),
     CHECK (
-        selection_side IS NULL
-        OR selection_type NOT IN ('PLAYER_1', 'PLAYER_2', 'SIDE_1', 'SIDE_2')
-        OR (
-            (selection_side = 1 AND selection_type IN ('PLAYER_1', 'SIDE_1'))
-            OR (selection_side = 2 AND selection_type IN ('PLAYER_2', 'SIDE_2'))
-        )
+        CASE
+            WHEN selection_type IN ('PLAYER_1', 'SIDE_1') THEN selection_side IS NOT DISTINCT FROM 1
+            WHEN selection_type IN ('PLAYER_2', 'SIDE_2') THEN selection_side IS NOT DISTINCT FROM 2
+            ELSE TRUE
+        END
     ),
     CHECK (
         market_type <> 'MATCH_WINNER'

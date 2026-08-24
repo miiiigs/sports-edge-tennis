@@ -1063,6 +1063,90 @@ def test_decisions_enforce_status_reason_and_signal_integrity(db: psycopg.Connec
     as_of = _utc(10, 30)
     locked_at = as_of + timedelta(hours=1)
 
+    def _insert_vetoed_selection_case(
+        *,
+        selection_type: str,
+        selection_side: int | None,
+        market_type: str,
+        line_value: float | None,
+        variant_id: str,
+        minute_offset: int,
+        signal_type: str = "TYPE_A_MODEL_EDGE",
+    ) -> None:
+        decision_as_of = as_of + timedelta(minutes=minute_offset)
+        decision_locked_at = locked_at + timedelta(minutes=minute_offset)
+        decision_created_at = as_of + timedelta(minutes=minute_offset + 10)
+        db.execute(
+            """
+            INSERT INTO decisions (
+                match_id,
+                signal_type,
+                decision_status,
+                reason_code,
+                market_type,
+                selection_type,
+                selection_side,
+                line_value,
+                consensus_probability,
+                consensus_fair_odds,
+                market_decimal_price,
+                sharp_reference_price,
+                price_source_system,
+                price_bookmaker_code,
+                devig_method,
+                devig_fair_odds,
+                edge_pct,
+                min_acceptable_odds,
+                active_agent_count,
+                model_version,
+                feature_version,
+                variant_id,
+                as_of,
+                prediction_locked_at,
+                created_at
+            )
+            VALUES (
+                %s,
+                %s,
+                'VETOED',
+                'VETO_TRIGGERED',
+                %s,
+                %s,
+                %s,
+                %s,
+                0.510000,
+                1.960784,
+                2.040000,
+                1.980000,
+                'ODDS_API',
+                'PINNACLE',
+                'power',
+                1.990000,
+                0.040000,
+                2.000000,
+                2,
+                'm1',
+                'f1',
+                %s,
+                %s,
+                %s,
+                %s
+            )
+            """,
+            (
+                fixture["match_id"],
+                signal_type,
+                market_type,
+                selection_type,
+                selection_side,
+                line_value,
+                variant_id,
+                decision_as_of,
+                decision_locked_at,
+                decision_created_at,
+            ),
+        )
+
     db.execute(
         """
         INSERT INTO decisions (
@@ -1490,6 +1574,68 @@ def test_decisions_enforce_status_reason_and_signal_integrity(db: psycopg.Connec
             )
             """,
             (fixture["match_id"], as_of + timedelta(minutes=6), locked_at + timedelta(minutes=6), as_of + timedelta(minutes=16)),
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="PLAYER_1",
+            selection_side=2,
+            market_type="MATCH_WINNER",
+            line_value=None,
+            variant_id="player-1-bad",
+            minute_offset=7,
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="PLAYER_2",
+            selection_side=1,
+            market_type="MATCH_WINNER",
+            line_value=None,
+            variant_id="player-2-bad",
+            minute_offset=8,
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="PLAYER_1",
+            selection_side=None,
+            market_type="MATCH_WINNER",
+            line_value=None,
+            variant_id="player-1-null",
+            minute_offset=9,
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="PLAYER_2",
+            selection_side=None,
+            market_type="MATCH_WINNER",
+            line_value=None,
+            variant_id="player-2-null",
+            minute_offset=10,
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="SIDE_1",
+            selection_side=None,
+            market_type="GAME_HANDICAP",
+            line_value=-2.500,
+            variant_id="side-1-null",
+            minute_offset=11,
+            signal_type="TYPE_B_PRICE_DISPERSION",
+        )
+
+    with pytest.raises(psycopg.Error):
+        _insert_vetoed_selection_case(
+            selection_type="SIDE_2",
+            selection_side=None,
+            market_type="GAME_HANDICAP",
+            line_value=2.500,
+            variant_id="side-2-null",
+            minute_offset=12,
+            signal_type="TYPE_B_PRICE_DISPERSION",
         )
 
     with pytest.raises(psycopg.Error):
