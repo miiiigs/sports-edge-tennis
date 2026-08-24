@@ -25,6 +25,65 @@ def test_parse_sackmann_fixture_file():
     assert outcome.rejected_rows == []
 
 
+def test_parse_sackmann_realistic_atp_level_without_explicit_competition_tier(tmp_path: Path):
+    csv_path = tmp_path / "atp_matches_2025.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-9900,United Cup,Hard,18,A,20250101,400,123,Taylor Fritz,456,Hubert Hurkacz,6-4 5-7 7-6(4),3,F",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+
+    outcome = parse_sackmann_csv(document)
+
+    assert len(outcome.records) == 1
+    assert outcome.records[0].tour_scope == "ATP_MAIN"
+    assert outcome.records[0].competition_tier == "ATP_TOUR"
+    assert outcome.rejected_rows == []
+
+
+def test_parse_sackmann_qual_chall_file_keeps_non_challenger_qualifying_rows_atp_main(tmp_path: Path):
+    csv_path = tmp_path / "atp_matches_qual_chall_2025.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-580,Australian Open,Hard,128,G,20250112,700,111,Dominik Koepfer,222,Ignacio Buse,6-4 6-3,3,Q1",
+                "2025-7393,Canberra CH,Hard,32,C,20250101,387,333,Joao Fonseca,444,Ethan Quinn,6-4 6-3,3,F",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+
+    outcome = parse_sackmann_csv(document)
+
+    assert len(outcome.records) == 2
+    assert outcome.records[0].tour_scope == "ATP_MAIN"
+    assert outcome.records[0].competition_tier == "GRAND_SLAM"
+    assert outcome.records[0].qualifying_flag is True
+    assert outcome.records[1].tour_scope == "CHALLENGER"
+    assert outcome.records[1].competition_tier == "CHALLENGER"
+
+
 def test_parse_tennis_data_xlsx_and_reject_invalid_price(tmp_path: Path):
     workbook_path = tmp_path / "2026.xlsx"
     workbook = openpyxl.Workbook()

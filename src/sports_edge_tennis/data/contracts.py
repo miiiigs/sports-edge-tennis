@@ -11,6 +11,7 @@ TourScope = Literal["ATP_MAIN", "CHALLENGER"]
 CompetitionTier = Literal[
     "GRAND_SLAM",
     "MASTERS_1000",
+    "ATP_TOUR",
     "ATP_500",
     "ATP_250",
     "CHALLENGER",
@@ -167,4 +168,3 @@ class QualityAccumulator:
         if not key:
             return
         bucket[key] = bucket.get(key, 0) + 1
-

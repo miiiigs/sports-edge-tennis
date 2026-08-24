@@ -67,8 +67,8 @@ def _surface(value: str | None) -> str | None:
     return normalized
 
 
-def _tour_scope(level: str, path: Path) -> str:
-    if level == "C" or "chall" in path.name.casefold():
+def _tour_scope(level: str) -> str:
+    if level == "C":
         return "CHALLENGER"
     return "ATP_MAIN"
 
@@ -78,13 +78,13 @@ def _competition_tier(level: str, row: dict[str, str]) -> str:
         return "GRAND_SLAM"
     if level == "M":
         return "MASTERS_1000"
+    if level == "A":
+        return "ATP_TOUR"
     if level == "C":
         return "CHALLENGER"
     explicit = row.get("competition_tier", "").strip().upper()
     if explicit in {"ATP_500", "ATP_250"}:
         return explicit
-    if level == "A":
-        raise SackmannRowError("ambiguous_atp_tier_requires_explicit_competition_tier")
     raise SackmannRowError("unsupported_tourney_level")
 
 
@@ -176,7 +176,7 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                     raise SackmannRowError("unsupported_best_of_sets")
 
                 level = row["tourney_level"].strip()
-                tour_scope = _tour_scope(level, document.local_path)
+                tour_scope = _tour_scope(level)
                 tier = _competition_tier(level, row)
                 round_code = collapse_whitespace(row["round"])
                 qualifying_flag = round_code.startswith("Q")
@@ -253,4 +253,3 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                     }
                 )
     return SackmannParseOutcome(records=records, rejected_rows=rejected_rows)
-
