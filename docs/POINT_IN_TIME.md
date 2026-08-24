@@ -56,6 +56,15 @@ The time after which the prediction input state is frozen for publication or eva
 Predictions and decisions must not be evaluated as if later market or source updates were
 available before this lock time.
 
+For predictions and decisions:
+
+- `prediction_locked_at >= as_of`
+- `created_at >= as_of`
+- `created_at` may fall before or after prediction_locked_at
+
+`created_at` is therefore an audit timestamp, not a replay boundary.
+In other words: created_at may fall before or after prediction_locked_at.
+
 ## Reconstruction rules
 
 To answer:

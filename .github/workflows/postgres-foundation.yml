@@ -1,0 +1,52 @@
+name: PostgreSQL Foundation
+
+on:
+  push:
+    branches:
+      - main
+      - feat/tennis-data-foundation
+  pull_request:
+
+jobs:
+  postgres-foundation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sports_edge_tennis_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d sports_edge_tennis_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/sports_edge_tennis_test
+      TEST_POSTGRES_DSN: postgresql://postgres:postgres@localhost:5432/sports_edge_tennis_test
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Install project and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+
+      - name: Run test suite
+        run: python -m pytest -q

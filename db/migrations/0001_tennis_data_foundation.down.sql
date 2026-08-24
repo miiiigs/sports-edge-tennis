@@ -11,10 +11,12 @@ DROP INDEX IF EXISTS idx_match_versions_match_as_of;
 DROP INDEX IF EXISTS uq_decisions_identity;
 DROP INDEX IF EXISTS uq_predictions_identity;
 DROP INDEX IF EXISTS uq_rating_snapshots_identity;
-DROP INDEX IF EXISTS uq_odds_snapshots_observation_key;
+DROP INDEX IF EXISTS uq_odds_snapshots_source_hash;
 DROP INDEX IF EXISTS uq_odds_snapshots_source_record;
 DROP INDEX IF EXISTS uq_match_stat_source_hash;
 DROP INDEX IF EXISTS uq_match_stat_source_record;
+DROP INDEX IF EXISTS uq_match_version_sources_record_hash;
+DROP INDEX IF EXISTS uq_match_version_sources_source_match;
 DROP INDEX IF EXISTS uq_match_source_ids_record_hash;
 DROP INDEX IF EXISTS uq_match_source_ids_source_match;
 
@@ -28,17 +30,22 @@ DROP TABLE IF EXISTS rating_snapshots;
 DROP TABLE IF EXISTS odds_snapshots;
 DROP TABLE IF EXISTS match_stat_observations;
 DROP TABLE IF EXISTS match_result_observations;
+DROP TABLE IF EXISTS match_version_sources;
 DROP TABLE IF EXISTS match_source_ids;
 DROP TABLE IF EXISTS match_versions;
 DROP TABLE IF EXISTS matches;
 DROP TABLE IF EXISTS tournament_editions;
 DROP TABLE IF EXISTS tournament_source_ids;
 DROP TABLE IF EXISTS tournaments;
+DROP TABLE IF EXISTS identity_resolution_candidates;
 DROP TABLE IF EXISTS identity_resolution_events;
 DROP TABLE IF EXISTS player_aliases;
 DROP TABLE IF EXISTS player_source_ids;
 DROP TABLE IF EXISTS players;
 DROP TABLE IF EXISTS ingest_runs;
+
+DROP FUNCTION IF EXISTS enforce_identity_resolution_candidate_state();
+DROP FUNCTION IF EXISTS validate_identity_resolution_candidate_state(BIGINT);
 
 DROP TYPE IF EXISTS health_status;
 DROP TYPE IF EXISTS freshness_state;

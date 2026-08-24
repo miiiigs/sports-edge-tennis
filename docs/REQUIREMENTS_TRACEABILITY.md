@@ -7,9 +7,9 @@ Status legend:
 - `COMPLETE` — implemented and validated
 
 This repository is in the bootstrap phase. Every requirement below is traced to a
-canonical specification area. The data foundation and schema contracts are now committed,
-but historical ingest, model execution, pricing, and production runtime work remain
-unimplemented. Statuses are truthful.
+canonical specification area. The data foundation and schema contracts are now committed
+and validated against disposable PostgreSQL 16 in CI, but historical ingest, model
+execution, pricing, and production runtime work remain unimplemented. Statuses are truthful.
 
 ## Architecture
 
@@ -34,6 +34,7 @@ unimplemented. Statuses are truthful.
 | DATA-8 | Ingest provenance and data-health tracking | 30-day plan Day 1; task instruction | `COMPLETE` |
 | DATA-9 | Point-in-time `as_of` semantics | architecture invariants; tennis build spec `10. Backtest protocol` | `COMPLETE` |
 | DATA-10 | Local database provisioning | task instruction | `NOT STARTED` |
+| DATA-11 | PostgreSQL 16 migration/runtime validation gate | task instruction; 30-day plan Day 1 | `COMPLETE` (pytest integration suite + GitHub Actions PostgreSQL service lifecycle) |
 
 ## Scope
 

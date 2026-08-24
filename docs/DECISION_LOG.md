@@ -72,3 +72,21 @@ Ratings, predictions, and manager decisions are immutable historical records car
 
 Type A model-edge signals and Type B price-dispersion signals are distinct decision classes
 and must remain separable in storage and reporting.
+
+## D015
+
+Fallback provenance hashes use the repository-wide `SE_SOURCE_HASH_V1` contract:
+versioned canonical JSON, UTF-8, Unicode NFKC normalization, explicit nulls, normalized
+timestamps/decimals, and SHA-256 digests.
+
+## D016
+
+`match_versions` remains canonical normalized match state. Stable source-to-match identity
+lives in `match_source_ids`, while append-only version lineage lives in
+`match_version_sources`.
+
+## D017
+
+Schema changes are not considered validated until the committed PostgreSQL 16 integration
+suite passes in GitHub Actions against an empty disposable database through UP, runtime
+constraints, DOWN, and clean re-UP.

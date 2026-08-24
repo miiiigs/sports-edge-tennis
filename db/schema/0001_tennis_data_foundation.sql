@@ -126,7 +126,6 @@ CREATE TABLE identity_resolution_events (
     normalized_player_name TEXT NOT NULL CHECK (btrim(normalized_player_name) <> ''),
     resolution_status identity_resolution_status NOT NULL,
     resolved_player_id BIGINT REFERENCES players(player_id),
-    candidate_player_ids BIGINT[] NOT NULL DEFAULT '{}'::BIGINT[],
     context_tournament_name TEXT,
     context_match_start_at TIMESTAMPTZ,
     source_observed_at TIMESTAMPTZ NOT NULL,
@@ -141,15 +140,15 @@ CREATE TABLE identity_resolution_events (
         OR (resolution_status = 'UNMATCHED' AND resolved_player_id IS NULL)
         OR (resolution_status = 'AMBIGUOUS' AND resolved_player_id IS NULL)
     ),
-    CHECK (
-        resolution_status <> 'AMBIGUOUS'
-        OR COALESCE(array_length(candidate_player_ids, 1), 0) >= 2
-    ),
-    CHECK (
-        resolution_status <> 'UNMATCHED'
-        OR COALESCE(array_length(candidate_player_ids, 1), 0) = 0
-    ),
     UNIQUE (source_system, source_record_id, raw_player_name, source_observed_at)
+);
+
+CREATE TABLE identity_resolution_candidates (
+    identity_resolution_candidate_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    identity_resolution_event_id BIGINT NOT NULL REFERENCES identity_resolution_events(identity_resolution_event_id),
+    player_id BIGINT NOT NULL REFERENCES players(player_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (identity_resolution_event_id, player_id)
 );
 
 CREATE TABLE tournaments (
@@ -230,6 +229,25 @@ CREATE TABLE match_source_ids (
     ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (source_match_id IS NOT NULL OR source_record_hash IS NOT NULL)
+);
+
+CREATE TABLE match_version_sources (
+    match_version_source_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    match_version_id BIGINT NOT NULL REFERENCES match_versions(match_version_id),
+    source_system TEXT NOT NULL CHECK (btrim(source_system) <> ''),
+    source_match_id TEXT,
+    source_record_hash TEXT,
+    source_record_locator TEXT,
+    source_file_name TEXT,
+    source_version_hash TEXT,
+    source_observed_at TIMESTAMPTZ NOT NULL,
+    as_of TIMESTAMPTZ NOT NULL,
+    ingested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (source_match_id IS NOT NULL OR source_record_hash IS NOT NULL),
+    CHECK (as_of >= source_observed_at),
+    CHECK (ingested_at >= source_observed_at)
 );
 
 CREATE TABLE match_result_observations (
@@ -354,7 +372,7 @@ CREATE TABLE predictions (
         OR (prediction_status = 'ABSTAINED' AND selection_side IS NULL AND win_probability IS NULL)
     ),
     CHECK (prediction_locked_at >= as_of),
-    CHECK (created_at >= prediction_locked_at)
+    CHECK (created_at >= as_of)
 );
 
 CREATE TABLE decisions (
@@ -391,16 +409,76 @@ CREATE TABLE decisions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     published_at TIMESTAMPTZ,
     CHECK (
-        (decision_status = 'BET' AND selection_side IS NOT NULL)
+        (
+            decision_status = 'BET'
+            AND selection_type IS NOT NULL
+            AND (
+                (
+                    selection_type IN ('PLAYER_1', 'PLAYER_2', 'SIDE_1', 'SIDE_2')
+                    AND selection_side IS NOT NULL
+                )
+                OR (
+                    selection_type IN ('OVER', 'UNDER')
+                    AND selection_side IS NULL
+                )
+            )
+        )
         OR (decision_status IN ('NO_BET', 'VETOED'))
     ),
     CHECK (
         (decision_status = 'BET' AND reason_code = 'NONE')
-        OR (decision_status = 'NO_BET' AND reason_code <> 'NONE')
+        OR (decision_status = 'NO_BET' AND reason_code NOT IN ('NONE', 'VETO_TRIGGERED'))
         OR (decision_status = 'VETOED' AND reason_code = 'VETO_TRIGGERED')
     ),
     CHECK (prediction_locked_at >= as_of),
-    CHECK (created_at >= prediction_locked_at)
+    CHECK (created_at >= as_of),
+    CHECK (
+        decision_status <> 'BET'
+        OR (
+            selection_type IS NOT NULL
+            AND consensus_probability IS NOT NULL
+            AND consensus_fair_odds IS NOT NULL
+            AND market_decimal_price IS NOT NULL
+            AND sharp_reference_price IS NOT NULL
+            AND price_source_system IS NOT NULL
+            AND price_bookmaker_code IS NOT NULL
+            AND devig_method IS NOT NULL
+            AND devig_fair_odds IS NOT NULL
+            AND edge_pct IS NOT NULL
+            AND min_acceptable_odds IS NOT NULL
+            AND active_agent_count > 0
+        )
+    ),
+    CHECK (
+        decision_status <> 'NO_BET'
+        OR (
+            selection_type IS NULL
+            AND selection_side IS NULL
+            AND line_value IS NULL
+            AND min_acceptable_odds IS NULL
+        )
+    ),
+    CHECK (
+        selection_side IS NULL
+        OR selection_type IS NOT NULL
+    ),
+    CHECK (
+        market_type <> 'MATCH_WINNER'
+        OR selection_type IS NULL
+        OR line_value IS NULL
+    ),
+    CHECK (
+        market_type <> 'MATCH_WINNER'
+        OR selection_side IS NULL
+        OR (
+            (selection_side = 1 AND selection_type = 'PLAYER_1')
+            OR (selection_side = 2 AND selection_type = 'PLAYER_2')
+        )
+    ),
+    CHECK (
+        selection_type NOT IN ('OVER', 'UNDER', 'SIDE_1', 'SIDE_2')
+        OR line_value IS NOT NULL
+    )
 );
 
 CREATE TABLE decision_agents (
@@ -457,6 +535,88 @@ CREATE TABLE data_health_checks (
     CHECK (latest_observation_at IS NULL OR latest_observation_at <= checked_at)
 );
 
+CREATE FUNCTION validate_identity_resolution_candidate_state(target_event_id BIGINT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    target_status identity_resolution_status;
+    candidate_count INTEGER;
+BEGIN
+    SELECT
+        e.resolution_status,
+        COUNT(c.identity_resolution_candidate_id)::INTEGER
+    INTO target_status, candidate_count
+    FROM identity_resolution_events e
+    LEFT JOIN identity_resolution_candidates c
+        ON c.identity_resolution_event_id = e.identity_resolution_event_id
+    WHERE e.identity_resolution_event_id = target_event_id
+    GROUP BY e.resolution_status;
+
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+
+    IF target_status = 'UNMATCHED' AND candidate_count <> 0 THEN
+        RAISE EXCEPTION
+            'UNMATCHED identity resolution events cannot retain candidates (event_id=%).',
+            target_event_id;
+    END IF;
+
+    IF target_status = 'RESOLVED' AND candidate_count <> 0 THEN
+        RAISE EXCEPTION
+            'RESOLVED identity resolution events cannot retain candidates (event_id=%).',
+            target_event_id;
+    END IF;
+
+    IF target_status = 'AMBIGUOUS' AND candidate_count < 2 THEN
+        RAISE EXCEPTION
+            'AMBIGUOUS identity resolution events require at least two candidates (event_id=%).',
+            target_event_id;
+    END IF;
+END;
+$$;
+
+CREATE FUNCTION enforce_identity_resolution_candidate_state()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    target_event_id BIGINT;
+    previous_event_id BIGINT;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        target_event_id := OLD.identity_resolution_event_id;
+    ELSE
+        target_event_id := NEW.identity_resolution_event_id;
+    END IF;
+
+    IF TG_OP = 'UPDATE' THEN
+        previous_event_id := OLD.identity_resolution_event_id;
+    END IF;
+
+    PERFORM validate_identity_resolution_candidate_state(target_event_id);
+
+    IF previous_event_id IS NOT NULL AND previous_event_id <> target_event_id THEN
+        PERFORM validate_identity_resolution_candidate_state(previous_event_id);
+    END IF;
+
+    RETURN NULL;
+END;
+$$;
+
+CREATE CONSTRAINT TRIGGER trg_identity_resolution_events_candidate_state
+    AFTER INSERT OR UPDATE ON identity_resolution_events
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW
+    EXECUTE FUNCTION enforce_identity_resolution_candidate_state();
+
+CREATE CONSTRAINT TRIGGER trg_identity_resolution_candidates_candidate_state
+    AFTER INSERT OR UPDATE OR DELETE ON identity_resolution_candidates
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW
+    EXECUTE FUNCTION enforce_identity_resolution_candidate_state();
+
 CREATE UNIQUE INDEX uq_match_source_ids_source_match
     ON match_source_ids (source_system, source_match_id)
     WHERE source_match_id IS NOT NULL;
@@ -465,43 +625,84 @@ CREATE UNIQUE INDEX uq_match_source_ids_record_hash
     ON match_source_ids (source_system, source_record_hash)
     WHERE source_match_id IS NULL AND source_record_hash IS NOT NULL;
 
+CREATE UNIQUE INDEX uq_match_version_sources_source_match
+    ON match_version_sources (
+        source_system,
+        source_match_id,
+        match_version_id,
+        source_observed_at
+    )
+    WHERE source_match_id IS NOT NULL;
+
+CREATE UNIQUE INDEX uq_match_version_sources_record_hash
+    ON match_version_sources (
+        source_system,
+        source_record_hash,
+        match_version_id,
+        source_observed_at
+    )
+    WHERE source_match_id IS NULL AND source_record_hash IS NOT NULL;
+
 CREATE UNIQUE INDEX uq_match_stat_source_record
-    ON match_stat_observations (source_system, source_record_id)
+    ON match_stat_observations (
+        source_system,
+        source_record_id,
+        match_id,
+        player_id,
+        observation_kind,
+        source_observed_at
+    )
     WHERE source_record_id IS NOT NULL;
 
 CREATE UNIQUE INDEX uq_match_stat_source_hash
-    ON match_stat_observations (source_system, source_record_hash)
+    ON match_stat_observations (
+        source_system,
+        source_record_hash,
+        match_id,
+        player_id,
+        observation_kind,
+        source_observed_at
+    )
     WHERE source_record_id IS NULL AND source_record_hash IS NOT NULL;
 
 CREATE UNIQUE INDEX uq_odds_snapshots_source_record
-    ON odds_snapshots (source_system, source_snapshot_id)
-    WHERE source_snapshot_id IS NOT NULL;
-
-CREATE UNIQUE INDEX uq_odds_snapshots_observation_key
     ON odds_snapshots (
         source_system,
+        source_snapshot_id,
         bookmaker_code,
         match_id,
         market_type,
         selection_type,
-        COALESCE(line_value, -999999.000),
-        source_observed_at,
-        decimal_price
-    )
-    WHERE source_snapshot_id IS NULL;
+        line_value,
+        source_observed_at
+    ) NULLS NOT DISTINCT
+    WHERE source_snapshot_id IS NOT NULL;
+
+CREATE UNIQUE INDEX uq_odds_snapshots_source_hash
+    ON odds_snapshots (
+        source_system,
+        source_record_hash,
+        bookmaker_code,
+        match_id,
+        market_type,
+        selection_type,
+        line_value,
+        source_observed_at
+    ) NULLS NOT DISTINCT
+    WHERE source_snapshot_id IS NULL AND source_record_hash IS NOT NULL;
 
 CREATE UNIQUE INDEX uq_rating_snapshots_identity
     ON rating_snapshots (
         player_id,
         rating_metric,
-        COALESCE(surface::TEXT, ''),
+        surface,
         model_version,
         feature_version,
-        COALESCE(experiment_id, ''),
-        COALESCE(walk_forward_fold, -1),
-        COALESCE(variant_id, ''),
+        experiment_id,
+        walk_forward_fold,
+        variant_id,
         as_of
-    );
+    ) NULLS NOT DISTINCT;
 
 CREATE UNIQUE INDEX uq_predictions_identity
     ON predictions (

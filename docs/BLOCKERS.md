@@ -21,3 +21,5 @@ Live sharp-reference provider is unresolved. Blocked until a later scoped task.
 No disposable local PostgreSQL runtime was available in this task environment (`psql`
 missing; Docker daemon unavailable). The schema foundation was therefore validated
 statically rather than by applying migrations to an empty local database.
+Superseded on 2026-08-24 by a committed GitHub Actions PostgreSQL 16 validation gate;
+local disposable runtime still remains unavailable in this workstation environment.

@@ -63,10 +63,12 @@ def test_schema_contains_required_tables_and_temporal_columns():
         "player_source_ids",
         "player_aliases",
         "identity_resolution_events",
+        "identity_resolution_candidates",
         "tournaments",
         "tournament_editions",
         "matches",
         "match_versions",
+        "match_version_sources",
         "match_result_observations",
         "match_stat_observations",
         "odds_snapshots",
@@ -103,7 +105,16 @@ def test_player_identity_constraints_are_fail_closed():
 
     identity_resolution = _table_block(sql, "identity_resolution_events")
     assert "resolved_player_id bigint references players(player_id)" in identity_resolution
-    assert "candidate_player_ids bigint[]" in identity_resolution
+
+    identity_resolution_candidates = _table_block(sql, "identity_resolution_candidates")
+    assert (
+        "identity_resolution_event_id bigint not null references "
+        "identity_resolution_events(identity_resolution_event_id)" in identity_resolution_candidates
+    )
+    assert "player_id bigint not null references players(player_id)" in identity_resolution_candidates
+    assert "unique (identity_resolution_event_id, player_id)" in identity_resolution_candidates
+    assert "create function validate_identity_resolution_candidate_state" in sql
+    assert "create constraint trigger trg_identity_resolution_candidates_candidate_state" in sql
 
     resolution_status = _type_block(sql, "identity_resolution_status")
     for value in ("'resolved'", "'unmatched'", "'ambiguous'"):
@@ -124,6 +135,10 @@ def test_match_probability_and_odds_constraints_are_encoded():
     odds_snapshots = _table_block(sql, "odds_snapshots")
     assert "decimal_price numeric(12, 6) not null check (decimal_price > 1)" in odds_snapshots
     assert "market_type <> 'match_winner'" in odds_snapshots
+    assert "nulls not distinct" in sql
+    assert "create unique index uq_match_stat_source_record" in sql
+    assert "source_record_id,\n        match_id,\n        player_id,\n        observation_kind,\n        source_observed_at" in _read_text(UP_MIGRATION_PATH)
+    assert "create unique index uq_odds_snapshots_source_hash" in sql
 
 
 def test_predictions_remain_blind_and_decisions_separate_type_a_type_b():
@@ -146,6 +161,9 @@ def test_predictions_remain_blind_and_decisions_separate_type_a_type_b():
     assert "decision_status decision_status not null" in decisions
     assert "reason_code decision_reason_code not null default 'none'" in decisions
     assert "signal_type signal_type not null" in decisions
+    assert "created_at >= prediction_locked_at" not in decisions
+    assert "created_at >= as_of" in decisions
+    assert "reason_code not in ('none', 'veto_triggered')" in decisions
 
     decision_settlements = _table_block(sql, "decision_settlements")
     assert "settled_at timestamptz" in decision_settlements
@@ -156,9 +174,15 @@ def test_readme_and_docs_reflect_postgres_foundation():
     readme = _read_text(REPO_ROOT / "README.md")
     data_model = _read_text(REPO_ROOT / "docs" / "DATA_MODEL.md")
     point_in_time = _read_text(REPO_ROOT / "docs" / "POINT_IN_TIME.md")
+    decision_log = _read_text(REPO_ROOT / "docs" / "DECISION_LOG.md")
     db_readme = _read_text(DB_ROOT / "README.md")
 
     assert "db/" in readme
     assert "append-only" in data_model.lower()
+    assert "sha-256" in data_model.lower()
+    assert "match_version_sources" in data_model
     assert "as_of <= T" in point_in_time
+    assert "created_at may fall before or after prediction_locked_at" in point_in_time
+    assert "github actions" in db_readme.lower()
+    assert "match_version_sources" in decision_log
     assert "PostgreSQL" in db_readme

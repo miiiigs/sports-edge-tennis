@@ -51,7 +51,12 @@ raw observations.
   - Stores observed textual variants with provenance and observation windows.
 - `identity_resolution_events`
   - Explicitly records `RESOLVED`, `UNMATCHED`, and `AMBIGUOUS` outcomes.
-  - Ambiguous cases keep candidate player IDs and never silently collapse to one player.
+  - Ambiguous cases never silently collapse to one player.
+- `identity_resolution_candidates`
+  - Stores candidate canonical players with foreign-key integrity.
+  - `UNMATCHED` events carry zero candidates.
+  - `AMBIGUOUS` events must retain at least two candidates.
+  - `RESOLVED` events remain explicit on the event row and do not retain candidate rows.
 
 ### Tournament and match identity
 
@@ -68,8 +73,12 @@ raw observations.
   - Stores participants, surface, tier, start time, qualifying flag, round, status, and
     temporal fields.
 - `match_source_ids`
-  - Provenance bridge from source match identifiers or deterministic source hashes to the
-    normalized match identity and version.
+  - Stable source-to-match identity mapping for provider match identifiers or deterministic
+    source hashes.
+- `match_version_sources`
+  - Append-only provenance for each normalized `match_versions` row.
+  - Preserves which source record produced which normalized version without overloading the
+    stable identity bridge.
 
 ### Results and statistics
 
@@ -80,6 +89,9 @@ raw observations.
   - Raw or normalized source statistics by player, match, and provenance.
   - Stores source-level service and return inputs without converting them into model
     outputs.
+  - Logical idempotency is `(source_system, source_record_id/hash, match_id, player_id,
+    observation_kind, source_observed_at)`, which allows one provider record to fan out to
+    multiple player rows while still rejecting exact duplicates.
 
 ### Market observations
 
@@ -88,12 +100,18 @@ raw observations.
   - Raw bookmaker observations only.
   - Market identity is explicit through `market_type`, `selection_type`, and optional
     `line_value`.
+  - Logical idempotency is `(source_system, source_snapshot_id/hash, bookmaker_code, match_id,
+    market_type, selection_type, line_value, source_observed_at)`, with PostgreSQL `NULLS NOT
+    DISTINCT` semantics on nullable `line_value`.
 
 ### Ratings and model outputs
 
 - `rating_snapshots`
   - Immutable player rating states by metric, surface, model version, feature version, and
     `as_of`.
+  - Overall ratings use `surface IS NULL`; surface-specific ratings use native enum values.
+  - PostgreSQL `NULLS NOT DISTINCT` uniqueness preserves one logical overall row per identity
+    without enum-to-text casts.
 - `predictions`
   - Immutable agent-level outputs.
   - Explicit `ABSTAINED` support.
@@ -130,6 +148,39 @@ raw observations.
 - When a provider lacks a stable source record identifier, deterministic hashes are stored
   at the provenance edge and used as fallback uniqueness anchors.
 - Fuzzy matching is never used as an idempotency key.
+
+### Deterministic source hash contract
+
+All fallback provenance hashes use the repository-wide contract below before any provider
+adapter exists:
+
+- Algorithm: SHA-256
+- Recipe version: `SE_SOURCE_HASH_V1`
+- Serialization envelope: compact JSON encoded as UTF-8
+- Canonical shape:
+
+```json
+{
+  "version": "SE_SOURCE_HASH_V1",
+  "source_system": "SOURCE_NAME",
+  "fields": [
+    ["field_name_a", "value_a"],
+    ["field_name_b", null]
+  ]
+}
+```
+
+- Field ordering: `fields` must be sorted by canonical field name ascending
+- Null representation: JSON `null`
+- Unicode normalization: NFKC before serialization
+- Whitespace normalization: trim leading/trailing whitespace and collapse internal whitespace
+  runs to a single ASCII space for text fields
+- Case policy: preserve case after upstream canonicalization; do not silently lower-case at the
+  hash layer
+- Timestamp representation: UTC RFC 3339 with microseconds and trailing `Z`
+- Decimal representation: plain string notation, no exponent, no leading `+`, trailing zeros
+  removed, decimal point removed when the number is integral
+- Digest encoding: lowercase hexadecimal
 
 ## Mutable vs immutable
 

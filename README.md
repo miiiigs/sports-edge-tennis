@@ -9,8 +9,9 @@ repository, runtime, and database, fully separated from the football platform.
 
 ## Current State
 
-Repository bootstrap plus PostgreSQL schema foundation. No historical ingest, model,
-market, or production runtime functionality is implemented yet.
+Repository bootstrap plus PostgreSQL schema foundation, including committed PostgreSQL 16
+integration validation in CI. No historical ingest, model, market, or production runtime
+functionality is implemented yet.
 
 ## Not Yet Implemented
 
