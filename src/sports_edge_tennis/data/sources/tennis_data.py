@@ -112,6 +112,8 @@ def _bookmaker_prefixes(headers: list[str]) -> list[str]:
         prefix = header[:-1]
         if not prefix or prefix in _BOOKMAKER_EXCLUSIONS:
             continue
+        if prefix.casefold() in {"avg", "max"}:
+            continue
         if prefix.isdigit():
             continue
         loser_header = f"{prefix}L"

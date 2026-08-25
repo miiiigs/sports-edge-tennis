@@ -1,0 +1,6 @@
+BEGIN;
+
+ALTER TYPE competition_tier
+    ADD VALUE IF NOT EXISTS 'ATP_TOUR' BEFORE 'ATP_500';
+
+COMMIT;

@@ -90,6 +90,11 @@ Sports results live in `match_result_observations`, not in `matches` or `match_v
 That makes it possible to query fixture identity without accidentally reading post-match
 outcomes.
 
+Sackmann rows without explicit `match_date` are a special case. Their `tourney_date`
+represents the tournament-week start, not the actual match day. Sports Edge therefore uses
+an end-of-tournament-week visibility boundary for the corresponding match, result, and stat
+records so later rounds cannot leak into earlier historical queries.
+
 ### Odds
 
 Odds are append-only in `odds_snapshots`. Later prices do not overwrite earlier prices.

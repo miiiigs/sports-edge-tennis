@@ -117,6 +117,18 @@ def _orient_players(winner_player_id: int, loser_player_id: int) -> tuple[int, i
     return player_1_id, player_2_id, winner_side
 
 
+def _serialize_counters(
+    counters: IngestCounters,
+    *,
+    identity_resolution_status: str,
+) -> dict[str, object]:
+    payload = asdict(counters)
+    if identity_resolution_status == "NOT_EXECUTED":
+        for key in ("rows_unmatched", "resolved_players", "unmatched_players", "ambiguous_players"):
+            payload[key] = None
+    return payload
+
+
 def write_reports(
     *,
     quality_path: Path,
@@ -125,32 +137,20 @@ def write_reports(
     quality: QualityAccumulator,
     unmatched: list[UnmatchedRecord],
     latest_observation_at: datetime | None,
+    identity_resolution_status: str,
 ) -> None:
+    serialized_counters = _serialize_counters(
+        counters,
+        identity_resolution_status=identity_resolution_status,
+    )
     quality_payload = {
-        "rows_seen": counters.rows_seen,
-        "rows_inserted": counters.rows_inserted,
-        "rows_rejected": counters.rows_rejected,
-        "rows_unmatched": counters.rows_unmatched,
-        "rows_updated": counters.rows_updated,
-        "duplicate_rows": counters.duplicate_rows,
-        "matches_normalized": counters.matches_normalized,
-        "match_versions_inserted": counters.match_versions_inserted,
-        "result_rows": counters.result_rows,
-        "stat_rows": counters.stat_rows,
-        "odds_rows": counters.odds_rows,
-        "odds_candidate_rows": counters.odds_candidate_rows,
-        "odds_matched_rows": counters.odds_matched_rows,
-        "odds_ambiguous_rows": counters.odds_ambiguous_rows,
-        "resolved_players": counters.resolved_players,
-        "unmatched_players": counters.unmatched_players,
-        "ambiguous_players": counters.ambiguous_players,
-        "invalid_prices": counters.invalid_prices,
-        "excluded_rows": counters.excluded_rows,
+        **serialized_counters,
         "source_files": quality.source_files,
         "coverage_by_year": quality.years,
         "coverage_by_tour_tier": quality.tour_tiers,
         "coverage_by_surface": quality.surfaces,
         "coverage_by_bookmaker": quality.bookmakers,
+        "identity_resolution_status": identity_resolution_status,
         "latest_observation_at": (
             latest_observation_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ") if latest_observation_at else None
         ),
@@ -207,8 +207,17 @@ def ingest_sackmann_document(
                 quality=quality,
                 unmatched=unmatched,
                 latest_observation_at=latest_observation_at,
+                identity_resolution_status="NOT_EXECUTED",
             )
-        return {"status": "DRY_RUN", "counters": asdict(counters), "errors": error_summary}
+        return {
+            "status": "DRY_RUN",
+            "identity_resolution_status": "NOT_EXECUTED",
+            "counters": _serialize_counters(
+                counters,
+                identity_resolution_status="NOT_EXECUTED",
+            ),
+            "errors": error_summary,
+        }
 
     ingest_run_id = start_ingest_run(
         conn,
@@ -290,7 +299,7 @@ def ingest_sackmann_document(
                     season_year=record.season_year,
                     edition_name=record.edition_name,
                     surface=record.surface,
-                    start_date=record.match_start_at.date(),
+                    start_date=record.tournament_start_date,
                 )
                 locator = repository.upsert_match_version(
                     tournament_edition_id=edition_id,
@@ -391,8 +400,17 @@ def ingest_sackmann_document(
             quality=quality,
             unmatched=unmatched,
             latest_observation_at=latest_observation_at,
+            identity_resolution_status="EXECUTED",
         )
-    return {"status": "COMPLETED", "counters": asdict(counters), "errors": error_summary}
+    return {
+        "status": "COMPLETED",
+        "identity_resolution_status": "EXECUTED",
+        "counters": _serialize_counters(
+            counters,
+            identity_resolution_status="EXECUTED",
+        ),
+        "errors": error_summary,
+    }
 
 
 def ingest_tennis_data_document(
@@ -431,8 +449,17 @@ def ingest_tennis_data_document(
                 quality=quality,
                 unmatched=unmatched,
                 latest_observation_at=latest_observation_at,
+                identity_resolution_status="NOT_EXECUTED",
             )
-        return {"status": "DRY_RUN", "counters": asdict(counters), "errors": error_summary}
+        return {
+            "status": "DRY_RUN",
+            "identity_resolution_status": "NOT_EXECUTED",
+            "counters": _serialize_counters(
+                counters,
+                identity_resolution_status="NOT_EXECUTED",
+            ),
+            "errors": error_summary,
+        }
 
     ingest_run_id = start_ingest_run(
         conn,
@@ -575,5 +602,14 @@ def ingest_tennis_data_document(
             quality=quality,
             unmatched=unmatched,
             latest_observation_at=latest_observation_at,
+            identity_resolution_status="EXECUTED",
         )
-    return {"status": "COMPLETED", "counters": asdict(counters), "errors": error_summary}
+    return {
+        "status": "COMPLETED",
+        "identity_resolution_status": "EXECUTED",
+        "counters": _serialize_counters(
+            counters,
+            identity_resolution_status="EXECUTED",
+        ),
+        "errors": error_summary,
+    }

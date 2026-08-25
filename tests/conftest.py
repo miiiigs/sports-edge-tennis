@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import json
 from pathlib import Path
 
 import psycopg
@@ -8,8 +9,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-UP_MIGRATION_PATH = REPO_ROOT / "db" / "migrations" / "0001_tennis_data_foundation.up.sql"
-DOWN_MIGRATION_PATH = REPO_ROOT / "db" / "migrations" / "0001_tennis_data_foundation.down.sql"
+MANIFEST_PATH = REPO_ROOT / "db" / "migrations" / "manifest.json"
 POSTGRES_DSN = os.environ.get("TEST_POSTGRES_DSN") or os.environ.get("DATABASE_URL")
 
 
@@ -20,6 +20,25 @@ def _run_psql(dsn: str, sql_path: Path) -> None:
         capture_output=True,
         text=True,
     )
+
+
+def _migration_entries() -> list[dict[str, str]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    return manifest["migrations"]
+
+
+def _run_manifest_migrations(dsn: str, direction: str) -> None:
+    entries = _migration_entries()
+    if direction == "down":
+        entries = list(reversed(entries))
+    for entry in entries:
+        _run_psql(dsn, REPO_ROOT / Path(entry[direction]))
+
+
+def _reset_public_schema(dsn: str) -> None:
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("DROP SCHEMA IF EXISTS public CASCADE")
+        conn.execute("CREATE SCHEMA public")
 
 
 def _reset_db(conn: psycopg.Connection) -> None:
@@ -65,12 +84,14 @@ def postgres_dsn() -> str:
 
 @pytest.fixture(scope="session")
 def migrated_postgres(postgres_dsn: str) -> str:
-    _run_psql(postgres_dsn, DOWN_MIGRATION_PATH)
-    _run_psql(postgres_dsn, UP_MIGRATION_PATH)
+    _reset_public_schema(postgres_dsn)
+    _run_manifest_migrations(postgres_dsn, "up")
     try:
         yield postgres_dsn
     finally:
-        _run_psql(postgres_dsn, DOWN_MIGRATION_PATH)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            _reset_db(conn)
+        _run_manifest_migrations(postgres_dsn, "down")
 
 
 @pytest.fixture()

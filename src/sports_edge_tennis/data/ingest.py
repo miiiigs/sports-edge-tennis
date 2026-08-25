@@ -16,6 +16,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input-path", required=True, help="Historical source file path")
     parser.add_argument("--source-url", help="Canonical source URL for manifest tracking")
     parser.add_argument("--source-revision", help="Source revision, commit, or upstream version")
+    parser.add_argument("--canonical-source", help="Canonical source label for provenance manifests")
+    parser.add_argument("--retrieval-source", help="Retrieval/archive source label for provenance manifests")
+    parser.add_argument("--archive-revision", help="Retrieval/archive revision for provenance manifests")
+    parser.add_argument("--upstream-revision", help="Upstream canonical revision when known")
+    parser.add_argument("--source-license", help="Source license label for provenance manifests")
     parser.add_argument("--season", type=int, help="Season year for manifest metadata")
     parser.add_argument("--dry-run", action="store_true", help="Parse and normalize without DB writes")
     parser.add_argument("--db-dsn", help="Explicit PostgreSQL DSN")
@@ -51,10 +56,20 @@ def main(argv: list[str] | None = None) -> int:
         source_system = "SACKMANN"
         source_name = "Jeff Sackmann tennis_atp historical matches"
         dataset_type = "historical_matches"
+        canonical_source = args.canonical_source or "Jeff Sackmann tennis_atp"
+        retrieval_source = args.retrieval_source or "Aneeshers/tennis-sackmann-archive"
+        archive_revision = args.archive_revision or args.source_revision
+        upstream_revision = args.upstream_revision
+        source_license = args.source_license or "CC BY-NC-SA 4.0"
     else:
         source_system = "TENNIS_DATA"
         source_name = "Tennis-Data historical odds archive"
         dataset_type = "historical_odds"
+        canonical_source = args.canonical_source or source_name
+        retrieval_source = args.retrieval_source or canonical_source
+        archive_revision = args.archive_revision or args.source_revision
+        upstream_revision = args.upstream_revision
+        source_license = args.source_license
 
     document = build_source_document(
         path=input_path,
@@ -64,6 +79,11 @@ def main(argv: list[str] | None = None) -> int:
         season=args.season,
         source_url=args.source_url,
         source_revision=args.source_revision,
+        canonical_source=canonical_source,
+        retrieval_source=retrieval_source,
+        archive_revision=archive_revision,
+        upstream_revision=upstream_revision,
+        source_license=source_license,
     )
     manifest_path = Path(args.manifest_path)
     quality_path = Path(args.quality_report_path)

@@ -26,6 +26,11 @@ class SourceDocument:
     source_system: str
     source_name: str
     source_url: str | None
+    canonical_source: str | None
+    retrieval_source: str | None
+    archive_revision: str | None
+    upstream_revision: str | None
+    source_license: str | None
     local_path: Path
     retrieved_at: datetime
     filename: str
@@ -69,6 +74,7 @@ class SackmannMatchRecord:
     tournament_name: str
     edition_name: str
     season_year: int
+    tournament_start_date: date
     surface: TennisSurface | None
     tour_scope: TourScope
     competition_tier: CompetitionTier

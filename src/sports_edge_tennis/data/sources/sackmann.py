@@ -35,6 +35,12 @@ _REQUIRED_COLUMNS = {
     "round",
     "best_of",
 }
+_CONSERVATIVE_TOURNAMENT_DURATION_DAYS = 6
+_UNKNOWN_MATCH_DATE_LIMITATION = (
+    "Sackmann rows without explicit match_date remain hidden until the end of the source "
+    "tournament week because tourney_date is only a tournament-start boundary, not an "
+    "individual match date."
+)
 
 
 @dataclass(frozen=True)
@@ -98,6 +104,10 @@ def _prematch_observed_at(match_day: date) -> datetime:
 
 def _result_observed_at(match_day: date) -> datetime:
     return datetime.combine(match_day, time(hour=23, minute=59, second=59, tzinfo=UTC))
+
+
+def _conservative_tournament_visibility_boundary(tourney_date: date) -> datetime:
+    return _result_observed_at(tourney_date + timedelta(days=_CONSERVATIVE_TOURNAMENT_DURATION_DAYS))
 
 
 def _match_status(score: str | None, comment: str | None) -> str:
@@ -188,18 +198,19 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                 winner_id = row.get("winner_id", "").strip() or None
                 loser_id = row.get("loser_id", "").strip() or None
                 source_match_id = _source_match_id(row, winner_id, loser_id)
-                match_day = (
-                    datetime.strptime(row["match_date"], "%Y-%m-%d").date()
-                    if row.get("match_date")
-                    else tourney_date
-                )
-                prematch_observed_at = _prematch_observed_at(match_day)
-                result_observed_at = _result_observed_at(match_day)
+                explicit_match_date = row.get("match_date")
+                if explicit_match_date:
+                    match_day = datetime.strptime(explicit_match_date, "%Y-%m-%d").date()
+                    match_start_at = _match_start_at(match_day)
+                    match_observed_at = _prematch_observed_at(match_day)
+                    result_observed_at = _result_observed_at(match_day)
+                else:
+                    result_observed_at = _conservative_tournament_visibility_boundary(tourney_date)
+                    match_start_at = result_observed_at
+                    match_observed_at = result_observed_at
                 limitations: list[str] = []
-                if not row.get("match_date"):
-                    limitations.append(
-                        "Sackmann row lacks explicit match_date; pre-match and result timing are based on tourney_date day-level boundaries."
-                    )
+                if not explicit_match_date:
+                    limitations.append(_UNKNOWN_MATCH_DATE_LIMITATION)
 
                 raw_fields = {
                     key: value
@@ -221,15 +232,16 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                         tournament_name=collapse_whitespace(row["tourney_name"]),
                         edition_name=f"{collapse_whitespace(row['tourney_name'])} {season_year}",
                         season_year=season_year,
+                        tournament_start_date=tourney_date,
                         surface=_surface(row.get("surface")),
                         tour_scope=tour_scope,
                         competition_tier=tier,
                         round_code=round_code,
                         best_of_sets=best_of_sets,
                         qualifying_flag=qualifying_flag,
-                        match_start_at=_match_start_at(match_day),
-                        match_source_observed_at=prematch_observed_at,
-                        match_as_of=prematch_observed_at,
+                        match_start_at=match_start_at,
+                        match_source_observed_at=match_observed_at,
+                        match_as_of=match_observed_at,
                         result_source_observed_at=result_observed_at,
                         result_as_of=result_observed_at,
                         winner=PlayerReference(winner_name, winner_id),

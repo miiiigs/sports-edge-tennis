@@ -5,7 +5,6 @@ CREATE TYPE player_status AS ENUM ('ACTIVE', 'INACTIVE', 'RETIRED', 'UNKNOWN');
 CREATE TYPE competition_tier AS ENUM (
     'GRAND_SLAM',
     'MASTERS_1000',
-    'ATP_TOUR',
     'ATP_500',
     'ATP_250',
     'CHALLENGER'
