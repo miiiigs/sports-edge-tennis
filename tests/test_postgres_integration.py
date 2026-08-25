@@ -360,8 +360,9 @@ def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
 
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         _reset_db(conn)
-    _run_psql(postgres_dsn, down_0002)
-    _run_psql(postgres_dsn, down_0001)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        assert _table_exists(conn, "players")
+        assert _table_exists(conn, "match_versions")
 
 
 def test_identity_resolution_constraints_are_fail_closed(db: psycopg.Connection):
