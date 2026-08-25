@@ -10,8 +10,11 @@ UP_MIGRATION_PATH = DB_ROOT / "migrations" / "0001_tennis_data_foundation.up.sql
 DOWN_MIGRATION_PATH = DB_ROOT / "migrations" / "0001_tennis_data_foundation.down.sql"
 UP_MIGRATION_PATH_0002 = DB_ROOT / "migrations" / "0002_day5_historical_integrity.up.sql"
 DOWN_MIGRATION_PATH_0002 = DB_ROOT / "migrations" / "0002_day5_historical_integrity.down.sql"
+UP_MIGRATION_PATH_0003 = DB_ROOT / "migrations" / "0003_day5_temporal_reconciliation.up.sql"
+DOWN_MIGRATION_PATH_0003 = DB_ROOT / "migrations" / "0003_day5_temporal_reconciliation.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
+SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -50,12 +53,18 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert migrations[1]["up"] == "db/migrations/0002_day5_historical_integrity.up.sql"
     assert migrations[1]["down"] == "db/migrations/0002_day5_historical_integrity.down.sql"
     assert migrations[1]["schema_snapshot"] == "db/schema/0002_day5_historical_integrity.sql"
+    assert migrations[2]["up"] == "db/migrations/0003_day5_temporal_reconciliation.up.sql"
+    assert migrations[2]["down"] == "db/migrations/0003_day5_temporal_reconciliation.down.sql"
+    assert migrations[2]["schema_snapshot"] == "db/schema/0003_day5_temporal_reconciliation.sql"
     assert UP_MIGRATION_PATH.exists()
     assert DOWN_MIGRATION_PATH.exists()
     assert UP_MIGRATION_PATH_0002.exists()
     assert DOWN_MIGRATION_PATH_0002.exists()
+    assert UP_MIGRATION_PATH_0003.exists()
+    assert DOWN_MIGRATION_PATH_0003.exists()
     assert SCHEMA_SNAPSHOT_PATH.exists()
     assert SCHEMA_SNAPSHOT_PATH_0002.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0003.exists()
 
 
 def test_schema_snapshot_matches_bootstrap_migration():
@@ -64,6 +73,14 @@ def test_schema_snapshot_matches_bootstrap_migration():
     )
     expected_full_schema = _normalized_sql(_read_text(UP_MIGRATION_PATH) + "\n" + _read_text(UP_MIGRATION_PATH_0002))
     assert expected_full_schema == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0002))
+    expected_full_schema_0003 = _normalized_sql(
+        _read_text(UP_MIGRATION_PATH)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0002)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0003)
+    )
+    assert expected_full_schema_0003 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0003))
 
 
 def test_day5_forward_migration_is_separate_from_bootstrap():
@@ -72,9 +89,13 @@ def test_day5_forward_migration_is_separate_from_bootstrap():
 
     day5_sql = _read_text(UP_MIGRATION_PATH_0002).lower()
     day5_down_sql = _read_text(DOWN_MIGRATION_PATH_0002).lower()
+    day5_temporal_sql = _read_text(UP_MIGRATION_PATH_0003).lower()
+    day5_temporal_down_sql = _read_text(DOWN_MIGRATION_PATH_0003).lower()
     assert "add value if not exists 'atp_tour'" in day5_sql
     assert "rename to competition_tier_day5_historical_integrity" in day5_down_sql
     assert "requires atp_tour rows to be removed before rollback" in day5_down_sql
+    assert "alter column match_start_at drop not null" in day5_temporal_sql
+    assert "requires rows with null match_start_at to be removed before rollback" in day5_temporal_down_sql
 
 
 def test_schema_contains_required_tables_and_temporal_columns():

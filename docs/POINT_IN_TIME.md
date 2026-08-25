@@ -10,7 +10,12 @@ lock time.
 
 ### `match_start_at`
 
-The scheduled or actual fixture start in UTC.
+The scheduled or actual fixture start in UTC when the source exposes a trustworthy match
+date or time.
+
+This field may remain `NULL` for historical source rows whose event timing is genuinely
+unknown. In that case Sports Edge preserves tournament identity separately and does not
+fabricate a fixture timestamp.
 
 ### `source_observed_at`
 
@@ -91,9 +96,14 @@ That makes it possible to query fixture identity without accidentally reading po
 outcomes.
 
 Sackmann rows without explicit `match_date` are a special case. Their `tourney_date`
-represents the tournament-week start, not the actual match day. Sports Edge therefore uses
-an end-of-tournament-week visibility boundary for the corresponding match, result, and stat
-records so later rounds cannot leak into earlier historical queries.
+represents the tournament start, not the actual match day. Sports Edge therefore keeps
+`match_start_at` unknown for those rows and delays match, result, and stat visibility until
+a conservative tournament-end boundary derived from current source scope:
+
+- Grand Slam and ATP main-draw rows: second Sunday after the source `tourney_date`
+- Challenger rows: end of the source tournament week
+
+If exact timing cannot be justified safely, visibility moves later rather than earlier.
 
 ### Odds
 

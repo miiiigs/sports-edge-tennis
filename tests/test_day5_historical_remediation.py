@@ -6,18 +6,97 @@ import openpyxl
 import psycopg
 
 from sports_edge_tennis.data.manifest import build_source_document, write_manifest
-from sports_edge_tennis.data.pipeline import ingest_sackmann_document
+from sports_edge_tennis.data.pipeline import ingest_sackmann_document, ingest_tennis_data_document
 from sports_edge_tennis.data.sources.sackmann import parse_sackmann_csv
 from sports_edge_tennis.data.sources.tennis_data import parse_tennis_data_file
 
 
-def test_parse_sackmann_missing_match_date_uses_conservative_visibility_boundary(tmp_path: Path):
-    csv_path = tmp_path / "atp_matches_2024.csv"
+def _build_tennis_data_workbook(
+    tmp_path: Path,
+    *,
+    filename: str,
+    event_date: str,
+    tournament_name: str,
+    winner_name: str,
+    loser_name: str,
+    round_code: str | None,
+    best_of_sets: int | None,
+) -> Path:
+    workbook_path = tmp_path / filename
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.append(
+        [
+            "Date",
+            "Tournament",
+            "Surface",
+            "Round",
+            "Best of",
+            "Winner",
+            "Loser",
+            "B365W",
+            "B365L",
+        ]
+    )
+    sheet.append(
+        [
+            event_date,
+            tournament_name,
+            "Hard",
+            round_code or "",
+            best_of_sets if best_of_sets is not None else "",
+            winner_name,
+            loser_name,
+            1.80,
+            2.00,
+        ]
+    )
+    workbook.save(workbook_path)
+    return workbook_path
+
+
+def test_parse_sackmann_realistic_no_match_date_header_uses_null_match_time_and_grand_slam_boundary(
+    tmp_path: Path,
+):
+    csv_path = tmp_path / "atp_matches_2025.csv"
     csv_path.write_text(
         "\n".join(
             [
-                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
-                "2024-9900,Temporal Safety Open,Hard,32,A,20240819,,401,101,Player One,102,Player Two,6-4 6-4,3,F",
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-580,Australian Open,Hard,128,G,20250113,701,101,Player One,102,Player Two,6-4 6-4 6-4,5,F",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+
+    outcome = parse_sackmann_csv(document)
+
+    assert len(outcome.records) == 1
+    record = outcome.records[0]
+    assert record.tournament_start_date.isoformat() == "2025-01-13"
+    assert record.tournament_end_date.isoformat() == "2025-01-26"
+    assert record.competition_tier == "GRAND_SLAM"
+    assert record.match_start_at is None
+    assert record.match_as_of == datetime(2025, 1, 26, 23, 59, 59, tzinfo=UTC)
+    assert record.result_as_of == datetime(2025, 1, 26, 23, 59, 59, tzinfo=UTC)
+    assert "match_start_at unknown" in record.limitations[0]
+
+
+def test_parse_sackmann_missing_match_date_uses_one_week_challenger_boundary(tmp_path: Path):
+    csv_path = tmp_path / "challenger_matches_2024.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2024-7700,Sample Challenger,Clay,32,C,20240819,401,101,Player One,102,Player Two,6-4 6-4,3,F",
             ]
         )
         + "\n",
@@ -35,27 +114,138 @@ def test_parse_sackmann_missing_match_date_uses_conservative_visibility_boundary
 
     assert len(outcome.records) == 1
     record = outcome.records[0]
+    assert record.competition_tier == "CHALLENGER"
     assert record.tournament_start_date.isoformat() == "2024-08-19"
-    assert record.competition_tier == "ATP_TOUR"
+    assert record.tournament_end_date.isoformat() == "2024-08-25"
+    assert record.match_start_at is None
     assert record.match_as_of == datetime(2024, 8, 25, 23, 59, 59, tzinfo=UTC)
     assert record.result_as_of == datetime(2024, 8, 25, 23, 59, 59, tzinfo=UTC)
-    assert record.match_start_at == datetime(2024, 8, 25, 23, 59, 59, tzinfo=UTC)
-    assert "tournament week" in record.limitations[0]
 
 
-def test_temporal_regression_uses_database_as_of_filtering_for_unknown_sackmann_match_dates(
+def test_grand_slam_temporal_regression_uses_database_as_of_filtering_for_unknown_sackmann_match_dates(
     db: psycopg.Connection,
     tmp_path: Path,
 ):
-    csv_path = tmp_path / "temporal_regression.csv"
+    csv_path = tmp_path / "grand_slam_temporal_regression.csv"
     csv_path.write_text(
         "\n".join(
             [
-                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round,comment,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_bpSaved,l_bpFaced",
-                "2024-9900,Temporal Safety Open,Hard,32,A,20240819,,101,1001,Early Winner,1002,Early Loser,6-2 6-3,3,R32,,5,1,50,30,24,10,2,3,2,3,49,31,20,9,1,4",
-                "2024-9900,Temporal Safety Open,Hard,32,A,20240819,,201,1003,Quarter Winner,1004,Quarter Loser,7-5 6-4,3,QF,,8,2,64,40,31,15,5,8,6,4,61,37,27,13,3,7",
-                "2024-9900,Temporal Safety Open,Hard,32,A,20240819,,301,1005,Semi Winner,1006,Semi Loser,6-4 3-6 6-4,3,SF,,11,2,79,48,36,19,7,10,7,5,77,45,33,18,4,9",
-                "2024-9900,Temporal Safety Open,Hard,32,A,20240819,,401,1005,Semi Winner,1003,Quarter Winner,6-4 6-4,3,F,,9,1,58,34,28,12,3,5,4,2,57,36,24,11,2,5",
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round,comment,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_bpSaved,l_bpFaced",
+                "2025-580,Australian Open,Hard,128,G,20250113,101,1001,Early Winner,1002,Early Loser,6-2 6-3 6-2,5,R128,,5,1,50,30,24,10,2,3,2,3,49,31,20,9,1,4",
+                "2025-580,Australian Open,Hard,128,G,20250113,501,1003,Quarter Winner,1004,Quarter Loser,7-5 6-4 6-4,5,QF,,8,2,64,40,31,15,5,8,6,4,61,37,27,13,3,7",
+                "2025-580,Australian Open,Hard,128,G,20250113,601,1005,Semi Winner,1006,Semi Loser,6-4 3-6 6-4 6-4,5,SF,,11,2,79,48,36,19,7,10,7,5,77,45,33,18,4,9",
+                "2025-580,Australian Open,Hard,128,G,20250113,701,1005,Semi Winner,1003,Quarter Winner,6-4 6-4 6-4,5,F,,9,1,58,34,28,12,3,5,4,2,57,36,24,11,2,5",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+
+    ingest_sackmann_document(
+        db,
+        document=document,
+        dry_run=False,
+        quality_path=tmp_path / "quality.json",
+        unmatched_path=tmp_path / "unmatched.json",
+    )
+
+    during_tournament = datetime(2025, 1, 24, 12, 0, tzinfo=UTC)
+    after_boundary = datetime(2025, 1, 27, 0, 0, tzinfo=UTC)
+
+    final_match_versions_during = db.execute(
+        """
+        SELECT count(*)
+        FROM match_versions mv
+        JOIN matches m ON m.match_id = mv.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        WHERE t.canonical_name = 'Australian Open'
+          AND mv.round_code = 'F'
+          AND mv.as_of <= %s
+        """,
+        (during_tournament,),
+    ).fetchone()[0]
+    final_results_during = db.execute(
+        """
+        SELECT count(*)
+        FROM match_result_observations mro
+        JOIN matches m ON m.match_id = mro.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN match_versions mv ON mv.match_id = mro.match_id
+        WHERE t.canonical_name = 'Australian Open'
+          AND mv.round_code IN ('SF', 'F')
+          AND mro.as_of <= %s
+        """,
+        (during_tournament,),
+    ).fetchone()[0]
+    final_stats_during = db.execute(
+        """
+        SELECT count(*)
+        FROM match_stat_observations mso
+        JOIN matches m ON m.match_id = mso.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN match_versions mv ON mv.match_id = mso.match_id
+        WHERE t.canonical_name = 'Australian Open'
+          AND mv.round_code IN ('SF', 'F')
+          AND mso.as_of <= %s
+        """,
+        (during_tournament,),
+    ).fetchone()[0]
+    final_results_after = db.execute(
+        """
+        SELECT count(*)
+        FROM match_result_observations mro
+        JOIN matches m ON m.match_id = mro.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN match_versions mv ON mv.match_id = mro.match_id
+        WHERE t.canonical_name = 'Australian Open'
+          AND mv.round_code = 'F'
+          AND mro.as_of <= %s
+        """,
+        (after_boundary,),
+    ).fetchone()[0]
+    final_stats_after = db.execute(
+        """
+        SELECT count(*)
+        FROM match_stat_observations mso
+        JOIN matches m ON m.match_id = mso.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN match_versions mv ON mv.match_id = mso.match_id
+        WHERE t.canonical_name = 'Australian Open'
+          AND mv.round_code = 'F'
+          AND mso.as_of <= %s
+        """,
+        (after_boundary,),
+    ).fetchone()[0]
+
+    assert final_match_versions_during == 0
+    assert final_results_during == 0
+    assert final_stats_during == 0
+    assert final_results_after == 1
+    assert final_stats_after == 2
+
+
+def test_one_week_temporal_regression_stays_hidden_until_week_end(
+    db: psycopg.Connection,
+    tmp_path: Path,
+):
+    csv_path = tmp_path / "one_week_temporal_regression.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round,comment,w_ace,w_df,w_svpt,w_1stIn,w_1stWon,w_2ndWon,w_bpSaved,w_bpFaced,l_ace,l_df,l_svpt,l_1stIn,l_1stWon,l_2ndWon,l_bpSaved,l_bpFaced",
+                "2024-7700,Sample Challenger,Clay,32,C,20240819,401,1001,Final Winner,1002,Final Loser,6-4 6-4,3,F,,9,1,58,34,28,12,3,5,4,2,57,36,24,11,2,5",
             ]
         )
         + "\n",
@@ -77,22 +267,9 @@ def test_temporal_regression_uses_database_as_of_filtering_for_unknown_sackmann_
         unmatched_path=tmp_path / "unmatched.json",
     )
 
-    during_tournament = datetime(2024, 8, 24, 12, 0, tzinfo=UTC)
+    during_tournament = datetime(2024, 8, 25, 12, 0, tzinfo=UTC)
     after_boundary = datetime(2024, 8, 26, 0, 0, tzinfo=UTC)
 
-    final_match_versions_during = db.execute(
-        """
-        SELECT count(*)
-        FROM match_versions mv
-        JOIN matches m ON m.match_id = mv.match_id
-        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
-        JOIN tournaments t ON t.tournament_id = te.tournament_id
-        WHERE t.canonical_name = 'Temporal Safety Open'
-          AND mv.round_code = 'F'
-          AND mv.as_of <= %s
-        """,
-        (during_tournament,),
-    ).fetchone()[0]
     final_results_during = db.execute(
         """
         SELECT count(*)
@@ -100,24 +277,8 @@ def test_temporal_regression_uses_database_as_of_filtering_for_unknown_sackmann_
         JOIN matches m ON m.match_id = mro.match_id
         JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
         JOIN tournaments t ON t.tournament_id = te.tournament_id
-        JOIN match_versions mv ON mv.match_id = mro.match_id
-        WHERE t.canonical_name = 'Temporal Safety Open'
-          AND mv.round_code IN ('SF', 'F')
+        WHERE t.canonical_name = 'Sample Challenger'
           AND mro.as_of <= %s
-        """,
-        (during_tournament,),
-    ).fetchone()[0]
-    final_stats_during = db.execute(
-        """
-        SELECT count(*)
-        FROM match_stat_observations mso
-        JOIN matches m ON m.match_id = mso.match_id
-        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
-        JOIN tournaments t ON t.tournament_id = te.tournament_id
-        JOIN match_versions mv ON mv.match_id = mso.match_id
-        WHERE t.canonical_name = 'Temporal Safety Open'
-          AND mv.round_code IN ('SF', 'F')
-          AND mso.as_of <= %s
         """,
         (during_tournament,),
     ).fetchone()[0]
@@ -128,33 +289,145 @@ def test_temporal_regression_uses_database_as_of_filtering_for_unknown_sackmann_
         JOIN matches m ON m.match_id = mro.match_id
         JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
         JOIN tournaments t ON t.tournament_id = te.tournament_id
-        JOIN match_versions mv ON mv.match_id = mro.match_id
-        WHERE t.canonical_name = 'Temporal Safety Open'
-          AND mv.round_code = 'F'
+        WHERE t.canonical_name = 'Sample Challenger'
           AND mro.as_of <= %s
         """,
         (after_boundary,),
     ).fetchone()[0]
-    final_stats_after = db.execute(
-        """
-        SELECT count(*)
-        FROM match_stat_observations mso
-        JOIN matches m ON m.match_id = mso.match_id
-        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
-        JOIN tournaments t ON t.tournament_id = te.tournament_id
-        JOIN match_versions mv ON mv.match_id = mso.match_id
-        WHERE t.canonical_name = 'Temporal Safety Open'
-          AND mv.round_code = 'F'
-          AND mso.as_of <= %s
-        """,
-        (after_boundary,),
-    ).fetchone()[0]
 
-    assert final_match_versions_during == 0
     assert final_results_during == 0
-    assert final_stats_during == 0
     assert final_results_after == 1
-    assert final_stats_after == 2
+
+
+def test_cross_source_reconciliation_matches_unknown_sackmann_timing_without_fabricated_date(
+    db: psycopg.Connection,
+    tmp_path: Path,
+):
+    csv_path = tmp_path / "atp_matches_2025.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-580,Australian Open,Hard,128,G,20250113,701,1001,Player Winner,1002,Player Loser,6-4 6-4 6-4,5,F",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    match_document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+    ingest_sackmann_document(
+        db,
+        document=match_document,
+        dry_run=False,
+        quality_path=tmp_path / "match_quality.json",
+        unmatched_path=tmp_path / "match_unmatched.json",
+    )
+
+    odds_path = _build_tennis_data_workbook(
+        tmp_path,
+        filename="australian_open_odds.xlsx",
+        event_date="2025-01-26",
+        tournament_name="Australian Open",
+        winner_name="Player Winner",
+        loser_name="Player Loser",
+        round_code="F",
+        best_of_sets=5,
+    )
+    odds_document = build_source_document(
+        path=odds_path,
+        source_system="TENNIS_DATA",
+        source_name="Tennis-Data historical odds archive",
+        dataset_type="historical_odds",
+        season=2025,
+    )
+
+    result = ingest_tennis_data_document(
+        db,
+        document=odds_document,
+        dry_run=False,
+        quality_path=tmp_path / "odds_quality.json",
+        unmatched_path=tmp_path / "odds_unmatched.json",
+    )
+
+    assert result["status"] == "COMPLETED"
+    assert result["counters"]["rows_unmatched"] == 0
+    assert result["counters"]["odds_matched_rows"] == 2
+    assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 2
+    assert db.execute("SELECT match_start_at FROM match_versions").fetchone()[0] is None
+
+
+def test_cross_source_reconciliation_fails_closed_when_unknown_timing_candidates_are_ambiguous(
+    db: psycopg.Connection,
+    tmp_path: Path,
+):
+    csv_path = tmp_path / "ambiguous_atp_matches_2025.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-9900,Sample Finals,Hard,8,A,20251110,101,2001,Player Winner,2002,Player Loser,6-4 6-4,3,RR",
+                "2025-9900,Sample Finals,Hard,8,A,20251110,401,2001,Player Winner,2002,Player Loser,6-4 6-4,3,F",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    match_document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+    ingest_sackmann_document(
+        db,
+        document=match_document,
+        dry_run=False,
+        quality_path=tmp_path / "match_quality.json",
+        unmatched_path=tmp_path / "match_unmatched.json",
+    )
+
+    odds_path = _build_tennis_data_workbook(
+        tmp_path,
+        filename="ambiguous_finals_odds.xlsx",
+        event_date="2025-11-13",
+        tournament_name="Sample Finals",
+        winner_name="Player Winner",
+        loser_name="Player Loser",
+        round_code=None,
+        best_of_sets=None,
+    )
+    odds_document = build_source_document(
+        path=odds_path,
+        source_system="TENNIS_DATA",
+        source_name="Tennis-Data historical odds archive",
+        dataset_type="historical_odds",
+        season=2025,
+    )
+
+    quality_path = tmp_path / "odds_quality.json"
+    unmatched_path = tmp_path / "odds_unmatched.json"
+    result = ingest_tennis_data_document(
+        db,
+        document=odds_document,
+        dry_run=False,
+        quality_path=quality_path,
+        unmatched_path=unmatched_path,
+    )
+    unmatched_payload = json.loads(unmatched_path.read_text(encoding="utf-8"))
+
+    assert result["status"] == "COMPLETED"
+    assert result["counters"]["odds_matched_rows"] == 0
+    assert result["counters"]["rows_unmatched"] == 2
+    assert result["counters"]["odds_ambiguous_rows"] == 2
+    assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 0
+    assert {entry["reason"] for entry in unmatched_payload} == {"odds_match_resolution_failed"}
 
 
 def test_parse_tennis_data_excludes_avg_and_max_columns_from_bookmakers(tmp_path: Path):

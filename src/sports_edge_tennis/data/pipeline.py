@@ -274,7 +274,11 @@ def ingest_sackmann_document(
                             source_record=record.source_record_locator,
                             raw_player_names=[record.winner.raw_name, record.loser.raw_name],
                             raw_tournament=record.tournament_name,
-                            event_date=record.match_start_at.date().isoformat(),
+                            event_date=(
+                                record.match_start_at.date().isoformat()
+                                if record.match_start_at is not None
+                                else None
+                            ),
                             reason="player_identity_resolution_failed",
                             candidate_ids=list(
                                 winner_resolution.candidate_player_ids + loser_resolution.candidate_player_ids
@@ -300,6 +304,7 @@ def ingest_sackmann_document(
                     edition_name=record.edition_name,
                     surface=record.surface,
                     start_date=record.tournament_start_date,
+                    end_date=record.tournament_end_date,
                 )
                 locator = repository.upsert_match_version(
                     tournament_edition_id=edition_id,
@@ -521,6 +526,8 @@ def ingest_tennis_data_document(
                     event_date=record.event_date,
                     player_a_id=winner_resolution.player_id,
                     player_b_id=loser_resolution.player_id,
+                    round_code=record.round_code,
+                    best_of_sets=record.best_of_sets,
                 )
                 if len(matches) != 1:
                     counters.rows_unmatched += 1

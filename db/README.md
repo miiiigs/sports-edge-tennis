@@ -21,10 +21,13 @@ db/
 │   ├── 0001_tennis_data_foundation.up.sql
 │   ├── 0001_tennis_data_foundation.down.sql
 │   ├── 0002_day5_historical_integrity.up.sql
-│   └── 0002_day5_historical_integrity.down.sql
+│   ├── 0002_day5_historical_integrity.down.sql
+│   ├── 0003_day5_temporal_reconciliation.up.sql
+│   └── 0003_day5_temporal_reconciliation.down.sql
 └── schema/
     ├── 0001_tennis_data_foundation.sql
-    └── 0002_day5_historical_integrity.sql
+    ├── 0002_day5_historical_integrity.sql
+    └── 0003_day5_temporal_reconciliation.sql
 ```
 
 ## Current validation mode
@@ -41,7 +44,10 @@ The GitHub Actions workflow applies:
 empty database
 -> UP 0001
 -> UP 0002
+-> UP 0003
 -> schema/runtime constraint suite
+-> DOWN 0003
+-> clean re-UP 0003
 -> DOWN 0002
 -> cleanup verification
 -> clean re-UP 0002
@@ -65,11 +71,13 @@ Example with `psql`, when a disposable local PostgreSQL instance exists:
 ```bash
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0001_tennis_data_foundation.up.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0002_day5_historical_integrity.up.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_day5_temporal_reconciliation.up.sql
 ```
 
 Rollback:
 
 ```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_day5_temporal_reconciliation.down.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0002_day5_historical_integrity.down.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0001_tennis_data_foundation.down.sql
 ```

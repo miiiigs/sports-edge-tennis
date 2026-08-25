@@ -35,11 +35,12 @@ _REQUIRED_COLUMNS = {
     "round",
     "best_of",
 }
-_CONSERVATIVE_TOURNAMENT_DURATION_DAYS = 6
+_ATP_MAIN_UNKNOWN_MATCH_DURATION_DAYS = 13
+_CHALLENGER_UNKNOWN_MATCH_DURATION_DAYS = 6
 _UNKNOWN_MATCH_DATE_LIMITATION = (
-    "Sackmann rows without explicit match_date remain hidden until the end of the source "
-    "tournament week because tourney_date is only a tournament-start boundary, not an "
-    "individual match date."
+    "Sackmann rows without explicit match_date keep match_start_at unknown. Match, result, "
+    "and stat visibility stays delayed until a conservative tournament-end boundary because "
+    "tourney_date is only a tournament-start boundary, not an individual match date."
 )
 
 
@@ -106,8 +107,21 @@ def _result_observed_at(match_day: date) -> datetime:
     return datetime.combine(match_day, time(hour=23, minute=59, second=59, tzinfo=UTC))
 
 
-def _conservative_tournament_visibility_boundary(tourney_date: date) -> datetime:
-    return _result_observed_at(tourney_date + timedelta(days=_CONSERVATIVE_TOURNAMENT_DURATION_DAYS))
+def _conservative_tournament_duration_days(competition_tier: str) -> int:
+    if competition_tier == "CHALLENGER":
+        return _CHALLENGER_UNKNOWN_MATCH_DURATION_DAYS
+    # Sackmann rows without explicit match dates can still cover multi-week ATP main-draw
+    # events, so ATP-main visibility remains fail-closed through the second Sunday.
+    return _ATP_MAIN_UNKNOWN_MATCH_DURATION_DAYS
+
+
+def _conservative_tournament_end_date(tourney_date: date, competition_tier: str) -> date:
+    duration_days = _conservative_tournament_duration_days(competition_tier)
+    return tourney_date + timedelta(days=duration_days)
+
+
+def _conservative_tournament_visibility_boundary(tourney_date: date, competition_tier: str) -> datetime:
+    return _result_observed_at(_conservative_tournament_end_date(tourney_date, competition_tier))
 
 
 def _match_status(score: str | None, comment: str | None) -> str:
@@ -188,6 +202,7 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                 level = row["tourney_level"].strip()
                 tour_scope = _tour_scope(level)
                 tier = _competition_tier(level, row)
+                tournament_end_date = _conservative_tournament_end_date(tourney_date, tier)
                 round_code = collapse_whitespace(row["round"])
                 qualifying_flag = round_code.startswith("Q")
                 winner_name = collapse_whitespace(row["winner_name"])
@@ -204,9 +219,11 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                     match_start_at = _match_start_at(match_day)
                     match_observed_at = _prematch_observed_at(match_day)
                     result_observed_at = _result_observed_at(match_day)
+                    if match_day > tournament_end_date:
+                        tournament_end_date = match_day
                 else:
-                    result_observed_at = _conservative_tournament_visibility_boundary(tourney_date)
-                    match_start_at = result_observed_at
+                    result_observed_at = _conservative_tournament_visibility_boundary(tourney_date, tier)
+                    match_start_at = None
                     match_observed_at = result_observed_at
                 limitations: list[str] = []
                 if not explicit_match_date:
@@ -233,6 +250,7 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                         edition_name=f"{collapse_whitespace(row['tourney_name'])} {season_year}",
                         season_year=season_year,
                         tournament_start_date=tourney_date,
+                        tournament_end_date=tournament_end_date,
                         surface=_surface(row.get("surface")),
                         tour_scope=tour_scope,
                         competition_tier=tier,

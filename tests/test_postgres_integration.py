@@ -264,8 +264,8 @@ def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
     entries = _migration_entries()
     up_0001 = REPO_ROOT / Path(entries[0]["up"])
     up_0002 = REPO_ROOT / Path(entries[1]["up"])
-    down_0002 = REPO_ROOT / Path(entries[1]["down"])
-    down_0001 = REPO_ROOT / Path(entries[0]["down"])
+    up_0003 = REPO_ROOT / Path(entries[2]["up"])
+    down_0003 = REPO_ROOT / Path(entries[2]["down"])
 
     _reset_public_schema(postgres_dsn)
     _run_psql(postgres_dsn, up_0001)
@@ -306,49 +306,46 @@ def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
             "ATP_250",
             "CHALLENGER",
         ]
+        is_match_start_required = conn.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
+            """
+        ).fetchone()[0]
+        assert is_match_start_required == "YES"
 
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         _reset_db(conn)
-    _run_psql(postgres_dsn, down_0002)
+    _run_psql(postgres_dsn, down_0003)
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        enum_labels = conn.execute(
+        is_match_start_required = conn.execute(
             """
-            SELECT enumlabel
-            FROM pg_enum
-            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
-            WHERE typname = 'competition_tier'
-            ORDER BY enumsortorder
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
             """
-        ).fetchall()
-        assert [label for (label,) in enum_labels] == [
-            "GRAND_SLAM",
-            "MASTERS_1000",
-            "ATP_500",
-            "ATP_250",
-            "CHALLENGER",
-        ]
+        ).fetchone()[0]
+        assert is_match_start_required == "NO"
         assert _table_exists(conn, "tournaments")
         assert _table_exists(conn, "match_versions")
 
-    _run_psql(postgres_dsn, up_0002)
+    _run_psql(postgres_dsn, up_0003)
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        enum_labels = conn.execute(
+        is_match_start_required = conn.execute(
             """
-            SELECT enumlabel
-            FROM pg_enum
-            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
-            WHERE typname = 'competition_tier'
-            ORDER BY enumsortorder
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
             """
-        ).fetchall()
-        assert [label for (label,) in enum_labels] == [
-            "GRAND_SLAM",
-            "MASTERS_1000",
-            "ATP_TOUR",
-            "ATP_500",
-            "ATP_250",
-            "CHALLENGER",
-        ]
+        ).fetchone()[0]
+        assert is_match_start_required == "YES"
 
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         _reset_db(conn)

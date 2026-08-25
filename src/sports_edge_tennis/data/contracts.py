@@ -75,13 +75,14 @@ class SackmannMatchRecord:
     edition_name: str
     season_year: int
     tournament_start_date: date
+    tournament_end_date: date | None
     surface: TennisSurface | None
     tour_scope: TourScope
     competition_tier: CompetitionTier
     round_code: str
     best_of_sets: int
     qualifying_flag: bool
-    match_start_at: datetime
+    match_start_at: datetime | None
     match_source_observed_at: datetime
     match_as_of: datetime
     result_source_observed_at: datetime

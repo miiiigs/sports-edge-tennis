@@ -317,10 +317,11 @@ class HistoricalRepository:
         edition_name: str,
         surface: str | None,
         start_date: date,
+        end_date: date | None,
     ) -> int:
         row = self.conn.execute(
             """
-            SELECT tournament_edition_id
+            SELECT tournament_edition_id, surface, start_date, end_date
             FROM tournament_editions
             WHERE tournament_id = %s
               AND season_year = %s
@@ -329,7 +330,29 @@ class HistoricalRepository:
             (tournament_id, season_year, edition_name),
         ).fetchone()
         if row is not None:
-            return row[0]
+            tournament_edition_id, current_surface, current_start_date, current_end_date = row
+            next_surface = current_surface or surface
+            next_start_date = current_start_date or start_date
+            next_end_date = current_end_date
+            if next_end_date is None or (end_date is not None and end_date > next_end_date):
+                next_end_date = end_date
+            if (
+                next_surface != current_surface
+                or next_start_date != current_start_date
+                or next_end_date != current_end_date
+            ):
+                self.conn.execute(
+                    """
+                    UPDATE tournament_editions
+                    SET surface = %s,
+                        start_date = %s,
+                        end_date = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE tournament_edition_id = %s
+                    """,
+                    (next_surface, next_start_date, next_end_date, tournament_edition_id),
+                )
+            return tournament_edition_id
         return self.conn.execute(
             """
             INSERT INTO tournament_editions (
@@ -337,12 +360,13 @@ class HistoricalRepository:
                 season_year,
                 edition_name,
                 surface,
-                start_date
+                start_date,
+                end_date
             )
-            VALUES (%s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING tournament_edition_id
             """,
-            (tournament_id, season_year, edition_name, surface, start_date),
+            (tournament_id, season_year, edition_name, surface, start_date, end_date),
         ).fetchone()[0]
 
     def upsert_match_version(
@@ -357,7 +381,7 @@ class HistoricalRepository:
         source_version_hash: str,
         player_1_id: int,
         player_2_id: int,
-        match_start_at: datetime,
+        match_start_at: datetime | None,
         tour_scope: str,
         competition_tier: str,
         surface: str | None,
@@ -407,7 +431,7 @@ class HistoricalRepository:
             WHERE match_id = %s
               AND player_1_id = %s
               AND player_2_id = %s
-              AND match_start_at = %s
+              AND match_start_at IS NOT DISTINCT FROM %s
               AND tour_scope = %s
               AND competition_tier = %s
               AND surface IS NOT DISTINCT FROM %s
@@ -699,10 +723,12 @@ class HistoricalRepository:
         event_date: date,
         player_a_id: int,
         player_b_id: int,
+        round_code: str | None,
+        best_of_sets: int | None,
     ) -> list[tuple[int, int, int]]:
-        return self.conn.execute(
+        exact_date_matches = self.conn.execute(
             """
-            SELECT
+            SELECT DISTINCT ON (m.match_id)
                 m.match_id,
                 mv.player_1_id,
                 mv.player_2_id
@@ -710,23 +736,67 @@ class HistoricalRepository:
             JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
             JOIN tournaments t ON t.tournament_id = te.tournament_id
             JOIN match_versions mv ON mv.match_id = m.match_id
-            WHERE te.season_year = %s
-              AND lower(t.canonical_name) = lower(%s)
+            WHERE lower(t.canonical_name) = lower(%s)
               AND mv.match_start_at::date = %s
               AND (
                     (mv.player_1_id = %s AND mv.player_2_id = %s)
                  OR (mv.player_1_id = %s AND mv.player_2_id = %s)
               )
-            ORDER BY mv.as_of DESC, mv.source_observed_at DESC
+              AND (%s IS NULL OR mv.round_code = %s)
+              AND (%s IS NULL OR mv.best_of_sets = %s)
+            ORDER BY m.match_id, mv.as_of DESC, mv.source_observed_at DESC
             """,
             (
-                event_date.year,
                 tournament_name,
                 event_date,
                 player_a_id,
                 player_b_id,
                 player_b_id,
                 player_a_id,
+                round_code,
+                round_code,
+                best_of_sets,
+                best_of_sets,
+            ),
+        ).fetchall()
+        if exact_date_matches:
+            return exact_date_matches
+
+        return self.conn.execute(
+            """
+            SELECT DISTINCT ON (m.match_id)
+                m.match_id,
+                mv.player_1_id,
+                mv.player_2_id
+            FROM matches m
+            JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+            JOIN tournaments t ON t.tournament_id = te.tournament_id
+            JOIN match_versions mv ON mv.match_id = m.match_id
+            WHERE lower(t.canonical_name) = lower(%s)
+              AND mv.match_start_at IS NULL
+              AND te.start_date IS NOT NULL
+              AND te.start_date <= %s
+              AND (te.end_date IS NULL OR te.end_date >= %s)
+              AND (
+                    (mv.player_1_id = %s AND mv.player_2_id = %s)
+                 OR (mv.player_1_id = %s AND mv.player_2_id = %s)
+              )
+              AND (%s IS NULL OR mv.round_code = %s)
+              AND (%s IS NULL OR mv.best_of_sets = %s)
+            ORDER BY m.match_id, mv.as_of DESC, mv.source_observed_at DESC
+            """,
+            (
+                tournament_name,
+                event_date,
+                event_date,
+                player_a_id,
+                player_b_id,
+                player_b_id,
+                player_a_id,
+                round_code,
+                round_code,
+                best_of_sets,
+                best_of_sets,
             ),
         ).fetchall()
 
