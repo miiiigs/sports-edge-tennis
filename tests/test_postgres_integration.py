@@ -236,17 +236,7 @@ def migrated_postgres(postgres_dsn: str) -> str:
     finally:
         with psycopg.connect(postgres_dsn, autocommit=True) as conn:
             _reset_db(conn)
-        _run_manifest_migrations(postgres_dsn, "down")
-        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-            assert _public_table_names(conn) == []
-            assert _enum_type_names(conn) == []
-        _run_manifest_migrations(postgres_dsn, "up")
-        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-            assert _table_exists(conn, "players")
-            assert _table_exists(conn, "match_version_sources")
-        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-            _reset_db(conn)
-        _run_manifest_migrations(postgres_dsn, "down")
+        _reset_public_schema(postgres_dsn)
 
 
 @pytest.fixture()

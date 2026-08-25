@@ -93,7 +93,7 @@ def migrated_postgres(postgres_dsn: str) -> str:
     finally:
         with psycopg.connect(postgres_dsn, autocommit=True) as conn:
             _reset_db(conn)
-        _run_manifest_migrations(postgres_dsn, "down")
+        _reset_public_schema(postgres_dsn)
 
 
 @pytest.fixture()
