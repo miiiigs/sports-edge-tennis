@@ -80,6 +80,8 @@ def _enum_type_names(conn: psycopg.Connection) -> list[str]:
 
 
 def _reset_db(conn: psycopg.Connection) -> None:
+    if conn.execute("SELECT to_regclass('public.ingest_runs')").fetchone()[0] is None:
+        return
     conn.execute(
         """
         TRUNCATE TABLE
