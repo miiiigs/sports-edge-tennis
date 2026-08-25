@@ -742,8 +742,8 @@ class HistoricalRepository:
                     (mv.player_1_id = %s AND mv.player_2_id = %s)
                  OR (mv.player_1_id = %s AND mv.player_2_id = %s)
               )
-              AND (%s IS NULL OR mv.round_code = %s)
-              AND (%s IS NULL OR mv.best_of_sets = %s)
+              AND (%s::text IS NULL OR mv.round_code = %s::text)
+              AND (%s::smallint IS NULL OR mv.best_of_sets = %s::smallint)
             ORDER BY m.match_id, mv.as_of DESC, mv.source_observed_at DESC
             """,
             (
@@ -781,8 +781,8 @@ class HistoricalRepository:
                     (mv.player_1_id = %s AND mv.player_2_id = %s)
                  OR (mv.player_1_id = %s AND mv.player_2_id = %s)
               )
-              AND (%s IS NULL OR mv.round_code = %s)
-              AND (%s IS NULL OR mv.best_of_sets = %s)
+              AND (%s::text IS NULL OR mv.round_code = %s::text)
+              AND (%s::smallint IS NULL OR mv.best_of_sets = %s::smallint)
             ORDER BY m.match_id, mv.as_of DESC, mv.source_observed_at DESC
             """,
             (

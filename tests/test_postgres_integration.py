@@ -315,7 +315,7 @@ def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
               AND column_name = 'match_start_at'
             """
         ).fetchone()[0]
-        assert is_match_start_required == "YES"
+        assert is_match_start_required == "NO"
 
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         _reset_db(conn)
