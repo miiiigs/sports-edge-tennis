@@ -2218,13 +2218,18 @@ def test_prediction_runs_enforce_lifecycle_and_origin_constraints(db: psycopg.Co
         )
 
     with pytest.raises(psycopg.Error):
-        _insert_prediction_run(
-            db,
-            run_status="COMPLETED",
-            as_of=_utc(15, 30),
-            started_at=_utc(15, 30),
-            prediction_finalized_at=_utc(15, 45),
-            ended_at=None,
+        db.execute(
+            """
+            INSERT INTO prediction_runs (
+                run_status,
+                as_of,
+                started_at,
+                prediction_finalized_at,
+                ended_at
+            )
+            VALUES ('COMPLETED', %s, %s, %s, NULL)
+            """,
+            (_utc(15, 30), _utc(15, 30), _utc(15, 45)),
         )
 
     with pytest.raises(psycopg.Error):
