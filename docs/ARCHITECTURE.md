@@ -6,8 +6,9 @@ August 26, 2026.
 Edge Desk realignment is additive. It does not replace the dedicated Tennis build with the
 generic Sports AI architecture, and it does not weaken the Tennis-specific consensus rules.
 
-Target structure only. T-ED1 is design-only in this repository state. No `0004` migration
-or runtime implementation exists yet.
+The `0004_prediction_runs_and_policy_versions` schema migration is implemented in this
+repository state. Predictive-agent, manager, veto, pricing, and orchestration runtime work
+still remain future phases.
 
 ```text
 SLATE GENERATOR

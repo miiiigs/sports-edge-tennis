@@ -236,7 +236,7 @@ implement them:
 - `NO_BET` is first-class internal history, not missing data.
 - Market/value logic remains downstream of sporting prediction.
 
-## T-ED1 planned schema design
+## T-ED1 schema design
 
 Recommended migration name:
 

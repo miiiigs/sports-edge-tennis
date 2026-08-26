@@ -22,6 +22,13 @@
       "up": "db/migrations/0003_day5_temporal_reconciliation.up.sql",
       "down": "db/migrations/0003_day5_temporal_reconciliation.down.sql",
       "schema_snapshot": "db/schema/0003_day5_temporal_reconciliation.sql"
+    },
+    {
+      "version": "0004",
+      "name": "prediction_runs_and_policy_versions",
+      "up": "db/migrations/0004_prediction_runs_and_policy_versions.up.sql",
+      "down": "db/migrations/0004_prediction_runs_and_policy_versions.down.sql",
+      "schema_snapshot": "db/schema/0004_prediction_runs_and_policy_versions.sql"
     }
   ]
 }
