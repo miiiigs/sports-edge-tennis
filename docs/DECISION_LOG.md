@@ -96,3 +96,67 @@ constraints, DOWN, and clean re-UP.
 Side-labelled market selections must agree with their stored side number:
 `PLAYER_1` / `SIDE_1` map to `selection_side = 1`, and `PLAYER_2` / `SIDE_2` map to
 `selection_side = 2`.
+
+## D019
+
+Edge Desk realignment is additive to the dedicated Sports Edge Tennis repository. It does
+not replace Tennis with the broader generic Sports AI architecture.
+
+## D020
+
+Tennis keeps exactly three predictive agents: Surface-adjusted Elo, Hierarchical Markov /
+Barnett-Clarke, and the Intransitivity Filter.
+
+## D021
+
+The Tennis veto agent remains kill-only and must never be counted as a fourth predictive
+vote.
+
+## D022
+
+The Tennis manager contract C1-C4 remains authoritative unless a newer explicit Tennis
+requirement directly supersedes it.
+
+## D023
+
+Every applicable predictive-agent output must be retained regardless of disagreement,
+`NO_BET`, veto, stale market, price failure, publication outcome, or rerun supersession.
+
+## D024
+
+Execution/run identity becomes a first-class schema concept. Historical prediction and
+decision rows must trace back to an explicit full-slate run rather than to timestamp
+proximity or version strings alone. In T-ED1, one run means one coherent full-slate Tennis
+evaluation pass; no match-run table is introduced, and execution status remains separate
+from prediction finalization. Optional parent linkage records rerun origin only and remains
+separate from any future authoritative supersession concept. Within one run, a given agent
+may produce at most one prediction for a given match; another variant requires a new run.
+
+## D025
+
+Historical manager policy is versioned. Decisions must reference the exact policy version
+used at evaluation time. The same match and prediction run may legitimately produce multiple
+immutable downstream decisions when market/value/veto evaluation is rerun later.
+
+## D026
+
+Historical decisions must trace to the exact immutable prediction rows used by the manager.
+`decision_agents` therefore carries the composite lineage keys needed for PostgreSQL to
+enforce same-decision, same-run, same-match, and same-agent linkage. Duplicated probability
+fields inside `decision_agents` are audit copies, not sufficient lineage by themselves.
+
+## D027
+
+Mechanical post-finalization immutability enforcement is deferred to T-ED2. T-ED1 only
+introduces the lineage entities needed for run, policy, config, and prediction references.
+T-ED1 may still use relational correctness constraints, including composite foreign keys and
+a narrow lineage constraint trigger for audit-copy/status alignment. Agent configuration
+authority lives in `agent_config_versions`, while prediction `model_version` and
+`feature_version` remain enforced immutable audit copies.
+
+## D028
+
+Migration `0004` is reserved for run, policy, and agent-configuration lineage after design
+approval. It must fail fast if legacy `predictions`, `decisions`, or `decision_agents`
+tables already contain rows, and it must not be used to begin T-ED2 immutability work or
+to synthesize fake historical lineage.

@@ -32,6 +32,43 @@ establishes PDF-first authority:
 Working rule: if a PDF and a Markdown file disagree, follow the PDF and record the
 conflict explicitly. Do not silently merge contradictory requirements.
 
+## Edge Desk realignment authority review
+
+T-ED0 was re-verified on Wednesday, August 26, 2026 against the locally available
+non-repository artifacts that could plausibly qualify as Edge Desk design authority.
+
+Available local artifacts inspected:
+
+- `C:\dev\sports-edge-ai\meeting_notes\Sports-Edge-Technical-Overview_1.pdf`
+  - Explicitly Sports Edge-named.
+  - High-level technical overview dated July 2026.
+  - Useful operational context, but not an implementation contract or migration-ready
+    design pack.
+- `C:\dev\sports-edge-ai\initial_data\Sports-AI-Developer-Pack-V1(2).pdf`
+  - Broader Sports AI Betting Research System V1 Developer Pack.
+  - The only locally available developer-pack artifact covering run identity,
+    lock/finalization, immutable ledger concepts, and policy versioning.
+  - Not tennis-specific and not literally named an Edge Desk design pack.
+
+Authority conclusion:
+
+- No separate locally available file was found that is both explicitly Edge Desk and clearly
+  the controlling implementation spec for Tennis T-ED0 / T-ED1.
+- The Tennis build specification therefore remains the governing source for tennis-specific
+  mathematics, especially the Manager consensus rules in `7.1 Consensus checks`.
+- The broader Sports AI Developer Pack may be used only as additive design guidance for run
+  identity, immutable lineage, and policy-history concepts when it does not contradict the
+  dedicated Tennis specification.
+- The Edge Desk technical overview is contextual evidence only.
+
+Confirmed cross-source caution:
+
+- The broader `Sports-AI-Developer-Pack-V1(2).pdf` explicitly promotes a learned
+  meta-model / "no equal voting" architecture, while the dedicated Tennis build
+  specification requires the C1-C4 active-agent consensus contract.
+- For this repository, that broader pack does not supersede Tennis C1-C4 because no newer
+  explicit tennis authority was found that directly replaces those rules.
+
 ## Canonical source paths and provenance
 
 | Source path | Source blob SHA | Destination |
