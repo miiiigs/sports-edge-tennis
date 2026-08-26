@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -9,8 +10,7 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-UP_MIGRATION_PATH = REPO_ROOT / "db" / "migrations" / "0001_tennis_data_foundation.up.sql"
-DOWN_MIGRATION_PATH = REPO_ROOT / "db" / "migrations" / "0001_tennis_data_foundation.down.sql"
+MANIFEST_PATH = REPO_ROOT / "db" / "migrations" / "manifest.json"
 POSTGRES_DSN = os.environ.get("TEST_POSTGRES_DSN") or os.environ.get("DATABASE_URL")
 
 
@@ -25,6 +25,25 @@ def _run_psql(dsn: str, sql_path: Path) -> None:
         capture_output=True,
         text=True,
     )
+
+
+def _migration_entries() -> list[dict[str, str]]:
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    return manifest["migrations"]
+
+
+def _run_manifest_migrations(dsn: str, direction: str) -> None:
+    entries = _migration_entries()
+    if direction == "down":
+        entries = list(reversed(entries))
+    for entry in entries:
+        _run_psql(dsn, REPO_ROOT / Path(entry[direction]))
+
+
+def _reset_public_schema(dsn: str) -> None:
+    with psycopg.connect(dsn, autocommit=True) as conn:
+        conn.execute("DROP SCHEMA IF EXISTS public CASCADE")
+        conn.execute("CREATE SCHEMA public")
 
 
 def _table_exists(conn: psycopg.Connection, table_name: str) -> bool:
@@ -61,6 +80,8 @@ def _enum_type_names(conn: psycopg.Connection) -> list[str]:
 
 
 def _reset_db(conn: psycopg.Connection) -> None:
+    if conn.execute("SELECT to_regclass('public.ingest_runs')").fetchone()[0] is None:
+        return
     conn.execute(
         """
         TRUNCATE TABLE
@@ -208,20 +229,14 @@ def postgres_dsn() -> str:
 
 @pytest.fixture(scope="session")
 def migrated_postgres(postgres_dsn: str) -> str:
-    _run_psql(postgres_dsn, DOWN_MIGRATION_PATH)
-    _run_psql(postgres_dsn, UP_MIGRATION_PATH)
+    _reset_public_schema(postgres_dsn)
+    _run_manifest_migrations(postgres_dsn, "up")
     try:
         yield postgres_dsn
     finally:
-        _run_psql(postgres_dsn, DOWN_MIGRATION_PATH)
         with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-            assert _public_table_names(conn) == []
-            assert _enum_type_names(conn) == []
-        _run_psql(postgres_dsn, UP_MIGRATION_PATH)
-        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-            assert _table_exists(conn, "players")
-            assert _table_exists(conn, "match_version_sources")
-        _run_psql(postgres_dsn, DOWN_MIGRATION_PATH)
+            _reset_db(conn)
+        _reset_public_schema(postgres_dsn)
 
 
 @pytest.fixture()
@@ -243,6 +258,100 @@ def test_postgres_migration_bootstraps_expected_tables(db: psycopg.Connection):
         "decisions",
     ):
         assert _table_exists(db, table_name)
+
+
+def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
+    entries = _migration_entries()
+    up_0001 = REPO_ROOT / Path(entries[0]["up"])
+    up_0002 = REPO_ROOT / Path(entries[1]["up"])
+    up_0003 = REPO_ROOT / Path(entries[2]["up"])
+    down_0003 = REPO_ROOT / Path(entries[2]["down"])
+
+    _reset_public_schema(postgres_dsn)
+    _run_psql(postgres_dsn, up_0001)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        enum_labels = conn.execute(
+            """
+            SELECT enumlabel
+            FROM pg_enum
+            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+            WHERE typname = 'competition_tier'
+            ORDER BY enumsortorder
+            """
+        ).fetchall()
+        assert [label for (label,) in enum_labels] == [
+            "GRAND_SLAM",
+            "MASTERS_1000",
+            "ATP_500",
+            "ATP_250",
+            "CHALLENGER",
+        ]
+
+    _run_psql(postgres_dsn, up_0002)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        enum_labels = conn.execute(
+            """
+            SELECT enumlabel
+            FROM pg_enum
+            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+            WHERE typname = 'competition_tier'
+            ORDER BY enumsortorder
+            """
+        ).fetchall()
+        assert [label for (label,) in enum_labels] == [
+            "GRAND_SLAM",
+            "MASTERS_1000",
+            "ATP_TOUR",
+            "ATP_500",
+            "ATP_250",
+            "CHALLENGER",
+        ]
+        is_match_start_required = conn.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
+            """
+        ).fetchone()[0]
+        assert is_match_start_required == "NO"
+
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        _reset_db(conn)
+    _run_psql(postgres_dsn, down_0003)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        is_match_start_required = conn.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
+            """
+        ).fetchone()[0]
+        assert is_match_start_required == "NO"
+        assert _table_exists(conn, "tournaments")
+        assert _table_exists(conn, "match_versions")
+
+    _run_psql(postgres_dsn, up_0003)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        is_match_start_required = conn.execute(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'match_versions'
+              AND column_name = 'match_start_at'
+            """
+        ).fetchone()[0]
+        assert is_match_start_required == "YES"
+
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        _reset_db(conn)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        assert _table_exists(conn, "players")
+        assert _table_exists(conn, "match_versions")
 
 
 def test_identity_resolution_constraints_are_fail_closed(db: psycopg.Connection):

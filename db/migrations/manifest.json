@@ -8,6 +8,20 @@
       "up": "db/migrations/0001_tennis_data_foundation.up.sql",
       "down": "db/migrations/0001_tennis_data_foundation.down.sql",
       "schema_snapshot": "db/schema/0001_tennis_data_foundation.sql"
+    },
+    {
+      "version": "0002",
+      "name": "day5_historical_integrity",
+      "up": "db/migrations/0002_day5_historical_integrity.up.sql",
+      "down": "db/migrations/0002_day5_historical_integrity.down.sql",
+      "schema_snapshot": "db/schema/0002_day5_historical_integrity.sql"
+    },
+    {
+      "version": "0003",
+      "name": "day5_temporal_reconciliation",
+      "up": "db/migrations/0003_day5_temporal_reconciliation.up.sql",
+      "down": "db/migrations/0003_day5_temporal_reconciliation.down.sql",
+      "schema_snapshot": "db/schema/0003_day5_temporal_reconciliation.sql"
     }
   ]
 }
