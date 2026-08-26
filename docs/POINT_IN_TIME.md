@@ -97,16 +97,29 @@ The logical lock time for the prediction set produced by one run.
 
 For future T-ED1 implementation, the intended invariant is:
 
+- `prediction_runs.prediction_finalized_at >= prediction_runs.started_at`
 - `prediction_runs.prediction_finalized_at >= prediction_runs.as_of`
 - `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`
 
 That gives one explicit prediction-freeze time without requiring a separate
 `prediction_locks` table in `0004`.
 
-### `prediction_runs.completed_at`
+Prediction finalization is not itself an execution status. A run may be `RUNNING`,
+`COMPLETED`, `FAILED`, or `CANCELLED` independently of whether
+`prediction_finalized_at` has been recorded.
 
-When the full-slate run finished its current lifecycle, whether by successful completion,
-empty-slate completion, failure, cancellation, or later supersession.
+### `prediction_runs.ended_at`
+
+When the full-slate run reached a terminal execution outcome.
+
+For future T-ED1 implementation, the intended invariant is:
+
+- `prediction_runs.ended_at >= prediction_runs.started_at`
+- `prediction_runs.ended_at >= prediction_runs.prediction_finalized_at` when both values
+  exist
+- `prediction_runs.ended_at IS NULL` while `run_status = 'RUNNING'`
+- `prediction_runs.ended_at IS NOT NULL` when `run_status IN ('COMPLETED', 'FAILED',
+  'CANCELLED')`
 
 An empty slate is still a completed run. "No qualifying bets today" is domain truth, not a
 failed execution state.

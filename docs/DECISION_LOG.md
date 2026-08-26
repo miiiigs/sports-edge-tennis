@@ -126,25 +126,37 @@ Every applicable predictive-agent output must be retained regardless of disagree
 
 Execution/run identity becomes a first-class schema concept. Historical prediction and
 decision rows must trace back to an explicit full-slate run rather than to timestamp
-proximity or version strings alone.
+proximity or version strings alone. In T-ED1, one run means one coherent full-slate Tennis
+evaluation pass; no match-run table is introduced, and execution status remains separate
+from prediction finalization. Optional parent linkage records rerun origin only and remains
+separate from any future authoritative supersession concept. Within one run, a given agent
+may produce at most one prediction for a given match; another variant requires a new run.
 
 ## D025
 
 Historical manager policy is versioned. Decisions must reference the exact policy version
-used at evaluation time.
+used at evaluation time. The same match and prediction run may legitimately produce multiple
+immutable downstream decisions when market/value/veto evaluation is rerun later.
 
 ## D026
 
 Historical decisions must trace to the exact immutable prediction rows used by the manager.
-Duplicated probability fields inside `decision_agents` are audit copies, not sufficient
-lineage by themselves.
+`decision_agents` therefore carries the composite lineage keys needed for PostgreSQL to
+enforce same-decision, same-run, same-match, and same-agent linkage. Duplicated probability
+fields inside `decision_agents` are audit copies, not sufficient lineage by themselves.
 
 ## D027
 
 Mechanical post-finalization immutability enforcement is deferred to T-ED2. T-ED1 only
 introduces the lineage entities needed for run, policy, config, and prediction references.
+T-ED1 may still use relational correctness constraints, including composite foreign keys and
+a narrow lineage constraint trigger for audit-copy/status alignment. Agent configuration
+authority lives in `agent_config_versions`, while prediction `model_version` and
+`feature_version` remain enforced immutable audit copies.
 
 ## D028
 
 Migration `0004` is reserved for run, policy, and agent-configuration lineage after design
-approval. It must not be used to begin T-ED2 immutability work.
+approval. It must fail fast if legacy `predictions`, `decisions`, or `decision_agents`
+tables already contain rows, and it must not be used to begin T-ED2 immutability work or
+to synthesize fake historical lineage.

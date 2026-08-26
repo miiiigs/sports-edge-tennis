@@ -72,16 +72,31 @@ patterns.
 The next schema phase is intentionally narrow:
 
 - `prediction_runs` becomes the first-class full-slate execution identity.
+- `prediction_runs` remains slate-scoped by contract in `0004`; match-level execution
+  bookkeeping stays deferred to T-ED5.
+- Execution status, prediction finalization, and rerun origin remain separate concepts.
 - `decision_policy_versions` stores immutable historical manager policy versions.
 - `agent_config_versions` stores immutable agent-configuration identity for exact replay.
-- `decision_agents.prediction_id` becomes the authoritative prediction-to-decision lineage
-  link.
+- `agent_config_versions` is authoritative for replay identity; `predictions.model_version`
+  and `predictions.feature_version` remain enforced immutable audit copies.
+- `decision_agents` stores the composite lineage keys needed for PostgreSQL to prove
+  same-decision, same-run, same-match, and same-agent linkage.
 - No separate `prediction_locks` table is required in `0004`; run finalization is recorded
   on `prediction_runs`, while hard post-finalization write guards are deferred to T-ED2.
+- `0004` must fail fast if existing `predictions`, `decisions`, or `decision_agents` rows
+  already exist, because exact lineage cannot be reconstructed safely.
 
 Chosen run model for T-ED1:
 
 - One `prediction_runs` row represents one full-slate evaluation pass.
+- `0004` does not add a match-run table.
+- `run_scope` is omitted because T-ED1 has exactly one supported scope: full-slate Tennis.
+- `run_mode` is omitted because it is not required for the T-ED1 lineage contract.
+- Execution status is limited to `RUNNING`, `COMPLETED`, `FAILED`, and `CANCELLED`.
+- `prediction_finalized_at` records logical closure of the prediction set independently from
+  execution status.
+- Optional parent linkage records rerun origin such as `RETRY` or `RECALCULATION`; it does
+  not encode downstream supersession authority.
 - Match-level execution bookkeeping is deferred to T-ED5 rather than added prematurely in
   `0004`.
 - Predictions and decisions remain match-centric rows that point back to the same
