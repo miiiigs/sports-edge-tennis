@@ -70,6 +70,47 @@ For predictions and decisions:
 `created_at` is therefore an audit timestamp, not a replay boundary.
 In other words: created_at may fall before or after prediction_locked_at.
 
+## T-ED1 run-level semantics
+
+The planned T-ED1 lineage design adds run-level timing without collapsing the existing
+timestamp meanings.
+
+### `prediction_runs.as_of`
+
+The common blind-input cutoff for one coherent full-slate Tennis evaluation pass.
+
+For T-ED1, the intended invariant is:
+
+- every prediction in a run uses the same `as_of` as that run
+- later decision rows may use a later `as_of` because market and veto inputs arrive after
+  prediction finalization
+
+### `prediction_runs.started_at`
+
+When the run began execution.
+
+This is operational timing, not the model replay boundary.
+
+### `prediction_runs.prediction_finalized_at`
+
+The logical lock time for the prediction set produced by one run.
+
+For future T-ED1 implementation, the intended invariant is:
+
+- `prediction_runs.prediction_finalized_at >= prediction_runs.as_of`
+- `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`
+
+That gives one explicit prediction-freeze time without requiring a separate
+`prediction_locks` table in `0004`.
+
+### `prediction_runs.completed_at`
+
+When the full-slate run finished its current lifecycle, whether by successful completion,
+empty-slate completion, failure, cancellation, or later supersession.
+
+An empty slate is still a completed run. "No qualifying bets today" is domain truth, not a
+failed execution state.
+
 ## Reconstruction rules
 
 To answer:
@@ -86,6 +127,9 @@ future queries must:
 4. Select only `match_stat_observations`, `odds_snapshots`, and `rating_snapshots` with
    `as_of <= T`.
 5. Exclude any prediction or decision data whose `prediction_locked_at` is later than `T`.
+6. When T-ED1 is implemented, resolve historical prediction lineage through
+   `prediction_runs`, `agent_config_versions`, `decision_policy_versions`, and
+   `decision_agents.prediction_id`, not by timestamp proximity.
 
 ## Leakage boundaries
 
@@ -118,3 +162,12 @@ encourage market leakage.
 
 Manager decisions, settlement, and CLV are separate downstream layers. They never backfill
 agent prediction rows.
+
+For future T-ED1 replay, decisions remain their own historical layer:
+
+- the run tells us which full-slate execution produced the candidate prediction set
+- the prediction rows tell us what each predictive agent said
+- the policy version tells us which manager thresholds and freshness rules governed the
+  evaluation
+- the decision row records the downstream market/value/veto outcome without overwriting the
+  agent truth
