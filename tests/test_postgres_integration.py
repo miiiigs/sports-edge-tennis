@@ -520,7 +520,7 @@ def _insert_prediction_batch(
     with conn.transaction():
         conn.execute("SET LOCAL lock_timeout = '2s'")
         conn.execute("SET LOCAL statement_timeout = '5s'")
-        conn.execute("SET CONSTRAINTS ALL DEFERRED")
+        conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
         conn.execute(
             """
             SELECT prediction_run_id
@@ -771,105 +771,108 @@ def test_forward_migration_lifecycle_reapplies_cleanly(postgres_dsn: str):
     up_0003 = REPO_ROOT / Path(entries[2]["up"])
     up_0004 = REPO_ROOT / Path(entries[3]["up"])
     down_0004 = REPO_ROOT / Path(entries[3]["down"])
+    try:
+        _reset_public_schema(postgres_dsn)
+        _run_psql(postgres_dsn, up_0001)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            enum_labels = conn.execute(
+                """
+                SELECT enumlabel
+                FROM pg_enum
+                JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+                WHERE typname = 'competition_tier'
+                ORDER BY enumsortorder
+                """
+            ).fetchall()
+            assert [label for (label,) in enum_labels] == [
+                "GRAND_SLAM",
+                "MASTERS_1000",
+                "ATP_500",
+                "ATP_250",
+                "CHALLENGER",
+            ]
 
-    _reset_public_schema(postgres_dsn)
-    _run_psql(postgres_dsn, up_0001)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        enum_labels = conn.execute(
-            """
-            SELECT enumlabel
-            FROM pg_enum
-            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
-            WHERE typname = 'competition_tier'
-            ORDER BY enumsortorder
-            """
-        ).fetchall()
-        assert [label for (label,) in enum_labels] == [
-            "GRAND_SLAM",
-            "MASTERS_1000",
-            "ATP_500",
-            "ATP_250",
-            "CHALLENGER",
-        ]
+        _run_psql(postgres_dsn, up_0002)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            enum_labels = conn.execute(
+                """
+                SELECT enumlabel
+                FROM pg_enum
+                JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
+                WHERE typname = 'competition_tier'
+                ORDER BY enumsortorder
+                """
+            ).fetchall()
+            assert [label for (label,) in enum_labels] == [
+                "GRAND_SLAM",
+                "MASTERS_1000",
+                "ATP_TOUR",
+                "ATP_500",
+                "ATP_250",
+                "CHALLENGER",
+            ]
+            is_match_start_required = conn.execute(
+                """
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'match_versions'
+                  AND column_name = 'match_start_at'
+                """
+            ).fetchone()[0]
+            assert is_match_start_required == "NO"
 
-    _run_psql(postgres_dsn, up_0002)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        enum_labels = conn.execute(
-            """
-            SELECT enumlabel
-            FROM pg_enum
-            JOIN pg_type ON pg_type.oid = pg_enum.enumtypid
-            WHERE typname = 'competition_tier'
-            ORDER BY enumsortorder
-            """
-        ).fetchall()
-        assert [label for (label,) in enum_labels] == [
-            "GRAND_SLAM",
-            "MASTERS_1000",
-            "ATP_TOUR",
-            "ATP_500",
-            "ATP_250",
-            "CHALLENGER",
-        ]
-        is_match_start_required = conn.execute(
-            """
-            SELECT is_nullable
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'match_versions'
-              AND column_name = 'match_start_at'
-            """
-        ).fetchone()[0]
-        assert is_match_start_required == "NO"
+        _run_psql(postgres_dsn, up_0003)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            is_match_start_required = conn.execute(
+                """
+                SELECT is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'match_versions'
+                  AND column_name = 'match_start_at'
+                """
+            ).fetchone()[0]
+            assert is_match_start_required == "YES"
 
-    _run_psql(postgres_dsn, up_0003)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        is_match_start_required = conn.execute(
-            """
-            SELECT is_nullable
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'match_versions'
-              AND column_name = 'match_start_at'
-            """
-        ).fetchone()[0]
-        assert is_match_start_required == "YES"
+        _run_psql(postgres_dsn, up_0004)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert _table_exists(conn, "prediction_runs")
+            assert _table_exists(conn, "decision_policy_versions")
+            assert _table_exists(conn, "agent_config_versions")
+            assert _column_exists(conn, "predictions", "prediction_run_id")
+            assert _column_exists(conn, "predictions", "agent_config_version_id")
+            assert _column_exists(conn, "decisions", "prediction_run_id")
+            assert _column_exists(conn, "decisions", "decision_policy_version_id")
+            assert _column_exists(conn, "decision_agents", "prediction_run_id")
+            assert _column_exists(conn, "decision_agents", "match_id")
+            assert _column_exists(conn, "decision_agents", "prediction_id")
 
-    _run_psql(postgres_dsn, up_0004)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        assert _table_exists(conn, "prediction_runs")
-        assert _table_exists(conn, "decision_policy_versions")
-        assert _table_exists(conn, "agent_config_versions")
-        assert _column_exists(conn, "predictions", "prediction_run_id")
-        assert _column_exists(conn, "predictions", "agent_config_version_id")
-        assert _column_exists(conn, "decisions", "prediction_run_id")
-        assert _column_exists(conn, "decisions", "decision_policy_version_id")
-        assert _column_exists(conn, "decision_agents", "prediction_run_id")
-        assert _column_exists(conn, "decision_agents", "match_id")
-        assert _column_exists(conn, "decision_agents", "prediction_id")
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            _reset_db(conn)
+        _run_psql(postgres_dsn, down_0004)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert not _table_exists(conn, "prediction_runs")
+            assert not _table_exists(conn, "decision_policy_versions")
+            assert not _table_exists(conn, "agent_config_versions")
+            assert not _column_exists(conn, "predictions", "prediction_run_id")
+            assert not _column_exists(conn, "predictions", "agent_config_version_id")
+            assert not _column_exists(conn, "decisions", "prediction_run_id")
+            assert not _column_exists(conn, "decisions", "decision_policy_version_id")
+            assert not _column_exists(conn, "decision_agents", "prediction_run_id")
+            assert not _column_exists(conn, "decision_agents", "match_id")
+            assert not _column_exists(conn, "decision_agents", "prediction_id")
+            assert _table_exists(conn, "players")
+            assert _table_exists(conn, "match_versions")
 
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        _reset_db(conn)
-    _run_psql(postgres_dsn, down_0004)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        assert not _table_exists(conn, "prediction_runs")
-        assert not _table_exists(conn, "decision_policy_versions")
-        assert not _table_exists(conn, "agent_config_versions")
-        assert not _column_exists(conn, "predictions", "prediction_run_id")
-        assert not _column_exists(conn, "predictions", "agent_config_version_id")
-        assert not _column_exists(conn, "decisions", "prediction_run_id")
-        assert not _column_exists(conn, "decisions", "decision_policy_version_id")
-        assert not _column_exists(conn, "decision_agents", "prediction_run_id")
-        assert not _column_exists(conn, "decision_agents", "match_id")
-        assert not _column_exists(conn, "decision_agents", "prediction_id")
-        assert _table_exists(conn, "players")
-        assert _table_exists(conn, "match_versions")
-
-    _run_psql(postgres_dsn, up_0004)
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        assert _table_exists(conn, "prediction_runs")
-        assert _table_exists(conn, "decision_policy_versions")
-        assert _table_exists(conn, "agent_config_versions")
+        _run_psql(postgres_dsn, up_0004)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert _table_exists(conn, "prediction_runs")
+            assert _table_exists(conn, "decision_policy_versions")
+            assert _table_exists(conn, "agent_config_versions")
+    finally:
+        _reset_public_schema(postgres_dsn)
+        _run_manifest_migrations(postgres_dsn, "up")
 
 
 def test_identity_resolution_constraints_are_fail_closed(db: psycopg.Connection):
@@ -4439,7 +4442,7 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
                 conn.execute("SET statement_timeout = '5s'")
                 conn.execute("SET lock_timeout = '5s'")
 
-            conn1.execute("SET CONSTRAINTS ALL DEFERRED")
+            conn1.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
             conn1.execute(
                 """
                 SELECT prediction_run_id
