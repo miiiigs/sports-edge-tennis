@@ -25,12 +25,15 @@ db/
 │   ├── 0003_day5_temporal_reconciliation.up.sql
 │   ├── 0003_day5_temporal_reconciliation.down.sql
 │   ├── 0004_prediction_runs_and_policy_versions.up.sql
-│   └── 0004_prediction_runs_and_policy_versions.down.sql
+│   ├── 0004_prediction_runs_and_policy_versions.down.sql
+│   ├── 0005_append_only_enforcement_and_lock_guards.up.sql
+│   └── 0005_append_only_enforcement_and_lock_guards.down.sql
 └── schema/
     ├── 0001_tennis_data_foundation.sql
     ├── 0002_day5_historical_integrity.sql
     ├── 0003_day5_temporal_reconciliation.sql
-    └── 0004_prediction_runs_and_policy_versions.sql
+    ├── 0004_prediction_runs_and_policy_versions.sql
+    └── 0005_append_only_enforcement_and_lock_guards.sql
 ```
 
 ## Current validation mode
@@ -49,7 +52,10 @@ empty database
 -> UP 0002
 -> UP 0003
 -> UP 0004
+-> UP 0005
 -> schema/runtime constraint suite
+-> DOWN 0005
+-> clean re-UP 0005
 -> DOWN 0004
 -> clean re-UP 0004
 -> DOWN 0003
@@ -79,11 +85,13 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0001_tennis_data_founda
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0002_day5_historical_integrity.up.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_day5_temporal_reconciliation.up.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0004_prediction_runs_and_policy_versions.up.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0005_append_only_enforcement_and_lock_guards.up.sql
 ```
 
 Rollback:
 
 ```bash
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0005_append_only_enforcement_and_lock_guards.down.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0004_prediction_runs_and_policy_versions.down.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0003_day5_temporal_reconciliation.down.sql
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f db/migrations/0002_day5_historical_integrity.down.sql

@@ -213,3 +213,12 @@ because `NO_BET` and `VETOED` decisions may remain unpublished. Until that futur
 decision-lifecycle or T-ED4-adjacent design exists, downstream features must not assume
 decision-agent membership is timing-closed, and an unused `(decision_id, agent_code)` slot
 may still be inserted later. Settlement and CLV append-only redesign remain T-ED3 work.
+
+## D034
+
+Migration `0005_append_only_enforcement_and_lock_guards` is the implementation vehicle for
+the locked T-ED2 contract. It changes the prediction finalization FK to
+`DEFERRABLE INITIALLY IMMEDIATE`, adds PostgreSQL trigger-based append-only enforcement and
+lifecycle guards, preserves the committed-state rule
+`predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, and adds no
+new tables, columns, or indexes.

@@ -7,9 +7,9 @@ Edge Desk realignment is additive. It does not replace the dedicated Tennis buil
 generic Sports AI architecture, and it does not weaken the Tennis-specific consensus rules.
 
 The `0004_prediction_runs_and_policy_versions` schema migration is implemented on `main`.
-The T-ED2 immutability and lock-guard design is now locked for independent review, while
-predictive-agent, manager, veto, pricing, and orchestration runtime work still remain future
-phases.
+The `0005_append_only_enforcement_and_lock_guards` schema migration is now implemented and
+ready for independent review, while predictive-agent, manager, veto, pricing, and
+orchestration runtime work still remain future phases.
 
 ```text
 SLATE GENERATOR
@@ -104,9 +104,9 @@ Chosen run model for T-ED1:
 - Predictions and decisions remain match-centric rows that point back to the same
   full-slate run identity.
 
-## T-ED2 design direction
+## T-ED2 implementation direction
 
-The next schema phase remains narrow and PostgreSQL-native:
+The implemented T-ED2 schema phase remains narrow and PostgreSQL-native:
 
 - T-ED2 adds mechanical immutability and lock guards without redesigning the approved T-ED1
   run, policy, config, or decision-agent lineage model.
@@ -136,6 +136,8 @@ The next schema phase remains narrow and PostgreSQL-native:
 - No hidden trigger bypasses, session flags, or role-based escape hatches are part of the
   T-ED2 contract. Controlled changes to the guards must happen through an explicit reviewed
   migration.
+- `0005` adds no new tables, columns, or indexes; it changes only FK timing behavior,
+  helper functions, and triggers.
 - Settlement/CLV append-only redesign remains T-ED3, fuller publication-state architecture
   remains T-ED4, and match-level execution bookkeeping remains T-ED5.
 
