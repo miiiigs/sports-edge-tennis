@@ -112,10 +112,12 @@ The next schema phase remains narrow and PostgreSQL-native:
   run, policy, config, or decision-agent lineage model.
 - `predictions`, `decision_policy_versions`, `agent_config_versions`, and
   `decision_agents` become append-only at the database level.
-- Existing append-only historical observation tables such as `match_versions`,
-  `match_result_observations`, `match_stat_observations`, `odds_snapshots`,
-  `rating_snapshots`, and `data_health_checks` also receive mechanical append-only
-  protection in T-ED2.
+- Existing append-only historical observation and provenance tables such as
+  `match_versions`, `match_result_observations`, `match_stat_observations`,
+  `rating_snapshots`, `odds_snapshots`, `identity_resolution_candidates`,
+  `player_source_ids`, `tournament_source_ids`, `match_source_ids`,
+  `match_version_sources`, `identity_resolution_events`, `matches`, and
+  `data_health_checks` also receive mechanical append-only protection in T-ED2.
 - `prediction_runs` and `ingest_runs` remain lifecycle rows rather than generic append-only
   rows; T-ED2 therefore constrains their allowed state transitions instead of banning all
   updates.
@@ -125,9 +127,12 @@ The next schema phase remains narrow and PostgreSQL-native:
 - Prediction finalization in `0005` must stay transaction-safe under concurrency. The
   chosen design keeps the committed-state rule
   `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, makes that
-  finalization FK deferrable, and requires the finalization transaction to lock the parent
-  run row, insert the full prediction set, set the run finalization timestamp, and then
-  commit.
+  finalization FK deferrable, and requires prediction rows to be persisted only inside the
+  explicit prediction-set finalization transaction. That transaction must lock the parent
+  run row, verify `run_status = 'RUNNING'` and `prediction_finalized_at IS NULL`, insert the
+  full prediction set, set the run finalization timestamp, and then commit. A terminal or
+  already-finalized run is mechanically closed to further prediction inserts, including
+  terminal rows whose finalization timestamp remains `NULL`.
 - No hidden trigger bypasses, session flags, or role-based escape hatches are part of the
   T-ED2 contract. Controlled changes to the guards must happen through an explicit reviewed
   migration.

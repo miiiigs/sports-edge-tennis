@@ -124,18 +124,32 @@ but changes how that state is reached safely:
   `prediction_runs` row with `SELECT ... FOR UPDATE`, inserts the complete prediction set
   with one common intended lock timestamp `T`, sets `prediction_runs.prediction_finalized_at
   = T`, and then commits
+- prediction rows are not a valid standalone pre-finalization persistence path under T-ED2;
+  a direct `INSERT` that does not defer the FK and establish the matching parent
+  finalization key in the same transaction cannot commit
 - after that commit, later prediction inserts for the same run must fail mechanically
 
 This matters for concurrency:
 
 - if the finalization transaction holds the run-row lock first, later prediction inserts
   wait and then see the committed finalized timestamp, so they fail
-- if another prediction insert reaches the run-row lock first, that insert still commits
-  before finalization and is therefore part of the pre-finalization set rather than a late
-  committed write
+- if an unauthorized direct prediction `INSERT` reaches the run-row lock first while the run
+  is still `RUNNING` and unfinalized, it is still not part of the supported write protocol;
+  without the same transaction deferring the FK and establishing the matching parent key,
+  the initially-immediate FK prevents it from committing
+- if a competing authorized finalization transaction reaches the run-row lock first, it
+  becomes the only transaction allowed to insert the coherent prediction set for that run
 
 The result is one coherent committed prediction set per finalized run without requiring a
 separate `prediction_locks` table or an application-only honor system.
+
+Terminal but unfinalized runs remain permanently closed:
+
+- `FAILED` + `prediction_finalized_at IS NULL`
+- `CANCELLED` + `prediction_finalized_at IS NULL`
+
+Those rows still represent completed historical execution outcomes and may not accept later
+prediction inserts merely because the finalization timestamp is `NULL`.
 
 ### `prediction_runs.ended_at`
 
