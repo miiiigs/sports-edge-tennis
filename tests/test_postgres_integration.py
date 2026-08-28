@@ -520,7 +520,7 @@ def _insert_prediction_batch(
     with conn.transaction():
         conn.execute("SET LOCAL lock_timeout = '2s'")
         conn.execute("SET LOCAL statement_timeout = '5s'")
-        conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
+        conn.execute("SET CONSTRAINTS ALL DEFERRED")
         conn.execute(
             """
             SELECT prediction_run_id
@@ -2690,24 +2690,30 @@ def test_predictions_enforce_run_as_of_and_finalization_alignment(db: psycopg.Co
         )
 
     with pytest.raises(psycopg.Error):
-        _insert_prediction(
+        invalid_run_id = _insert_prediction_run(
+            db,
+            run_status="RUNNING",
+            as_of=_utc(14, 0),
+            started_at=_utc(14, 0),
+        )
+        _insert_prediction_batch(
             db,
             match_id=fixture["match_id"],
-            prediction_run_id=_insert_prediction_run(
-                db,
-                run_status="RUNNING",
-                as_of=_utc(14, 0),
-                started_at=_utc(14, 0),
-            ),
-            agent_config_version_id=config_id,
-            agent_code="AGENT_1_SURFACE_ELO",
-            prediction_status="PREDICTED",
-            selection_side=1,
-            win_probability=0.57,
-            variant_id="bad-finalization",
-            as_of=_utc(14, 0),
-            prediction_locked_at=_utc(15, 1),
-            created_at=_utc(14, 10),
+            prediction_run_id=invalid_run_id,
+            rows=[
+                {
+                    "agent_config_version_id": config_id,
+                    "agent_code": "AGENT_1_SURFACE_ELO",
+                    "prediction_status": "PREDICTED",
+                    "selection_side": 1,
+                    "win_probability": 0.57,
+                    "variant_id": "bad-finalization",
+                    "as_of": _utc(14, 0),
+                    "prediction_locked_at": _utc(15, 1),
+                    "created_at": _utc(14, 10),
+                }
+            ],
+            ended_at=_utc(15, 0),
         )
 
 
@@ -4280,8 +4286,8 @@ def test_0005_append_only_tables_reject_update_and_delete(db: psycopg.Connection
         prediction_locked_at=_utc(11, 0),
         created_at=_utc(10, 15),
     )
-    decision_agent_id = _fetchval(
-        db,
+    decision_agent_code = "AGENT_1_SURFACE_ELO"
+    db.execute(
         """
         INSERT INTO decision_agents (
             decision_id,
@@ -4294,10 +4300,9 @@ def test_0005_append_only_tables_reject_update_and_delete(db: psycopg.Connection
             proposed_probability,
             created_at
         )
-        VALUES (%s, 'AGENT_1_SURFACE_ELO', 'ACTIVE', %s, %s, %s, 1, 0.55, %s)
-        RETURNING decision_agent_id
+        VALUES (%s, %s, 'ACTIVE', %s, %s, %s, 1, 0.55, %s)
         """,
-        (decision_id, run_id, fixture["match_id"], prediction_id, _utc(10, 20)),
+        (decision_id, decision_agent_code, run_id, fixture["match_id"], prediction_id, _utc(10, 20)),
     )
     data_health_check_id = _fetchval(
         db,
@@ -4331,7 +4336,6 @@ def test_0005_append_only_tables_reject_update_and_delete(db: psycopg.Connection
         ("odds_snapshots", "odds_snapshot_id", odds_snapshot_id),
         ("rating_snapshots", "rating_snapshot_id", rating_snapshot_id),
         ("predictions", "prediction_id", prediction_id),
-        ("decision_agents", "decision_agent_id", decision_agent_id),
         ("decision_policy_versions", "decision_policy_version_id", policy_id),
         ("agent_config_versions", "agent_config_version_id", config_id),
         ("data_health_checks", "data_health_check_id", data_health_check_id),
@@ -4348,6 +4352,24 @@ def test_0005_append_only_tables_reject_update_and_delete(db: psycopg.Connection
                 f"DELETE FROM {table_name} WHERE {pk_name} = %s",
                 (pk_value,),
             )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE decision_agents
+            SET agent_code = agent_code
+            WHERE decision_id = %s AND agent_code = %s
+            """,
+            (decision_id, decision_agent_code),
+        )
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            DELETE FROM decision_agents
+            WHERE decision_id = %s AND agent_code = %s
+            """,
+            (decision_id, decision_agent_code),
+        )
 
     assert candidate_id_2 > candidate_id_1
 
@@ -4417,7 +4439,7 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
                 conn.execute("SET statement_timeout = '5s'")
                 conn.execute("SET lock_timeout = '5s'")
 
-            conn1.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
+            conn1.execute("SET CONSTRAINTS ALL DEFERRED")
             conn1.execute(
                 """
                 SELECT prediction_run_id
@@ -4556,7 +4578,7 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
                     run_status="FAILED",
                     as_of=_utc(12, 0),
                     started_at=_utc(12, 0),
-                    prediction_finalized_at=None,
+                    prediction_finalized_at=_utc(12, 4),
                     ended_at=_utc(12, 5),
                 )
                 cancelled_run_id = _insert_prediction_run(
@@ -4564,7 +4586,7 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
                     run_status="CANCELLED",
                     as_of=_utc(13, 0),
                     started_at=_utc(13, 0),
-                    prediction_finalized_at=None,
+                    prediction_finalized_at=_utc(13, 4),
                     ended_at=_utc(13, 5),
                 )
                 for blocked_run_id, variant_id in (
