@@ -1592,24 +1592,43 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
         )
 
     with pytest.raises(psycopg.Error):
-        _insert_prediction(
+        invalid_abstained_as_of = as_of + timedelta(minutes=2)
+        invalid_abstained_locked_at = locked_at + timedelta(minutes=2)
+        invalid_abstained_run_id = _insert_prediction_run(
             db,
-            match_id=fixture["match_id"],
-            prediction_run_id=_insert_prediction_run(
-                db,
-                run_status="RUNNING",
-                as_of=as_of + timedelta(minutes=2),
-                started_at=as_of + timedelta(minutes=2),
+            run_status="COMPLETED",
+            as_of=invalid_abstained_as_of,
+            started_at=invalid_abstained_as_of,
+            prediction_finalized_at=invalid_abstained_locked_at,
+            ended_at=invalid_abstained_locked_at + timedelta(minutes=5),
+        )
+        db.execute(
+            """
+            INSERT INTO predictions (
+                match_id,
+                prediction_run_id,
+                agent_config_version_id,
+                agent_code,
+                prediction_status,
+                selection_side,
+                win_probability,
+                model_version,
+                feature_version,
+                variant_id,
+                as_of,
+                prediction_locked_at,
+                created_at
+            )
+            VALUES (%s, %s, %s, 'AGENT_3_INTRANSITIVITY', 'ABSTAINED', 1, 0.50, 'm1', 'f1', 'bad-abstained', %s, %s, %s)
+            """,
+            (
+                fixture["match_id"],
+                invalid_abstained_run_id,
+                agent_3_config_id,
+                invalid_abstained_as_of,
+                invalid_abstained_locked_at,
+                as_of + timedelta(minutes=12),
             ),
-            agent_config_version_id=agent_3_config_id,
-            agent_code="AGENT_3_INTRANSITIVITY",
-            prediction_status="ABSTAINED",
-            selection_side=1,
-            win_probability=0.50,
-            variant_id="bad-abstained",
-            as_of=as_of + timedelta(minutes=2),
-            prediction_locked_at=locked_at + timedelta(minutes=2),
-            created_at=as_of + timedelta(minutes=12),
         )
 
     with pytest.raises(psycopg.Error):
