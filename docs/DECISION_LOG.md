@@ -160,3 +160,56 @@ Migration `0004` is reserved for run, policy, and agent-configuration lineage af
 approval. It must fail fast if legacy `predictions`, `decisions`, or `decision_agents`
 tables already contain rows, and it must not be used to begin T-ED2 immutability work or
 to synthesize fake historical lineage.
+
+## D029
+
+T-ED2 preserves the committed-state rule
+`predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, but future
+`0005` must make `fk_predictions_prediction_run_finalization` deferrable and require the
+prediction-finalization transaction to be the only valid persistence path for prediction
+rows. That transaction must lock the target `prediction_runs` row, verify
+`run_status = 'RUNNING'` and `prediction_finalized_at IS NULL`, insert the full prediction
+set, set `prediction_finalized_at`, and commit atomically. No separate `prediction_locks`
+table or hidden bypass flag is part of the chosen design.
+
+## D030
+
+In T-ED2, `predictions`, `decision_policy_versions`, `agent_config_versions`,
+`decision_agents`, `rating_snapshots`, `odds_snapshots`, `match_versions`,
+`match_source_ids`, `match_version_sources`, `match_result_observations`,
+`match_stat_observations`, `player_source_ids`, `identity_resolution_events`,
+`identity_resolution_candidates`, `tournament_source_ids`, `matches`, and
+`data_health_checks` become mechanically append-only at the database level.
+
+## D031
+
+`prediction_runs` and `ingest_runs` remain controlled lifecycle rows rather than generic
+append-only rows. For `prediction_runs`, identity fields become immutable immediately after
+insert, the only state-changing `RUNNING -> RUNNING` update is
+`prediction_finalized_at: NULL -> timestamp` while `ended_at` stays `NULL`,
+`prediction_finalized_at` may move only once from `NULL` to a timestamp, `ended_at` may
+move only once from `NULL` to a timestamp on the terminal transition, and terminal runs
+never reopen or rewrite into another terminal state. For `ingest_runs`, source identity
+fields become immutable immediately after insert, T-ED2 permits only one terminal
+`RUNNING -> COMPLETED|PARTIAL|FAILED|CANCELLED` update that sets `finished_at`, final
+counters, and final `error_summary`, and state-changing `RUNNING -> RUNNING` updates are
+rejected because the current repository does not incrementally mutate ingest rows before
+terminalization; terminal ingest rows then freeze.
+
+## D032
+
+`decisions` remains historical truth. T-ED2 therefore rejects decision rewrites and deletes,
+but permits one narrow `published_at` transition from `NULL` to a timestamp exactly once.
+Full publication-state expansion, retractions, and operator-facing publication lifecycle
+remain T-ED4 work.
+
+## D033
+
+T-ED2 does not add a hidden decision-completion flag merely to freeze `decision_agents`
+timing. Inserted `decision_agents` rows become immutable, but late-insert closure for a
+previously incomplete decision is deferred until a later phase defines an explicit
+decision-finalization contract. Publication cannot serve as the universal closure boundary
+because `NO_BET` and `VETOED` decisions may remain unpublished. Until that future
+decision-lifecycle or T-ED4-adjacent design exists, downstream features must not assume
+decision-agent membership is timing-closed, and an unused `(decision_id, agent_code)` slot
+may still be inserted later. Settlement and CLV append-only redesign remain T-ED3 work.
