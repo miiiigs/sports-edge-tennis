@@ -806,3 +806,436 @@ Deferred to predictive-agent phases:
 - Agent 3 implementation
 - manager runtime implementation
 - veto runtime implementation
+
+## T-ED2 schema design
+
+Recommended migration name:
+
+```text
+0005_append_only_enforcement_and_lock_guards
+```
+
+T-ED2 does not redesign the approved `0004` lineage model. It adds the PostgreSQL
+mechanisms that make the historical contracts mechanically enforceable on a populated valid
+`0004` database.
+
+### Core objective
+
+T-ED1 established relational truth. T-ED2 establishes mutation truth:
+
+- which rows are permanently insert-only
+- which rows have a limited lifecycle update window
+- which deletes must always fail
+- when prediction writes must stop mechanically
+- how finalization stays atomic and race-safe under concurrent transactions
+
+### Current `0004` finalization contradiction
+
+Current `0004` enforces:
+
+```text
+(prediction_run_id, prediction_locked_at)
+    ->
+(prediction_run_id, prediction_finalized_at)
+```
+
+through `fk_predictions_prediction_run_finalization`.
+
+In `0004`, that FK is non-deferrable and therefore checked immediately. As written, a
+prediction insert can succeed only if the parent run row already carries the same
+`prediction_finalized_at` value.
+
+A naive T-ED2 guard such as:
+
+```text
+if prediction_runs.prediction_finalized_at is not null then reject prediction insert
+```
+
+would therefore make valid prediction inserts impossible, because the same committed-state
+timestamp that satisfies the FK would also look "already finalized" to the guard.
+
+### Chosen T-ED2 finalization protocol
+
+T-ED2 keeps the committed-state equality rule from `0004`, but changes the write protocol
+for future `0005`:
+
+- `fk_predictions_prediction_run_finalization` becomes `DEFERRABLE INITIALLY IMMEDIATE`
+  rather than immediate-only.
+- Ordinary prediction inserts continue to see immediate constraint behavior by default.
+- The explicit prediction-finalization transaction must issue:
+
+```text
+SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED
+```
+
+  before inserting the prediction set.
+- That same transaction must lock the target `prediction_runs` row with
+  `SELECT ... FOR UPDATE` before any prediction insert for that run.
+- While the parent run row still has `prediction_finalized_at IS NULL`, the transaction may
+  bulk insert the full prediction set with a common intended `prediction_locked_at = T`.
+- The transaction must then update the same `prediction_runs` row to set
+  `prediction_finalized_at = T`.
+- Commit succeeds only if every inserted prediction now matches the finalized run timestamp.
+
+The required transaction order is:
+
+```text
+1. BEGIN
+2. SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED
+3. SELECT prediction_runs ... FOR UPDATE
+4. verify run_status = 'RUNNING'
+5. verify prediction_finalized_at IS NULL
+6. bulk insert complete prediction set with prediction_locked_at = T
+7. UPDATE prediction_runs
+      SET prediction_finalized_at = T
+      WHERE prediction_run_id = ...
+8. optionally perform the terminal RUNNING -> COMPLETED transition in the same transaction
+9. COMMIT
+```
+
+This design keeps the committed row state identical to the approved T-ED1 contract while
+making it possible for T-ED2 to reject late prediction inserts after finalization commits.
+
+### Why the committed state is safe
+
+- A `BEFORE ROW` prediction lock guard will lock the parent `prediction_runs` row with
+  `SELECT ... FOR UPDATE`.
+- If that locked row already has `prediction_finalized_at IS NOT NULL`, the insert is
+  rejected immediately.
+- If the row still has `prediction_finalized_at IS NULL`, the insert may proceed.
+- Because the insert trigger and the finalization update lock the same parent run row,
+  concurrent finalization and insert attempts serialize on that row.
+- If the finalization transaction acquires the row lock first, any later insert waits and
+  then sees the committed finalized timestamp and fails.
+- If another insert acquires the row lock first, that insert commits before finalization can
+  proceed; the finalization transaction then sees the fully visible pre-finalization set and
+  closes the run afterward.
+- No committed transaction can therefore insert a prediction after the run has become
+  mechanically finalized.
+
+An empty completed slate remains valid. In that case the finalization transaction may lock
+the run row and set `prediction_finalized_at` without inserting any prediction rows.
+
+### T-ED2 mutation classification
+
+| Table | Classification | INSERT | UPDATE | DELETE | Lock/finalization rule | T-ED2 scope | Reason |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `prediction_runs` | `CONTROLLED_LIFECYCLE_TED2` | allowed | only approved lifecycle fields and transitions | rejected | parent run row is the concurrency lock anchor for prediction finalization | yes | run history is durable, but status/finalization/ended timestamps advance within one row |
+| `predictions` | `STRICT_APPEND_ONLY_TED2` | allowed only before parent run finalization commits and only through the chosen finalization protocol | rejected | rejected | no insert once parent `prediction_finalized_at` is committed; committed rows stay immutable | yes | prediction truth must never be rewritten |
+| `decision_policy_versions` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | any policy change must create a new version row |
+| `agent_config_versions` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | replay identity must never be rewritten in place |
+| `decisions` | `CONTROLLED_LIFECYCLE_TED2` | allowed | all fields immutable except `published_at` may transition `NULL -> timestamptz` once | rejected | no decision lock added in T-ED2 | yes | decision rows are historical truth, but the existing `published_at` field needs one narrow bridge until T-ED4 |
+| `decision_agents` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | no late-insert closure in T-ED2 because no decision-finalization contract exists yet | yes | inserted lineage rows must never be rewritten; timing closure is deferred explicitly |
+| `rating_snapshots` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | rating snapshots are already documented as immutable point-in-time states |
+| `odds_snapshots` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | odds corrections are represented as new snapshots, not overwrites |
+| `match_versions` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | versioned match truth is append-only by design |
+| `match_result_observations` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | results are observation history, not mutable fixture state |
+| `match_stat_observations` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | stats are historical observations and already modeled append-only |
+| `decision_settlements` | `DEFER_TO_LATER_PHASE` | unchanged in `0005` | unchanged in `0005` | unchanged in `0005` | none in T-ED2 | no | T-ED3 owns the append-only settlement redesign |
+| `decision_clv` | `DEFER_TO_LATER_PHASE` | unchanged in `0005` | unchanged in `0005` | unchanged in `0005` | none in T-ED2 | no | T-ED3 owns the append-only CLV redesign |
+| `ingest_runs` | `CONTROLLED_LIFECYCLE_TED2` | allowed | lifecycle-only updates while non-terminal; terminal rows freeze | rejected | no prediction lock semantics | yes | current runtime already relies on `RUNNING -> terminal` updates |
+| `players` | `MUTABLE_REFERENCE_DATA` | allowed | allowed | unchanged in T-ED2 | none | no | canonical reference data may still need correction |
+| `player_source_ids` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | source-to-player identity mapping is provenance, not mutable master state |
+| `player_aliases` | `MUTABLE_REFERENCE_DATA` | allowed | allowed | unchanged in T-ED2 | none | no | repository write path legitimately extends `last_observed_at` |
+| `identity_resolution_events` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | resolution events are historical audit rows |
+| `tournaments` | `MUTABLE_REFERENCE_DATA` | allowed | allowed | unchanged in T-ED2 | none | no | canonical tournament reference data may still be corrected |
+| `tournament_editions` | `MUTABLE_REFERENCE_DATA` | allowed | allowed | unchanged in T-ED2 | none | no | current repository legitimately fills missing surface/date metadata in place |
+| `matches` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | stable match identity rows should not be rewritten in place |
+| `data_health_checks` | `STRICT_APPEND_ONLY_TED2` | allowed | rejected | rejected | none | yes | health checks are snapshot history, not mutable status rows |
+
+### `prediction_runs` lifecycle contract
+
+Fields that become immutable immediately after row creation:
+
+- `prediction_run_id`
+- `as_of`
+- `started_at`
+- `experiment_id`
+- `parent_prediction_run_id`
+- `parent_relation_type`
+- `created_at`
+
+Fields that remain lifecycle-mutable under T-ED2:
+
+- `run_status`
+- `prediction_finalized_at`
+- `ended_at`
+
+Allowed transition rules:
+
+- `RUNNING -> RUNNING` is allowed only when setting `prediction_finalized_at` from `NULL` to
+  a timestamp and/or preparing the later terminal transition without changing immutable
+  identity fields.
+- `RUNNING -> COMPLETED` is allowed exactly once, requires `ended_at` to be set in the same
+  row version, and may set `prediction_finalized_at` in the same statement if it was still
+  `NULL`.
+- `RUNNING -> FAILED` is allowed exactly once, requires `ended_at` to be set, and may leave
+  `prediction_finalized_at` either `NULL` or already-set if prediction finalization happened
+  before failure.
+- `RUNNING -> CANCELLED` is allowed exactly once, requires `ended_at` to be set, and may
+  leave `prediction_finalized_at` either `NULL` or already-set if prediction finalization
+  happened before cancellation.
+
+Forbidden transition rules:
+
+- terminal -> `RUNNING`
+- `COMPLETED -> FAILED`
+- `COMPLETED -> CANCELLED`
+- `FAILED -> COMPLETED`
+- `FAILED -> CANCELLED`
+- `CANCELLED -> COMPLETED`
+- `CANCELLED -> FAILED`
+- clearing or changing `prediction_finalized_at`
+- clearing or changing `ended_at`
+- changing any immutable field after insert
+
+Delete rule:
+
+- no `prediction_runs` row may be deleted in T-ED2, including failed and cancelled runs
+
+### `predictions`
+
+Chosen contract:
+
+- `INSERT` allowed only before committed run finalization and only with the parent run row
+  locked by the inserting transaction
+- `UPDATE` always rejected
+- `DELETE` always rejected
+- `INSERT` after committed finalization always rejected
+
+The existing T-ED1 lineage trigger remains. It is still needed to defend direct SQL writes
+and to preserve the distinction between relational lineage correctness and immutability
+protection.
+
+### `decision_policy_versions`
+
+Chosen contract:
+
+- `INSERT` allowed
+- `UPDATE` rejected from creation onward
+- `DELETE` rejected from creation onward
+
+No editable draft state is introduced. Any meaningful policy change must create a new
+version row.
+
+### `agent_config_versions`
+
+Chosen contract:
+
+- `INSERT` allowed
+- `UPDATE` rejected from creation onward
+- `DELETE` rejected from creation onward
+
+No editable draft state is introduced. Any replay-relevant configuration change must create
+a new version row.
+
+### `decisions`
+
+Chosen contract:
+
+- `INSERT` allowed
+- `UPDATE` rejected for every field except `published_at`
+- `DELETE` rejected
+- `published_at` may transition from `NULL` to a timestamp exactly once
+- `published_at` may not be cleared or rewritten
+
+This keeps the current schema coherent without inventing a full publication lifecycle.
+T-ED2 does not add new publication states, retraction rules, or operator-facing publication
+ledgers. Those remain T-ED4 work.
+
+Multiple decisions for the same `match_id` and `prediction_run_id` remain allowed. T-ED2
+does not change that T-ED1 contract.
+
+### `decision_agents`
+
+Chosen contract:
+
+- `INSERT` allowed
+- `UPDATE` rejected
+- `DELETE` rejected
+
+Late-insert closure is deferred explicitly. T-ED2 does not add a `decision_finalized_at`
+field or another hidden completion flag merely to make `decision_agents` timing-closed.
+
+Historical consequence:
+
+- T-ED2 prevents rewriting or deleting an existing participation row.
+- T-ED2 does not yet prevent a new aligned participation row from being inserted later for a
+  previously incomplete decision if the primary key still allows it.
+- That remaining closure problem needs a future phase with an explicit decision-completion
+  contract rather than an ad hoc hidden guard.
+
+The T-ED1 lineage trigger remains in place. T-ED2 immutability triggers add a separate
+historical-mutation concern rather than replacing lineage validation.
+
+### Existing historical tables included in T-ED2
+
+Included for mechanical append-only enforcement in `0005`:
+
+- `rating_snapshots`
+- `odds_snapshots`
+- `match_versions`
+- `match_result_observations`
+- `match_stat_observations`
+- `player_source_ids`
+- `identity_resolution_events`
+- `matches`
+- `data_health_checks`
+
+Reason:
+
+- each is already documented as historical state or provenance
+- current repository write paths insert new rows rather than updating those rows in place
+- later corrections already have append-only representations through new versions,
+  observations, or snapshots
+
+### Deferred tables
+
+Deferred from T-ED2:
+
+- `decision_settlements`
+- `decision_clv`
+
+Reason:
+
+- the current one-row-per-decision placeholders belong to the future T-ED3 settlement/CLV
+  architecture
+- mechanically freezing those placeholder tables in `0005` would constrain the later phase
+  before its append-only replacement model is designed
+
+### `0005` minimal forward shape
+
+Expected `0005` contents:
+
+- alter `fk_predictions_prediction_run_finalization` to `DEFERRABLE INITIALLY IMMEDIATE`
+- add shared append-only blocker function(s) for tables with simple reject-all
+  `UPDATE`/`DELETE` behavior
+- add table-specific lifecycle guard functions for:
+  - `prediction_runs`
+  - `ingest_runs`
+  - `decisions`
+  - prediction insert lock checking against `prediction_runs`
+- add trigger definitions only
+
+Expected non-changes:
+
+- no new tables
+- no new columns
+- no new indexes
+- no new bypass flags
+- no manifest change
+- no schema snapshot regeneration in this design task
+
+### Trigger design
+
+Planned shared pattern:
+
+- ordinary `BEFORE ROW` triggers for reject-all immutable `UPDATE`/`DELETE` cases because
+  they fail early, emit clear table-specific errors, and simplify rollback
+
+Planned table-specific triggers:
+
+- `prediction_runs`
+  - `BEFORE UPDATE`
+  - table-specific lifecycle validator
+  - enforces immutable identity fields plus allowed lifecycle transitions
+- `prediction_runs`
+  - `BEFORE DELETE`
+  - table-specific delete blocker or shared append-only delete blocker
+  - preserves durable run history
+- `predictions`
+  - `BEFORE INSERT OR UPDATE OF prediction_run_id, prediction_locked_at`
+  - table-specific parent-run lock guard
+  - locks parent run row and rejects insert if committed finalization already exists
+- `predictions`
+  - `BEFORE UPDATE OR DELETE`
+  - shared append-only blocker
+- `decision_policy_versions`
+  - `BEFORE UPDATE OR DELETE`
+  - shared append-only blocker
+- `agent_config_versions`
+  - `BEFORE UPDATE OR DELETE`
+  - shared append-only blocker
+- `decisions`
+  - `BEFORE UPDATE`
+  - table-specific validator allowing only one-way `published_at`
+- `decisions`
+  - `BEFORE DELETE`
+  - shared append-only blocker
+- `decision_agents`
+  - `BEFORE UPDATE OR DELETE`
+  - shared append-only blocker
+- `rating_snapshots`, `odds_snapshots`, `match_versions`, `match_result_observations`,
+  `match_stat_observations`, `player_source_ids`, `identity_resolution_events`, `matches`,
+  `data_health_checks`
+  - `BEFORE UPDATE OR DELETE`
+  - shared append-only blocker
+- `ingest_runs`
+  - `BEFORE UPDATE`
+  - table-specific lifecycle validator for its existing runtime write path
+- `ingest_runs`
+  - `BEFORE DELETE`
+  - blocker preserving ingest history
+
+The existing T-ED1 lineage constraint triggers on `decision_agents` and `predictions`
+remain unchanged in principle. Redundant execution is acceptable because lineage correctness
+and immutability are separate concerns.
+
+### Existing-data migration safety
+
+Unlike `0004`, `0005` is expected to run on a populated valid database.
+
+Precondition analysis:
+
+- `0004` already enforces the run timestamp shape, policy/config constraints, prediction
+  alignment, and decision-agent lineage rules that T-ED2 depends on
+- no destructive cleanup or bootstrap backfill should be required
+- the main schema change with existing data impact is FK recreation to make the prediction
+  finalization FK deferrable; valid `0004` data remains valid under that weaker timing rule
+
+### `0005 DOWN`
+
+Rollback target:
+
+- exact `0004_prediction_runs_and_policy_versions` enforcement level
+
+Rollback design:
+
+- may run on a populated database because it removes only enforcement, not data
+- drops T-ED2 triggers in dependency-safe order
+- drops T-ED2 helper functions after dependent triggers are removed
+- recreates `fk_predictions_prediction_run_finalization` with the original immediate-only
+  behavior from `0004`
+- does not drop or rewrite historical rows
+- permits clean re-UP afterward
+
+### Validation plan for future implementation
+
+Migration chain:
+
+```text
+0001 -> 0002 -> 0003 -> 0004 -> 0005
+```
+
+Required PostgreSQL 16 coverage:
+
+- populated valid `0004` database upgrades cleanly to `0005`
+- `UPDATE predictions` rejected
+- `DELETE predictions` rejected
+- `UPDATE/DELETE decision_policy_versions` rejected
+- `UPDATE/DELETE agent_config_versions` rejected
+- every allowed `prediction_runs` lifecycle transition succeeds
+- every meaningful forbidden `prediction_runs` transition fails
+- `prediction_finalized_at` can be set exactly once
+- `prediction_finalized_at` cannot be cleared or changed
+- valid explicit finalization transaction succeeds
+- late prediction insert after committed finalization fails through direct SQL
+- multi-connection concurrency test covers finalization vs late insert
+- concurrent finalization attempts serialize correctly on the parent run row
+- terminal run races cannot rewrite terminal history
+- `UPDATE decisions` is rejected except for one-way `published_at`
+- invalid `published_at` rewrites fail
+- `UPDATE/DELETE decision_agents` rejected
+- included historical tables reject direct SQL `UPDATE` and `DELETE`
+- `0005 DOWN` restores exact `0004` protection level
+- clean re-UP succeeds after DOWN

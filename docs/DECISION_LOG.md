@@ -160,3 +160,42 @@ Migration `0004` is reserved for run, policy, and agent-configuration lineage af
 approval. It must fail fast if legacy `predictions`, `decisions`, or `decision_agents`
 tables already contain rows, and it must not be used to begin T-ED2 immutability work or
 to synthesize fake historical lineage.
+
+## D029
+
+T-ED2 preserves the committed-state rule
+`predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, but future
+`0005` must make `fk_predictions_prediction_run_finalization` deferrable and require the
+prediction-finalization transaction to lock the target `prediction_runs` row, insert the
+full prediction set, set `prediction_finalized_at`, and commit atomically. No separate
+`prediction_locks` table or hidden bypass flag is part of the chosen design.
+
+## D030
+
+In T-ED2, `predictions`, `decision_policy_versions`, `agent_config_versions`,
+`decision_agents`, `rating_snapshots`, `odds_snapshots`, `match_versions`,
+`match_result_observations`, `match_stat_observations`, `player_source_ids`,
+`identity_resolution_events`, `matches`, and `data_health_checks` become mechanically
+append-only at the database level.
+
+## D031
+
+`prediction_runs` and `ingest_runs` remain controlled lifecycle rows rather than generic
+append-only rows. For `prediction_runs`, identity fields become immutable immediately after
+insert, `prediction_finalized_at` may move only once from `NULL` to a timestamp, `ended_at`
+may move only once from `NULL` to a timestamp on the terminal transition, and terminal runs
+never reopen or rewrite into another terminal state.
+
+## D032
+
+`decisions` remains historical truth. T-ED2 therefore rejects decision rewrites and deletes,
+but permits one narrow `published_at` transition from `NULL` to a timestamp exactly once.
+Full publication-state expansion, retractions, and operator-facing publication lifecycle
+remain T-ED4 work.
+
+## D033
+
+T-ED2 does not add a hidden decision-completion flag merely to freeze `decision_agents`
+timing. Inserted `decision_agents` rows become immutable, but late-insert closure for a
+previously incomplete decision is deferred until a later phase defines an explicit
+decision-finalization contract. Settlement and CLV append-only redesign remain T-ED3 work.

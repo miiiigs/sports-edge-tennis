@@ -108,6 +108,35 @@ Prediction finalization is not itself an execution status. A run may be `RUNNING
 `COMPLETED`, `FAILED`, or `CANCELLED` independently of whether
 `prediction_finalized_at` has been recorded.
 
+## T-ED2 finalization mechanics
+
+T-ED2 must make the prediction freeze boundary mechanical, not only documentary.
+
+The chosen design keeps the committed-state invariant:
+
+- `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`
+
+but changes how that state is reached safely:
+
+- the finalization FK from `predictions` to `prediction_runs` becomes `DEFERRABLE
+  INITIALLY IMMEDIATE`
+- the finalization transaction explicitly defers that FK, locks the parent
+  `prediction_runs` row with `SELECT ... FOR UPDATE`, inserts the complete prediction set
+  with one common intended lock timestamp `T`, sets `prediction_runs.prediction_finalized_at
+  = T`, and then commits
+- after that commit, later prediction inserts for the same run must fail mechanically
+
+This matters for concurrency:
+
+- if the finalization transaction holds the run-row lock first, later prediction inserts
+  wait and then see the committed finalized timestamp, so they fail
+- if another prediction insert reaches the run-row lock first, that insert still commits
+  before finalization and is therefore part of the pre-finalization set rather than a late
+  committed write
+
+The result is one coherent committed prediction set per finalized run without requiring a
+separate `prediction_locks` table or an application-only honor system.
+
 ### `prediction_runs.ended_at`
 
 When the full-slate run reached a terminal execution outcome.
@@ -143,6 +172,8 @@ future queries must:
 6. When T-ED1 is implemented, resolve historical prediction lineage through
    `prediction_runs`, `agent_config_versions`, `decision_policy_versions`, and
    `decision_agents.prediction_id`, not by timestamp proximity.
+7. When T-ED2 is implemented, treat committed `prediction_runs.prediction_finalized_at` as
+   the mechanical close boundary for further prediction inserts under that run.
 
 ## Leakage boundaries
 

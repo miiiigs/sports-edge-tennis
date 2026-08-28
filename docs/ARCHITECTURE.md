@@ -1,14 +1,15 @@
 # Architecture
 
-T-ED0 contract lock for the dedicated Tennis repository, re-verified on Wednesday,
-August 26, 2026.
+T-ED0 through T-ED2 contract lock for the dedicated Tennis repository, re-verified on
+Friday, August 28, 2026.
 
 Edge Desk realignment is additive. It does not replace the dedicated Tennis build with the
 generic Sports AI architecture, and it does not weaken the Tennis-specific consensus rules.
 
-The `0004_prediction_runs_and_policy_versions` schema migration is implemented in this
-repository state. Predictive-agent, manager, veto, pricing, and orchestration runtime work
-still remain future phases.
+The `0004_prediction_runs_and_policy_versions` schema migration is implemented on `main`.
+The T-ED2 immutability and lock-guard design is now locked for independent review, while
+predictive-agent, manager, veto, pricing, and orchestration runtime work still remain future
+phases.
 
 ```text
 SLATE GENERATOR
@@ -102,6 +103,36 @@ Chosen run model for T-ED1:
   `0004`.
 - Predictions and decisions remain match-centric rows that point back to the same
   full-slate run identity.
+
+## T-ED2 design direction
+
+The next schema phase remains narrow and PostgreSQL-native:
+
+- T-ED2 adds mechanical immutability and lock guards without redesigning the approved T-ED1
+  run, policy, config, or decision-agent lineage model.
+- `predictions`, `decision_policy_versions`, `agent_config_versions`, and
+  `decision_agents` become append-only at the database level.
+- Existing append-only historical observation tables such as `match_versions`,
+  `match_result_observations`, `match_stat_observations`, `odds_snapshots`,
+  `rating_snapshots`, and `data_health_checks` also receive mechanical append-only
+  protection in T-ED2.
+- `prediction_runs` and `ingest_runs` remain lifecycle rows rather than generic append-only
+  rows; T-ED2 therefore constrains their allowed state transitions instead of banning all
+  updates.
+- `decisions` remains historical truth, but T-ED2 permits one narrow `published_at`
+  transition from `NULL` to a timestamp exactly once because the richer publication
+  lifecycle still belongs to T-ED4.
+- Prediction finalization in `0005` must stay transaction-safe under concurrency. The
+  chosen design keeps the committed-state rule
+  `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, makes that
+  finalization FK deferrable, and requires the finalization transaction to lock the parent
+  run row, insert the full prediction set, set the run finalization timestamp, and then
+  commit.
+- No hidden trigger bypasses, session flags, or role-based escape hatches are part of the
+  T-ED2 contract. Controlled changes to the guards must happen through an explicit reviewed
+  migration.
+- Settlement/CLV append-only redesign remains T-ED3, fuller publication-state architecture
+  remains T-ED4, and match-level execution bookkeeping remains T-ED5.
 
 ## Blind isolation
 
