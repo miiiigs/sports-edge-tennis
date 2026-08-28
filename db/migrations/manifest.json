@@ -29,6 +29,13 @@
       "up": "db/migrations/0004_prediction_runs_and_policy_versions.up.sql",
       "down": "db/migrations/0004_prediction_runs_and_policy_versions.down.sql",
       "schema_snapshot": "db/schema/0004_prediction_runs_and_policy_versions.sql"
+    },
+    {
+      "version": "0005",
+      "name": "append_only_enforcement_and_lock_guards",
+      "up": "db/migrations/0005_append_only_enforcement_and_lock_guards.up.sql",
+      "down": "db/migrations/0005_append_only_enforcement_and_lock_guards.down.sql",
+      "schema_snapshot": "db/schema/0005_append_only_enforcement_and_lock_guards.sql"
     }
   ]
 }

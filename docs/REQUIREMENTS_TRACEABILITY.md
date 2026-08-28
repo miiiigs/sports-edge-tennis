@@ -11,10 +11,10 @@ Status legend:
 
 This repository is in the bootstrap phase. Every requirement below is traced to a
 canonical specification area. The data foundation and T-ED1 schema contracts are committed
-and validated against disposable PostgreSQL 16 in CI, while the T-ED2 immutability and
-lock-guard contract is now designed but not yet implemented. Historical ingest, model
-execution, pricing, and production runtime work remain otherwise unimplemented. Statuses
-are truthful.
+and validated against disposable PostgreSQL 16 in CI, and the T-ED2 immutability and
+lock-guard contract is now implemented in `0005` with schema, snapshot, and PostgreSQL
+integration coverage committed in-repo. Historical ingest, model execution, pricing, and
+production runtime work remain otherwise unimplemented. Statuses are truthful.
 
 ## Architecture
 
@@ -99,7 +99,7 @@ are truthful.
 | SAF-4 | Withdrawal retraction | tennis build spec `8. The Veto Agent`; `11. Scheduling` | `LOCKED` |
 | SAF-5 | Point-in-time `as_of` | tennis build spec | `COMPLETE` (schema/docs/tests) |
 | SAF-6 | Market leakage prohibition | tennis build spec | `COMPLETE` (architecture rule plus blind prediction contract) |
-| SAF-7 | Database-level immutability and lock guards for historical prediction lineage | additive Edge Desk design guidance plus task T-ED2 contract | `DESIGNED` |
+| SAF-7 | Database-level immutability and lock guards for historical prediction lineage | additive Edge Desk design guidance plus task T-ED2 contract | `COMPLETE` |
 
 ## Measurement
 
@@ -129,7 +129,7 @@ are truthful.
 | ED-8 | `NO_BET`, disagreement, veto, and unpublished states remain first-class internal history | tennis build spec `3. Database`, `8`, `11`, `12`; task T-ED0 contract 8 | `decisions` plus later publication-state expansion | T-ED0 through T-ED4 | `LOCKED` | document review plus no-bet retention tests |
 | ED-9 | Market/value processing stays downstream of sporting prediction | tennis build spec `0`; `7`; architecture blind-isolation rules | `predictions` and `decisions` split | T-ED0 through predictive-agent phases | `LOCKED` | architecture review and anti-leakage tests |
 | ED-10 | Historical decisions become replayable by run, predictions, configs, policy, and point-in-time cutoffs | task T-ED0 contract 10; point-in-time docs | `prediction_runs`, `predictions`, `agent_config_versions`, `decision_policy_versions`, `decisions` | T-ED1 to T-ED5 | `PLANNED` | replay integration tests after implementation plus finalization and market-rescan separation tests |
-| ED-11 | Prediction persistence occurs only inside the atomic prediction-set finalization transaction, and late prediction inserts are rejected mechanically without weakening the committed run/finalization equality rule | additive Edge Desk lineage guidance; task T-ED2 contract | deferrable prediction finalization FK plus prediction insert guard requiring parent run `RUNNING` and unfinalized | T-ED2 | `DESIGNED` | independent design review plus future multi-connection PostgreSQL tests |
-| ED-12 | Prediction, policy-version, config-version, decision-agent, and covered historical/provenance rows are mechanically immutable at the database level | additive Edge Desk lineage guidance; task T-ED2 contract | append-only blockers on `predictions`, `decision_policy_versions`, `agent_config_versions`, `decision_agents`, `rating_snapshots`, `odds_snapshots`, `match_versions`, `match_result_observations`, `match_stat_observations`, `player_source_ids`, `identity_resolution_events`, `identity_resolution_candidates`, `tournament_source_ids`, `match_source_ids`, `match_version_sources`, `matches`, and `data_health_checks` | T-ED2 | `DESIGNED` | independent design review plus direct SQL mutation-rejection tests |
-| ED-13 | `prediction_runs`, `decisions`, and `ingest_runs` use exact controlled lifecycle guards rather than blanket append-only blocking | additive Edge Desk lineage guidance; task T-ED2 contract | `prediction_runs` state machine, one-way `published_at` rule, and `ingest_runs` terminal-only completion lifecycle | T-ED2 | `DESIGNED` | independent design review plus transition tests |
+| ED-11 | Prediction persistence occurs only inside the atomic prediction-set finalization transaction, and late prediction inserts are rejected mechanically without weakening the committed run/finalization equality rule | additive Edge Desk lineage guidance; task T-ED2 contract | deferrable prediction finalization FK plus prediction insert guard requiring parent run `RUNNING` and unfinalized | T-ED2 | `COMPLETE` | committed multi-connection PostgreSQL tests plus direct SQL late-insert rejection coverage |
+| ED-12 | Prediction, policy-version, config-version, decision-agent, and covered historical/provenance rows are mechanically immutable at the database level | additive Edge Desk lineage guidance; task T-ED2 contract | append-only blockers on `predictions`, `decision_policy_versions`, `agent_config_versions`, `decision_agents`, `rating_snapshots`, `odds_snapshots`, `match_versions`, `match_result_observations`, `match_stat_observations`, `player_source_ids`, `identity_resolution_events`, `identity_resolution_candidates`, `tournament_source_ids`, `match_source_ids`, `match_version_sources`, `matches`, and `data_health_checks` | T-ED2 | `COMPLETE` | committed direct SQL mutation-rejection tests plus migration rollback/re-UP coverage |
+| ED-13 | `prediction_runs`, `decisions`, and `ingest_runs` use exact controlled lifecycle guards rather than blanket append-only blocking | additive Edge Desk lineage guidance; task T-ED2 contract | `prediction_runs` state machine, one-way `published_at` rule, and `ingest_runs` terminal-only completion lifecycle | T-ED2 | `COMPLETE` | committed lifecycle transition tests plus runtime compatibility checks for ingest completion |
 | ED-14 | Settlement/CLV append-only redesign and full publication-state closure remain deferred beyond T-ED2 | tennis build spec settlement/publication areas; task T-ED2 contract | later settlement/CLV/publication phases | T-ED3 and T-ED4 | `LOCKED` | design scope review |

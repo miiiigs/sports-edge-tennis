@@ -2,11 +2,17 @@ import os
 import shutil
 import subprocess
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+import threading
+import time
 
 import psycopg
 import pytest
+
+from sports_edge_tennis.data.contracts import IngestCounters, SourceDocument
+from sports_edge_tennis.data.pipeline import finish_ingest_run, start_ingest_run
+from sports_edge_tennis.data.repository import HistoricalRepository
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -429,59 +435,165 @@ def _insert_prediction(
     prediction_locked_at: datetime | None = None,
     created_at: datetime | None = None,
 ) -> int:
-    row_as_of = as_of or _utc(10, 0)
-    row_prediction_locked_at = prediction_locked_at or (row_as_of + timedelta(hours=1))
-    row_created_at = created_at or (row_as_of + timedelta(minutes=10))
-
-    if prediction_status == "PREDICTED":
-        selection_side = 1 if selection_side is None else selection_side
-        win_probability = 0.55 if win_probability is None else win_probability
-    else:
-        selection_side = None
-        win_probability = None
-
-    return _fetchval(
+    return _insert_prediction_batch(
         conn,
-        """
-        INSERT INTO predictions (
-            match_id,
-            prediction_run_id,
-            agent_config_version_id,
-            agent_code,
-            prediction_status,
-            selection_side,
-            win_probability,
-            model_version,
-            feature_version,
-            experiment_id,
-            walk_forward_fold,
-            variant_id,
-            as_of,
-            prediction_locked_at,
-            created_at
+        match_id=match_id,
+        prediction_run_id=prediction_run_id,
+        rows=[
+            {
+                "agent_config_version_id": agent_config_version_id,
+                "agent_code": agent_code,
+                "prediction_status": prediction_status,
+                "selection_side": selection_side,
+                "win_probability": win_probability,
+                "model_version": model_version,
+                "feature_version": feature_version,
+                "experiment_id": experiment_id,
+                "walk_forward_fold": walk_forward_fold,
+                "variant_id": variant_id,
+                "as_of": as_of,
+                "prediction_locked_at": prediction_locked_at,
+                "created_at": created_at,
+            }
+        ],
+    )[0]
+
+
+def _insert_prediction_batch(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    prediction_run_id: int,
+    rows: list[dict[str, object]],
+    terminal_status: str = "COMPLETED",
+    ended_at: datetime | None = None,
+) -> list[int]:
+    prepared_rows: list[tuple] = []
+    locked_at_values: set[datetime] = set()
+
+    for row in rows:
+        row_as_of = row.get("as_of") or _utc(10, 0)
+        assert isinstance(row_as_of, datetime)
+        row_prediction_locked_at = row.get("prediction_locked_at") or (row_as_of + timedelta(hours=1))
+        assert isinstance(row_prediction_locked_at, datetime)
+        row_created_at = row.get("created_at") or (row_as_of + timedelta(minutes=10))
+        assert isinstance(row_created_at, datetime)
+
+        prediction_status = row.get("prediction_status", "PREDICTED")
+        selection_side = row.get("selection_side")
+        win_probability = row.get("win_probability")
+        if prediction_status == "PREDICTED":
+            selection_side = 1 if selection_side is None else selection_side
+            win_probability = 0.55 if win_probability is None else win_probability
+        else:
+            selection_side = None
+            win_probability = None
+
+        locked_at_values.add(row_prediction_locked_at)
+        prepared_rows.append(
+            (
+                match_id,
+                prediction_run_id,
+                row["agent_config_version_id"],
+                row["agent_code"],
+                prediction_status,
+                selection_side,
+                win_probability,
+                row.get("model_version", "m1"),
+                row.get("feature_version", "f1"),
+                row.get("experiment_id"),
+                row.get("walk_forward_fold"),
+                row.get("variant_id", "variant-v1"),
+                row_as_of,
+                row_prediction_locked_at,
+                row_created_at,
+            )
         )
-        VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+
+    if len(locked_at_values) != 1:
+        raise ValueError("prediction batch must share one prediction_locked_at value")
+
+    final_locked_at = next(iter(locked_at_values))
+    terminal_ended_at = ended_at or (final_locked_at + timedelta(minutes=5))
+    inserted_ids: list[int] = []
+
+    with conn.transaction():
+        conn.execute("SET LOCAL lock_timeout = '2s'")
+        conn.execute("SET LOCAL statement_timeout = '5s'")
+        conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
+        conn.execute(
+            """
+            SELECT prediction_run_id
+            FROM prediction_runs
+            WHERE prediction_run_id = %s
+            FOR UPDATE
+            """,
+            (prediction_run_id,),
+        ).fetchone()
+
+        for params in prepared_rows:
+            inserted_ids.append(
+                _fetchval(
+                    conn,
+                    """
+                    INSERT INTO predictions (
+                        match_id,
+                        prediction_run_id,
+                        agent_config_version_id,
+                        agent_code,
+                        prediction_status,
+                        selection_side,
+                        win_probability,
+                        model_version,
+                        feature_version,
+                        experiment_id,
+                        walk_forward_fold,
+                        variant_id,
+                        as_of,
+                        prediction_locked_at,
+                        created_at
+                    )
+                    VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    RETURNING prediction_id
+                    """,
+                    params,
+                )
+            )
+
+        conn.execute(
+            """
+            UPDATE prediction_runs
+            SET run_status = %s,
+                prediction_finalized_at = %s,
+                ended_at = %s
+            WHERE prediction_run_id = %s
+            """,
+            (terminal_status, final_locked_at, terminal_ended_at, prediction_run_id),
         )
-        RETURNING prediction_id
-        """,
-        (
-            match_id,
-            prediction_run_id,
-            agent_config_version_id,
-            agent_code,
-            prediction_status,
-            selection_side,
-            win_probability,
-            model_version,
-            feature_version,
-            experiment_id,
-            walk_forward_fold,
-            variant_id,
-            row_as_of,
-            row_prediction_locked_at,
-            row_created_at,
-        ),
+
+    return inserted_ids
+
+
+def _make_source_document() -> SourceDocument:
+    return SourceDocument(
+        source_system="SACKMANN",
+        source_name="Sample source",
+        source_url=None,
+        canonical_source=None,
+        retrieval_source=None,
+        archive_revision=None,
+        upstream_revision=None,
+        source_license=None,
+        local_path=REPO_ROOT / "README.md",
+        retrieved_at=_utc(6, 0),
+        filename="sample.csv",
+        sha256="a" * 64,
+        size_bytes=123,
+        dataset_type="matches",
+        season=2026,
+        source_revision="rev-1",
     )
 
 
@@ -1392,10 +1504,9 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
         row_locked_at = locked_at + timedelta(minutes=int(probability * 10))
         prediction_run_id = _insert_prediction_run(
             db,
+            run_status="RUNNING",
             as_of=row_as_of,
             started_at=row_as_of,
-            prediction_finalized_at=row_locked_at,
-            ended_at=row_locked_at + timedelta(minutes=5),
         )
         _insert_prediction(
             db,
@@ -1414,10 +1525,9 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
 
     abstained_run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=as_of,
         started_at=as_of,
-        prediction_finalized_at=locked_at,
-        ended_at=locked_at + timedelta(minutes=5),
     )
     _insert_prediction(
         db,
@@ -1435,10 +1545,9 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
     with pytest.raises(psycopg.Error):
         negative_run_id = _insert_prediction_run(
             db,
+            run_status="RUNNING",
             as_of=as_of,
             started_at=as_of,
-            prediction_finalized_at=locked_at,
-            ended_at=locked_at + timedelta(minutes=5),
         )
         _insert_prediction(
             db,
@@ -1460,10 +1569,9 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
         gt_one_locked_at = locked_at + timedelta(minutes=1)
         gt_one_run_id = _insert_prediction_run(
             db,
+            run_status="RUNNING",
             as_of=gt_one_as_of,
             started_at=gt_one_as_of,
-            prediction_finalized_at=gt_one_locked_at,
-            ended_at=gt_one_locked_at + timedelta(minutes=5),
         )
         _insert_prediction(
             db,
@@ -1481,53 +1589,24 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
         )
 
     with pytest.raises(psycopg.Error):
-        db.execute(
-            """
-            INSERT INTO predictions (
-                match_id,
-                prediction_run_id,
-                agent_config_version_id,
-                agent_code,
-                prediction_status,
-                selection_side,
-                win_probability,
-                model_version,
-                feature_version,
-                variant_id,
-                as_of,
-                prediction_locked_at,
-                created_at
-            )
-            VALUES (
-                %s,
-                %s,
-                %s,
-                'AGENT_3_INTRANSITIVITY',
-                'ABSTAINED',
-                1,
-                0.50,
-                'm1',
-                'f1',
-                'bad-abstained',
-                %s,
-                %s,
-                %s
-            )
-            """,
-            (
-                fixture["match_id"],
-                _insert_prediction_run(
-                    db,
-                    as_of=as_of + timedelta(minutes=2),
-                    started_at=as_of + timedelta(minutes=2),
-                    prediction_finalized_at=locked_at + timedelta(minutes=2),
-                    ended_at=locked_at + timedelta(minutes=7),
-                ),
-                agent_3_config_id,
-                as_of + timedelta(minutes=2),
-                locked_at + timedelta(minutes=2),
-                as_of + timedelta(minutes=12),
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=_insert_prediction_run(
+                db,
+                run_status="RUNNING",
+                as_of=as_of + timedelta(minutes=2),
+                started_at=as_of + timedelta(minutes=2),
             ),
+            agent_config_version_id=agent_3_config_id,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            prediction_status="ABSTAINED",
+            selection_side=1,
+            win_probability=0.50,
+            variant_id="bad-abstained",
+            as_of=as_of + timedelta(minutes=2),
+            prediction_locked_at=locked_at + timedelta(minutes=2),
+            created_at=as_of + timedelta(minutes=12),
         )
 
     with pytest.raises(psycopg.Error):
@@ -1535,10 +1614,9 @@ def test_predictions_allow_pre_lock_persistence_without_probability_leakage(db: 
         created_before_locked_at = locked_at + timedelta(minutes=3)
         created_before_run_id = _insert_prediction_run(
             db,
+            run_status="RUNNING",
             as_of=created_before_as_of,
             started_at=created_before_as_of,
-            prediction_finalized_at=created_before_locked_at,
-            ended_at=created_before_locked_at + timedelta(minutes=5),
         )
         _insert_prediction(
             db,
@@ -2382,10 +2460,9 @@ def test_predictions_enforce_agent_config_alignment(db: psycopg.Connection):
     locked_at = _utc(11, 0)
     prediction_run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=as_of,
         started_at=as_of,
-        prediction_finalized_at=locked_at,
-        ended_at=locked_at + timedelta(minutes=5),
     )
     correct_config_id = _insert_agent_config_version(
         db,
@@ -2432,10 +2509,9 @@ def test_predictions_enforce_agent_config_alignment(db: psycopg.Connection):
             match_id=fixture["match_id"],
             prediction_run_id=_insert_prediction_run(
                 db,
+                run_status="RUNNING",
                 as_of=as_of + timedelta(minutes=5),
                 started_at=as_of + timedelta(minutes=5),
-                prediction_finalized_at=locked_at + timedelta(minutes=5),
-                ended_at=locked_at + timedelta(minutes=10),
             ),
             agent_config_version_id=wrong_agent_config_id,
             agent_code="AGENT_1_SURFACE_ELO",
@@ -2454,10 +2530,9 @@ def test_predictions_enforce_agent_config_alignment(db: psycopg.Connection):
             match_id=fixture["match_id"],
             prediction_run_id=_insert_prediction_run(
                 db,
+                run_status="RUNNING",
                 as_of=as_of + timedelta(minutes=10),
                 started_at=as_of + timedelta(minutes=10),
-                prediction_finalized_at=locked_at + timedelta(minutes=10),
-                ended_at=locked_at + timedelta(minutes=15),
             ),
             agent_config_version_id=wrong_model_config_id,
             agent_code="AGENT_1_SURFACE_ELO",
@@ -2478,10 +2553,9 @@ def test_predictions_enforce_agent_config_alignment(db: psycopg.Connection):
             match_id=fixture["match_id"],
             prediction_run_id=_insert_prediction_run(
                 db,
+                run_status="RUNNING",
                 as_of=as_of + timedelta(minutes=15),
                 started_at=as_of + timedelta(minutes=15),
-                prediction_finalized_at=locked_at + timedelta(minutes=15),
-                ended_at=locked_at + timedelta(minutes=20),
             ),
             agent_config_version_id=wrong_feature_config_id,
             agent_code="AGENT_1_SURFACE_ELO",
@@ -2506,10 +2580,9 @@ def test_predictions_enforce_run_match_agent_identity(db: psycopg.Connection):
     )
     run_1_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     _insert_prediction(
         db,
@@ -2544,10 +2617,9 @@ def test_predictions_enforce_run_match_agent_identity(db: psycopg.Connection):
 
     run_2_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 30),
         started_at=_utc(10, 30),
-        prediction_finalized_at=_utc(11, 30),
-        ended_at=_utc(11, 35),
     )
     _insert_prediction(
         db,
@@ -2576,10 +2648,9 @@ def test_predictions_enforce_run_as_of_and_finalization_alignment(db: psycopg.Co
     )
     run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
 
     _insert_prediction(
@@ -2603,10 +2674,9 @@ def test_predictions_enforce_run_as_of_and_finalization_alignment(db: psycopg.Co
             match_id=fixture["match_id"],
             prediction_run_id=_insert_prediction_run(
                 db,
+                run_status="RUNNING",
                 as_of=_utc(12, 0),
                 started_at=_utc(12, 0),
-                prediction_finalized_at=_utc(13, 0),
-                ended_at=_utc(13, 5),
             ),
             agent_config_version_id=config_id,
             agent_code="AGENT_1_SURFACE_ELO",
@@ -2625,10 +2695,9 @@ def test_predictions_enforce_run_as_of_and_finalization_alignment(db: psycopg.Co
             match_id=fixture["match_id"],
             prediction_run_id=_insert_prediction_run(
                 db,
+                run_status="RUNNING",
                 as_of=_utc(14, 0),
                 started_at=_utc(14, 0),
-                prediction_finalized_at=_utc(15, 0),
-                ended_at=_utc(15, 5),
             ),
             agent_config_version_id=config_id,
             agent_code="AGENT_1_SURFACE_ELO",
@@ -2737,10 +2806,9 @@ def test_decision_agents_enforce_composite_lineage_keys(db: psycopg.Connection):
     )
     run_1_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     run_2_id = _insert_prediction_run(
         db,
@@ -2898,10 +2966,9 @@ def test_decision_agents_active_rows_require_predicted_lineage_and_audit_copies(
     fixture = _insert_match_fixture(db)
     run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     policy_id = _insert_decision_policy_version(db, policy_version="active-policy")
     agent_1_config_id = _insert_agent_config_version(
@@ -2915,31 +2982,32 @@ def test_decision_agents_active_rows_require_predicted_lineage_and_audit_copies(
         config_version="active-agent-2",
     )
 
-    predicted_prediction_id = _insert_prediction(
+    predicted_prediction_id, abstained_prediction_id = _insert_prediction_batch(
         db,
         match_id=fixture["match_id"],
         prediction_run_id=run_id,
-        agent_config_version_id=agent_1_config_id,
-        agent_code="AGENT_1_SURFACE_ELO",
-        prediction_status="PREDICTED",
-        selection_side=1,
-        win_probability=0.61,
-        variant_id="predicted-for-active",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
-    )
-    abstained_prediction_id = _insert_prediction(
-        db,
-        match_id=fixture["match_id"],
-        prediction_run_id=run_id,
-        agent_config_version_id=agent_2_config_id,
-        agent_code="AGENT_2_HIERARCHICAL_MARKOV",
-        prediction_status="ABSTAINED",
-        variant_id="abstained-for-active",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
+        rows=[
+            {
+                "agent_config_version_id": agent_1_config_id,
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": 0.61,
+                "variant_id": "predicted-for-active",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+            {
+                "agent_config_version_id": agent_2_config_id,
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "ABSTAINED",
+                "variant_id": "abstained-for-active",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+        ],
     )
 
     good_decision_id = _insert_decision(
@@ -3076,10 +3144,9 @@ def test_decision_agents_abstained_rows_require_abstained_prediction(
     fixture = _insert_match_fixture(db)
     run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     policy_id = _insert_decision_policy_version(db, policy_version="abstained-policy")
     agent_1_config_id = _insert_agent_config_version(
@@ -3093,31 +3160,32 @@ def test_decision_agents_abstained_rows_require_abstained_prediction(
         config_version="abstained-agent-2",
     )
 
-    predicted_prediction_id = _insert_prediction(
+    predicted_prediction_id, abstained_prediction_id = _insert_prediction_batch(
         db,
         match_id=fixture["match_id"],
         prediction_run_id=run_id,
-        agent_config_version_id=agent_1_config_id,
-        agent_code="AGENT_1_SURFACE_ELO",
-        prediction_status="PREDICTED",
-        selection_side=1,
-        win_probability=0.60,
-        variant_id="predicted-for-abstained",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
-    )
-    abstained_prediction_id = _insert_prediction(
-        db,
-        match_id=fixture["match_id"],
-        prediction_run_id=run_id,
-        agent_config_version_id=agent_2_config_id,
-        agent_code="AGENT_2_HIERARCHICAL_MARKOV",
-        prediction_status="ABSTAINED",
-        variant_id="abstained-good",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
+        rows=[
+            {
+                "agent_config_version_id": agent_1_config_id,
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": 0.60,
+                "variant_id": "predicted-for-abstained",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+            {
+                "agent_config_version_id": agent_2_config_id,
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "ABSTAINED",
+                "variant_id": "abstained-good",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+        ],
     )
 
     good_decision_id = _insert_decision(
@@ -3258,10 +3326,9 @@ def test_decision_agents_inactive_rows_require_null_prediction_and_proposals(
     fixture = _insert_match_fixture(db)
     run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     policy_id = _insert_decision_policy_version(db, policy_version="inactive-policy")
     agent_1_config_id = _insert_agent_config_version(
@@ -3384,10 +3451,9 @@ def test_no_bet_decision_retains_linked_predictions(db: psycopg.Connection):
     fixture = _insert_match_fixture(db)
     run_id = _insert_prediction_run(
         db,
+        run_status="RUNNING",
         as_of=_utc(10, 0),
         started_at=_utc(10, 0),
-        prediction_finalized_at=_utc(11, 0),
-        ended_at=_utc(11, 5),
     )
     policy_id = _insert_decision_policy_version(db, policy_version="no-bet-policy")
     agent_1_config_id = _insert_agent_config_version(
@@ -3401,31 +3467,32 @@ def test_no_bet_decision_retains_linked_predictions(db: psycopg.Connection):
         config_version="no-bet-agent-2",
     )
 
-    predicted_prediction_id = _insert_prediction(
+    predicted_prediction_id, abstained_prediction_id = _insert_prediction_batch(
         db,
         match_id=fixture["match_id"],
         prediction_run_id=run_id,
-        agent_config_version_id=agent_1_config_id,
-        agent_code="AGENT_1_SURFACE_ELO",
-        prediction_status="PREDICTED",
-        selection_side=1,
-        win_probability=0.58,
-        variant_id="no-bet-predicted",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
-    )
-    abstained_prediction_id = _insert_prediction(
-        db,
-        match_id=fixture["match_id"],
-        prediction_run_id=run_id,
-        agent_config_version_id=agent_2_config_id,
-        agent_code="AGENT_2_HIERARCHICAL_MARKOV",
-        prediction_status="ABSTAINED",
-        variant_id="no-bet-abstained",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
+        rows=[
+            {
+                "agent_config_version_id": agent_1_config_id,
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": 0.58,
+                "variant_id": "no-bet-predicted",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+            {
+                "agent_config_version_id": agent_2_config_id,
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "ABSTAINED",
+                "variant_id": "no-bet-abstained",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+                "created_at": _utc(10, 10),
+            },
+        ],
     )
     decision_id = _insert_decision(
         db,
@@ -3534,6 +3601,1010 @@ def test_0004_down_migration_rejects_populated_ted1_state(postgres_dsn: str):
         with psycopg.connect(postgres_dsn, autocommit=True) as conn:
             assert _table_exists(conn, "prediction_runs")
             assert conn.execute("SELECT count(*) FROM prediction_runs").fetchone()[0] == 1
+    finally:
+        _reset_public_schema(postgres_dsn)
+        _run_manifest_migrations(postgres_dsn, "up")
+
+
+def test_0005_upgrade_from_populated_0004_and_reapplies_cleanly(postgres_dsn: str):
+    entries = _migration_entries()
+    up_0001 = REPO_ROOT / Path(entries[0]["up"])
+    up_0002 = REPO_ROOT / Path(entries[1]["up"])
+    up_0003 = REPO_ROOT / Path(entries[2]["up"])
+    up_0004 = REPO_ROOT / Path(entries[3]["up"])
+    up_0005 = REPO_ROOT / Path(entries[4]["up"])
+    down_0005 = REPO_ROOT / Path(entries[4]["down"])
+
+    try:
+        _reset_public_schema(postgres_dsn)
+        _run_psql(postgres_dsn, up_0001)
+        _run_psql(postgres_dsn, up_0002)
+        _run_psql(postgres_dsn, up_0003)
+        _run_psql(postgres_dsn, up_0004)
+
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            fixture = _insert_match_fixture(conn)
+            policy_id = _insert_decision_policy_version(conn, policy_version="upgrade-policy")
+            config_id = _insert_agent_config_version(
+                conn,
+                agent_code="AGENT_1_SURFACE_ELO",
+                config_version="upgrade-config",
+            )
+            run_id = _insert_prediction_run(
+                conn,
+                run_status="COMPLETED",
+                as_of=_utc(10, 0),
+                started_at=_utc(10, 0),
+                prediction_finalized_at=_utc(11, 0),
+                ended_at=_utc(11, 5),
+            )
+            prediction_id = _fetchval(
+                conn,
+                """
+                INSERT INTO predictions (
+                    match_id,
+                    prediction_run_id,
+                    agent_config_version_id,
+                    agent_code,
+                    prediction_status,
+                    selection_side,
+                    win_probability,
+                    model_version,
+                    feature_version,
+                    variant_id,
+                    as_of,
+                    prediction_locked_at,
+                    created_at
+                )
+                VALUES (%s, %s, %s, 'AGENT_1_SURFACE_ELO', 'PREDICTED', 1, 0.55, 'm1', 'f1', 'upgrade-prediction', %s, %s, %s)
+                RETURNING prediction_id
+                """,
+                (
+                    fixture["match_id"],
+                    run_id,
+                    config_id,
+                    _utc(10, 0),
+                    _utc(11, 0),
+                    _utc(10, 10),
+                ),
+            )
+            decision_id = _insert_decision(
+                conn,
+                match_id=fixture["match_id"],
+                prediction_run_id=run_id,
+                decision_policy_version_id=policy_id,
+                variant_id="upgrade-decision",
+                as_of=_utc(10, 5),
+                prediction_locked_at=_utc(11, 0),
+                created_at=_utc(10, 15),
+            )
+            conn.execute(
+                """
+                INSERT INTO decision_agents (
+                    decision_id,
+                    agent_code,
+                    participation_status,
+                    prediction_run_id,
+                    match_id,
+                    prediction_id,
+                    proposed_selection_side,
+                    proposed_probability,
+                    created_at
+                )
+                VALUES (%s, 'AGENT_1_SURFACE_ELO', 'ACTIVE', %s, %s, %s, 1, 0.55, %s)
+                """,
+                (decision_id, run_id, fixture["match_id"], prediction_id, _utc(10, 20)),
+            )
+
+        _run_psql(postgres_dsn, up_0005)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert conn.execute(
+                """
+                SELECT condeferrable, condeferred
+                FROM pg_constraint
+                WHERE conname = 'fk_predictions_prediction_run_finalization'
+                """
+            ).fetchone() == (True, False)
+            assert conn.execute("SELECT count(*) FROM predictions").fetchone()[0] == 1
+            assert conn.execute("SELECT count(*) FROM decisions").fetchone()[0] == 1
+            assert conn.execute("SELECT count(*) FROM decision_agents").fetchone()[0] == 1
+
+        _run_psql(postgres_dsn, down_0005)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert conn.execute(
+                """
+                SELECT condeferrable, condeferred
+                FROM pg_constraint
+                WHERE conname = 'fk_predictions_prediction_run_finalization'
+                """
+            ).fetchone() == (False, False)
+
+        _run_psql(postgres_dsn, up_0005)
+        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+            assert conn.execute(
+                """
+                SELECT condeferrable, condeferred
+                FROM pg_constraint
+                WHERE conname = 'fk_predictions_prediction_run_finalization'
+                """
+            ).fetchone() == (True, False)
+    finally:
+        _reset_public_schema(postgres_dsn)
+        _run_manifest_migrations(postgres_dsn, "up")
+
+
+def test_0005_prediction_runs_enforce_controlled_lifecycle(db: psycopg.Connection):
+    running_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(9, 0),
+        started_at=_utc(9, 0),
+    )
+    db.execute(
+        """
+        UPDATE prediction_runs
+        SET prediction_finalized_at = %s
+        WHERE prediction_run_id = %s
+        """,
+        (_utc(9, 30), running_id),
+    )
+    assert db.execute(
+        """
+        SELECT run_status, prediction_finalized_at, ended_at
+        FROM prediction_runs
+        WHERE prediction_run_id = %s
+        """,
+        (running_id,),
+    ).fetchone() == ("RUNNING", _utc(9, 30), None)
+
+    db.execute(
+        """
+        UPDATE prediction_runs
+        SET run_status = 'COMPLETED',
+            prediction_finalized_at = %s,
+            ended_at = %s
+        WHERE prediction_run_id = %s
+        """,
+        (_utc(9, 30), _utc(9, 35), running_id),
+    )
+
+    failed_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+    )
+    db.execute(
+        """
+        UPDATE prediction_runs
+        SET run_status = 'FAILED',
+            ended_at = %s
+        WHERE prediction_run_id = %s
+        """,
+        (_utc(10, 20), failed_id),
+    )
+
+    cancelled_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(11, 0),
+        started_at=_utc(11, 0),
+    )
+    db.execute(
+        """
+        UPDATE prediction_runs
+        SET run_status = 'CANCELLED',
+            prediction_finalized_at = %s,
+            ended_at = %s
+        WHERE prediction_run_id = %s
+        """,
+        (_utc(11, 10), _utc(11, 12), cancelled_id),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE prediction_runs
+            SET experiment_id = 'rewritten'
+            WHERE prediction_run_id = %s
+            """,
+            (running_id,),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE prediction_runs
+            SET prediction_finalized_at = %s
+            WHERE prediction_run_id = %s
+            """,
+            (_utc(9, 31), running_id),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE prediction_runs
+            SET run_status = 'FAILED'
+            WHERE prediction_run_id = %s
+            """,
+            (running_id,),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            DELETE FROM prediction_runs
+            WHERE prediction_run_id = %s
+            """,
+            (failed_id,),
+        )
+
+
+def test_0005_decisions_allow_one_way_publication_only(db: psycopg.Connection):
+    fixture = _insert_match_fixture(db)
+    run_id = _insert_prediction_run(
+        db,
+        run_status="COMPLETED",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_finalized_at=_utc(11, 0),
+        ended_at=_utc(11, 5),
+    )
+    policy_id = _insert_decision_policy_version(db, policy_version="publication-policy")
+    decision_id = _insert_decision(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        decision_policy_version_id=policy_id,
+        variant_id="publication-decision",
+        published_at=None,
+    )
+
+    db.execute(
+        """
+        UPDATE decisions
+        SET published_at = %s
+        WHERE decision_id = %s
+        """,
+        (_utc(12, 0), decision_id),
+    )
+    assert db.execute(
+        "SELECT published_at FROM decisions WHERE decision_id = %s",
+        (decision_id,),
+    ).fetchone()[0] == _utc(12, 0)
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE decisions
+            SET published_at = %s
+            WHERE decision_id = %s
+            """,
+            (_utc(12, 5), decision_id),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE decisions
+            SET decision_status = 'NO_BET'
+            WHERE decision_id = %s
+            """,
+            (decision_id,),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            DELETE FROM decisions
+            WHERE decision_id = %s
+            """,
+            (decision_id,),
+        )
+
+
+def test_0005_ingest_runs_allow_only_one_terminal_update_and_runtime_finish_path(
+    db: psycopg.Connection,
+):
+    ingest_run_id = start_ingest_run(
+        db,
+        source_system="SACKMANN",
+        source_dataset="matches",
+        document=_make_source_document(),
+    )
+    finish_ingest_run(
+        db,
+        ingest_run_id=ingest_run_id,
+        counters=IngestCounters(
+            rows_seen=10,
+            rows_inserted=8,
+            rows_updated=1,
+            rows_rejected=1,
+            rows_unmatched=0,
+        ),
+        status="COMPLETED",
+        error_summary=[{"kind": "row_rejected", "count": 1}],
+    )
+    finished_row = db.execute(
+        """
+        SELECT status, rows_seen, rows_inserted, rows_updated, rows_rejected, rows_unmatched, finished_at
+        FROM ingest_runs
+        WHERE ingest_run_id = %s
+        """,
+        (ingest_run_id,),
+    ).fetchone()
+    assert finished_row[0:6] == ("COMPLETED", 10, 8, 1, 1, 0)
+    assert finished_row[6] is not None
+
+    with pytest.raises(psycopg.Error):
+        finish_ingest_run(
+            db,
+            ingest_run_id=ingest_run_id,
+            counters=IngestCounters(rows_seen=11),
+            status="FAILED",
+            error_summary=[{"kind": "late_rewrite"}],
+        )
+
+    running_id = _fetchval(
+        db,
+        """
+        INSERT INTO ingest_runs (
+            source_system,
+            source_dataset,
+            started_at,
+            status,
+            source_version,
+            source_file_name,
+            source_file_hash
+        )
+        VALUES ('ODDS_API', 'prices', %s, 'RUNNING', 'v1', 'odds.csv', 'b')
+        RETURNING ingest_run_id
+        """,
+        (_utc(13, 0),),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE ingest_runs
+            SET rows_seen = 5
+            WHERE ingest_run_id = %s
+            """,
+            (running_id,),
+        )
+
+    db.execute(
+        """
+        UPDATE ingest_runs
+        SET finished_at = %s,
+            status = 'PARTIAL',
+            rows_seen = 5,
+            rows_inserted = 4,
+            rows_updated = 0,
+            rows_rejected = 1,
+            rows_unmatched = 0,
+            error_summary = '[{"kind":"partial"}]'::jsonb
+        WHERE ingest_run_id = %s
+        """,
+        (_utc(13, 10), running_id),
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE ingest_runs
+            SET source_file_name = 'rewritten.csv'
+            WHERE ingest_run_id = %s
+            """,
+            (running_id,),
+        )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            DELETE FROM ingest_runs
+            WHERE ingest_run_id = %s
+            """,
+            (running_id,),
+        )
+
+
+def test_0005_mutable_reference_tables_remain_writable(db: psycopg.Connection):
+    ingest_run_id = _fetchval(
+        db,
+        """
+        INSERT INTO ingest_runs (source_system, source_dataset, started_at, status)
+        VALUES ('SACKMANN', 'matches', %s, 'RUNNING')
+        RETURNING ingest_run_id
+        """,
+        (_utc(8, 0),),
+    )
+    repository = HistoricalRepository(db, ingest_run_id)
+
+    player_id = _insert_player(db, "Mutable Alias Player")
+    repository.ensure_player_alias(player_id, "SACKMANN", "Mutable Alias Player", _utc(8, 0))
+    repository.ensure_player_alias(player_id, "SACKMANN", "Mutable Alias Player", _utc(9, 0))
+    assert db.execute(
+        """
+        SELECT first_observed_at, last_observed_at
+        FROM player_aliases
+        WHERE player_id = %s AND source_system = 'SACKMANN'
+        """,
+        (player_id,),
+    ).fetchone() == (_utc(8, 0), _utc(9, 0))
+
+    tournament_id = _fetchval(
+        db,
+        """
+        INSERT INTO tournaments (canonical_name, tour_scope, competition_tier)
+        VALUES ('Mutable Open', 'ATP_MAIN', 'ATP_250')
+        RETURNING tournament_id
+        """,
+        tuple(),
+    )
+    edition_id = _fetchval(
+        db,
+        """
+        INSERT INTO tournament_editions (
+            tournament_id,
+            season_year,
+            edition_name,
+            surface,
+            start_date,
+            end_date
+        )
+        VALUES (%s, 2026, 'Mutable Open 2026', NULL, NULL, NULL)
+        RETURNING tournament_edition_id
+        """,
+        (tournament_id,),
+    )
+    resolved_edition_id = repository.get_or_create_tournament_edition(
+        tournament_id=tournament_id,
+        season_year=2026,
+        edition_name="Mutable Open 2026",
+        surface="CLAY",
+        start_date=date(2026, 8, 24),
+        end_date=date(2026, 8, 31),
+    )
+    assert resolved_edition_id == edition_id
+    assert db.execute(
+        """
+        SELECT surface, start_date, end_date
+        FROM tournament_editions
+        WHERE tournament_edition_id = %s
+        """,
+        (edition_id,),
+    ).fetchone() == ("CLAY", date(2026, 8, 24), date(2026, 8, 31))
+
+
+def test_0005_append_only_tables_reject_update_and_delete(db: psycopg.Connection):
+    fixture = _insert_match_fixture(db)
+    player_source_id = _fetchval(
+        db,
+        """
+        INSERT INTO player_source_ids (player_id, source_system, source_player_id)
+        VALUES (%s, 'SACKMANN', 'player-source-1')
+        RETURNING player_source_id
+        """,
+        (fixture["player_1_id"],),
+    )
+    with db.transaction():
+        event_id = _fetchval(
+            db,
+            """
+            INSERT INTO identity_resolution_events (
+                source_system,
+                raw_player_name,
+                normalized_player_name,
+                resolution_status,
+                source_observed_at,
+                as_of
+            )
+            VALUES ('SACKMANN', 'Ambiguous Player', 'ambiguous player', 'AMBIGUOUS', %s, %s)
+            RETURNING identity_resolution_event_id
+            """,
+            (_utc(8, 0), _utc(8, 0)),
+        )
+        candidate_id_1 = _fetchval(
+            db,
+            """
+            INSERT INTO identity_resolution_candidates (identity_resolution_event_id, player_id)
+            VALUES (%s, %s)
+            RETURNING identity_resolution_candidate_id
+            """,
+            (event_id, fixture["player_1_id"]),
+        )
+        candidate_id_2 = _fetchval(
+            db,
+            """
+            INSERT INTO identity_resolution_candidates (identity_resolution_event_id, player_id)
+            VALUES (%s, %s)
+            RETURNING identity_resolution_candidate_id
+            """,
+            (event_id, fixture["player_2_id"]),
+        )
+    tournament_id = _fetchval(
+        db,
+        """
+        SELECT tournament_id
+        FROM tournament_editions
+        WHERE tournament_edition_id = %s
+        """,
+        (fixture["edition_id"],),
+    )
+    tournament_source_id = _fetchval(
+        db,
+        """
+        INSERT INTO tournament_source_ids (tournament_id, source_system, source_tournament_id)
+        VALUES (%s, 'SACKMANN', 'tournament-source-1')
+        RETURNING tournament_source_id
+        """,
+        (tournament_id,),
+    )
+    match_source_id = _fetchval(
+        db,
+        """
+        INSERT INTO match_source_ids (match_id, match_version_id, source_system, source_match_id)
+        VALUES (%s, %s, 'SACKMANN', 'match-source-1')
+        RETURNING match_source_id
+        """,
+        (fixture["match_id"], fixture["match_version_id"]),
+    )
+    match_version_source_id = _fetchval(
+        db,
+        """
+        INSERT INTO match_version_sources (
+            match_version_id,
+            source_system,
+            source_match_id,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, 'SACKMANN', 'match-version-source-1', %s, %s)
+        RETURNING match_version_source_id
+        """,
+        (fixture["match_version_id"], _utc(8, 0), _utc(8, 0)),
+    )
+    match_result_observation_id = _fetchval(
+        db,
+        """
+        INSERT INTO match_result_observations (
+            match_id,
+            outcome_status,
+            winner_side,
+            sets_won_player_1,
+            sets_won_player_2,
+            games_won_player_1,
+            games_won_player_2,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, 'COMPLETED', 1, 2, 0, 12, 6, %s, %s)
+        RETURNING match_result_observation_id
+        """,
+        (fixture["match_id"], _utc(9, 0), _utc(9, 0)),
+    )
+    match_stat_observation_id = _fetchval(
+        db,
+        """
+        INSERT INTO match_stat_observations (
+            match_id,
+            player_id,
+            source_system,
+            source_record_id,
+            observation_kind,
+            first_serves_in,
+            first_serve_points_won,
+            second_serve_points_won,
+            service_points_played,
+            return_points_won,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, %s, 'SACKMANN', 'stat-source-1', 'RAW_SOURCE', 20, 15, 10, 30, 8, %s, %s)
+        RETURNING match_stat_observation_id
+        """,
+        (fixture["match_id"], fixture["player_1_id"], _utc(9, 0), _utc(9, 0)),
+    )
+    odds_snapshot_id = _fetchval(
+        db,
+        """
+        INSERT INTO odds_snapshots (
+            match_id,
+            source_system,
+            bookmaker_code,
+            market_type,
+            selection_type,
+            decimal_price,
+            source_snapshot_id,
+            source_observed_at,
+            as_of
+        )
+        VALUES (%s, 'ODDS_API', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 2.10, 'odds-source-1', %s, %s)
+        RETURNING odds_snapshot_id
+        """,
+        (fixture["match_id"], _utc(9, 30), _utc(9, 30)),
+    )
+    rating_snapshot_id = _fetchval(
+        db,
+        """
+        INSERT INTO rating_snapshots (
+            player_id,
+            rating_metric,
+            surface,
+            rating_value,
+            sample_match_count,
+            model_version,
+            feature_version,
+            as_of
+        )
+        VALUES (%s, 'ELO', 'HARD', 1875.25, 50, 'm1', 'f1', %s)
+        RETURNING rating_snapshot_id
+        """,
+        (fixture["player_1_id"], _utc(9, 45)),
+    )
+    policy_id = _insert_decision_policy_version(db, policy_version="append-only-policy")
+    config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_1_SURFACE_ELO",
+        config_version="append-only-config",
+    )
+    run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+    )
+    prediction_id = _insert_prediction(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        agent_config_version_id=config_id,
+        agent_code="AGENT_1_SURFACE_ELO",
+        prediction_status="PREDICTED",
+        selection_side=1,
+        win_probability=0.55,
+        variant_id="append-only-prediction",
+        as_of=_utc(10, 0),
+        prediction_locked_at=_utc(11, 0),
+        created_at=_utc(10, 10),
+    )
+    decision_id = _insert_decision(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        decision_policy_version_id=policy_id,
+        variant_id="append-only-decision",
+        as_of=_utc(10, 5),
+        prediction_locked_at=_utc(11, 0),
+        created_at=_utc(10, 15),
+    )
+    decision_agent_id = _fetchval(
+        db,
+        """
+        INSERT INTO decision_agents (
+            decision_id,
+            agent_code,
+            participation_status,
+            prediction_run_id,
+            match_id,
+            prediction_id,
+            proposed_selection_side,
+            proposed_probability,
+            created_at
+        )
+        VALUES (%s, 'AGENT_1_SURFACE_ELO', 'ACTIVE', %s, %s, %s, 1, 0.55, %s)
+        RETURNING decision_agent_id
+        """,
+        (decision_id, run_id, fixture["match_id"], prediction_id, _utc(10, 20)),
+    )
+    data_health_check_id = _fetchval(
+        db,
+        """
+        INSERT INTO data_health_checks (
+            source_system,
+            dataset_name,
+            checked_at,
+            freshness_state,
+            unmatched_count,
+            error_count,
+            status
+        )
+        VALUES ('SACKMANN', 'matches', %s, 'FRESH', 0, 0, 'HEALTHY')
+        RETURNING data_health_check_id
+        """,
+        (_utc(12, 0),),
+    )
+
+    cases = [
+        ("player_source_ids", "player_source_id", player_source_id),
+        ("identity_resolution_events", "identity_resolution_event_id", event_id),
+        ("identity_resolution_candidates", "identity_resolution_candidate_id", candidate_id_1),
+        ("tournament_source_ids", "tournament_source_id", tournament_source_id),
+        ("matches", "match_id", fixture["match_id"]),
+        ("match_versions", "match_version_id", fixture["match_version_id"]),
+        ("match_source_ids", "match_source_id", match_source_id),
+        ("match_version_sources", "match_version_source_id", match_version_source_id),
+        ("match_result_observations", "match_result_observation_id", match_result_observation_id),
+        ("match_stat_observations", "match_stat_observation_id", match_stat_observation_id),
+        ("odds_snapshots", "odds_snapshot_id", odds_snapshot_id),
+        ("rating_snapshots", "rating_snapshot_id", rating_snapshot_id),
+        ("predictions", "prediction_id", prediction_id),
+        ("decision_agents", "decision_agent_id", decision_agent_id),
+        ("decision_policy_versions", "decision_policy_version_id", policy_id),
+        ("agent_config_versions", "agent_config_version_id", config_id),
+        ("data_health_checks", "data_health_check_id", data_health_check_id),
+    ]
+
+    for table_name, pk_name, pk_value in cases:
+        with pytest.raises(psycopg.Error):
+            db.execute(
+                f"UPDATE {table_name} SET {pk_name} = {pk_name} WHERE {pk_name} = %s",
+                (pk_value,),
+            )
+        with pytest.raises(psycopg.Error):
+            db.execute(
+                f"DELETE FROM {table_name} WHERE {pk_name} = %s",
+                (pk_value,),
+            )
+
+    assert candidate_id_2 > candidate_id_1
+
+
+def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: str):
+    late_insert_result: dict[str, object] = {}
+    competing_update_result: dict[str, object] = {}
+
+    try:
+        _reset_public_schema(postgres_dsn)
+        _run_manifest_migrations(postgres_dsn, "up")
+
+        with psycopg.connect(postgres_dsn, autocommit=True) as setup_conn:
+            fixture = _insert_match_fixture(setup_conn)
+            run_id = _insert_prediction_run(
+                setup_conn,
+                run_status="RUNNING",
+                as_of=_utc(10, 0),
+                started_at=_utc(10, 0),
+            )
+            config_1_id = _insert_agent_config_version(
+                setup_conn,
+                agent_code="AGENT_1_SURFACE_ELO",
+                config_version="concurrency-agent-1",
+            )
+            config_2_id = _insert_agent_config_version(
+                setup_conn,
+                agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+                config_version="concurrency-agent-2",
+            )
+
+            with pytest.raises(psycopg.Error):
+                setup_conn.execute(
+                    """
+                    INSERT INTO predictions (
+                        match_id,
+                        prediction_run_id,
+                        agent_config_version_id,
+                        agent_code,
+                        prediction_status,
+                        selection_side,
+                        win_probability,
+                        model_version,
+                        feature_version,
+                        variant_id,
+                        as_of,
+                        prediction_locked_at,
+                        created_at
+                    )
+                    VALUES (%s, %s, %s, 'AGENT_1_SURFACE_ELO', 'PREDICTED', 1, 0.55, 'm1', 'f1', 'standalone-insert', %s, %s, %s)
+                    """,
+                    (
+                        fixture["match_id"],
+                        run_id,
+                        config_1_id,
+                        _utc(10, 0),
+                        _utc(11, 0),
+                        _utc(10, 10),
+                    ),
+                )
+
+        conn1 = psycopg.connect(postgres_dsn, autocommit=False)
+        conn2 = psycopg.connect(postgres_dsn, autocommit=False)
+        conn3 = psycopg.connect(postgres_dsn, autocommit=False)
+        try:
+            for conn in (conn1, conn2, conn3):
+                conn.execute("SET statement_timeout = '5s'")
+                conn.execute("SET lock_timeout = '5s'")
+
+            conn1.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
+            conn1.execute(
+                """
+                SELECT prediction_run_id
+                FROM prediction_runs
+                WHERE prediction_run_id = %s
+                FOR UPDATE
+                """,
+                (run_id,),
+            )
+            conn1.execute(
+                """
+                INSERT INTO predictions (
+                    match_id,
+                    prediction_run_id,
+                    agent_config_version_id,
+                    agent_code,
+                    prediction_status,
+                    selection_side,
+                    win_probability,
+                    model_version,
+                    feature_version,
+                    variant_id,
+                    as_of,
+                    prediction_locked_at,
+                    created_at
+                )
+                VALUES (%s, %s, %s, 'AGENT_1_SURFACE_ELO', 'PREDICTED', 1, 0.55, 'm1', 'f1', 'serialized-authorized', %s, %s, %s)
+                """,
+                (
+                    fixture["match_id"],
+                    run_id,
+                    config_1_id,
+                    _utc(10, 0),
+                    _utc(11, 0),
+                    _utc(10, 10),
+                ),
+            )
+            conn1.execute(
+                """
+                UPDATE prediction_runs
+                SET run_status = 'COMPLETED',
+                    prediction_finalized_at = %s,
+                    ended_at = %s
+                WHERE prediction_run_id = %s
+                """,
+                (_utc(11, 0), _utc(11, 5), run_id),
+            )
+
+            def _late_insert_worker() -> None:
+                try:
+                    conn2.execute(
+                        """
+                        INSERT INTO predictions (
+                            match_id,
+                            prediction_run_id,
+                            agent_config_version_id,
+                            agent_code,
+                            prediction_status,
+                            selection_side,
+                            win_probability,
+                            model_version,
+                            feature_version,
+                            variant_id,
+                            as_of,
+                            prediction_locked_at,
+                            created_at
+                        )
+                        VALUES (%s, %s, %s, 'AGENT_2_HIERARCHICAL_MARKOV', 'PREDICTED', 2, 0.45, 'm1', 'f1', 'late-insert', %s, %s, %s)
+                        """,
+                        (
+                            fixture["match_id"],
+                            run_id,
+                            config_2_id,
+                            _utc(10, 0),
+                            _utc(11, 0),
+                            _utc(10, 11),
+                        ),
+                    )
+                    conn2.commit()
+                    late_insert_result["status"] = "committed"
+                except psycopg.Error as exc:
+                    conn2.rollback()
+                    late_insert_result["status"] = "failed"
+                    late_insert_result["message"] = str(exc)
+
+            def _competing_update_worker() -> None:
+                try:
+                    conn3.execute(
+                        """
+                        UPDATE prediction_runs
+                        SET prediction_finalized_at = %s
+                        WHERE prediction_run_id = %s
+                        """,
+                        (_utc(11, 1), run_id),
+                    )
+                    conn3.commit()
+                    competing_update_result["status"] = "committed"
+                except psycopg.Error as exc:
+                    conn3.rollback()
+                    competing_update_result["status"] = "failed"
+                    competing_update_result["message"] = str(exc)
+
+            late_insert_thread = threading.Thread(target=_late_insert_worker)
+            competing_update_thread = threading.Thread(target=_competing_update_worker)
+            late_insert_thread.start()
+            competing_update_thread.start()
+
+            time.sleep(0.25)
+            assert late_insert_thread.is_alive()
+            assert competing_update_thread.is_alive()
+
+            conn1.commit()
+
+            late_insert_thread.join(timeout=5)
+            competing_update_thread.join(timeout=5)
+            assert late_insert_result["status"] == "failed"
+            assert competing_update_result["status"] == "failed"
+
+            with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+                assert conn.execute(
+                    "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+                    (run_id,),
+                ).fetchone()[0] == 1
+                assert conn.execute(
+                    """
+                    SELECT run_status, prediction_finalized_at, ended_at
+                    FROM prediction_runs
+                    WHERE prediction_run_id = %s
+                    """,
+                    (run_id,),
+                ).fetchone() == ("COMPLETED", _utc(11, 0), _utc(11, 5))
+
+            with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+                failed_run_id = _insert_prediction_run(
+                    conn,
+                    run_status="FAILED",
+                    as_of=_utc(12, 0),
+                    started_at=_utc(12, 0),
+                    prediction_finalized_at=None,
+                    ended_at=_utc(12, 5),
+                )
+                cancelled_run_id = _insert_prediction_run(
+                    conn,
+                    run_status="CANCELLED",
+                    as_of=_utc(13, 0),
+                    started_at=_utc(13, 0),
+                    prediction_finalized_at=None,
+                    ended_at=_utc(13, 5),
+                )
+                for blocked_run_id, variant_id in (
+                    (failed_run_id, "failed-run-block"),
+                    (cancelled_run_id, "cancelled-run-block"),
+                ):
+                    with pytest.raises(psycopg.Error):
+                        conn.execute(
+                            """
+                            INSERT INTO predictions (
+                                match_id,
+                                prediction_run_id,
+                                agent_config_version_id,
+                                agent_code,
+                                prediction_status,
+                                selection_side,
+                                win_probability,
+                                model_version,
+                                feature_version,
+                                variant_id,
+                                as_of,
+                                prediction_locked_at,
+                                created_at
+                            )
+                            VALUES (%s, %s, %s, 'AGENT_1_SURFACE_ELO', 'PREDICTED', 1, 0.55, 'm1', 'f1', %s, %s, %s, %s)
+                            """,
+                            (
+                                fixture["match_id"],
+                                blocked_run_id,
+                                config_1_id,
+                                variant_id,
+                                _utc(12, 0),
+                                _utc(12, 30),
+                                _utc(12, 10),
+                            ),
+                        )
+        finally:
+            conn1.close()
+            conn2.close()
+            conn3.close()
     finally:
         _reset_public_schema(postgres_dsn)
         _run_manifest_migrations(postgres_dsn, "up")

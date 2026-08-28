@@ -807,7 +807,7 @@ Deferred to predictive-agent phases:
 - manager runtime implementation
 - veto runtime implementation
 
-## T-ED2 schema design
+## T-ED2 schema implementation
 
 Recommended migration name:
 
@@ -856,8 +856,8 @@ timestamp that satisfies the FK would also look "already finalized" to the guard
 
 ### Chosen T-ED2 finalization protocol
 
-T-ED2 keeps the committed-state equality rule from `0004`, but changes the write protocol
-for future `0005`:
+T-ED2 keeps the committed-state equality rule from `0004`, and `0005` implements the write
+protocol as follows:
 
 - `fk_predictions_prediction_run_finalization` becomes `DEFERRABLE INITIALLY IMMEDIATE`
   rather than immediate-only.
@@ -1030,7 +1030,7 @@ Direct SQL implication:
 - a standalone prediction insert that does not explicitly defer
   `fk_predictions_prediction_run_finalization` and establish the matching parent
   `(prediction_run_id, prediction_finalized_at)` key in the same transaction cannot commit
-- the future `0005` implementation must not treat an isolated prediction insert as a valid
+- the implemented `0005` migration does not treat an isolated prediction insert as a valid
   competing finalizer
 
 The existing T-ED1 lineage trigger remains. It is still needed to defend direct SQL writes
@@ -1201,9 +1201,9 @@ Reason:
 - mechanically freezing those placeholder tables in `0005` would constrain the later phase
   before its append-only replacement model is designed
 
-### `0005` minimal forward shape
+### `0005` implemented forward shape
 
-Expected `0005` contents:
+Implemented `0005` contents:
 
 - alter `fk_predictions_prediction_run_finalization` to `DEFERRABLE INITIALLY IMMEDIATE`
 - add shared append-only blocker function(s) for tables with simple reject-all
@@ -1217,23 +1217,23 @@ Expected `0005` contents:
   standalone inserts as unsupported persistence attempts
 - add trigger definitions only
 
-Expected non-changes:
+Implemented non-changes:
 
 - no new tables
 - no new columns
 - no new indexes
 - no new bypass flags
-- no manifest change
-- no schema snapshot regeneration in this design task
+- manifest advances to include `0005`
+- schema snapshot regenerates to include `0005`
 
 ### Trigger design
 
-Planned shared pattern:
+Implemented shared pattern:
 
 - ordinary `BEFORE ROW` triggers for reject-all immutable `UPDATE`/`DELETE` cases because
   they fail early, emit clear table-specific errors, and simplify rollback
 
-Planned table-specific triggers:
+Implemented table-specific triggers:
 
 - `prediction_runs`
   - `BEFORE UPDATE`
@@ -1315,7 +1315,7 @@ Rollback design:
 - does not drop or rewrite historical rows
 - permits clean re-UP afterward
 
-### Validation plan for future implementation
+### Implementation validation plan
 
 Migration chain:
 
