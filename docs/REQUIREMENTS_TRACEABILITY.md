@@ -13,7 +13,8 @@ This repository is in the bootstrap phase. Every requirement below is traced to 
 canonical specification area. The data foundation and T-ED1 schema contracts are committed
 and validated against disposable PostgreSQL 16 in CI, and the T-ED2 immutability and
 lock-guard contract is now implemented in `0005` with schema, snapshot, and PostgreSQL
-integration coverage committed in-repo. Historical ingest, model execution, pricing, and
+integration coverage committed in-repo. Historical ingest and the first pure predictive
+agent implementation are now committed in-repo, while pricing, orchestration, and
 production runtime work remain otherwise unimplemented. Statuses are truthful.
 
 ## Architecture
@@ -59,13 +60,13 @@ production runtime work remain otherwise unimplemented. Statuses are truthful.
 
 | ID | Requirement | Source | Status |
 | --- | --- | --- | --- |
-| MODEL-1 | Surface Elo | tennis build spec | `NOT IMPLEMENTED` |
+| MODEL-1 | Surface Elo | tennis build spec | `IN PROGRESS` (pure deterministic Agent 1 module and synthetic test coverage committed; independent review pending) |
 | MODEL-2 | Serve/Return model | tennis build spec | `NOT IMPLEMENTED` |
 | MODEL-3 | Exact hierarchical Markov | tennis build spec | `NOT IMPLEMENTED` |
 | MODEL-4 | Common-opponent routing | tennis build spec | `NOT IMPLEMENTED` |
 | MODEL-5 | Intransitivity graph | tennis build spec | `NOT IMPLEMENTED` |
 | MODEL-6 | Agent 3 abstention | tennis build spec | `LOCKED` (contract preserved; runtime not implemented) |
-| MODEL-7 | Blind agent isolation | tennis build spec | `IN PROGRESS` (storage separation enforced; no agent runtime yet) |
+| MODEL-7 | Blind agent isolation | tennis build spec | `COMPLETE` (Agent 1 module remains market-blind and dedicated-runtime isolation tests remain green) |
 
 ## Manager
 
