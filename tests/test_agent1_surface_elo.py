@@ -190,6 +190,27 @@ def test_completed_known_surface_updates_overall_and_only_that_surface_book():
     assert player_2.overall_rating < Decimal("1500")
 
 
+def test_apply_historical_observation_preserves_copy_on_write_public_semantics():
+    original = {
+        1: PlayerRatingState(player_id=1, overall_rating=Decimal("1510"), overall_match_count=2),
+        2: PlayerRatingState(player_id=2, overall_rating=Decimal("1490"), overall_match_count=2),
+    }
+
+    updated = apply_historical_observation(
+        original,
+        _observation(match_id=1, surface="CLAY", winner_side=1),
+    )
+
+    assert original[1].overall_rating == Decimal("1510")
+    assert original[1].overall_match_count == 2
+    assert original[2].overall_rating == Decimal("1490")
+    assert original[2].overall_match_count == 2
+    assert updated[1].overall_match_count == 3
+    assert updated[2].overall_match_count == 3
+    assert updated[1].overall_rating > original[1].overall_rating
+    assert updated[2].overall_rating < original[2].overall_rating
+
+
 def test_unknown_surface_updates_overall_only_and_marks_diagnostic():
     history = [_observation(match_id=1, surface=None, winner_side=1)]
 
@@ -311,6 +332,38 @@ def test_history_replay_is_deterministic_across_input_order_and_tie_breaks():
 
     assert replay_a.player_states == replay_b.player_states
     assert prediction_a == prediction_b
+
+
+def test_replay_history_is_isolated_across_independent_calls():
+    history_a = [
+        _observation(match_id=1, player_1_id=1, player_2_id=2, surface="HARD", winner_side=1),
+        _observation(
+            match_id=2,
+            player_1_id=1,
+            player_2_id=3,
+            surface="CLAY",
+            winner_side=2,
+            source_observed_at=_utc(10, 1),
+        ),
+    ]
+    history_b = [
+        _observation(match_id=3, player_1_id=10, player_2_id=11, surface="GRASS", winner_side=1),
+        _observation(
+            match_id=4,
+            player_1_id=11,
+            player_2_id=12,
+            surface="CARPET",
+            winner_side=2,
+            source_observed_at=_utc(10, 1),
+        ),
+    ]
+
+    replay_a_first = replay_history(history_a, prediction_as_of=_utc(12))
+    replay_b = replay_history(history_b, prediction_as_of=_utc(12))
+    replay_a_second = replay_history(history_a, prediction_as_of=_utc(12))
+
+    assert replay_a_first == replay_a_second
+    assert replay_a_first.player_states != replay_b.player_states
 
 
 def test_atp_and_challenger_share_one_pool_and_qualifying_is_included_without_weighting():

@@ -489,19 +489,20 @@ def _history_sort_key(observation: HistoricalMatchObservation) -> tuple[datetime
     )
 
 
-def apply_historical_observation(
+def _updated_player_states_for_observation(
     player_states: dict[int, PlayerRatingState],
     observation: HistoricalMatchObservation,
     config: SurfaceEloConfig = DEFAULT_CONFIG,
-) -> dict[int, PlayerRatingState]:
+) -> tuple[PlayerRatingState, PlayerRatingState]:
     if observation.outcome_status != "COMPLETED":
-        return dict(player_states)
+        raise SurfaceEloValidationError(
+            "_updated_player_states_for_observation requires outcome_status COMPLETED"
+        )
 
-    current_states = dict(player_states)
-    player_1_state = current_states.get(
+    player_1_state = player_states.get(
         observation.player_1_id, _default_player_state(observation.player_1_id, config)
     )
-    player_2_state = current_states.get(
+    player_2_state = player_states.get(
         observation.player_2_id, _default_player_state(observation.player_2_id, config)
     )
 
@@ -563,8 +564,32 @@ def apply_historical_observation(
             surface_match_counts=updated_surface_counts_2,
         )
 
-    current_states[updated_player_1.player_id] = updated_player_1
-    current_states[updated_player_2.player_id] = updated_player_2
+    return updated_player_1, updated_player_2
+
+
+def _apply_historical_observation_in_place(
+    player_states: dict[int, PlayerRatingState],
+    observation: HistoricalMatchObservation,
+    config: SurfaceEloConfig = DEFAULT_CONFIG,
+) -> None:
+    updated_player_1, updated_player_2 = _updated_player_states_for_observation(
+        player_states,
+        observation,
+        config,
+    )
+    player_states[updated_player_1.player_id] = updated_player_1
+    player_states[updated_player_2.player_id] = updated_player_2
+
+
+def apply_historical_observation(
+    player_states: dict[int, PlayerRatingState],
+    observation: HistoricalMatchObservation,
+    config: SurfaceEloConfig = DEFAULT_CONFIG,
+) -> dict[int, PlayerRatingState]:
+    current_states = dict(player_states)
+    if observation.outcome_status != "COMPLETED":
+        return current_states
+    _apply_historical_observation_in_place(current_states, observation, config)
     return current_states
 
 
@@ -598,7 +623,7 @@ def replay_history(
 
     player_states: dict[int, PlayerRatingState] = {}
     for observation in eligible_observations:
-        player_states = apply_historical_observation(player_states, observation, config)
+        _apply_historical_observation_in_place(player_states, observation, config)
 
     return ReplayResult(
         player_states=player_states,
