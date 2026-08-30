@@ -19,8 +19,13 @@ if str(SRC_ROOT) not in sys.path:
 
 
 def _run_psql(dsn: str, sql_path: Path) -> None:
+    resolved_psql = shutil.which("psql")
+    if resolved_psql is None:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            conn.execute(sql_path.read_text(encoding="utf-8"))
+        return
     subprocess.run(
-        ["psql", "-d", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
+        [resolved_psql, "-d", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
         check=True,
         capture_output=True,
         text=True,
@@ -87,8 +92,6 @@ def _reset_db(conn: psycopg.Connection) -> None:
 def postgres_dsn() -> str:
     if not POSTGRES_DSN:
         pytest.skip("PostgreSQL DSN not configured")
-    if shutil.which("psql") is None:
-        pytest.skip("psql is required for PostgreSQL integration tests")
     return POSTGRES_DSN
 
 

@@ -404,8 +404,13 @@ def write_dry_run_summary(
 
 
 def _psql(psql_path: str, dsn: str, sql_path: Path) -> None:
+    resolved_psql = psql_path if Path(psql_path).exists() else shutil.which(psql_path)
+    if resolved_psql is None:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            conn.execute(sql_path.read_text(encoding="utf-8"))
+        return
     completed = subprocess.run(
-        [psql_path, "-d", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
+        [resolved_psql, "-d", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
         capture_output=True,
         check=False,
         text=True,
