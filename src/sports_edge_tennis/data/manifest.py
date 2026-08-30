@@ -32,9 +32,11 @@ def build_source_document(
     upstream_revision: str | None = None,
     source_license: str | None = None,
     coverage_metadata: dict[str, Any] | None = None,
+    retrieved_at: datetime | None = None,
+    manifest_status: str = "ACQUIRED",
 ) -> SourceDocument:
     stat = path.stat()
-    retrieved_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    effective_retrieved_at = retrieved_at or datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
     return SourceDocument(
         source_system=source_system,
         source_name=source_name,
@@ -45,7 +47,7 @@ def build_source_document(
         upstream_revision=upstream_revision,
         source_license=source_license,
         local_path=path,
-        retrieved_at=retrieved_at,
+        retrieved_at=effective_retrieved_at,
         filename=path.name,
         sha256=sha256_path(path),
         size_bytes=stat.st_size,
@@ -53,29 +55,83 @@ def build_source_document(
         season=season,
         source_revision=source_revision,
         coverage_metadata=coverage_metadata or {},
+        manifest_status=manifest_status,
     )
 
 
 def _manifest_document(doc: SourceDocument) -> dict[str, Any]:
     return {
+        "acquired_at": doc.retrieved_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "archive_revision": doc.archive_revision,
         "canonical_source": doc.canonical_source,
+        "canonical_lineage": doc.canonical_source,
         "coverage_metadata": doc.coverage_metadata,
         "dataset_type": doc.dataset_type,
         "file_sha256": doc.sha256,
         "filename": doc.filename,
         "hash_recipe_version": doc.hash_recipe_version,
+        "license_identifier": doc.source_license,
+        "provider": doc.source_system,
         "retrieval_source": doc.retrieval_source,
         "retrieved_at": doc.retrieved_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "season": doc.season,
         "size_bytes": doc.size_bytes,
+        "source_location": doc.source_url,
         "source_license": doc.source_license,
         "source_name": doc.source_name,
         "source_system": doc.source_system,
         "source_url": doc.source_url,
         "source_revision": doc.source_revision,
+        "status": doc.manifest_status,
         "upstream_revision": doc.upstream_revision,
     }
+
+
+def _manifest_identity(document: dict[str, Any]) -> tuple[object, ...]:
+    return (
+        document.get("provider") or document.get("source_system"),
+        document.get("source_name"),
+        document.get("canonical_lineage") or document.get("canonical_source"),
+        document.get("retrieval_source"),
+        document.get("dataset_type"),
+        document.get("season"),
+        document.get("filename"),
+        document.get("file_sha256"),
+        document.get("size_bytes"),
+        document.get("source_location") or document.get("source_url"),
+        document.get("source_revision"),
+        document.get("archive_revision"),
+        document.get("upstream_revision"),
+        document.get("license_identifier") or document.get("source_license"),
+        document.get("acquired_at") or document.get("retrieved_at"),
+        document.get("status", "ACQUIRED"),
+    )
+
+
+def _manifest_sort_key(document: dict[str, Any]) -> tuple[object, ...]:
+    return (
+        document.get("canonical_lineage") or document.get("canonical_source") or "",
+        document.get("retrieval_source") or "",
+        document.get("dataset_type") or "",
+        document.get("season") or -1,
+        document.get("filename") or "",
+        document.get("source_revision") or "",
+        document.get("file_sha256") or "",
+        document.get("acquired_at") or document.get("retrieved_at") or "",
+        document.get("status", "ACQUIRED"),
+    )
+
+
+def _load_existing_manifest_sources(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"invalid source manifest payload at {path}")
+    sources = payload.get("sources", [])
+    if not isinstance(sources, list):
+        raise ValueError(f"invalid source manifest sources at {path}")
+    return [dict(entry) for entry in sources]
 
 
 def write_manifest(
@@ -84,16 +140,12 @@ def write_manifest(
     *,
     generated_at: datetime | None = None,
 ) -> None:
-    serialized_sources = sorted(
-        (_manifest_document(doc) for doc in documents),
-        key=lambda doc: (
-            doc["canonical_source"] or "",
-            doc["retrieval_source"] or "",
-            doc["filename"],
-            doc["dataset_type"],
-            doc["season"] or -1,
-        ),
-    )
+    existing_sources = _load_existing_manifest_sources(path)
+    by_identity = {_manifest_identity(entry): entry for entry in existing_sources}
+    for document in documents:
+        serialized = _manifest_document(document)
+        by_identity[_manifest_identity(serialized)] = serialized
+    serialized_sources = sorted(by_identity.values(), key=_manifest_sort_key)
     payload = {
         "hash_recipe_version": "SE_SOURCE_HASH_V1",
         "generated_at": (generated_at or datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),

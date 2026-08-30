@@ -41,6 +41,7 @@ class SourceDocument:
     source_revision: str | None = None
     coverage_metadata: dict[str, object] = field(default_factory=dict)
     hash_recipe_version: str = "SE_SOURCE_HASH_V1"
+    manifest_status: str = "ACQUIRED"
 
 
 @dataclass(frozen=True)

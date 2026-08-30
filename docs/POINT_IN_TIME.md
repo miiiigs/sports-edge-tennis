@@ -207,6 +207,21 @@ a conservative tournament-end boundary derived from current source scope:
 
 If exact timing cannot be justified safely, visibility moves later rather than earlier.
 
+When Sackmann rows do expose an explicit `match_date`, Sports Edge uses that date boundary
+instead of the conservative tournament-end fallback. The historical validation runner
+reparses each approved source row and checks persisted `match_versions` and
+`match_result_observations` by `source_record_hash` to prove those PIT boundaries survived
+ingest unchanged.
+
+Two rare score tokens required explicit normalization during historical validation:
+
+- `Def.` is normalized to `RETIRED`. This is an inference from ATP's definition of a default
+  as a post-start loss state and from the current canonical status vocabulary not including a
+  separate `DEFAULT` terminal status.
+- A bare `>` advancement marker is normalized to `WALKOVER` when the source row has no
+  playable score, minutes, or stat payload. This is a conservative inference for a rare
+  pre-match advancement marker, not a claim that the source exposed a richer terminal state.
+
 ### Odds
 
 Odds are append-only in `odds_snapshots`. Later prices do not overwrite earlier prices.

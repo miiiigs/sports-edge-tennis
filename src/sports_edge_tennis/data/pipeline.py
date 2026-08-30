@@ -92,6 +92,7 @@ def _score_sets(scoreline_text: str | None) -> tuple[int | None, int | None, int
     if not scoreline_text:
         return None, None, None, None
     sets_1 = sets_2 = games_1 = games_2 = 0
+    parsed_set_count = 0
     for token in scoreline_text.split():
         if not token or "-" not in token:
             continue
@@ -104,10 +105,13 @@ def _score_sets(scoreline_text: str | None) -> tuple[int | None, int | None, int
         right_value = int(right)
         games_1 += left_value
         games_2 += right_value
+        parsed_set_count += 1
         if left_value > right_value:
             sets_1 += 1
         elif right_value > left_value:
             sets_2 += 1
+    if parsed_set_count == 0:
+        return None, None, None, None
     return sets_1, sets_2, games_1, games_2
 
 
@@ -115,6 +119,12 @@ def _orient_players(winner_player_id: int, loser_player_id: int) -> tuple[int, i
     player_1_id, player_2_id = sorted((winner_player_id, loser_player_id))
     winner_side = 1 if winner_player_id == player_1_id else 2
     return player_1_id, player_2_id, winner_side
+
+
+def _historical_match_status(outcome_status: str) -> str:
+    if outcome_status in {"COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"}:
+        return outcome_status
+    raise ValueError(f"unsupported historical outcome status: {outcome_status}")
 
 
 def _serialize_counters(
@@ -138,6 +148,7 @@ def write_reports(
     unmatched: list[UnmatchedRecord],
     latest_observation_at: datetime | None,
     identity_resolution_status: str,
+    details: dict[str, object] | None = None,
 ) -> None:
     serialized_counters = _serialize_counters(
         counters,
@@ -156,6 +167,8 @@ def write_reports(
         ),
         "known_gaps": quality.known_gaps,
     }
+    if details:
+        quality_payload.update(details)
     quality_path.parent.mkdir(parents=True, exist_ok=True)
     quality_path.write_text(json.dumps(quality_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -184,6 +197,27 @@ def ingest_sackmann_document(
     unmatched_path: Path | None = None,
 ) -> dict[str, object]:
     parse_outcome = parse_sackmann_csv(document)
+    audit = parse_outcome.audit
+    report_details = {
+        "source_headers": list(audit.source_headers),
+        "unknown_source_columns": list(audit.unknown_source_columns),
+        "missing_player_id_rows": audit.missing_player_id_rows,
+        "missing_tournament_id_rows": audit.missing_tournament_id_rows,
+        "missing_match_num_rows": audit.missing_match_num_rows,
+        "missing_match_date_rows": audit.missing_match_date_rows,
+        "unknown_surface_rows": audit.unknown_surface_rows,
+        "stat_null_patterns": audit.stat_null_patterns,
+        "stat_field_non_null_counts": audit.stat_field_non_null_counts,
+        "status_vocabulary": [
+            {
+                "raw_value": entry.raw_value,
+                "normalized_status": entry.normalized_status,
+                "row_count": entry.row_count,
+                "accepted": entry.accepted,
+            }
+            for entry in audit.status_vocabulary
+        ],
+    }
     counters = IngestCounters(rows_seen=len(parse_outcome.records) + len(parse_outcome.rejected_rows))
     counters.rows_rejected = len(parse_outcome.rejected_rows)
     quality = QualityAccumulator(source_files=[document.filename])
@@ -208,6 +242,7 @@ def ingest_sackmann_document(
                 unmatched=unmatched,
                 latest_observation_at=latest_observation_at,
                 identity_resolution_status="NOT_EXECUTED",
+                details=report_details,
             )
         return {
             "status": "DRY_RUN",
@@ -217,6 +252,7 @@ def ingest_sackmann_document(
                 identity_resolution_status="NOT_EXECUTED",
             ),
             "errors": error_summary,
+            "details": report_details,
         }
 
     ingest_run_id = start_ingest_run(
@@ -246,6 +282,7 @@ def ingest_sackmann_document(
                     as_of=record.match_as_of,
                     stable_source_player_id=record.winner.source_player_id,
                     create_if_missing_with_stable_id=True,
+                    require_stable_source_player_id=True,
                 )
                 loser_resolution = repository.resolve_player(
                     source_system=document.source_system,
@@ -257,6 +294,7 @@ def ingest_sackmann_document(
                     as_of=record.match_as_of,
                     stable_source_player_id=record.loser.source_player_id,
                     create_if_missing_with_stable_id=True,
+                    require_stable_source_player_id=True,
                 )
                 for resolution in (winner_resolution, loser_resolution):
                     if resolution.status == "RESOLVED":
@@ -323,7 +361,7 @@ def ingest_sackmann_document(
                     round_code=record.round_code,
                     best_of_sets=record.best_of_sets,
                     qualifying_flag=record.qualifying_flag,
-                    match_status="COMPLETED" if record.outcome_status == "COMPLETED" else "SCHEDULED",
+                    match_status=_historical_match_status(record.outcome_status),
                     source_observed_at=record.match_source_observed_at,
                     as_of=record.match_as_of,
                 )
@@ -406,6 +444,7 @@ def ingest_sackmann_document(
             unmatched=unmatched,
             latest_observation_at=latest_observation_at,
             identity_resolution_status="EXECUTED",
+            details=report_details,
         )
     return {
         "status": "COMPLETED",
@@ -415,6 +454,7 @@ def ingest_sackmann_document(
             identity_resolution_status="EXECUTED",
         ),
         "errors": error_summary,
+        "details": report_details,
     }
 
 
@@ -455,6 +495,7 @@ def ingest_tennis_data_document(
                 unmatched=unmatched,
                 latest_observation_at=latest_observation_at,
                 identity_resolution_status="NOT_EXECUTED",
+                details=None,
             )
         return {
             "status": "DRY_RUN",
@@ -610,6 +651,7 @@ def ingest_tennis_data_document(
             unmatched=unmatched,
             latest_observation_at=latest_observation_at,
             identity_resolution_status="EXECUTED",
+            details=None,
         )
     return {
         "status": "COMPLETED",

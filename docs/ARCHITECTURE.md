@@ -12,6 +12,10 @@ Agent 1 now exists as a pure deterministic computation module without database p
 while Agent 2, Agent 3, manager, veto, pricing, and orchestration runtime work still remain
 future phases.
 
+The historical validation worktree adds a local-only ATP results acquisition and ingest lane
+for Agent 1 research validation. It does not authorize production data operations, live
+provider connections, Supabase usage, schema redesign, or non-approved historical sources.
+
 ```text
 SLATE GENERATOR
         |
@@ -141,6 +145,25 @@ The implemented T-ED2 schema phase remains narrow and PostgreSQL-native:
   helper functions, and triggers.
 - Settlement/CLV append-only redesign remains T-ED3, fuller publication-state architecture
   remains T-ED4, and match-level execution bookkeeping remains T-ED5.
+
+## Historical Agent 1 ingest lane
+
+- Approved source scope for this phase is the Sackmann ATP archive lineage through the
+  `Aneeshers/tennis-sackmann-archive` mirror, used for local research validation only.
+- In-scope historical files are ATP main-draw plus qualifying/challenger CSVs for
+  `2016-2025`; smoke validation is anchored on `2024-2025` before expansion through
+  `2016-2023`.
+- Raw source files remain immutable under `data/raw/sackmann/`. Validation manifests,
+  dry-run reports, and ingest summaries remain ignored artifacts under
+  `artifacts/historical_ingest/`.
+- `src/sports_edge_tennis/data/historical_validation.py` is the reusable runner for
+  acquisition verification, dry runs, disposable database reset, ingest, PIT boundary
+  validation, extractor probing, and idempotency checks.
+- `src/sports_edge_tennis/data/agent1_history.py` is the read-only extractor that exposes
+  the latest PIT-eligible historical observation per match for Agent 1 cutoff queries.
+- Historical parser failures remain fail-closed. Approved quarantine reasons in this phase
+  are missing score/status rows, out-of-scope Davis Cup or team-event rows, out-of-scope
+  doubles rows, and malformed self-match source rows.
 
 ## Blind isolation
 
