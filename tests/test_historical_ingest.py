@@ -130,7 +130,7 @@ def test_point_in_time_query_excludes_future_results(db: psycopg.Connection, tmp
 
     query_time = db.execute(
         """
-        SELECT match_start_at
+        SELECT as_of
         FROM match_versions
         WHERE match_id = %s
         ORDER BY as_of DESC, source_observed_at DESC

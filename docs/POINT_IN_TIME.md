@@ -207,6 +207,30 @@ a conservative tournament-end boundary derived from current source scope:
 
 If exact timing cannot be justified safely, visibility moves later rather than earlier.
 
+When Sackmann rows do expose an explicit `match_date`, Sports Edge uses that date boundary
+instead of the conservative tournament-end fallback. The historical validation runner
+reparses each approved source row and checks persisted `match_versions` and
+`match_result_observations` by `source_record_hash` to prove those PIT boundaries survived
+ingest unchanged.
+
+Two rare score tokens required explicit normalization during historical validation:
+
+- `Def.` is normalized to `RETIRED`. This is an inference from ATP's definition of a default
+  as a post-start loss state and from the current canonical status vocabulary not including a
+  separate `DEFAULT` terminal status.
+- A bare `>` advancement marker is quarantined as `ambiguous_advancement_marker`. The raw
+  token is preserved in rejection evidence, but Sports Edge does not canonize it as
+  `WALKOVER` or another richer terminal state.
+
+Historical validation resets are also intentionally fail-closed. The runner only performs a
+destructive reset when `--reset-disposable-db` is passed and the parsed PostgreSQL target is
+both local (`localhost`, `127.0.0.1`, or `::1`) and clearly disposable by database name.
+
+Agent 1 correction replay is likewise conservative: extractor queries collapse append-only
+result corrections to the one latest PIT-valid `match_result_observation` per `match_id`, and
+then join only the latest `match_version` that was itself knowable no later than that selected
+result observation.
+
 ### Odds
 
 Odds are append-only in `odds_snapshots`. Later prices do not overwrite earlier prices.

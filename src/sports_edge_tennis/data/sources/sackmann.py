@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
@@ -42,12 +43,134 @@ _UNKNOWN_MATCH_DATE_LIMITATION = (
     "and stat visibility stays delayed until a conservative tournament-end boundary because "
     "tourney_date is only a tournament-start boundary, not an individual match date."
 )
+_DATE_ONLY_MATCH_DATE_LIMITATION = (
+    "Sackmann match_date is date-only. Sports Edge stores the match day boundary for PIT, "
+    "but keeps match_start_at unknown rather than inventing an exact match time."
+)
+_KNOWN_COLUMNS = {
+    "tourney_id",
+    "tourney_name",
+    "surface",
+    "draw_size",
+    "tourney_level",
+    "tourney_date",
+    "match_date",
+    "match_num",
+    "winner_id",
+    "winner_seed",
+    "winner_entry",
+    "winner_name",
+    "winner_hand",
+    "winner_ht",
+    "winner_ioc",
+    "winner_age",
+    "loser_id",
+    "loser_seed",
+    "loser_entry",
+    "loser_name",
+    "loser_hand",
+    "loser_ht",
+    "loser_ioc",
+    "loser_age",
+    "score",
+    "best_of",
+    "round",
+    "minutes",
+    "comment",
+    "w_ace",
+    "w_df",
+    "w_svpt",
+    "w_1stIn",
+    "w_1stWon",
+    "w_2ndWon",
+    "w_SvGms",
+    "w_bpSaved",
+    "w_bpFaced",
+    "l_ace",
+    "l_df",
+    "l_svpt",
+    "l_1stIn",
+    "l_1stWon",
+    "l_2ndWon",
+    "l_SvGms",
+    "l_bpSaved",
+    "l_bpFaced",
+    "winner_rank",
+    "winner_rank_points",
+    "loser_rank",
+    "loser_rank_points",
+}
+_STAT_COLUMNS = (
+    "w_ace",
+    "w_df",
+    "w_svpt",
+    "w_1stIn",
+    "w_1stWon",
+    "w_2ndWon",
+    "w_SvGms",
+    "w_bpSaved",
+    "w_bpFaced",
+    "l_ace",
+    "l_df",
+    "l_svpt",
+    "l_1stIn",
+    "l_1stWon",
+    "l_2ndWon",
+    "l_SvGms",
+    "l_bpSaved",
+    "l_bpFaced",
+)
+_COMMENT_STATUS_MAP = {
+    "retired": "RETIRED",
+    "walkover": "WALKOVER",
+    "cancelled": "CANCELLED",
+    "canceled": "CANCELLED",
+    "postponed": "POSTPONED",
+}
+_SCORE_STATUS_MAP = {
+    "DEF": "RETIRED",
+    "RET": "RETIRED",
+    "W/O": "WALKOVER",
+    "WO": "WALKOVER",
+}
+_SET_TOKEN_RE = re.compile(r"^\d+-\d+")
 
 
 @dataclass(frozen=True)
 class SackmannParseOutcome:
     records: list[SackmannMatchRecord]
     rejected_rows: list[dict[str, object]]
+    audit: "SackmannParseAudit"
+
+
+@dataclass(frozen=True)
+class SackmannStatusVocabularyEntry:
+    raw_value: str | None
+    normalized_status: str | None
+    row_count: int
+    accepted: bool
+
+
+@dataclass(frozen=True)
+class SackmannParseAudit:
+    source_headers: tuple[str, ...]
+    unknown_source_columns: tuple[str, ...]
+    missing_player_id_rows: int
+    missing_tournament_id_rows: int
+    missing_match_num_rows: int
+    missing_match_date_rows: int
+    unknown_surface_rows: int
+    stat_null_patterns: dict[str, int]
+    stat_field_non_null_counts: dict[str, int]
+    status_vocabulary: tuple[SackmannStatusVocabularyEntry, ...]
+
+
+@dataclass(frozen=True)
+class _StatusResolution:
+    raw_value: str | None
+    normalized_status: str | None
+    accepted: bool
+    reason: str | None = None
 
 
 def _parse_int(value: str | None, *, required: bool = False) -> int | None:
@@ -77,6 +200,8 @@ def _surface(value: str | None) -> str | None:
 def _tour_scope(level: str) -> str:
     if level == "C":
         return "CHALLENGER"
+    if level in {"A", "F", "G", "M", "O"}:
+        return "ATP_MAIN"
     return "ATP_MAIN"
 
 
@@ -85,18 +210,16 @@ def _competition_tier(level: str, row: dict[str, str]) -> str:
         return "GRAND_SLAM"
     if level == "M":
         return "MASTERS_1000"
-    if level == "A":
+    if level in {"A", "F", "O"}:
         return "ATP_TOUR"
     if level == "C":
         return "CHALLENGER"
+    if level in {"D", "S"}:
+        raise SackmannRowError(f"out_of_scope_tourney_level:{level}")
     explicit = row.get("competition_tier", "").strip().upper()
     if explicit in {"ATP_500", "ATP_250"}:
         return explicit
     raise SackmannRowError("unsupported_tourney_level")
-
-
-def _match_start_at(match_day: date) -> datetime:
-    return datetime.combine(match_day, time(hour=12, tzinfo=UTC))
 
 
 def _prematch_observed_at(match_day: date) -> datetime:
@@ -124,29 +247,88 @@ def _conservative_tournament_visibility_boundary(tourney_date: date, competition
     return _result_observed_at(_conservative_tournament_end_date(tourney_date, competition_tier))
 
 
-def _match_status(score: str | None, comment: str | None) -> str:
-    comment_value = (comment or "").strip().casefold()
-    if comment_value == "retired":
-        return "RETIRED"
-    if comment_value == "walkover":
-        return "WALKOVER"
-    if not score and comment_value == "cancelled":
-        return "CANCELLED"
-    return "COMPLETED"
-
-
 def _source_match_id(row: dict[str, str], winner_id: str | None, loser_id: str | None) -> str | None:
     tourney_id = row.get("tourney_id", "").strip()
     match_num = row.get("match_num", "").strip()
     if tourney_id and match_num:
         return f"{tourney_id}:{match_num}"
-    player_tokens = sorted(token for token in (winner_id, loser_id) if token)
-    if player_tokens:
-        return (
-            f"{row.get('tourney_name', '').strip()}:{row.get('tourney_date', '').strip()}:"
-            f"{row.get('round', '').strip()}:{'|'.join(player_tokens)}"
-        )
     return None
+
+
+def _normalize_status_token(value: str) -> str:
+    return value.strip().upper().rstrip(".")
+
+
+def _has_score_tokens(score_value: str) -> bool:
+    return any(_SET_TOKEN_RE.match(token) for token in score_value.split())
+
+
+def _resolve_status(score: str | None, comment: str | None) -> _StatusResolution:
+    comment_value = (comment or "").strip()
+    if comment_value:
+        normalized_comment = comment_value.casefold()
+        normalized_status = _COMMENT_STATUS_MAP.get(normalized_comment)
+        if normalized_status == "POSTPONED":
+            return _StatusResolution(
+                raw_value=comment_value,
+                normalized_status=normalized_status,
+                accepted=False,
+                reason="unsupported_result_status:POSTPONED",
+            )
+        if normalized_status is None:
+            return _StatusResolution(
+                raw_value=comment_value,
+                normalized_status=None,
+                accepted=False,
+                reason=f"unsupported_status_comment:{comment_value}",
+            )
+        return _StatusResolution(
+            raw_value=comment_value,
+            normalized_status=normalized_status,
+            accepted=True,
+        )
+
+    score_value = (score or "").strip()
+    if not score_value:
+        return _StatusResolution(
+            raw_value=None,
+            normalized_status=None,
+            accepted=False,
+            reason="missing_score_or_status",
+        )
+    # Rare bare advancement marker seen in the Sackmann qual/chall archive.
+    # The source row contains no playable score tokens, minutes, or stats, so we
+    # quarantine it instead of asserting a richer canonical outcome.
+    if score_value == ">":
+        return _StatusResolution(
+            raw_value=score_value,
+            normalized_status=None,
+            accepted=False,
+            reason="ambiguous_advancement_marker",
+        )
+
+    trailing_token = _normalize_status_token(score_value.split()[-1])
+    normalized_status = _SCORE_STATUS_MAP.get(trailing_token)
+    if normalized_status is not None:
+        return _StatusResolution(
+            raw_value=trailing_token,
+            normalized_status=normalized_status,
+            accepted=True,
+        )
+
+    if _has_score_tokens(score_value):
+        return _StatusResolution(
+            raw_value=None,
+            normalized_status="COMPLETED",
+            accepted=True,
+        )
+
+    return _StatusResolution(
+        raw_value=score_value,
+        normalized_status=None,
+        accepted=False,
+        reason=f"unsupported_score_status:{score_value}",
+    )
 
 
 def _stat_line(row: dict[str, str], prefix: str) -> MatchStatLine:
@@ -180,9 +362,68 @@ def _stat_line(row: dict[str, str], prefix: str) -> MatchStatLine:
     )
 
 
+def _stat_null_pattern(row: dict[str, str]) -> str:
+    present_count = sum(1 for column in _STAT_COLUMNS if row.get(column) not in (None, ""))
+    if present_count == 0:
+        return "no_stats"
+    if present_count == len(_STAT_COLUMNS):
+        return "full_stats"
+    return "partial_stats"
+
+
+def _build_parse_audit(
+    *,
+    fieldnames: list[str],
+    missing_player_id_rows: int,
+    missing_tournament_id_rows: int,
+    missing_match_num_rows: int,
+    missing_match_date_rows: int,
+    unknown_surface_rows: int,
+    stat_null_patterns: dict[str, int],
+    stat_field_non_null_counts: dict[str, int],
+    status_counts: dict[tuple[str | None, str | None, bool], int],
+) -> SackmannParseAudit:
+    status_vocabulary = tuple(
+        SackmannStatusVocabularyEntry(
+            raw_value=raw_value,
+            normalized_status=normalized_status,
+            row_count=row_count,
+            accepted=accepted,
+        )
+        for (raw_value, normalized_status, accepted), row_count in sorted(
+            status_counts.items(),
+            key=lambda item: (
+                item[0][0] or "",
+                item[0][1] or "",
+                item[0][2],
+            ),
+        )
+    )
+    return SackmannParseAudit(
+        source_headers=tuple(fieldnames),
+        unknown_source_columns=tuple(sorted(set(fieldnames) - _KNOWN_COLUMNS)),
+        missing_player_id_rows=missing_player_id_rows,
+        missing_tournament_id_rows=missing_tournament_id_rows,
+        missing_match_num_rows=missing_match_num_rows,
+        missing_match_date_rows=missing_match_date_rows,
+        unknown_surface_rows=unknown_surface_rows,
+        stat_null_patterns=dict(sorted(stat_null_patterns.items())),
+        stat_field_non_null_counts=dict(sorted(stat_field_non_null_counts.items())),
+        status_vocabulary=status_vocabulary,
+    )
+
+
 def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
     records: list[SackmannMatchRecord] = []
     rejected_rows: list[dict[str, object]] = []
+    status_counts: dict[tuple[str | None, str | None, bool], int] = {}
+    missing_player_id_rows = 0
+    missing_tournament_id_rows = 0
+    missing_match_num_rows = 0
+    missing_match_date_rows = 0
+    unknown_surface_rows = 0
+    stat_null_patterns: dict[str, int] = {}
+    stat_field_non_null_counts = {column: 0 for column in _STAT_COLUMNS}
     with document.local_path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         if reader.fieldnames is None:
@@ -192,6 +433,34 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
             raise SackmannRowError(f"missing_required_columns:{','.join(missing_columns)}")
 
         for row_number, row in enumerate(reader, start=2):
+            winner_id = row.get("winner_id", "").strip() or None
+            loser_id = row.get("loser_id", "").strip() or None
+            if winner_id and loser_id and winner_id == loser_id:
+                rejected_rows.append(
+                    {
+                        "row_number": row_number,
+                        "reason": "self_match_source_player_id",
+                        "tournament_name": row.get("tourney_name"),
+                        "winner_name": row.get("winner_name"),
+                        "loser_name": row.get("loser_name"),
+                    }
+                )
+                continue
+            if not winner_id or not loser_id:
+                missing_player_id_rows += 1
+            if not (row.get("tourney_id", "").strip()):
+                missing_tournament_id_rows += 1
+            if not (row.get("match_num", "").strip()):
+                missing_match_num_rows += 1
+            if not (row.get("match_date", "").strip()):
+                missing_match_date_rows += 1
+            if row.get("surface") not in (None, "") and row.get("surface") not in _SURFACE_MAP:
+                unknown_surface_rows += 1
+            stat_pattern = _stat_null_pattern(row)
+            stat_null_patterns[stat_pattern] = stat_null_patterns.get(stat_pattern, 0) + 1
+            for column in _STAT_COLUMNS:
+                if row.get(column) not in (None, ""):
+                    stat_field_non_null_counts[column] += 1
             try:
                 tourney_date = _parse_tourney_date(row["tourney_date"])
                 season_year = tourney_date.year
@@ -210,13 +479,20 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                 if not winner_name or not loser_name:
                     raise SackmannRowError("missing_player_name")
 
-                winner_id = row.get("winner_id", "").strip() or None
-                loser_id = row.get("loser_id", "").strip() or None
                 source_match_id = _source_match_id(row, winner_id, loser_id)
                 explicit_match_date = row.get("match_date")
+                status_resolution = _resolve_status(row.get("score"), row.get("comment"))
+                status_key = (
+                    status_resolution.raw_value,
+                    status_resolution.normalized_status,
+                    status_resolution.accepted,
+                )
+                status_counts[status_key] = status_counts.get(status_key, 0) + 1
+                if not status_resolution.accepted or status_resolution.normalized_status is None:
+                    raise SackmannRowError(status_resolution.reason or "unsupported_status")
                 if explicit_match_date:
                     match_day = datetime.strptime(explicit_match_date, "%Y-%m-%d").date()
-                    match_start_at = _match_start_at(match_day)
+                    match_start_at = None
                     match_observed_at = _prematch_observed_at(match_day)
                     result_observed_at = _result_observed_at(match_day)
                     if match_day > tournament_end_date:
@@ -228,6 +504,8 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                 limitations: list[str] = []
                 if not explicit_match_date:
                     limitations.append(_UNKNOWN_MATCH_DATE_LIMITATION)
+                else:
+                    limitations.append(_DATE_ONLY_MATCH_DATE_LIMITATION)
 
                 raw_fields = {
                     key: value
@@ -265,7 +543,7 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                         winner=PlayerReference(winner_name, winner_id),
                         loser=PlayerReference(loser_name, loser_id),
                         scoreline_text=collapse_whitespace(row["score"]) if row.get("score") else None,
-                        outcome_status=_match_status(row.get("score"), row.get("comment")),
+                        outcome_status=status_resolution.normalized_status,
                         winner_stats=_stat_line(row, "w"),
                         loser_stats=_stat_line(row, "l"),
                         raw_fields=raw_fields,
@@ -273,6 +551,13 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                     )
                 )
             except (SackmannRowError, ValueError) as exc:
+                if "status_resolution" not in locals():
+                    status_resolution = _StatusResolution(
+                        raw_value=None,
+                        normalized_status=None,
+                        accepted=False,
+                        reason=str(exc),
+                    )
                 rejected_rows.append(
                     {
                         "row_number": row_number,
@@ -282,4 +567,20 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                         "loser_name": row.get("loser_name"),
                     }
                 )
-    return SackmannParseOutcome(records=records, rejected_rows=rejected_rows)
+            finally:
+                status_resolution = None
+    return SackmannParseOutcome(
+        records=records,
+        rejected_rows=rejected_rows,
+        audit=_build_parse_audit(
+            fieldnames=list(reader.fieldnames),
+            missing_player_id_rows=missing_player_id_rows,
+            missing_tournament_id_rows=missing_tournament_id_rows,
+            missing_match_num_rows=missing_match_num_rows,
+            missing_match_date_rows=missing_match_date_rows,
+            unknown_surface_rows=unknown_surface_rows,
+            stat_null_patterns=stat_null_patterns,
+            stat_field_non_null_counts=stat_field_non_null_counts,
+            status_counts=status_counts,
+        ),
+    )

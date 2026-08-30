@@ -20,7 +20,7 @@ if str(SRC_ROOT) not in sys.path:
 
 def _run_psql(dsn: str, sql_path: Path) -> None:
     subprocess.run(
-        ["psql", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
+        ["psql", "-d", dsn, "-v", "ON_ERROR_STOP=1", "-f", str(sql_path)],
         check=True,
         capture_output=True,
         text=True,

@@ -116,7 +116,23 @@ class HistoricalRepository:
         as_of: datetime,
         stable_source_player_id: str | None = None,
         create_if_missing_with_stable_id: bool = False,
+        require_stable_source_player_id: bool = False,
     ) -> IdentityResolution:
+        if require_stable_source_player_id and not stable_source_player_id:
+            self._ensure_identity_event(
+                source_system=source_system,
+                source_record_id=source_record_id,
+                raw_name=raw_name,
+                normalized_name=normalize_person_lookup(raw_name),
+                resolution_status="UNMATCHED",
+                resolved_player_id=None,
+                context_tournament_name=context_tournament_name,
+                context_match_start_at=context_match_start_at,
+                source_observed_at=source_observed_at,
+                as_of=as_of,
+            )
+            return IdentityResolution(status="UNMATCHED", player_id=None)
+
         if stable_source_player_id:
             row = self.conn.execute(
                 """

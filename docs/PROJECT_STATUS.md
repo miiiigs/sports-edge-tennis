@@ -12,7 +12,7 @@ TENNIS T-ED2 DESIGN: COMPLETE
 TENNIS T-ED2 IMPLEMENTATION: COMPLETE
 TENNIS T-ED3+: NOT STARTED
 TENNIS DATABASE PROVISIONING: NOT STARTED
-TENNIS HISTORICAL DATA: NOT INGESTED
+TENNIS HISTORICAL DATA: READY FOR INDEPENDENT REVIEW
 TENNIS LIVE DATA: NOT CONNECTED
 
 AGENT 1 SURFACE ELO: READY FOR INDEPENDENT REVIEW
@@ -31,5 +31,14 @@ TENNIS PRODUCTION: NOT AUTHORIZED
 ## Current milestone
 
 ```
-Phase 2A: Agent 1 Surface-Adjusted Elo implementation review
+Phase 2A: Agent 1 historical ingest and PIT validation review
 ```
+
+## Latest validation snapshot
+
+- Local-only Sackmann ATP history validation is complete for `2016-2025` with a smoke gate on
+  `2024-2025` and expansion through `2016-2023`.
+- The disposable PostgreSQL validation run produced `117,714` matches, `117,714`
+  `match_versions`, `117,714` results, and `235,428` stat rows with zero PIT boundary
+  mismatches, zero identity collisions, and zero persisted self-matches.
+- Historical odds ingestion remains out of scope for this phase.
