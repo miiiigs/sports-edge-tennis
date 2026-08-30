@@ -157,13 +157,14 @@ The implemented T-ED2 schema phase remains narrow and PostgreSQL-native:
   dry-run reports, and ingest summaries remain ignored artifacts under
   `artifacts/historical_ingest/`.
 - `src/sports_edge_tennis/data/historical_validation.py` is the reusable runner for
-  acquisition verification, dry runs, disposable database reset, ingest, PIT boundary
-  validation, extractor probing, and idempotency checks.
+  acquisition verification, dry runs, guarded disposable-local database reset, ingest, PIT
+  boundary validation, extractor probing, and idempotency checks.
 - `src/sports_edge_tennis/data/agent1_history.py` is the read-only extractor that exposes
-  the latest PIT-eligible historical observation per match for Agent 1 cutoff queries.
+  one latest PIT-valid historical observation per match for Agent 1 cutoff queries, even when
+  append-only result corrections exist.
 - Historical parser failures remain fail-closed. Approved quarantine reasons in this phase
   are missing score/status rows, out-of-scope Davis Cup or team-event rows, out-of-scope
-  doubles rows, and malformed self-match source rows.
+  doubles rows, malformed self-match source rows, and ambiguous bare `>` advancement markers.
 
 ## Blind isolation
 

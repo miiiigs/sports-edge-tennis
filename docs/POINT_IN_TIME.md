@@ -218,9 +218,18 @@ Two rare score tokens required explicit normalization during historical validati
 - `Def.` is normalized to `RETIRED`. This is an inference from ATP's definition of a default
   as a post-start loss state and from the current canonical status vocabulary not including a
   separate `DEFAULT` terminal status.
-- A bare `>` advancement marker is normalized to `WALKOVER` when the source row has no
-  playable score, minutes, or stat payload. This is a conservative inference for a rare
-  pre-match advancement marker, not a claim that the source exposed a richer terminal state.
+- A bare `>` advancement marker is quarantined as `ambiguous_advancement_marker`. The raw
+  token is preserved in rejection evidence, but Sports Edge does not canonize it as
+  `WALKOVER` or another richer terminal state.
+
+Historical validation resets are also intentionally fail-closed. The runner only performs a
+destructive reset when `--reset-disposable-db` is passed and the parsed PostgreSQL target is
+both local (`localhost`, `127.0.0.1`, or `::1`) and clearly disposable by database name.
+
+Agent 1 correction replay is likewise conservative: extractor queries collapse append-only
+result corrections to the one latest PIT-valid `match_result_observation` per `match_id`, and
+then join only the latest `match_version` that was itself knowable no later than that selected
+result observation.
 
 ### Odds
 

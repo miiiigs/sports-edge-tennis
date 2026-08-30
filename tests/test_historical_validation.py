@@ -1,11 +1,15 @@
 from pathlib import Path
 
 import psycopg
+import pytest
 
+from sports_edge_tennis.data import historical_validation
 from sports_edge_tennis.data.historical_validation import (
     build_dataset_specs,
     evaluate_dry_run_gate,
+    reset_database,
     run_dry_runs,
+    validate_disposable_history_database_target,
     validate_sackmann_boundaries,
 )
 from sports_edge_tennis.data.manifest import build_source_document
@@ -58,6 +62,10 @@ def test_dry_run_gate_allows_known_quarantines_but_rejects_unknown_status(tmp_pa
 
     assert approved_result["gate_pass"] is True
     assert approved_result["unknown_reason_counts"] == {}
+    assert approved_result["unsupported_status_counts"] == {
+        "<NULL>": 1,
+        ">": 1,
+    }
 
     unsupported_csv_path = tmp_path / "unsupported.csv"
     unsupported_csv_path.write_text(
@@ -86,6 +94,132 @@ def test_dry_run_gate_allows_known_quarantines_but_rejects_unknown_status(tmp_pa
     assert unsupported_result["unknown_reason_counts"] == {
         "unsupported_status_comment:abandoned": 1
     }
+
+
+@pytest.mark.parametrize(
+    ("dsn", "expected_host", "expected_dbname"),
+    [
+        ("postgresql://postgres@localhost/sports_edge_tennis_history_agent1", "localhost", "sports_edge_tennis_history_agent1"),
+        (
+            "postgresql://postgres@127.0.0.1:55432/sports_edge_tennis_history_agent1_runtime",
+            "127.0.0.1",
+            "sports_edge_tennis_history_agent1_runtime",
+        ),
+    ],
+)
+def test_validate_disposable_history_database_target_allows_local_disposable_databases(
+    dsn: str,
+    expected_host: str,
+    expected_dbname: str,
+):
+    target = validate_disposable_history_database_target(dsn)
+
+    assert target.host == expected_host
+    assert target.dbname == expected_dbname
+
+
+@pytest.mark.parametrize(
+    ("dsn", "allow_destructive_reset", "expected_error"),
+    [
+        (
+            "postgresql://postgres@db.example.com/sports_edge_tennis_history_agent1",
+            True,
+            "reset_requires_local_postgresql_host",
+        ),
+        (
+            "postgresql://postgres@localhost/sports_edge_tennis_prod",
+            True,
+            "reset_requires_disposable_history_database_name",
+        ),
+        (
+            "postgresql://postgres@localhost/postgres",
+            True,
+            "reset_requires_disposable_history_database_name",
+        ),
+        (
+            "postgresql://postgres@db.abcd.supabase.co/sports_edge_tennis_history_agent1",
+            True,
+            "reset_requires_local_postgresql_host",
+        ),
+        (
+            "not-a-valid-dsn",
+            True,
+            "invalid_postgresql_dsn",
+        ),
+        (
+            "postgresql://postgres@localhost/sports_edge_tennis_history_agent1",
+            False,
+            "reset_requires_explicit_authorization",
+        ),
+    ],
+)
+def test_reset_database_rejects_unsafe_targets_before_connecting(
+    monkeypatch: pytest.MonkeyPatch,
+    dsn: str,
+    allow_destructive_reset: bool,
+    expected_error: str,
+):
+    connect_attempted = False
+
+    def fail_connect(*args, **kwargs):
+        nonlocal connect_attempted
+        connect_attempted = True
+        raise AssertionError("reset validation must reject before connecting")
+
+    monkeypatch.setattr(historical_validation.psycopg, "connect", fail_connect)
+
+    with pytest.raises(ValueError, match=expected_error):
+        reset_database(
+            dsn=dsn,
+            psql_path="psql",
+            allow_destructive_reset=allow_destructive_reset,
+        )
+
+    assert connect_attempted is False
+
+
+def test_reset_database_allows_explicit_local_disposable_reset(monkeypatch: pytest.MonkeyPatch):
+    executed_sql: list[str] = []
+    applied_migrations: list[Path] = []
+
+    class FakeConnection:
+        def execute(self, sql: str):
+            executed_sql.append(sql)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def fake_connect(*args, **kwargs):
+        return FakeConnection()
+
+    monkeypatch.setattr(historical_validation.psycopg, "connect", fake_connect)
+    monkeypatch.setattr(
+        historical_validation,
+        "_migration_entries",
+        lambda: [{"up": "db/migrations/0001_tennis_data_foundation.up.sql"}],
+    )
+    monkeypatch.setattr(
+        historical_validation,
+        "_psql",
+        lambda psql_path, dsn, sql_path: applied_migrations.append(sql_path),
+    )
+
+    reset_database(
+        dsn="postgresql://postgres@localhost/sports_edge_tennis_history_agent1_runtime",
+        psql_path="psql",
+        allow_destructive_reset=True,
+    )
+
+    assert executed_sql == [
+        "DROP SCHEMA IF EXISTS public CASCADE",
+        "CREATE SCHEMA public",
+    ]
+    assert applied_migrations == [
+        historical_validation._REPO_ROOT / Path("db/migrations/0001_tennis_data_foundation.up.sql")
+    ]
 
 
 def test_validate_sackmann_boundaries_matches_ingested_fixture(

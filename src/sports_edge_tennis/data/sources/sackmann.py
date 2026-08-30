@@ -298,12 +298,13 @@ def _resolve_status(score: str | None, comment: str | None) -> _StatusResolution
         )
     # Rare bare advancement marker seen in the Sackmann qual/chall archive.
     # The source row contains no playable score tokens, minutes, or stats, so we
-    # treat it as pre-match advancement rather than inventing an in-progress score.
+    # quarantine it instead of asserting a richer canonical outcome.
     if score_value == ">":
         return _StatusResolution(
             raw_value=score_value,
-            normalized_status="WALKOVER",
-            accepted=True,
+            normalized_status=None,
+            accepted=False,
+            reason="ambiguous_advancement_marker",
         )
 
     trailing_token = _normalize_status_token(score_value.split()[-1])

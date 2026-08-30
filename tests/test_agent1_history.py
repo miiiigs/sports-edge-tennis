@@ -345,6 +345,90 @@ def test_load_agent1_history_applies_cutoff_and_chooses_latest_eligible_match_ve
     assert observation.qualifying_flag is True
 
 
+def test_load_agent1_history_selects_one_latest_result_observation_per_match(
+    db: psycopg.Connection,
+):
+    player_1 = _insert_player(db, "Player One")
+    player_2 = _insert_player(db, "Player Two")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Corrected Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_TOUR",
+        surface="HARD",
+        start_date="2025-04-01",
+        end_date="2025-04-07",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_TOUR",
+        surface="HARD",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=None,
+        source_observed_at=_utc(2025, 4, 3, 0, 0),
+        as_of=_utc(2025, 4, 3, 0, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 4, 5, 23, 59, 59),
+        as_of=_utc(2025, 4, 5, 23, 59, 59),
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_500",
+        surface="CLAY",
+        best_of_sets=5,
+        qualifying_flag=True,
+        match_status="RETIRED",
+        match_start_at=None,
+        source_observed_at=_utc(2025, 4, 6, 12, 0),
+        as_of=_utc(2025, 4, 6, 12, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="RETIRED",
+        winner_side=2,
+        source_observed_at=_utc(2025, 4, 7, 23, 59, 59),
+        as_of=_utc(2025, 4, 7, 23, 59, 59),
+    )
+
+    before_correction = load_agent1_history(db, cutoff=_utc(2025, 4, 6, 18, 0))
+    after_correction = load_agent1_history(db, cutoff=_utc(2025, 4, 7, 23, 59, 59))
+
+    assert [row.match_id for row in before_correction] == [match_id]
+    assert len({row.match_id for row in before_correction}) == 1
+    assert before_correction[0].outcome_status == "COMPLETED"
+    assert before_correction[0].winner_side == 1
+    assert before_correction[0].competition_tier == "ATP_TOUR"
+    assert before_correction[0].surface == "HARD"
+    assert before_correction[0].best_of_sets == 3
+    assert before_correction[0].qualifying_flag is False
+
+    assert [row.match_id for row in after_correction] == [match_id]
+    assert len({row.match_id for row in after_correction}) == 1
+    assert after_correction[0].outcome_status == "RETIRED"
+    assert after_correction[0].winner_side == 2
+    assert after_correction[0].competition_tier == "ATP_500"
+    assert after_correction[0].surface == "CLAY"
+    assert after_correction[0].best_of_sets == 5
+    assert after_correction[0].qualifying_flag is True
+
+
 def test_load_agent1_history_filters_and_ordering_are_deterministic(db: psycopg.Connection):
     player_ids = [_insert_player(db, f"Player {idx}") for idx in range(1, 5)]
     match_a_id, _ = _insert_match_shell(

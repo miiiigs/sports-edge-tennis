@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import psycopg
+from psycopg.conninfo import conninfo_to_dict
 
 from .agent1_history import load_agent1_history
 from .contracts import SourceDocument
@@ -32,6 +33,7 @@ APPROVED_RETRIEVAL_TREE_ROOT = "https://api.github.com/repos/Aneeshers/tennis-sa
 APPROVED_RETRIEVAL_RAW_ROOT = "https://raw.githubusercontent.com/Aneeshers/tennis-sackmann-archive"
 _APPROVED_REJECTION_REASONS = frozenset(
     {
+        "ambiguous_advancement_marker",
         "missing_score_or_status",
         "out_of_scope_tourney_level:D",
         "out_of_scope_tourney_level:S",
@@ -53,6 +55,9 @@ _REQUEST_TIMEOUT_SECONDS = 60
 _USER_AGENT = "sports-edge-tennis-historical-validation/1.0"
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _MIGRATION_MANIFEST_PATH = _REPO_ROOT / "db" / "migrations" / "manifest.json"
+_ALLOWED_RESET_DB_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+_ALLOWED_RESET_DB_PREFIXES = ("sports_edge_tennis_history_", "sports_edge_tennis_test_")
+_ALLOWED_RESET_DB_NAMES = frozenset({"sports_edge_tennis_history_agent1"})
 
 
 @dataclass(frozen=True)
@@ -77,6 +82,30 @@ class HistoricalDatasetSpec:
 
     def verification_url(self, source_revision: str) -> str:
         return f"{APPROVED_RETRIEVAL_API_ROOT}/{self.remote_path}?ref={source_revision}"
+
+
+@dataclass(frozen=True)
+class DisposableHistoryDatabaseTarget:
+    host: str
+    dbname: str
+
+
+def validate_disposable_history_database_target(dsn: str) -> DisposableHistoryDatabaseTarget:
+    try:
+        params = conninfo_to_dict(dsn)
+    except psycopg.ProgrammingError as exc:
+        raise ValueError("invalid_postgresql_dsn") from exc
+    hosts = [str(host).strip() for host in str(params.get("host", "")).split(",") if str(host).strip()]
+    if len(hosts) != 1 or hosts[0] not in _ALLOWED_RESET_DB_HOSTS:
+        raise ValueError("reset_requires_local_postgresql_host")
+    dbname = str(params.get("dbname", "")).strip()
+    if not dbname:
+        raise ValueError("reset_requires_explicit_dbname")
+    if dbname not in _ALLOWED_RESET_DB_NAMES and not any(
+        dbname.startswith(prefix) for prefix in _ALLOWED_RESET_DB_PREFIXES
+    ):
+        raise ValueError("reset_requires_disposable_history_database_name")
+    return DisposableHistoryDatabaseTarget(host=hosts[0], dbname=dbname)
 
 
 def build_dataset_specs(years: range | tuple[int, ...] | list[int]) -> list[HistoricalDatasetSpec]:
@@ -396,7 +425,11 @@ def reset_database(
     *,
     dsn: str,
     psql_path: str,
+    allow_destructive_reset: bool,
 ) -> None:
+    if not allow_destructive_reset:
+        raise ValueError("reset_requires_explicit_authorization")
+    validate_disposable_history_database_target(dsn)
     with psycopg.connect(dsn, autocommit=True) as conn:
         conn.execute("DROP SCHEMA IF EXISTS public CASCADE")
         conn.execute("CREATE SCHEMA public")
@@ -918,10 +951,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="psql executable used to apply committed migrations",
     )
     parser.add_argument(
-        "--reset-db",
-        action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Reset the disposable database and reapply 0001-0005 before smoke ingest",
+        "--reset-disposable-db",
+        action="store_true",
+        help="Explicitly authorize resetting an approved local disposable history database",
     )
     parser.add_argument(
         "--local-only",
@@ -967,8 +999,12 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"result": "SMOKE_FAILED", "phase": "dry_run"}, indent=2, sort_keys=True))
         return 1
 
-    if args.reset_db:
-        reset_database(dsn=args.db_dsn, psql_path=args.psql_path)
+    if args.reset_disposable_db:
+        reset_database(
+            dsn=args.db_dsn,
+            psql_path=args.psql_path,
+            allow_destructive_reset=True,
+        )
 
     smoke_ingest_results = ingest_documents(
         dsn=args.db_dsn,

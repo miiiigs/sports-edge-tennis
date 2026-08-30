@@ -18,40 +18,57 @@ def load_agent1_history(
     date_start: date | None = None,
     date_end: date | None = None,
 ) -> list[HistoricalMatchObservation]:
-    filters = [
+    result_filters = [
         "mro.source_observed_at <= %(cutoff)s",
         "mro.as_of <= %(cutoff)s",
+    ]
+    version_filters = [
         "mv.source_observed_at <= %(cutoff)s",
         "mv.as_of <= %(cutoff)s",
-        "mv.source_observed_at <= mro.as_of",
-        "mv.as_of <= mro.as_of",
+        "mv.source_observed_at <= selected_results.as_of",
+        "mv.as_of <= selected_results.as_of",
     ]
     params: dict[str, object] = {"cutoff": cutoff}
 
     if tour_scopes:
-        filters.append("mv.tour_scope::text = ANY(%(tour_scopes)s)")
+        version_filters.append("mv.tour_scope::text = ANY(%(tour_scopes)s)")
         params["tour_scopes"] = list(tour_scopes)
     if competition_tiers:
-        filters.append("mv.competition_tier::text = ANY(%(competition_tiers)s)")
+        version_filters.append("mv.competition_tier::text = ANY(%(competition_tiers)s)")
         params["competition_tiers"] = list(competition_tiers)
     if year_start is not None:
-        filters.append("te.season_year >= %(year_start)s")
+        version_filters.append("te.season_year >= %(year_start)s")
         params["year_start"] = year_start
     if year_end is not None:
-        filters.append("te.season_year <= %(year_end)s")
+        version_filters.append("te.season_year <= %(year_end)s")
         params["year_end"] = year_end
     if date_start is not None:
-        filters.append("mro.source_observed_at::date >= %(date_start)s")
+        result_filters.append("mro.source_observed_at::date >= %(date_start)s")
         params["date_start"] = date_start
     if date_end is not None:
-        filters.append("mro.source_observed_at::date <= %(date_end)s")
+        result_filters.append("mro.source_observed_at::date <= %(date_end)s")
         params["date_end"] = date_end
 
     query = f"""
-        WITH eligible_history AS (
+        WITH selected_results AS (
             SELECT
                 mro.match_result_observation_id,
                 mro.match_id,
+                mro.outcome_status::text AS outcome_status,
+                mro.winner_side,
+                mro.source_observed_at,
+                mro.as_of,
+                ROW_NUMBER() OVER (
+                    PARTITION BY mro.match_id
+                    ORDER BY mro.as_of DESC, mro.source_observed_at DESC, mro.match_result_observation_id DESC
+                ) AS result_rank
+            FROM match_result_observations mro
+            WHERE {" AND ".join(result_filters)}
+        ),
+        eligible_history AS (
+            SELECT
+                selected_results.match_result_observation_id,
+                selected_results.match_id,
                 mv.player_1_id,
                 mv.player_2_id,
                 mv.surface::text AS surface,
@@ -60,22 +77,23 @@ def load_agent1_history(
                 mv.best_of_sets,
                 mv.qualifying_flag,
                 mv.match_start_at,
-                mro.outcome_status::text AS outcome_status,
-                mro.winner_side,
-                mro.source_observed_at,
-                mro.as_of,
+                selected_results.outcome_status,
+                selected_results.winner_side,
+                selected_results.source_observed_at,
+                selected_results.as_of,
                 ROW_NUMBER() OVER (
-                    PARTITION BY mro.match_result_observation_id
+                    PARTITION BY selected_results.match_id
                     ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
                 ) AS version_rank
-            FROM match_result_observations mro
+            FROM selected_results
             JOIN matches m
-                ON m.match_id = mro.match_id
+                ON m.match_id = selected_results.match_id
             JOIN tournament_editions te
                 ON te.tournament_edition_id = m.tournament_edition_id
             JOIN match_versions mv
-                ON mv.match_id = mro.match_id
-            WHERE {" AND ".join(filters)}
+                ON mv.match_id = selected_results.match_id
+            WHERE selected_results.result_rank = 1
+                AND {" AND ".join(version_filters)}
         )
         SELECT
             match_id,

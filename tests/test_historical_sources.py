@@ -121,7 +121,9 @@ def test_parse_sackmann_score_suffix_retired_without_comment_and_audits_status(t
     assert vocabulary[("RET", "RETIRED", True)] == 1
 
 
-def test_parse_sackmann_default_and_advancement_tokens_are_explicitly_mapped(tmp_path: Path):
+def test_parse_sackmann_default_token_is_mapped_and_bare_advancement_marker_is_quarantined(
+    tmp_path: Path,
+):
     csv_path = tmp_path / "atp_matches_qual_chall_2019.csv"
     csv_path.write_text(
         "\n".join(
@@ -149,15 +151,22 @@ def test_parse_sackmann_default_and_advancement_tokens_are_explicitly_mapped(tmp
         for entry in outcome.audit.status_vocabulary
     }
 
-    assert len(outcome.records) == 3
+    assert len(outcome.records) == 2
     assert [record.outcome_status for record in outcome.records] == [
         "RETIRED",
-        "WALKOVER",
         "RETIRED",
     ]
     assert vocabulary[("DEF", "RETIRED", True)] == 2
-    assert vocabulary[(">", "WALKOVER", True)] == 1
-    assert outcome.rejected_rows == []
+    assert vocabulary[(">", None, False)] == 1
+    assert outcome.rejected_rows == [
+        {
+            "loser_name": "Christian Langmo",
+            "reason": "ambiguous_advancement_marker",
+            "row_number": 3,
+            "tournament_name": "Cary CH",
+            "winner_name": "Petros Chrysochos",
+        }
+    ]
 
 
 def test_parse_sackmann_rejects_identical_source_player_ids(tmp_path: Path):
