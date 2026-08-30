@@ -801,11 +801,14 @@ Deferred to T-ED5:
 
 Deferred to predictive-agent phases:
 
-- Agent 1 implementation
 - Agent 2 implementation
 - Agent 3 implementation
 - manager runtime implementation
 - veto runtime implementation
+
+Implemented in the current pure-computation phase:
+
+- Agent 1 surface-adjusted Elo module with no database persistence
 
 ## T-ED2 schema implementation
 

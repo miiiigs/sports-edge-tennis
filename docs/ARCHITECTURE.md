@@ -7,9 +7,10 @@ Edge Desk realignment is additive. It does not replace the dedicated Tennis buil
 generic Sports AI architecture, and it does not weaken the Tennis-specific consensus rules.
 
 The `0004_prediction_runs_and_policy_versions` schema migration is implemented on `main`.
-The `0005_append_only_enforcement_and_lock_guards` schema migration is now implemented and
-ready for independent review, while predictive-agent, manager, veto, pricing, and
-orchestration runtime work still remain future phases.
+The `0005_append_only_enforcement_and_lock_guards` schema migration is now implemented.
+Agent 1 now exists as a pure deterministic computation module without database persistence,
+while Agent 2, Agent 3, manager, veto, pricing, and orchestration runtime work still remain
+future phases.
 
 ```text
 SLATE GENERATOR

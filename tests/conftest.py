@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import json
+import sys
 from pathlib import Path
 
 import psycopg
@@ -9,8 +10,12 @@ import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
 MANIFEST_PATH = REPO_ROOT / "db" / "migrations" / "manifest.json"
 POSTGRES_DSN = os.environ.get("TEST_POSTGRES_DSN") or os.environ.get("DATABASE_URL")
+
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
 
 
 def _run_psql(dsn: str, sql_path: Path) -> None:
