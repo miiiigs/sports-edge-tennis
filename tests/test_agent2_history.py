@@ -11,6 +11,7 @@ from sports_edge_tennis.agents.agent2_hierarchical_markov import (
 from sports_edge_tennis.data.agent2_history import (
     Agent2HistoricalMatch,
     Agent2MatchStatRow,
+    ORDINARY_ATP_TOURNAMENT_ALIASES_V1,
     TRUE_QUALIFYING_ROUND_CODES,
     build_history_snapshot,
     build_prediction_request_from_snapshot,
@@ -327,9 +328,75 @@ def test_unknown_round_code_fails_closed_when_qualifying_semantics_matter():
     assert resolved.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
 
 
+def test_resolver_recognizes_frozen_ordinary_atp_tour_identities():
+    for tournament_name in ("Washington", "Barcelona", "Dubai", "Vienna", "Rotterdam"):
+        resolved = resolve_scoring_rule(
+            canonical_tournament_name=tournament_name,
+            season_year=2024,
+            tour_scope="ATP_MAIN",
+            competition_tier="ATP_TOUR",
+            round_code="R32",
+            best_of_sets=3,
+            qualifying_flag=False,
+        )
+
+        assert normalize_tournament_alias(tournament_name) in ORDINARY_ATP_TOURNAMENT_ALIASES_V1
+        assert resolved.scoring_rule_version == ScoringRuleVersion.BO3_TB7_ALL_SETS
+        assert resolved.abstain_reason is None
+
+
+def test_frozen_ordinary_atp_tour_identity_fails_closed_on_unexpected_format():
+    resolved = resolve_scoring_rule(
+        canonical_tournament_name="Washington",
+        season_year=2024,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_TOUR",
+        round_code="R32",
+        best_of_sets=5,
+        qualifying_flag=False,
+    )
+
+    assert resolved.scoring_rule_version is None
+    assert resolved.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
+
+
+def test_ordinary_atp_tour_identity_can_update_history_when_stats_are_usable():
+    source_time = _utc(2025, 5, 10, 23, 0)
+    observation = _historical_match(
+        match_id=1,
+        player_1_id=1,
+        player_2_id=2,
+        tournament_name="Washington",
+        competition_tier="ATP_TOUR",
+        stat_rows=(
+            _stat_row(
+                match_stat_observation_id=1,
+                player_id=1,
+                source_observed_at=source_time,
+                as_of=source_time,
+                service_points_played=60,
+                first_serve_points_won=30,
+                second_serve_points_won=15,
+            ),
+            _stat_row(
+                match_stat_observation_id=2,
+                player_id=2,
+                source_observed_at=source_time,
+                as_of=source_time,
+                service_points_played=58,
+                first_serve_points_won=27,
+                second_serve_points_won=14,
+            ),
+        ),
+    )
+
+    assert historical_match_is_eligible_for_update(observation) is True
+
+
 def test_resolver_covers_reviewed_event_era_matrix_and_special_event_policy():
     cases = [
         ("Australian Open", 2018, "ATP_MAIN", "GRAND_SLAM", "R32", 5, False, ScoringRuleVersion.BO5_DECIDER_ADVANTAGE),
+        ("Doha Aus Open Qualies", 2021, "ATP_MAIN", "GRAND_SLAM", "Q1", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
         ("Australian Open", 2024, "ATP_MAIN", "GRAND_SLAM", "Q1", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
         ("Roland Garros", 2021, "ATP_MAIN", "GRAND_SLAM", "R32", 5, False, ScoringRuleVersion.BO5_DECIDER_ADVANTAGE),
         ("Roland Garros", 2023, "ATP_MAIN", "GRAND_SLAM", "Q2", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
@@ -400,9 +467,10 @@ def test_resolver_covers_reviewed_event_era_matrix_and_special_event_policy():
 
 def test_unknown_atp_tour_events_fail_closed_and_cannot_update_history():
     for tournament_name in (
-        "Exhibition Invitational",
-        "Legends Event",
         "Mystery Team Challenge",
+        "Legends Invitational",
+        "Unknown Tour Event",
+        "Future Special Cup",
     ):
         resolved = resolve_scoring_rule(
             canonical_tournament_name=tournament_name,

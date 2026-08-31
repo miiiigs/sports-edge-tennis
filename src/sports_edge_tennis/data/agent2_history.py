@@ -28,9 +28,106 @@ REVIEWED_ROUND_VOCABULARY = frozenset(
     {"BR", "F", "Q1", "Q2", "Q3", "QF", "R128", "R16", "R32", "R64", "RR", "SF"}
 )
 _ORDINARY_ATP_MAIN_TIERS = frozenset({"MASTERS_1000", "ATP_500", "ATP_250"})
+ORDINARY_ATP_TOURNAMENT_ALIASES_V1 = frozenset(
+    {
+        "ACAPULCO",
+        "ADELAIDE",
+        "ADELAIDE 1",
+        "ADELAIDE 2",
+        "ALMATY",
+        "ANTALYA",
+        "ANTWERP",
+        "ASTANA",
+        "ATHENS",
+        "ATLANTA",
+        "ATP RIO DE JANEIRO",
+        "AUCKLAND",
+        "BANJA LUKA",
+        "BARCELONA",
+        "BASEL",
+        "BASTAD",
+        "BEIJING",
+        "BELGRADE",
+        "BELGRADE 2",
+        "BRISBANE",
+        "BRUSSELS",
+        "BUCHAREST",
+        "BUDAPEST",
+        "BUENOS AIRES",
+        "CAGLIARI",
+        "CHENGDU",
+        "CHENNAI",
+        "COLOGNE 1",
+        "COLOGNE 2",
+        "CORDOBA",
+        "DALLAS",
+        "DELRAY BEACH",
+        "DOHA",
+        "DUBAI",
+        "EASTBOURNE",
+        "ESTORIL",
+        "FLORENCE",
+        "GENEVA",
+        "GIJON",
+        "GREAT OCEAN ROAD OPEN",
+        "GSTAAD",
+        "HALLE",
+        "HAMBURG",
+        "HANGZHOU",
+        "HONG KONG",
+        "HOUSTON",
+        "ISTANBUL",
+        "KITZBUHEL",
+        "LOS CABOS",
+        "LYON",
+        "MALLORCA",
+        "MARBELLA",
+        "MARRAKECH",
+        "MARSEILLE",
+        "MELBOURNE",
+        "MEMPHIS",
+        "METZ",
+        "MONTPELLIER",
+        "MOSCOW",
+        "MUNICH",
+        "MURRAY RIVER OPEN",
+        "NAPLES",
+        "NEW YORK",
+        "NEWPORT",
+        "NICE",
+        "NOTTINGHAM",
+        "NUR SULTAN",
+        "PARMA",
+        "PUNE",
+        "QUEEN S CLUB",
+        "QUITO",
+        "RIO DE JANEIRO",
+        "ROTTERDAM",
+        "S HERTOGENBOSCH",
+        "SAN DIEGO",
+        "SANTIAGO",
+        "SAO PAULO",
+        "SARDINIA",
+        "SEOUL",
+        "SHENZHEN",
+        "SINGAPORE",
+        "SOFIA",
+        "ST PETERSBURG",
+        "STOCKHOLM",
+        "STUTTGART",
+        "SYDNEY",
+        "TEL AVIV",
+        "TOKYO",
+        "UMAG",
+        "VIENNA",
+        "WASHINGTON",
+        "WINSTON SALEM",
+        "ZHUHAI",
+    }
+)
 _NEXT_GEN_ALIASES = frozenset({"NEXTGEN FINALS", "NEXT GEN FINALS"})
 _LAVER_CUP_ALIASES = frozenset({"LAVER CUP"})
-_AUSTRALIAN_OPEN_ALIASES = frozenset({"AUSTRALIAN OPEN"})
+_AUSTRALIAN_OPEN_ALIASES = frozenset({"AUSTRALIAN OPEN", "DOHA AUS OPEN QUALIES"})
 _ROLAND_GARROS_ALIASES = frozenset({"ROLAND GARROS", "FRENCH OPEN"})
 _WIMBLEDON_ALIASES = frozenset({"WIMBLEDON"})
 _US_OPEN_ALIASES = frozenset({"US OPEN", "U S OPEN"})
@@ -320,9 +417,8 @@ def resolve_scoring_rule(
             )
         return _unsupported_rule(authoritative_qualifying, qualifying_flag_disagrees)
 
-    # Local Sackmann ingestion only positively identifies ordinary ATP main-draw
-    # events when the tier is explicit; ATP_TOUR remains ambiguous and also covers
-    # reviewed special events handled by alias above.
+    # Local Sackmann level A is encoded as ATP_TOUR, so ordinary ATP events need
+    # a frozen positive identity set instead of an unsafe generic ATP_TOUR rule.
     if (
         tour_scope == "ATP_MAIN"
         and competition_tier in _ORDINARY_ATP_MAIN_TIERS
@@ -334,6 +430,20 @@ def resolve_scoring_rule(
             authoritative_qualifying=authoritative_qualifying,
             qualifying_flag_disagrees=qualifying_flag_disagrees,
         )
+
+    if (
+        tour_scope == "ATP_MAIN"
+        and competition_tier == "ATP_TOUR"
+        and alias in ORDINARY_ATP_TOURNAMENT_ALIASES_V1
+    ):
+        if best_of_sets == 3:
+            return ResolvedScoringRule(
+                scoring_rule_version=ScoringRuleVersion.BO3_TB7_ALL_SETS,
+                abstain_reason=None,
+                authoritative_qualifying=authoritative_qualifying,
+                qualifying_flag_disagrees=qualifying_flag_disagrees,
+            )
+        return _unsupported_rule(authoritative_qualifying, qualifying_flag_disagrees)
 
     return _unsupported_rule(authoritative_qualifying, qualifying_flag_disagrees)
 
