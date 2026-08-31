@@ -344,6 +344,8 @@ def test_resolver_covers_reviewed_event_era_matrix_and_special_event_policy():
         ("Olympic Games", 2016, "ATP_MAIN", "ATP_TOUR", "F", 5, False, ScoringRuleVersion.BO5_DECIDER_TB7_AT_6_6),
         ("Olympic Games", 2024, "ATP_MAIN", "ATP_TOUR", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
         ("Bordeaux Challenger", 2024, "CHALLENGER", "CHALLENGER", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
+        ("Geneva Open", 2024, "ATP_MAIN", "ATP_250", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
+        ("Basel Open", 2024, "ATP_MAIN", "ATP_500", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
         ("Cincinnati Masters", 2024, "ATP_MAIN", "MASTERS_1000", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
     ]
 
@@ -394,6 +396,58 @@ def test_resolver_covers_reviewed_event_era_matrix_and_special_event_policy():
         )
         assert special.scoring_rule_version is None
         assert special.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
+
+
+def test_unknown_atp_tour_events_fail_closed_and_cannot_update_history():
+    for tournament_name in (
+        "Exhibition Invitational",
+        "Legends Event",
+        "Mystery Team Challenge",
+    ):
+        resolved = resolve_scoring_rule(
+            canonical_tournament_name=tournament_name,
+            season_year=2024,
+            tour_scope="ATP_MAIN",
+            competition_tier="ATP_TOUR",
+            round_code="R32",
+            best_of_sets=3,
+            qualifying_flag=False,
+        )
+
+        assert resolved.scoring_rule_version is None
+        assert resolved.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
+        assert (
+            historical_match_is_eligible_for_update(
+                _historical_match(
+                    match_id=1,
+                    player_1_id=1,
+                    player_2_id=2,
+                    tournament_name=tournament_name,
+                    competition_tier="ATP_TOUR",
+                    stat_rows=(
+                        _stat_row(
+                            match_stat_observation_id=1,
+                            player_id=1,
+                            source_observed_at=_utc(2025, 1, 10, 23, 0),
+                            as_of=_utc(2025, 1, 10, 23, 0),
+                            service_points_played=60,
+                            first_serve_points_won=30,
+                            second_serve_points_won=15,
+                        ),
+                        _stat_row(
+                            match_stat_observation_id=2,
+                            player_id=2,
+                            source_observed_at=_utc(2025, 1, 10, 23, 0),
+                            as_of=_utc(2025, 1, 10, 23, 0),
+                            service_points_played=58,
+                            first_serve_points_won=27,
+                            second_serve_points_won=14,
+                        ),
+                    ),
+                )
+            )
+            is False
+        )
 
 
 def test_load_agent2_history_selects_latest_result_and_latest_compatible_version_and_exact_stat_bundle(
@@ -627,6 +681,234 @@ def test_load_agent2_history_respects_source_observed_at_and_as_of_cutoffs_but_n
     assert [item.match_id for item in observations] == [match_id]
 
 
+def test_load_agent2_history_rejects_later_version_than_selected_result_revision(
+    db: psycopg.Connection,
+):
+    player_1 = _insert_player(db, "Player One")
+    player_2 = _insert_player(db, "Player Two")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Version Coherence Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-03-01",
+        end_date="2025-03-07",
+    )
+    compatible_source = _utc(2025, 3, 4, 22, 0)
+    result_source = _utc(2025, 3, 4, 23, 0)
+    shared_as_of = _utc(2025, 3, 5, 12, 0)
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 3, 4, 10, 0),
+        source_observed_at=compatible_source,
+        as_of=shared_as_of,
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="CLAY",
+        round_code="R16",
+        best_of_sets=3,
+        qualifying_flag=True,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 3, 4, 10, 0),
+        source_observed_at=_utc(2025, 3, 4, 23, 30),
+        as_of=shared_as_of,
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=result_source,
+        as_of=shared_as_of,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_1,
+        source_record_id="r1-p1",
+        source_observed_at=result_source,
+        as_of=shared_as_of,
+        service_points_played=60,
+        first_serve_points_won=30,
+        second_serve_points_won=15,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_2,
+        source_record_id="r1-p2",
+        source_observed_at=result_source,
+        as_of=shared_as_of,
+        service_points_played=58,
+        first_serve_points_won=27,
+        second_serve_points_won=14,
+    )
+
+    observations = load_agent2_history(db, cutoff=shared_as_of)
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert observation.result_source_observed_at == result_source
+    assert observation.version_source_observed_at == compatible_source
+    assert observation.surface == "HARD"
+    assert observation.round_code == "R32"
+    assert observation.best_of_sets == 3
+    assert observation.qualifying_flag is False
+    assert {row.service_points_played for row in observation.stat_rows} == {58, 60}
+
+
+def test_load_agent2_history_uses_coherent_correction_bundle_before_and_after_visibility(
+    db: psycopg.Connection,
+):
+    player_1 = _insert_player(db, "Player One")
+    player_2 = _insert_player(db, "Player Two")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Correction Bundle Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-04-01",
+        end_date="2025-04-07",
+    )
+    first_result_source = _utc(2025, 4, 4, 23, 0)
+    first_as_of = _utc(2025, 4, 5, 0, 0)
+    second_result_source = _utc(2025, 4, 5, 23, 30)
+    second_as_of = _utc(2025, 4, 6, 0, 0)
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 4, 4, 10, 0),
+        source_observed_at=_utc(2025, 4, 4, 22, 0),
+        as_of=first_as_of,
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=first_result_source,
+        as_of=first_as_of,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_1,
+        source_record_id="r1-p1",
+        source_observed_at=first_result_source,
+        as_of=first_as_of,
+        service_points_played=60,
+        first_serve_points_won=30,
+        second_serve_points_won=15,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_2,
+        source_record_id="r1-p2",
+        source_observed_at=first_result_source,
+        as_of=first_as_of,
+        service_points_played=58,
+        first_serve_points_won=27,
+        second_serve_points_won=14,
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="CLAY",
+        round_code="R16",
+        best_of_sets=3,
+        qualifying_flag=True,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 4, 4, 10, 0),
+        source_observed_at=_utc(2025, 4, 5, 23, 0),
+        as_of=second_as_of,
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=2,
+        source_observed_at=second_result_source,
+        as_of=second_as_of,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_1,
+        source_record_id="r2-p1",
+        source_observed_at=second_result_source,
+        as_of=second_as_of,
+        service_points_played=62,
+        first_serve_points_won=31,
+        second_serve_points_won=15,
+    )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_2,
+        source_record_id="r2-p2",
+        source_observed_at=second_result_source,
+        as_of=second_as_of,
+        service_points_played=61,
+        first_serve_points_won=30,
+        second_serve_points_won=14,
+    )
+
+    before_correction = load_agent2_history(db, cutoff=first_as_of)
+    after_correction = load_agent2_history(db, cutoff=second_as_of)
+
+    assert len(before_correction) == 1
+    assert before_correction[0].winner_side == 1
+    assert before_correction[0].surface == "HARD"
+    assert before_correction[0].round_code == "R32"
+    assert before_correction[0].qualifying_flag is False
+    assert before_correction[0].result_source_observed_at == first_result_source
+    assert before_correction[0].version_source_observed_at == _utc(2025, 4, 4, 22, 0)
+    assert {row.service_points_played for row in before_correction[0].stat_rows} == {58, 60}
+
+    assert len(after_correction) == 1
+    assert after_correction[0].winner_side == 2
+    assert after_correction[0].surface == "CLAY"
+    assert after_correction[0].round_code == "R16"
+    assert after_correction[0].qualifying_flag is True
+    assert after_correction[0].result_source_observed_at == second_result_source
+    assert after_correction[0].version_source_observed_at == _utc(2025, 4, 5, 23, 0)
+    assert {row.service_points_played for row in after_correction[0].stat_rows} == {61, 62}
+
+
 def test_hybrid_or_one_sided_stat_bundles_do_not_update_history(db: psycopg.Connection):
     player_1 = _insert_player(db, "Player One")
     player_2 = _insert_player(db, "Player Two")
@@ -727,6 +1009,59 @@ def test_build_history_snapshot_counts_each_sporting_match_once_and_derives_serv
     assert snapshot.population.surface_tour_service_points[("HARD", "ATP_MAIN")] == (86, 118)
     assert snapshot.population.surface_service_points["HARD"] == (86, 118)
     assert snapshot.population.global_service_points_won == 86
+    assert snapshot.population.global_service_points_played == 118
+
+
+def test_build_history_snapshot_uses_strict_pre_cutoff_boundary():
+    cutoff = _utc(2025, 4, 10, 23, 0)
+    prior_observation = _historical_match(
+        match_id=1,
+        player_1_id=1,
+        player_2_id=2,
+        result_source_observed_at=_utc(2025, 4, 10, 22, 59, 59),
+        result_as_of=_utc(2025, 4, 10, 22, 59, 59),
+        stat_rows=(
+            _stat_row(
+                match_stat_observation_id=1,
+                player_id=1,
+                source_observed_at=_utc(2025, 4, 10, 22, 59, 59),
+                as_of=_utc(2025, 4, 10, 22, 59, 59),
+                service_points_played=60,
+                first_serve_points_won=30,
+                second_serve_points_won=15,
+            ),
+            _stat_row(
+                match_stat_observation_id=2,
+                player_id=2,
+                source_observed_at=_utc(2025, 4, 10, 22, 59, 59),
+                as_of=_utc(2025, 4, 10, 22, 59, 59),
+                service_points_played=58,
+                first_serve_points_won=27,
+                second_serve_points_won=14,
+            ),
+        ),
+    )
+    at_cutoff = _historical_match(
+        match_id=2,
+        player_1_id=1,
+        player_2_id=2,
+        result_source_observed_at=cutoff,
+        result_as_of=cutoff,
+        stat_rows=prior_observation.stat_rows,
+    )
+    after_cutoff = _historical_match(
+        match_id=3,
+        player_1_id=1,
+        player_2_id=2,
+        result_source_observed_at=_utc(2025, 4, 10, 23, 0, 1),
+        result_as_of=_utc(2025, 4, 10, 23, 0, 1),
+        stat_rows=prior_observation.stat_rows,
+    )
+
+    snapshot = build_history_snapshot((prior_observation, at_cutoff, after_cutoff), cutoff=cutoff)
+
+    assert snapshot.players[1].prior_usable_matches == 1
+    assert snapshot.players[2].prior_usable_matches == 1
     assert snapshot.population.global_service_points_played == 118
 
 

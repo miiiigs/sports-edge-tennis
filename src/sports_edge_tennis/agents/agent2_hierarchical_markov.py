@@ -97,6 +97,12 @@ def _locked_decimal(value: Decimal | int | str, *, field_name: str, expected: st
     return decimal_value
 
 
+def _locked_string(value: str, *, field_name: str, expected: str) -> str:
+    if value != expected:
+        raise Agent2ValidationError(f"{field_name} must remain locked at {expected}")
+    return value
+
+
 def _decimal_to_payload(value: Decimal | None) -> str | None:
     if value is None:
         return None
@@ -166,14 +172,42 @@ class Agent2Config:
             raise Agent2ValidationError("internal_decimal_precision must be at least 28")
         if self.probability_decimal_places != 6:
             raise Agent2ValidationError("probability_decimal_places must remain locked at 6")
-        for version_field in (
+        object.__setattr__(
+            self,
             "model_version",
+            _locked_string(
+                self.model_version,
+                field_name="model_version",
+                expected="agent2_hierarchical_markov_v1",
+            ),
+        )
+        object.__setattr__(
+            self,
             "feature_version",
+            _locked_string(
+                self.feature_version,
+                field_name="feature_version",
+                expected="agent2_serve_return_inputs_v1",
+            ),
+        )
+        object.__setattr__(
+            self,
             "config_version",
+            _locked_string(
+                self.config_version,
+                field_name="config_version",
+                expected="agent2_hierarchical_markov_config_v1",
+            ),
+        )
+        object.__setattr__(
+            self,
             "parameter_schema_version",
-        ):
-            if not getattr(self, version_field):
-                raise Agent2ValidationError(f"{version_field} must be non-empty")
+            _locked_string(
+                self.parameter_schema_version,
+                field_name="parameter_schema_version",
+                expected="agent2_hierarchical_markov_params_v1",
+            ),
+        )
 
     @property
     def probability_quantum(self) -> Decimal:

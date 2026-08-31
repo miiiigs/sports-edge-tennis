@@ -27,7 +27,7 @@ TRUE_QUALIFYING_ROUND_CODES = frozenset({"Q1", "Q2", "Q3"})
 REVIEWED_ROUND_VOCABULARY = frozenset(
     {"BR", "F", "Q1", "Q2", "Q3", "QF", "R128", "R16", "R32", "R64", "RR", "SF"}
 )
-_ATP_MAIN_TIERS = frozenset({"GRAND_SLAM", "MASTERS_1000", "ATP_TOUR", "ATP_500", "ATP_250"})
+_ORDINARY_ATP_MAIN_TIERS = frozenset({"MASTERS_1000", "ATP_500", "ATP_250"})
 _NEXT_GEN_ALIASES = frozenset({"NEXTGEN FINALS", "NEXT GEN FINALS"})
 _LAVER_CUP_ALIASES = frozenset({"LAVER CUP"})
 _AUSTRALIAN_OPEN_ALIASES = frozenset({"AUSTRALIAN OPEN"})
@@ -320,7 +320,14 @@ def resolve_scoring_rule(
             )
         return _unsupported_rule(authoritative_qualifying, qualifying_flag_disagrees)
 
-    if tour_scope == "ATP_MAIN" and competition_tier in _ATP_MAIN_TIERS and best_of_sets == 3:
+    # Local Sackmann ingestion only positively identifies ordinary ATP main-draw
+    # events when the tier is explicit; ATP_TOUR remains ambiguous and also covers
+    # reviewed special events handled by alias above.
+    if (
+        tour_scope == "ATP_MAIN"
+        and competition_tier in _ORDINARY_ATP_MAIN_TIERS
+        and best_of_sets == 3
+    ):
         return ResolvedScoringRule(
             scoring_rule_version=ScoringRuleVersion.BO3_TB7_ALL_SETS,
             abstain_reason=None,
@@ -505,7 +512,7 @@ def load_agent2_history(
         "mro.as_of <= %(cutoff)s",
     ]
     version_filters = [
-        "mv.source_observed_at <= selected_results.as_of",
+        "mv.source_observed_at <= selected_results.source_observed_at",
         "mv.as_of <= selected_results.as_of",
     ]
     params: dict[str, object] = {"cutoff": cutoff}
@@ -1011,7 +1018,7 @@ def build_history_snapshot(
             item.player_2_id,
         ),
     ):
-        if observation.result_source_observed_at > cutoff or observation.result_as_of > cutoff:
+        if observation.result_source_observed_at >= cutoff or observation.result_as_of >= cutoff:
             continue
         apply_historical_match_in_place(players, population, observation)
     return snapshot_history_state(players, population)

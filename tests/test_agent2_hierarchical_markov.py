@@ -141,6 +141,20 @@ def test_locked_config_rejects_parameter_tuning():
         Agent2Config(probability_decimal_places=5)
 
 
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"model_version": "something_else"},
+        {"feature_version": "something_else"},
+        {"config_version": "something_else"},
+        {"parameter_schema_version": "something_else"},
+    ],
+)
+def test_locked_config_rejects_version_identity_overrides(kwargs: dict[str, str]):
+    with pytest.raises(Agent2ValidationError):
+        Agent2Config(**kwargs)
+
+
 def test_population_prior_uses_surface_tour_then_surface_then_global_fallback():
     surface_tour = resolve_population_prior(_population_state())
     surface_only = resolve_population_prior(
