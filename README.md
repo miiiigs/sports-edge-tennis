@@ -9,14 +9,14 @@ repository, runtime, and database, fully separated from the football platform.
 
 ## Current State
 
-Repository bootstrap plus PostgreSQL schema foundation, including committed PostgreSQL 16
-integration validation in CI. No historical ingest, model, market, or production runtime
-functionality is implemented yet.
+PostgreSQL schema foundation, approved 2016-2025 historical corpus acquisition/local ingest/PIT
+validation, Agent 1 Surface Elo implementation, and the first genuine 2019-2025 out-of-sample
+walk-forward validation are now committed in-repo. Independent quantitative review is still
+required before merge or any stronger acceptance claim.
 
 ## Not Yet Implemented
 
 - historical ingest
-- Surface Elo
 - serve/return
 - Markov
 - intransitivity

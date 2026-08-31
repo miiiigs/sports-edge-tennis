@@ -12,10 +12,10 @@ TENNIS T-ED2 DESIGN: COMPLETE
 TENNIS T-ED2 IMPLEMENTATION: COMPLETE
 TENNIS T-ED3+: NOT STARTED
 TENNIS DATABASE PROVISIONING: NOT STARTED
-TENNIS HISTORICAL DATA: READY FOR INDEPENDENT REVIEW
+TENNIS HISTORICAL DATA: COMPLETE
 TENNIS LIVE DATA: NOT CONNECTED
 
-AGENT 1 SURFACE ELO: READY FOR INDEPENDENT REVIEW
+AGENT 1 SURFACE ELO: COMPLETE
 AGENT 2 HIERARCHICAL MARKOV: NOT IMPLEMENTED
 AGENT 3 INTRANSITIVITY: NOT IMPLEMENTED
 
@@ -23,7 +23,7 @@ TENNIS MANAGER: NOT IMPLEMENTED
 TENNIS VETO: NOT IMPLEMENTED
 TENNIS PRICE SCANNER: NOT IMPLEMENTED
 
-TENNIS WALK-FORWARD VALIDATION: NOT IMPLEMENTED
+TENNIS WALK-FORWARD VALIDATION: COMPLETED / PENDING INDEPENDENT QUANTITATIVE REVIEW
 TENNIS PAPER MODE: NOT IMPLEMENTED
 TENNIS PRODUCTION: NOT AUTHORIZED
 ```
@@ -31,14 +31,16 @@ TENNIS PRODUCTION: NOT AUTHORIZED
 ## Current milestone
 
 ```
-Phase 2A: Agent 1 historical ingest and PIT validation review
+Phase 2B: Agent 1 walk-forward quantitative review
 ```
 
 ## Latest validation snapshot
 
-- Local-only Sackmann ATP history validation is complete for `2016-2025` with a smoke gate on
-  `2024-2025` and expansion through `2016-2023`.
-- The disposable PostgreSQL validation run produced `117,714` matches, `117,714`
-  `match_versions`, `117,714` results, and `235,428` stat rows with zero PIT boundary
-  mismatches, zero identity collisions, and zero persisted self-matches.
-- Historical odds ingestion remains out of scope for this phase.
+- The approved local Sackmann ATP corpus is complete for `2016-2025` with `117,713` matches,
+  `117,713` results, `235,426` stat rows, `4,277` players, and `617` tournaments.
+- The first genuine Agent 1 walk-forward validation is complete with a `2016-2018` warm-up and
+  `2019-2025` out-of-sample evaluation using leakage-safe result-visibility cohorts.
+- The completed-match evaluation sample is `77,458` matches with aggregate log loss
+  `0.631662567958`, Brier `0.220795125669`, accuracy `0.642735417904`, and ECE
+  `0.025221101565` versus the fixed `0.5` baseline.
+- Runtime artifacts are ignored and independent quantitative review remains required before merge.
