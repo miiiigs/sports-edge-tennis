@@ -16,11 +16,14 @@ UP_MIGRATION_PATH_0004 = DB_ROOT / "migrations" / "0004_prediction_runs_and_poli
 DOWN_MIGRATION_PATH_0004 = DB_ROOT / "migrations" / "0004_prediction_runs_and_policy_versions.down.sql"
 UP_MIGRATION_PATH_0005 = DB_ROOT / "migrations" / "0005_append_only_enforcement_and_lock_guards.up.sql"
 DOWN_MIGRATION_PATH_0005 = DB_ROOT / "migrations" / "0005_append_only_enforcement_and_lock_guards.down.sql"
+UP_MIGRATION_PATH_0006 = DB_ROOT / "migrations" / "0006_common_predictive_interface_persistence.up.sql"
+DOWN_MIGRATION_PATH_0006 = DB_ROOT / "migrations" / "0006_common_predictive_interface_persistence.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
 SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
 SCHEMA_SNAPSHOT_PATH_0004 = DB_ROOT / "schema" / "0004_prediction_runs_and_policy_versions.sql"
 SCHEMA_SNAPSHOT_PATH_0005 = DB_ROOT / "schema" / "0005_append_only_enforcement_and_lock_guards.sql"
+SCHEMA_SNAPSHOT_PATH_0006 = DB_ROOT / "schema" / "0006_common_predictive_interface_persistence.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -68,6 +71,9 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert migrations[4]["up"] == "db/migrations/0005_append_only_enforcement_and_lock_guards.up.sql"
     assert migrations[4]["down"] == "db/migrations/0005_append_only_enforcement_and_lock_guards.down.sql"
     assert migrations[4]["schema_snapshot"] == "db/schema/0005_append_only_enforcement_and_lock_guards.sql"
+    assert migrations[5]["up"] == "db/migrations/0006_common_predictive_interface_persistence.up.sql"
+    assert migrations[5]["down"] == "db/migrations/0006_common_predictive_interface_persistence.down.sql"
+    assert migrations[5]["schema_snapshot"] == "db/schema/0006_common_predictive_interface_persistence.sql"
     assert UP_MIGRATION_PATH.exists()
     assert DOWN_MIGRATION_PATH.exists()
     assert UP_MIGRATION_PATH_0002.exists()
@@ -78,11 +84,14 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert DOWN_MIGRATION_PATH_0004.exists()
     assert UP_MIGRATION_PATH_0005.exists()
     assert DOWN_MIGRATION_PATH_0005.exists()
+    assert UP_MIGRATION_PATH_0006.exists()
+    assert DOWN_MIGRATION_PATH_0006.exists()
     assert SCHEMA_SNAPSHOT_PATH.exists()
     assert SCHEMA_SNAPSHOT_PATH_0002.exists()
     assert SCHEMA_SNAPSHOT_PATH_0003.exists()
     assert SCHEMA_SNAPSHOT_PATH_0004.exists()
     assert SCHEMA_SNAPSHOT_PATH_0005.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0006.exists()
 
 
 def test_schema_snapshot_matches_bootstrap_migration():
@@ -121,6 +130,20 @@ def test_schema_snapshot_matches_bootstrap_migration():
         + _read_text(UP_MIGRATION_PATH_0005)
     )
     assert expected_full_schema_0005 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0005))
+    expected_full_schema_0006 = _normalized_sql(
+        _read_text(UP_MIGRATION_PATH)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0002)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0003)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0004)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0005)
+        + "\n"
+        + _read_text(UP_MIGRATION_PATH_0006)
+    )
+    assert expected_full_schema_0006 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0006))
 
 
 def test_day5_forward_migration_is_separate_from_bootstrap():
