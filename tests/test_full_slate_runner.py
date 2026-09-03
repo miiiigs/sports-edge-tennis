@@ -616,3 +616,84 @@ def test_retry_lineage_parent_validation(db: psycopg.Connection):
     )
     with pytest.raises(RunnerRequestError):
         run_full_slate(db, bad_retry)
+
+
+def test_finalization_failure_while_running_marks_failed(db: psycopg.Connection, monkeypatch):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+
+    import sports_edge_tennis.runner.full_slate as full_slate
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("finalization failed before commit")
+
+    monkeypatch.setattr(full_slate, "persist_and_finalize_prediction_matrix", boom)
+
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+
+    assert outcome.runner_status == "PREDICTION_FAILED"
+    assert outcome.failure_stage == "PREDICTION_PERSISTENCE"
+
+    run = db.execute(
+        "SELECT run_status, prediction_finalized_at, ended_at FROM prediction_runs WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()
+    assert run[0] == "FAILED"
+    assert run[1] is None
+    assert run[2] is not None
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 0
+    assert db.execute(
+        "SELECT count(*) FROM prediction_run_targets WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM prediction_runs").fetchone()[0] == 1
+
+
+def test_finalization_exception_after_commit_does_not_rewrite_failed(
+    db: psycopg.Connection, monkeypatch
+):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+
+    import sports_edge_tennis.runner.full_slate as full_slate
+    from sports_edge_tennis.data.prediction_persistence import (
+        persist_and_finalize_prediction_matrix as real_persist,
+    )
+
+    def finalize_then_raise(*args, **kwargs):
+        real_persist(*args, **kwargs)
+        raise RuntimeError("synthetic post-commit failure")
+
+    monkeypatch.setattr(full_slate, "persist_and_finalize_prediction_matrix", finalize_then_raise)
+
+    mark_failed_calls = []
+
+    def spy_mark_failed(conn, *, prediction_run_id, ended_at):
+        mark_failed_calls.append(prediction_run_id)
+        raise AssertionError("mark_prediction_run_failed must not be called")
+
+    monkeypatch.setattr(full_slate, "mark_prediction_run_failed", spy_mark_failed)
+
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+
+    assert outcome.runner_status == "COMPLETED"
+    assert mark_failed_calls == []
+
+    run = db.execute(
+        "SELECT run_status, prediction_finalized_at FROM prediction_runs WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()
+    assert run[0] == "COMPLETED"
+    assert run[1] is not None
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 3
+    assert db.execute(
+        "SELECT count(*) FROM prediction_run_targets WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 1
+
