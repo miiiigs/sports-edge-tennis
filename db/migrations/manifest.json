@@ -36,6 +36,13 @@
       "up": "db/migrations/0005_append_only_enforcement_and_lock_guards.up.sql",
       "down": "db/migrations/0005_append_only_enforcement_and_lock_guards.down.sql",
       "schema_snapshot": "db/schema/0005_append_only_enforcement_and_lock_guards.sql"
+    },
+    {
+      "version": "0006",
+      "name": "common_predictive_interface_persistence",
+      "up": "db/migrations/0006_common_predictive_interface_persistence.up.sql",
+      "down": "db/migrations/0006_common_predictive_interface_persistence.down.sql",
+      "schema_snapshot": "db/schema/0006_common_predictive_interface_persistence.sql"
     }
   ]
 }

@@ -62,6 +62,7 @@ def _reset_db(conn: psycopg.Connection) -> None:
             decision_settlements,
             decision_agents,
             decisions,
+            prediction_run_targets,
             predictions,
             decision_policy_versions,
             agent_config_versions,

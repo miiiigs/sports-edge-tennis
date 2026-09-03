@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import json
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 import threading
 import time
@@ -103,40 +104,49 @@ def _enum_type_names(conn: psycopg.Connection) -> list[str]:
     return [row[0] for row in rows]
 
 
+_TRUNCATE_TABLE_ORDER = (
+    "data_health_checks",
+    "decision_clv",
+    "decision_settlements",
+    "decision_agents",
+    "decisions",
+    "prediction_run_targets",
+    "predictions",
+    "decision_policy_versions",
+    "agent_config_versions",
+    "prediction_runs",
+    "rating_snapshots",
+    "odds_snapshots",
+    "match_stat_observations",
+    "match_result_observations",
+    "match_version_sources",
+    "match_source_ids",
+    "match_versions",
+    "matches",
+    "tournament_editions",
+    "tournament_source_ids",
+    "tournaments",
+    "identity_resolution_candidates",
+    "identity_resolution_events",
+    "player_aliases",
+    "player_source_ids",
+    "players",
+    "ingest_runs",
+)
+
+
 def _reset_db(conn: psycopg.Connection) -> None:
     if conn.execute("SELECT to_regclass('public.ingest_runs')").fetchone()[0] is None:
         return
+    existing_tables = [
+        table for table in _TRUNCATE_TABLE_ORDER if _table_exists(conn, table)
+    ]
+    if not existing_tables:
+        return
     conn.execute(
-        """
-        TRUNCATE TABLE
-            data_health_checks,
-            decision_clv,
-            decision_settlements,
-            decision_agents,
-            decisions,
-            predictions,
-            decision_policy_versions,
-            agent_config_versions,
-            prediction_runs,
-            rating_snapshots,
-            odds_snapshots,
-            match_stat_observations,
-            match_result_observations,
-            match_version_sources,
-            match_source_ids,
-            match_versions,
-            matches,
-            tournament_editions,
-            tournament_source_ids,
-            tournaments,
-            identity_resolution_candidates,
-            identity_resolution_events,
-            player_aliases,
-            player_source_ids,
-            players,
-            ingest_runs
-        RESTART IDENTITY CASCADE
-        """
+        "TRUNCATE TABLE "
+        + ", ".join(existing_tables)
+        + " RESTART IDENTITY CASCADE"
     )
 
 
@@ -256,6 +266,7 @@ def _insert_prediction_run(
     experiment_id: str | None = None,
     parent_prediction_run_id: int | None = None,
     parent_relation_type: str | None = None,
+    prediction_contract_version: str = "legacy_prediction_ledger_v1",
 ) -> int:
     run_as_of = as_of or _utc(10, 0)
     run_started_at = started_at or run_as_of
@@ -267,6 +278,44 @@ def _insert_prediction_run(
             run_prediction_finalized_at = run_started_at + timedelta(minutes=30)
         if run_ended_at is None:
             run_ended_at = run_prediction_finalized_at + timedelta(minutes=5)
+
+    if _column_exists(conn, "prediction_runs", "prediction_contract_version"):
+        return _fetchval(
+            conn,
+            """
+            INSERT INTO prediction_runs (
+                run_status,
+                as_of,
+                started_at,
+                prediction_finalized_at,
+                ended_at,
+                experiment_id,
+                parent_prediction_run_id,
+                parent_relation_type,
+                prediction_contract_version
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING prediction_run_id
+            """,
+            (
+                run_status,
+                run_as_of,
+                run_started_at,
+                run_prediction_finalized_at,
+                run_ended_at,
+                experiment_id,
+                parent_prediction_run_id,
+                parent_relation_type,
+                prediction_contract_version,
+            ),
+        )
+
+    if prediction_contract_version != "legacy_prediction_ledger_v1":
+        pytest.fail(
+            "_insert_prediction_run requested a non-legacy prediction contract "
+            f"({prediction_contract_version!r}) but prediction_runs lacks the "
+            "prediction_contract_version column at this migration state."
+        )
 
     return _fetchval(
         conn,
@@ -434,6 +483,7 @@ def _insert_prediction(
     as_of: datetime | None = None,
     prediction_locked_at: datetime | None = None,
     created_at: datetime | None = None,
+    probability_representation: str | None = None,
 ) -> int:
     return _insert_prediction_batch(
         conn,
@@ -454,6 +504,7 @@ def _insert_prediction(
                 "as_of": as_of,
                 "prediction_locked_at": prediction_locked_at,
                 "created_at": created_at,
+                "probability_representation": probability_representation,
             }
         ],
     )[0]
@@ -488,6 +539,7 @@ def _insert_prediction_batch(
         else:
             selection_side = None
             win_probability = None
+        probability_representation = row.get("probability_representation")
 
         locked_at_values.add(row_prediction_locked_at)
         prepared_rows.append(
@@ -507,6 +559,7 @@ def _insert_prediction_batch(
                 row_as_of,
                 row_prediction_locked_at,
                 row_created_at,
+                probability_representation,
             )
         )
 
@@ -551,10 +604,11 @@ def _insert_prediction_batch(
                         variant_id,
                         as_of,
                         prediction_locked_at,
-                        created_at
+                        created_at,
+                        probability_representation
                     )
                     VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
                     )
                     RETURNING prediction_id
                     """,
@@ -716,6 +770,21 @@ def _insert_decision(
             row_created_at,
             published_at,
         ),
+    )
+
+
+def _insert_prediction_run_target(
+    conn: psycopg.Connection,
+    *,
+    prediction_run_id: int,
+    match_id: int,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO prediction_run_targets (prediction_run_id, match_id)
+        VALUES (%s, %s)
+        """,
+        (prediction_run_id, match_id),
     )
 
 
@@ -4403,7 +4472,6 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
     try:
         _reset_public_schema(postgres_dsn)
         _run_manifest_migrations(postgres_dsn, "up")
-
         with psycopg.connect(postgres_dsn, autocommit=True) as setup_conn:
             fixture = _insert_match_fixture(setup_conn)
             run_id = _insert_prediction_run(
@@ -4652,3 +4720,607 @@ def test_0005_prediction_insert_protocol_and_lock_serialization(postgres_dsn: st
     finally:
         _reset_public_schema(postgres_dsn)
         _run_manifest_migrations(postgres_dsn, "up")
+
+def test_0006_prediction_run_contract_and_probability_precision(db: psycopg.Connection):
+    fixture = _insert_match_fixture(db)
+    run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=fixture["match_id"])
+    config_ids = {
+        "AGENT_1_SURFACE_ELO": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_1_SURFACE_ELO",
+            config_version="agent-1-common-v1",
+        ),
+        "AGENT_2_HIERARCHICAL_MARKOV": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+            config_version="agent-2-common-v1",
+        ),
+        "AGENT_3_INTRANSITIVITY": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            config_version="agent-3-common-v1",
+            calibration_version=None,
+        ),
+    }
+    high_precision_probability = Decimal(
+        "0.53000000000000000000000000000000000000000000000001"
+    )
+
+    prediction_ids = _insert_prediction_batch(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        rows=[
+            {
+                "agent_config_version_id": config_ids["AGENT_1_SURFACE_ELO"],
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_2_HIERARCHICAL_MARKOV"],
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.560000"),
+                "probability_representation": "agent2_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_3_INTRANSITIVITY"],
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": high_precision_probability,
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+        ],
+    )
+
+    stored_probability, representation = db.execute(
+        """
+        SELECT win_probability, probability_representation
+        FROM predictions
+        WHERE prediction_id = %s
+        """,
+        (prediction_ids[2],),
+    ).fetchone()
+    assert stored_probability == high_precision_probability
+    assert representation == "agent3_raw_probability_v1"
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE prediction_runs
+            SET prediction_contract_version = 'legacy_prediction_ledger_v1'
+            WHERE prediction_run_id = %s
+            """,
+            (run_id,),
+        )
+
+
+def test_0006_new_contract_requires_target_membership_and_representation_mapping(
+    db: psycopg.Connection,
+):
+    fixture = _insert_match_fixture(db)
+    run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_1_SURFACE_ELO",
+        config_version="target-membership-agent-1",
+    )
+
+    with pytest.raises(psycopg.Error):
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=run_id,
+            agent_config_version_id=config_id,
+            agent_code="AGENT_1_SURFACE_ELO",
+            prediction_status="PREDICTED",
+            selection_side=1,
+            win_probability=Decimal("0.550000"),
+            probability_representation="agent1_raw_probability_v1",
+            as_of=_utc(10, 0),
+            prediction_locked_at=_utc(11, 0),
+            created_at=_utc(10, 10),
+        )
+
+    _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=fixture["match_id"])
+
+    with pytest.raises(psycopg.Error):
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=run_id,
+            agent_config_version_id=config_id,
+            agent_code="AGENT_1_SURFACE_ELO",
+            prediction_status="PREDICTED",
+            selection_side=1,
+            win_probability=Decimal("0.550000"),
+            probability_representation="agent2_raw_probability_v1",
+            as_of=_utc(10, 0),
+            prediction_locked_at=_utc(11, 0),
+            created_at=_utc(10, 10),
+        )
+
+
+def test_0006_exact_three_agent_completion_gate_and_empty_slate(db: psycopg.Connection):
+    empty_run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(8, 0),
+        started_at=_utc(8, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    db.execute(
+        """
+        UPDATE prediction_runs
+        SET run_status = 'COMPLETED',
+            prediction_finalized_at = %s,
+            ended_at = %s
+        WHERE prediction_run_id = %s
+        """,
+        (_utc(8, 30), _utc(8, 35), empty_run_id),
+    )
+
+    fixture = _insert_match_fixture(db)
+    incomplete_run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(
+        db,
+        prediction_run_id=incomplete_run_id,
+        match_id=fixture["match_id"],
+    )
+    agent_1_config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_1_SURFACE_ELO",
+        config_version="completion-agent-1",
+    )
+    with pytest.raises(psycopg.Error):
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=incomplete_run_id,
+            agent_config_version_id=agent_1_config_id,
+            agent_code="AGENT_1_SURFACE_ELO",
+            prediction_status="PREDICTED",
+            selection_side=1,
+            win_probability=Decimal("0.550000"),
+            probability_representation="agent1_raw_probability_v1",
+            as_of=_utc(10, 0),
+            prediction_locked_at=_utc(11, 0),
+            created_at=_utc(10, 10),
+        )
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (incomplete_run_id,),
+    ).fetchone()[0] == 0
+    assert db.execute(
+        "SELECT prediction_finalized_at FROM prediction_runs WHERE prediction_run_id = %s",
+        (incomplete_run_id,),
+    ).fetchone()[0] is None
+
+    complete_run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(12, 0),
+        started_at=_utc(12, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(db, prediction_run_id=complete_run_id, match_id=fixture["match_id"])
+    agent_2_config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+        config_version="completion-agent-2",
+    )
+    agent_3_config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_3_INTRANSITIVITY",
+        config_version="completion-agent-3",
+    )
+    _insert_prediction_batch(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=complete_run_id,
+        rows=[
+            {
+                "agent_config_version_id": agent_1_config_id,
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(12, 0),
+                "prediction_locked_at": _utc(13, 0),
+            },
+            {
+                "agent_config_version_id": agent_2_config_id,
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "ABSTAINED",
+                "probability_representation": None,
+                "as_of": _utc(12, 0),
+                "prediction_locked_at": _utc(13, 0),
+            },
+            {
+                "agent_config_version_id": agent_3_config_id,
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.53000000000000000000000000000000000000000000000001"),
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(12, 0),
+                "prediction_locked_at": _utc(13, 0),
+            },
+        ],
+    )
+
+
+def test_0006_target_and_prediction_post_finalization_inserts_are_blocked(
+    db: psycopg.Connection,
+):
+    fixture = _insert_match_fixture(db)
+    config_ids = {
+        "AGENT_1_SURFACE_ELO": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_1_SURFACE_ELO",
+            config_version="post-final-agent-1",
+        ),
+        "AGENT_2_HIERARCHICAL_MARKOV": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+            config_version="post-final-agent-2",
+        ),
+        "AGENT_3_INTRANSITIVITY": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            config_version="post-final-agent-3",
+        ),
+    }
+    run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=fixture["match_id"])
+    _insert_prediction_batch(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        rows=[
+            {
+                "agent_config_version_id": config_ids["AGENT_1_SURFACE_ELO"],
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_2_HIERARCHICAL_MARKOV"],
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.560000"),
+                "probability_representation": "agent2_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_3_INTRANSITIVITY"],
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.57000000000000000000000000000000000000000000000001"),
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+        ],
+    )
+    second_fixture = _insert_match_fixture(db)
+
+    with pytest.raises(psycopg.Error):
+        _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=second_fixture["match_id"])
+
+    with pytest.raises(psycopg.Error):
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=run_id,
+            agent_config_version_id=config_ids["AGENT_1_SURFACE_ELO"],
+            agent_code="AGENT_1_SURFACE_ELO",
+            prediction_status="PREDICTED",
+            selection_side=1,
+            win_probability=Decimal("0.580000"),
+            probability_representation="agent1_raw_probability_v1",
+            as_of=_utc(10, 0),
+            prediction_locked_at=_utc(11, 0),
+        )
+
+
+def test_0006_decision_agent_lineage_requires_exact_probability_and_representation(
+    db: psycopg.Connection,
+):
+    fixture = _insert_match_fixture(db)
+    run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(10, 0),
+        started_at=_utc(10, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=fixture["match_id"])
+    config_ids = {
+        "AGENT_1_SURFACE_ELO": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_1_SURFACE_ELO",
+            config_version="decision-lineage-agent-1",
+        ),
+        "AGENT_2_HIERARCHICAL_MARKOV": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+            config_version="decision-lineage-agent-2",
+        ),
+        "AGENT_3_INTRANSITIVITY": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            config_version="decision-lineage-agent-3",
+        ),
+    }
+    prediction_ids = _insert_prediction_batch(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        rows=[
+            {
+                "agent_config_version_id": config_ids["AGENT_1_SURFACE_ELO"],
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_2_HIERARCHICAL_MARKOV"],
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.560000"),
+                "probability_representation": "agent2_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_3_INTRANSITIVITY"],
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.57000000000000000000000000000000000000000000000001"),
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+        ],
+    )
+    policy_id = _insert_decision_policy_version(db, policy_version="decision-lineage-policy")
+    decision_id = _insert_decision(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        decision_policy_version_id=policy_id,
+        variant_id="decision-lineage",
+        as_of=_utc(10, 5),
+        prediction_locked_at=_utc(11, 0),
+    )
+
+    db.execute(
+        """
+        INSERT INTO decision_agents (
+            decision_id,
+            agent_code,
+            participation_status,
+            prediction_run_id,
+            match_id,
+            prediction_id,
+            proposed_selection_side,
+            proposed_probability,
+            probability_representation,
+            created_at
+        )
+        VALUES (%s, 'AGENT_3_INTRANSITIVITY', 'ACTIVE', %s, %s, %s, 1, %s, 'agent3_raw_probability_v1', %s)
+        """,
+        (
+            decision_id,
+            run_id,
+            fixture["match_id"],
+            prediction_ids[2],
+            Decimal("0.57000000000000000000000000000000000000000000000001"),
+            _utc(10, 20),
+        ),
+    )
+
+    wrong_decision_id = _insert_decision(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=run_id,
+        decision_policy_version_id=policy_id,
+        variant_id="decision-lineage-wrong",
+        as_of=_utc(10, 6),
+        prediction_locked_at=_utc(11, 0),
+    )
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            INSERT INTO decision_agents (
+                decision_id,
+                agent_code,
+                participation_status,
+                prediction_run_id,
+                match_id,
+                prediction_id,
+                proposed_selection_side,
+                proposed_probability,
+                probability_representation,
+                created_at
+            )
+            VALUES (%s, 'AGENT_3_INTRANSITIVITY', 'ACTIVE', %s, %s, %s, 1, %s, 'agent2_raw_probability_v1', %s)
+            """,
+            (
+                wrong_decision_id,
+                run_id,
+                fixture["match_id"],
+                prediction_ids[2],
+                Decimal("0.57000000000000000000000000000000000000000000000001"),
+                _utc(10, 21),
+            ),
+        )
+
+
+def test_0006_loader_reads_only_finalized_new_contract_persisted_truth(
+    db: psycopg.Connection,
+):
+    from sports_edge_tennis.data.prediction_persistence import (
+        load_finalized_predictive_agent_predictions,
+    )
+
+    fixture = _insert_match_fixture(db)
+    legacy_run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(9, 0),
+        started_at=_utc(9, 0),
+    )
+    legacy_config_id = _insert_agent_config_version(
+        db,
+        agent_code="AGENT_1_SURFACE_ELO",
+        config_version="loader-legacy-agent-1",
+    )
+    _insert_prediction(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=legacy_run_id,
+        agent_config_version_id=legacy_config_id,
+        agent_code="AGENT_1_SURFACE_ELO",
+        prediction_status="PREDICTED",
+        selection_side=1,
+        win_probability=Decimal("0.550000"),
+        as_of=_utc(9, 0),
+        prediction_locked_at=_utc(10, 0),
+    )
+
+    failed_run_id = _insert_prediction_run(
+        db,
+        run_status="FAILED",
+        as_of=_utc(12, 0),
+        started_at=_utc(12, 0),
+        ended_at=_utc(12, 30),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+
+    complete_run_id = _insert_prediction_run(
+        db,
+        run_status="RUNNING",
+        as_of=_utc(14, 0),
+        started_at=_utc(14, 0),
+        prediction_contract_version="predictive_agent_result_v1",
+    )
+    _insert_prediction_run_target(db, prediction_run_id=complete_run_id, match_id=fixture["match_id"])
+    config_ids = {
+        "AGENT_1_SURFACE_ELO": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_1_SURFACE_ELO",
+            config_version="loader-agent-1",
+        ),
+        "AGENT_2_HIERARCHICAL_MARKOV": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+            config_version="loader-agent-2",
+        ),
+        "AGENT_3_INTRANSITIVITY": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            config_version="loader-agent-3",
+        ),
+    }
+    _insert_prediction_batch(
+        db,
+        match_id=fixture["match_id"],
+        prediction_run_id=complete_run_id,
+        rows=[
+            {
+                "agent_config_version_id": config_ids["AGENT_1_SURFACE_ELO"],
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(14, 0),
+                "prediction_locked_at": _utc(15, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_2_HIERARCHICAL_MARKOV"],
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.560000"),
+                "probability_representation": "agent2_raw_probability_v1",
+                "as_of": _utc(14, 0),
+                "prediction_locked_at": _utc(15, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_3_INTRANSITIVITY"],
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.57000000000000000000000000000000000000000000000001"),
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(14, 0),
+                "prediction_locked_at": _utc(15, 0),
+            },
+        ],
+    )
+
+    assert load_finalized_predictive_agent_predictions(db, prediction_run_id=legacy_run_id) == []
+    assert load_finalized_predictive_agent_predictions(db, prediction_run_id=failed_run_id) == []
+
+    rows = load_finalized_predictive_agent_predictions(db, prediction_run_id=complete_run_id)
+    assert [row.agent_code for row in rows] == [
+        "AGENT_1_SURFACE_ELO",
+        "AGENT_2_HIERARCHICAL_MARKOV",
+        "AGENT_3_INTRANSITIVITY",
+    ]
+    assert rows[2].win_probability == Decimal(
+        "0.57000000000000000000000000000000000000000000000001"
+    )
