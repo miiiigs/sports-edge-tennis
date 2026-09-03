@@ -20,21 +20,6 @@ from sports_edge_tennis.manager.contracts import (
 )
 
 
-_SEMANTIC_COLUMNS = (
-    "prediction_run_id",
-    "match_id",
-    "manager_policy_version_id",
-    "manager_status",
-    "selected_side",
-    "consensus_probability",
-    "active_agent_count",
-    "abstaining_agent_count",
-    "probability_spread",
-    "reason_code",
-    "as_of",
-)
-
-
 @dataclass(frozen=True)
 class ManagerSlateOutcome:
     prediction_run_id: int
