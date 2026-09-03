@@ -470,6 +470,34 @@ def test_rollback_leaves_zero_rows(monkeypatch, db: psycopg.Connection):
     assert _manager_row_count(db, run_id) == 0
 
 
+def test_reconciliation_mismatch_rolls_back(monkeypatch, db: psycopg.Connection):
+    match_1 = _insert_match(db)
+    match_2 = _insert_match(db)
+    run_id = _build_finalized_eligible_run(
+        db,
+        targets=[
+            {"match_id": match_1, "agents": _agreeing_agents(prob="0.60")},
+            {"match_id": match_2, "agents": _agreeing_agents(prob="0.62")},
+        ],
+    )
+
+    import sports_edge_tennis.manager.persistence as persistence
+
+    original_persist = persistence._persist_slate
+
+    def partial_persist(conn, results):
+        original_persist(conn, results[:1])
+
+    monkeypatch.setattr(persistence, "_persist_slate", partial_persist)
+
+    with pytest.raises(ManagerConsensusError):
+        evaluate_and_persist_manager_consensus(
+            db, prediction_run_id=run_id, manager_policy_version_id=_manager_policy_v1_id(db)
+        )
+
+    assert _manager_row_count(db, run_id) == 0
+
+
 def test_completion_invariant(db: psycopg.Connection):
     match_1 = _insert_match(db)
     match_2 = _insert_match(db)

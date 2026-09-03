@@ -186,6 +186,12 @@ def evaluate_and_persist_manager_consensus(
 
         if existing_count == 0:
             _persist_slate(conn, canonical_slate)
+            persisted_count = _count_persisted_results(conn, prediction_run_id)
+            if persisted_count != target_count:
+                raise ManagerConsensusError(
+                    "Manager slate persistence produced an unexpected row count "
+                    f"({persisted_count} != {target_count})"
+                )
             return ManagerSlateOutcome(
                 prediction_run_id=prediction_run_id,
                 target_count=target_count,
@@ -241,6 +247,13 @@ def _load_existing_results(
         (prediction_run_id,),
     ).fetchall()
     return [ManagerConsensusResultV1(*row) for row in rows]
+
+
+def _count_persisted_results(conn: psycopg.Connection, prediction_run_id: int) -> int:
+    return conn.execute(
+        "SELECT count(*) FROM manager_consensus_results WHERE prediction_run_id = %s",
+        (prediction_run_id,),
+    ).fetchone()[0]
 
 
 def _persist_slate(
