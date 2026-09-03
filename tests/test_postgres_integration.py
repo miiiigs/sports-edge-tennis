@@ -110,6 +110,8 @@ _TRUNCATE_TABLE_ORDER = (
     "decision_settlements",
     "decision_agents",
     "decisions",
+    "manager_consensus_results",
+    "manager_policy_versions",
     "prediction_run_targets",
     "predictions",
     "decision_policy_versions",

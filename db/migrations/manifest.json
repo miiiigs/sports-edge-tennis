@@ -43,6 +43,13 @@
       "up": "db/migrations/0006_common_predictive_interface_persistence.up.sql",
       "down": "db/migrations/0006_common_predictive_interface_persistence.down.sql",
       "schema_snapshot": "db/schema/0006_common_predictive_interface_persistence.sql"
+    },
+    {
+      "version": "0007",
+      "name": "manager_consensus_layer",
+      "up": "db/migrations/0007_manager_consensus_layer.up.sql",
+      "down": "db/migrations/0007_manager_consensus_layer.down.sql",
+      "schema_snapshot": "db/schema/0007_manager_consensus_layer.sql"
     }
   ]
 }
