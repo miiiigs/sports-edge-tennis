@@ -3,6 +3,7 @@ import shutil
 import subprocess
 import json
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 import threading
 import time
@@ -4686,29 +4687,64 @@ def test_0006_prediction_run_contract_and_probability_precision(db: psycopg.Conn
         prediction_contract_version="predictive_agent_result_v1",
     )
     _insert_prediction_run_target(db, prediction_run_id=run_id, match_id=fixture["match_id"])
-    agent_3_config_id = _insert_agent_config_version(
-        db,
-        agent_code="AGENT_3_INTRANSITIVITY",
-        config_version="agent-3-common-v1",
-        calibration_version=None,
-    )
+    config_ids = {
+        "AGENT_1_SURFACE_ELO": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_1_SURFACE_ELO",
+            config_version="agent-1-common-v1",
+        ),
+        "AGENT_2_HIERARCHICAL_MARKOV": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_2_HIERARCHICAL_MARKOV",
+            config_version="agent-2-common-v1",
+        ),
+        "AGENT_3_INTRANSITIVITY": _insert_agent_config_version(
+            db,
+            agent_code="AGENT_3_INTRANSITIVITY",
+            config_version="agent-3-common-v1",
+            calibration_version=None,
+        ),
+    }
     high_precision_probability = Decimal(
         "0.53000000000000000000000000000000000000000000000001"
     )
 
-    prediction_id = _insert_prediction(
+    prediction_ids = _insert_prediction_batch(
         db,
         match_id=fixture["match_id"],
         prediction_run_id=run_id,
-        agent_config_version_id=agent_3_config_id,
-        agent_code="AGENT_3_INTRANSITIVITY",
-        prediction_status="PREDICTED",
-        selection_side=1,
-        win_probability=high_precision_probability,
-        probability_representation="agent3_raw_probability_v1",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
+        rows=[
+            {
+                "agent_config_version_id": config_ids["AGENT_1_SURFACE_ELO"],
+                "agent_code": "AGENT_1_SURFACE_ELO",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.550000"),
+                "probability_representation": "agent1_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_2_HIERARCHICAL_MARKOV"],
+                "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": Decimal("0.560000"),
+                "probability_representation": "agent2_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+            {
+                "agent_config_version_id": config_ids["AGENT_3_INTRANSITIVITY"],
+                "agent_code": "AGENT_3_INTRANSITIVITY",
+                "prediction_status": "PREDICTED",
+                "selection_side": 1,
+                "win_probability": high_precision_probability,
+                "probability_representation": "agent3_raw_probability_v1",
+                "as_of": _utc(10, 0),
+                "prediction_locked_at": _utc(11, 0),
+            },
+        ],
     )
 
     stored_probability, representation = db.execute(
@@ -4717,7 +4753,7 @@ def test_0006_prediction_run_contract_and_probability_precision(db: psycopg.Conn
         FROM predictions
         WHERE prediction_id = %s
         """,
-        (prediction_id,),
+        (prediction_ids[2],),
     ).fetchone()
     assert stored_probability == high_precision_probability
     assert representation == "agent3_raw_probability_v1"
@@ -4822,31 +4858,29 @@ def test_0006_exact_three_agent_completion_gate_and_empty_slate(db: psycopg.Conn
         agent_code="AGENT_1_SURFACE_ELO",
         config_version="completion-agent-1",
     )
-    _insert_prediction(
-        db,
-        match_id=fixture["match_id"],
-        prediction_run_id=incomplete_run_id,
-        agent_config_version_id=agent_1_config_id,
-        agent_code="AGENT_1_SURFACE_ELO",
-        prediction_status="PREDICTED",
-        selection_side=1,
-        win_probability=Decimal("0.550000"),
-        probability_representation="agent1_raw_probability_v1",
-        as_of=_utc(10, 0),
-        prediction_locked_at=_utc(11, 0),
-        created_at=_utc(10, 10),
-    )
     with pytest.raises(psycopg.Error):
-        db.execute(
-            """
-            UPDATE prediction_runs
-            SET run_status = 'COMPLETED',
-                prediction_finalized_at = %s,
-                ended_at = %s
-            WHERE prediction_run_id = %s
-            """,
-            (_utc(11, 0), _utc(11, 5), incomplete_run_id),
+        _insert_prediction(
+            db,
+            match_id=fixture["match_id"],
+            prediction_run_id=incomplete_run_id,
+            agent_config_version_id=agent_1_config_id,
+            agent_code="AGENT_1_SURFACE_ELO",
+            prediction_status="PREDICTED",
+            selection_side=1,
+            win_probability=Decimal("0.550000"),
+            probability_representation="agent1_raw_probability_v1",
+            as_of=_utc(10, 0),
+            prediction_locked_at=_utc(11, 0),
+            created_at=_utc(10, 10),
         )
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (incomplete_run_id,),
+    ).fetchone()[0] == 0
+    assert db.execute(
+        "SELECT prediction_finalized_at FROM prediction_runs WHERE prediction_run_id = %s",
+        (incomplete_run_id,),
+    ).fetchone()[0] is None
 
     complete_run_id = _insert_prediction_run(
         db,
