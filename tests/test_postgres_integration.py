@@ -104,41 +104,49 @@ def _enum_type_names(conn: psycopg.Connection) -> list[str]:
     return [row[0] for row in rows]
 
 
+_TRUNCATE_TABLE_ORDER = (
+    "data_health_checks",
+    "decision_clv",
+    "decision_settlements",
+    "decision_agents",
+    "decisions",
+    "prediction_run_targets",
+    "predictions",
+    "decision_policy_versions",
+    "agent_config_versions",
+    "prediction_runs",
+    "rating_snapshots",
+    "odds_snapshots",
+    "match_stat_observations",
+    "match_result_observations",
+    "match_version_sources",
+    "match_source_ids",
+    "match_versions",
+    "matches",
+    "tournament_editions",
+    "tournament_source_ids",
+    "tournaments",
+    "identity_resolution_candidates",
+    "identity_resolution_events",
+    "player_aliases",
+    "player_source_ids",
+    "players",
+    "ingest_runs",
+)
+
+
 def _reset_db(conn: psycopg.Connection) -> None:
     if conn.execute("SELECT to_regclass('public.ingest_runs')").fetchone()[0] is None:
         return
+    existing_tables = [
+        table for table in _TRUNCATE_TABLE_ORDER if _table_exists(conn, table)
+    ]
+    if not existing_tables:
+        return
     conn.execute(
-        """
-        TRUNCATE TABLE
-            data_health_checks,
-            decision_clv,
-            decision_settlements,
-            decision_agents,
-            decisions,
-            prediction_run_targets,
-            predictions,
-            decision_policy_versions,
-            agent_config_versions,
-            prediction_runs,
-            rating_snapshots,
-            odds_snapshots,
-            match_stat_observations,
-            match_result_observations,
-            match_version_sources,
-            match_source_ids,
-            match_versions,
-            matches,
-            tournament_editions,
-            tournament_source_ids,
-            tournaments,
-            identity_resolution_candidates,
-            identity_resolution_events,
-            player_aliases,
-            player_source_ids,
-            players,
-            ingest_runs
-        RESTART IDENTITY CASCADE
-        """
+        "TRUNCATE TABLE "
+        + ", ".join(existing_tables)
+        + " RESTART IDENTITY CASCADE"
     )
 
 
@@ -271,6 +279,44 @@ def _insert_prediction_run(
         if run_ended_at is None:
             run_ended_at = run_prediction_finalized_at + timedelta(minutes=5)
 
+    if _column_exists(conn, "prediction_runs", "prediction_contract_version"):
+        return _fetchval(
+            conn,
+            """
+            INSERT INTO prediction_runs (
+                run_status,
+                as_of,
+                started_at,
+                prediction_finalized_at,
+                ended_at,
+                experiment_id,
+                parent_prediction_run_id,
+                parent_relation_type,
+                prediction_contract_version
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING prediction_run_id
+            """,
+            (
+                run_status,
+                run_as_of,
+                run_started_at,
+                run_prediction_finalized_at,
+                run_ended_at,
+                experiment_id,
+                parent_prediction_run_id,
+                parent_relation_type,
+                prediction_contract_version,
+            ),
+        )
+
+    if prediction_contract_version != "legacy_prediction_ledger_v1":
+        pytest.fail(
+            "_insert_prediction_run requested a non-legacy prediction contract "
+            f"({prediction_contract_version!r}) but prediction_runs lacks the "
+            "prediction_contract_version column at this migration state."
+        )
+
     return _fetchval(
         conn,
         """
@@ -282,10 +328,9 @@ def _insert_prediction_run(
             ended_at,
             experiment_id,
             parent_prediction_run_id,
-            parent_relation_type,
-            prediction_contract_version
+            parent_relation_type
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING prediction_run_id
         """,
         (
@@ -297,7 +342,6 @@ def _insert_prediction_run(
             experiment_id,
             parent_prediction_run_id,
             parent_relation_type,
-            prediction_contract_version,
         ),
     )
 
