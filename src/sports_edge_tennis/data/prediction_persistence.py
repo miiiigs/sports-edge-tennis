@@ -51,13 +51,14 @@ def insert_prediction_run_targets(
     rows = [(prediction_run_id, match_id) for match_id in match_ids]
     if not rows:
         return
-    conn.executemany(
-        """
-        INSERT INTO prediction_run_targets (prediction_run_id, match_id)
-        VALUES (%s, %s)
-        """,
-        rows,
-    )
+    with conn.cursor() as cursor:
+        cursor.executemany(
+            """
+            INSERT INTO prediction_run_targets (prediction_run_id, match_id)
+            VALUES (%s, %s)
+            """,
+            rows,
+        )
 
 
 def persist_predictive_agent_result(
