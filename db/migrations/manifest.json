@@ -57,6 +57,13 @@
       "up": "db/migrations/0008_market_value_v1.up.sql",
       "down": "db/migrations/0008_market_value_v1.down.sql",
       "schema_snapshot": "db/schema/0008_market_value_v1.sql"
+    },
+    {
+      "version": "0009",
+      "name": "live_odds_ingestion_v1",
+      "up": "db/migrations/0009_live_odds_ingestion_v1.up.sql",
+      "down": "db/migrations/0009_live_odds_ingestion_v1.down.sql",
+      "schema_snapshot": "db/schema/0009_live_odds_ingestion_v1.sql"
     }
   ]
 }
