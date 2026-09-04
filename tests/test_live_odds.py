@@ -87,15 +87,47 @@ def _match() -> MatchVersionContext:
 
 
 def test_secret_redaction_is_deterministic_and_hashed_after_redaction():
-    payload = {"api_key": "secret-a", "nested": {"authorization": "bearer token", "price": Decimal("2.10")}}
+    payload = {
+        "api_key": "secret-a",
+        "X-API-Key": "x-secret-a",
+        "Set-Cookie": "session=a",
+        "Proxy-Authorization": "proxy-a",
+        "nested": {
+            "authorization": "bearer token",
+            "Access-Token": "access-a",
+            "Refresh-Token": "refresh-a",
+            "Client-Secret": "client-a",
+            "price": Decimal("2.10"),
+        },
+    }
     redacted_a, hash_a = raw_payload_and_hash(payload)
     redacted_b, hash_b = raw_payload_and_hash(
-        {"nested": {"price": Decimal("2.10"), "authorization": "different"}, "api_key": "secret-b"}
+        {
+            "nested": {
+                "price": Decimal("2.10"),
+                "authorization": "different",
+                "Access-Token": "access-b",
+                "Refresh-Token": "refresh-b",
+                "Client-Secret": "client-b",
+            },
+            "api_key": "secret-b",
+            "X-API-Key": "x-secret-b",
+            "Set-Cookie": "session=b",
+            "Proxy-Authorization": "proxy-b",
+        }
     )
 
     assert redacted_a["api_key"] == "[REDACTED]"
+    assert redacted_a["X-API-Key"] == "[REDACTED]"
+    assert redacted_a["Set-Cookie"] == "[REDACTED]"
+    assert redacted_a["Proxy-Authorization"] == "[REDACTED]"
     assert redacted_a["nested"]["authorization"] == "[REDACTED]"
+    assert redacted_a["nested"]["Access-Token"] == "[REDACTED]"
+    assert redacted_a["nested"]["Refresh-Token"] == "[REDACTED]"
+    assert redacted_a["nested"]["Client-Secret"] == "[REDACTED]"
     assert "secret-a" not in str(redacted_a)
+    assert "session=a" not in str(redacted_a)
+    assert "proxy-a" not in str(redacted_a)
     assert hash_a == hash_b
 
 

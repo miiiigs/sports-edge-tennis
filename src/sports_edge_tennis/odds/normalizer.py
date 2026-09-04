@@ -27,17 +27,19 @@ _REDACTED = "[REDACTED]"
 _SECRET_KEYS = {
     "api_key",
     "apikey",
+    "x_api_key",
     "access_token",
     "refresh_token",
     "auth_token",
     "authorization",
+    "proxy_authorization",
     "bearer",
     "client_secret",
     "password",
     "secret",
     "token",
     "cookie",
-    "set-cookie",
+    "set_cookie",
 }
 
 
@@ -133,6 +135,8 @@ def source_record_hash(
         "bookmaker_code": mapping.bookmaker_code,
         "selection_type": selection_type,
         "decimal_price": price,
+        "market_status": market.market_status,
+        "as_of": observation.observation_time,
     }
     digest = hashlib.sha256(stable_json(payload).encode("utf-8")).hexdigest()
     return f"{RECORD_HASH_VERSION}:{digest}"
@@ -222,4 +226,3 @@ def build_quote(
         raw_odds_observation_id=raw_odds_observation_id,
         provider_bookmaker_mapping_id=mapping.provider_bookmaker_mapping_id,
     )
-

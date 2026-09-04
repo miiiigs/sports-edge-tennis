@@ -17,6 +17,9 @@ from .contracts import (
 from .normalizer import raw_payload_and_hash
 
 
+NORMALIZER_VERSION = "live_odds_normalizer_v1"
+
+
 def create_ingest_run(conn: psycopg.Connection, *, provider_code: str, started_at: datetime) -> int:
     return conn.execute(
         """
@@ -100,10 +103,16 @@ def persist_raw_observation(
                 provider_code,
                 provider_event_id,
                 provider_observation_key,
+                provider_request_id,
+                provider_response_id,
+                provider_observed_at,
+                received_at,
                 observation_time,
                 observation_time_basis,
                 payload_hash,
                 payload_json,
+                adapter_version,
+                normalizer_version,
                 TRUE AS inserted
         )
         SELECT * FROM inserted
@@ -114,10 +123,16 @@ def persist_raw_observation(
             provider_code,
             provider_event_id,
             provider_observation_key,
+            provider_request_id,
+            provider_response_id,
+            provider_observed_at,
+            received_at,
             observation_time,
             observation_time_basis,
             payload_hash,
             payload_json,
+            adapter_version,
+            normalizer_version,
             FALSE AS inserted
         FROM raw_odds_observations
         WHERE provider_code = %s
@@ -139,7 +154,7 @@ def persist_raw_observation(
             digest,
             Jsonb(redacted_payload),
             observation.adapter_version,
-            "live_odds_normalizer_v1",
+            NORMALIZER_VERSION,
             observation.provider_code,
             observation.provider_observation_key,
         ),
@@ -153,13 +168,49 @@ def persist_raw_observation(
         provider_code=row[2],
         provider_event_id=row[3],
         provider_observation_key=row[4],
-        observation_time=row[5],
-        observation_time_basis=row[6],
-        payload_hash=row[7],
-        payload_json=row[8],
-        inserted=row[9],
+        provider_request_id=row[5],
+        provider_response_id=row[6],
+        provider_observed_at=row[7],
+        received_at=row[8],
+        observation_time=row[9],
+        observation_time_basis=row[10],
+        payload_hash=row[11],
+        payload_json=row[12],
+        adapter_version=row[13],
+        normalizer_version=row[14],
+        inserted=row[15],
     )
-    if record.payload_hash != digest or record.payload_json != redacted_payload:
+    expected = {
+        "provider_code": observation.provider_code,
+        "provider_event_id": observation.provider_event_id,
+        "provider_observation_key": observation.provider_observation_key,
+        "provider_request_id": observation.provider_request_id,
+        "provider_response_id": observation.provider_response_id,
+        "provider_observed_at": observation.provider_observed_at,
+        "received_at": observation.received_at,
+        "observation_time": observation.observation_time,
+        "observation_time_basis": observation.observation_time_basis,
+        "payload_hash": digest,
+        "payload_json": redacted_payload,
+        "adapter_version": observation.adapter_version,
+        "normalizer_version": NORMALIZER_VERSION,
+    }
+    actual = {
+        "provider_code": record.provider_code,
+        "provider_event_id": record.provider_event_id,
+        "provider_observation_key": record.provider_observation_key,
+        "provider_request_id": record.provider_request_id,
+        "provider_response_id": record.provider_response_id,
+        "provider_observed_at": record.provider_observed_at,
+        "received_at": record.received_at,
+        "observation_time": record.observation_time,
+        "observation_time_basis": record.observation_time_basis,
+        "payload_hash": record.payload_hash,
+        "payload_json": record.payload_json,
+        "adapter_version": record.adapter_version,
+        "normalizer_version": record.normalizer_version,
+    }
+    if actual != expected:
         raise LiveOddsIntegrityError("raw observation retry payload differs from persisted truth")
     return record
 
@@ -352,9 +403,12 @@ def insert_live_odds_snapshot(
             RETURNING
                 odds_snapshot_id,
                 decimal_price,
+                market_status::text,
                 source_record_hash,
+                as_of,
                 raw_odds_observation_id,
                 provider_bookmaker_mapping_id,
+                odds_origin::text,
                 TRUE AS inserted
         )
         SELECT * FROM inserted
@@ -362,9 +416,12 @@ def insert_live_odds_snapshot(
         SELECT
             odds_snapshot_id,
             decimal_price,
+            market_status::text,
             source_record_hash,
+            as_of,
             raw_odds_observation_id,
             provider_bookmaker_mapping_id,
+            odds_origin::text,
             FALSE AS inserted
         FROM odds_snapshots
         WHERE source_system = %s
@@ -403,12 +460,15 @@ def insert_live_odds_snapshot(
         raise LiveOddsIntegrityError("odds snapshot insert/read returned no row")
     if (
         row[1] != quote.decimal_price
-        or row[2] != quote.source_record_hash
-        or row[3] != quote.raw_odds_observation_id
-        or row[4] != quote.provider_bookmaker_mapping_id
+        or row[2] != quote.market_status
+        or row[3] != quote.source_record_hash
+        or row[4] != quote.as_of
+        or row[5] != quote.raw_odds_observation_id
+        or row[6] != quote.provider_bookmaker_mapping_id
+        or row[7] != "LIVE_PROVIDER"
     ):
         raise LiveOddsIntegrityError("persisted odds snapshot truth differs from normalized quote")
-    return bool(row[5])
+    return bool(row[8])
 
 
 def reconciliation_error_summary(details: list[dict[str, object]]) -> list[dict[str, object]]:

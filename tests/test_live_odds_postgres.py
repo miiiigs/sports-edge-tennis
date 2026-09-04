@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import threading
-from datetime import datetime, timezone
+from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import psycopg
 import pytest
 
+import sports_edge_tennis.odds.service as odds_service
 from sports_edge_tennis.odds.contracts import (
+    LiveOddsIntegrityError,
     ProviderBookmakerMarket,
     ProviderObservation,
     ProviderSelection,
 )
+from sports_edge_tennis.odds.normalizer import build_quote
 from sports_edge_tennis.odds.persistence import (
     insert_bookmaker_mapping,
+    insert_live_odds_snapshot,
+    load_pit_match_version,
     persist_raw_observation,
     resolve_provider_event,
     select_bookmaker_mapping,
@@ -212,6 +218,45 @@ def test_raw_observation_persistence_is_idempotent_redacted_and_append_only(db: 
         db.execute("DELETE FROM raw_odds_observations WHERE raw_odds_observation_id = %s", (first.raw_odds_observation_id,))
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        lambda obs: replace(obs, provider_event_id="event-2"),
+        lambda obs: replace(obs, provider_request_id="request-2"),
+        lambda obs: replace(obs, provider_response_id="response-2"),
+        lambda obs: replace(obs, provider_observed_at=_utc(5, 8)),
+        lambda obs: replace(obs, received_at=_utc(5, 9, 2)),
+        lambda obs: replace(obs, payload={"api_key": "secret", "prices": [{"p1": "2.11", "p2": "1.80"}]}),
+        lambda obs: replace(obs, adapter_version="adapter-test-v2"),
+    ),
+)
+def test_raw_observation_retry_rejects_any_persisted_truth_drift(db: psycopg.Connection, mutation):
+    observation = _observation(observation_key="raw-truth")
+    first = persist_raw_observation(db, ingest_run_id=_insert_ingest_run(db), observation=observation)
+
+    with pytest.raises(LiveOddsIntegrityError, match="raw observation retry payload differs"):
+        persist_raw_observation(db, ingest_run_id=_insert_ingest_run(db), observation=mutation(observation))
+
+    stored = db.execute(
+        """
+        SELECT provider_event_id, provider_request_id, provider_response_id, provider_observed_at,
+               received_at, observation_time, payload_hash, adapter_version
+        FROM raw_odds_observations
+        WHERE raw_odds_observation_id = %s
+        """,
+        (first.raw_odds_observation_id,),
+    ).fetchone()
+    assert stored[:6] == (
+        observation.provider_event_id,
+        observation.provider_request_id,
+        observation.provider_response_id,
+        observation.provider_observed_at,
+        observation.received_at,
+        observation.observation_time,
+    )
+    assert stored[7] == observation.adapter_version
+
+
 def test_event_mapping_uses_existing_unique_index_and_defensive_resolver(db: psycopg.Connection):
     fixture = _insert_match(db)
     assert resolve_provider_event(db, provider_code="PROVIDER_A", provider_event_id="event-1") == ("RESOLVED", fixture["match_id"])
@@ -392,6 +437,47 @@ def test_live_provider_structural_guard_and_non_live_compatibility(db: psycopg.C
     )
 
 
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        lambda quote, other_raw_id, other_mapping_id: replace(quote, decimal_price=Decimal("2.11")),
+        lambda quote, other_raw_id, other_mapping_id: replace(quote, market_status="SUSPENDED", source_record_hash="status-drift"),
+        lambda quote, other_raw_id, other_mapping_id: replace(quote, as_of=quote.as_of + timedelta(minutes=1), source_record_hash="as-of-drift"),
+        lambda quote, other_raw_id, other_mapping_id: replace(quote, raw_odds_observation_id=other_raw_id),
+        lambda quote, other_raw_id, other_mapping_id: replace(quote, provider_bookmaker_mapping_id=other_mapping_id),
+    ),
+)
+def test_live_odds_snapshot_retry_rejects_any_normalized_truth_drift(db: psycopg.Connection, mutation):
+    fixture = _insert_match(db)
+    observation = _observation(observation_key="quote-truth")
+    raw_id = _insert_raw(db, observation)
+    other_raw_id = _insert_raw(db, _observation(observation_key="quote-truth-other-raw"))
+    mapping_id = _insert_mapping(db)
+    other_mapping_id = _insert_mapping(db, version=2, effective_from=_utc(2))
+    mapping = select_bookmaker_mapping(
+        db,
+        provider_code=observation.provider_code,
+        provider_bookmaker_key="pinnacle",
+        observation_time=observation.observation_time,
+    )
+    match = load_pit_match_version(db, match_id=fixture["match_id"], observation_time=observation.observation_time)
+    quote = build_quote(
+        observation=observation,
+        raw_odds_observation_id=raw_id,
+        market=observation.markets[0],
+        selection=observation.markets[0].selections[0],
+        selection_player_id=fixture["player_1_id"],
+        match=match,
+        mapping=mapping,
+    )
+    assert mapping.provider_bookmaker_mapping_id == other_mapping_id
+    original_quote = replace(quote, provider_bookmaker_mapping_id=mapping_id)
+
+    assert insert_live_odds_snapshot(db, match_id=fixture["match_id"], quote=original_quote) is True
+    with pytest.raises(LiveOddsIntegrityError, match="persisted odds snapshot truth differs"):
+        insert_live_odds_snapshot(db, match_id=fixture["match_id"], quote=mutation(original_quote, other_raw_id, other_mapping_id))
+
+
 def test_service_normalizes_sharp_offered_and_preserves_lineage(db: psycopg.Connection):
     fixture = _insert_match(db)
     sharp_mapping = _insert_mapping(db)
@@ -440,6 +526,59 @@ def test_service_raw_only_paths_and_group_isolation(db: psycopg.Connection):
     assert result.normalized_inserted == 1
     assert db.execute("SELECT count(*) FROM raw_odds_observations").fetchone()[0] == 1
     assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 1
+
+
+def test_service_reuses_persisted_raw_truth_and_rejects_event_drift(db: psycopg.Connection):
+    event_1 = _insert_match(db, provider_event_id="event-1")
+    event_2 = _insert_match(
+        db,
+        provider_event_id="event-2",
+        player_1_provider_id="p3",
+        player_2_provider_id="p4",
+    )
+    _insert_mapping(db)
+    first = ingest_provider_observation(db, _observation(observation_key="stable-key", provider_event_id="event-1"))
+    assert first.normalized_inserted == 2
+
+    with pytest.raises(LiveOddsIntegrityError, match="raw observation retry payload differs"):
+        ingest_provider_observation(db, _observation(observation_key="stable-key", provider_event_id="event-2"))
+
+    assert db.execute("SELECT count(*) FROM odds_snapshots WHERE match_id = %s", (event_1["match_id"],)).fetchone()[0] == 2
+    assert db.execute("SELECT count(*) FROM odds_snapshots WHERE match_id = %s", (event_2["match_id"],)).fetchone()[0] == 0
+    assert db.execute(
+        "SELECT provider_event_id FROM raw_odds_observations WHERE provider_observation_key = 'stable-key'"
+    ).fetchone()[0] == "event-1"
+
+
+def test_service_commits_prior_groups_when_later_group_fails(db: psycopg.Connection, monkeypatch: pytest.MonkeyPatch):
+    _insert_match(db)
+    _insert_mapping(db, book_key="soft", bookmaker_code="SOFTBOOK", class_name="OFFERED")
+    _insert_mapping(db, book_key="broken", bookmaker_code="BROKEN", class_name="OFFERED")
+    real_insert = odds_service.insert_live_odds_snapshot
+
+    def fail_broken_bookmaker(*args, **kwargs):
+        if kwargs["quote"].bookmaker_code == "BROKEN":
+            raise LiveOddsIntegrityError("forced group failure")
+        return real_insert(*args, **kwargs)
+
+    monkeypatch.setattr(odds_service, "insert_live_odds_snapshot", fail_broken_bookmaker)
+
+    with pytest.raises(LiveOddsIntegrityError, match="forced group failure"):
+        ingest_provider_observation(
+            db,
+            _observation(
+                observation_key="partial-hard-failure",
+                markets=(
+                    _market(book="soft", key="soft", selections=(ProviderSelection("p1", Decimal("2.25")),)),
+                    _market(book="broken", key="broken", selections=(ProviderSelection("p2", Decimal("1.70")),)),
+                ),
+            ),
+        )
+
+    assert db.execute("SELECT count(*) FROM raw_odds_observations").fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM odds_snapshots WHERE bookmaker_code = 'SOFTBOOK'").fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM odds_snapshots WHERE bookmaker_code = 'BROKEN'").fetchone()[0] == 0
+    assert db.execute("SELECT status::text FROM ingest_runs ORDER BY ingest_run_id DESC LIMIT 1").fetchone()[0] == "PARTIAL"
 
 
 def test_service_event_and_mapping_absence_do_not_create_normalized_odds(db: psycopg.Connection):

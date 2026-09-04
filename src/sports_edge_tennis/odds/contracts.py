@@ -107,10 +107,16 @@ class RawObservationRecord:
     provider_code: str
     provider_event_id: str
     provider_observation_key: str
+    provider_request_id: str | None
+    provider_response_id: str | None
+    provider_observed_at: datetime | None
+    received_at: datetime
     observation_time: datetime
     observation_time_basis: ObservationTimeBasis
     payload_hash: str
     payload_json: dict[str, Any]
+    adapter_version: str
+    normalizer_version: str
 
 
 @dataclass(frozen=True)
@@ -177,4 +183,3 @@ class LiveOddsReconciliation:
         if self.failed_groups or self.raw_only or self.unmatched_event or self.identity_conflict:
             return "PARTIAL"
         return "COMPLETED"
-
