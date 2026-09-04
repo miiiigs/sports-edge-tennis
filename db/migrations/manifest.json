@@ -50,6 +50,13 @@
       "up": "db/migrations/0007_manager_consensus_layer.up.sql",
       "down": "db/migrations/0007_manager_consensus_layer.down.sql",
       "schema_snapshot": "db/schema/0007_manager_consensus_layer.sql"
+    },
+    {
+      "version": "0008",
+      "name": "market_value_v1",
+      "up": "db/migrations/0008_market_value_v1.up.sql",
+      "down": "db/migrations/0008_market_value_v1.down.sql",
+      "schema_snapshot": "db/schema/0008_market_value_v1.sql"
     }
   ]
 }
