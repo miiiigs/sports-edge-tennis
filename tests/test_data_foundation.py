@@ -18,12 +18,15 @@ UP_MIGRATION_PATH_0005 = DB_ROOT / "migrations" / "0005_append_only_enforcement_
 DOWN_MIGRATION_PATH_0005 = DB_ROOT / "migrations" / "0005_append_only_enforcement_and_lock_guards.down.sql"
 UP_MIGRATION_PATH_0006 = DB_ROOT / "migrations" / "0006_common_predictive_interface_persistence.up.sql"
 DOWN_MIGRATION_PATH_0006 = DB_ROOT / "migrations" / "0006_common_predictive_interface_persistence.down.sql"
+UP_MIGRATION_PATH_0009 = DB_ROOT / "migrations" / "0009_live_odds_ingestion_v1.up.sql"
+DOWN_MIGRATION_PATH_0009 = DB_ROOT / "migrations" / "0009_live_odds_ingestion_v1.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
 SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
 SCHEMA_SNAPSHOT_PATH_0004 = DB_ROOT / "schema" / "0004_prediction_runs_and_policy_versions.sql"
 SCHEMA_SNAPSHOT_PATH_0005 = DB_ROOT / "schema" / "0005_append_only_enforcement_and_lock_guards.sql"
 SCHEMA_SNAPSHOT_PATH_0006 = DB_ROOT / "schema" / "0006_common_predictive_interface_persistence.sql"
+SCHEMA_SNAPSHOT_PATH_0009 = DB_ROOT / "schema" / "0009_live_odds_ingestion_v1.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -86,12 +89,15 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert DOWN_MIGRATION_PATH_0005.exists()
     assert UP_MIGRATION_PATH_0006.exists()
     assert DOWN_MIGRATION_PATH_0006.exists()
+    assert UP_MIGRATION_PATH_0009.exists()
+    assert DOWN_MIGRATION_PATH_0009.exists()
     assert SCHEMA_SNAPSHOT_PATH.exists()
     assert SCHEMA_SNAPSHOT_PATH_0002.exists()
     assert SCHEMA_SNAPSHOT_PATH_0003.exists()
     assert SCHEMA_SNAPSHOT_PATH_0004.exists()
     assert SCHEMA_SNAPSHOT_PATH_0005.exists()
     assert SCHEMA_SNAPSHOT_PATH_0006.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0009.exists()
 
 
 def test_schema_snapshot_matches_bootstrap_migration():
@@ -144,6 +150,31 @@ def test_schema_snapshot_matches_bootstrap_migration():
         + _read_text(UP_MIGRATION_PATH_0006)
     )
     assert expected_full_schema_0006 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0006))
+
+
+def test_live_odds_v1_migration_manifest_and_snapshot():
+    manifest = json.loads(_read_text(MANIFEST_PATH))
+    assert manifest["migrations"][-1] == {
+        "version": "0009",
+        "name": "live_odds_ingestion_v1",
+        "up": "db/migrations/0009_live_odds_ingestion_v1.up.sql",
+        "down": "db/migrations/0009_live_odds_ingestion_v1.down.sql",
+        "schema_snapshot": "db/schema/0009_live_odds_ingestion_v1.sql",
+    }
+    expected_full_schema_0009 = _normalized_sql(
+        "\n".join(
+            _read_text(REPO_ROOT / Path(entry["up"]))
+            for entry in manifest["migrations"]
+        )
+    )
+    assert expected_full_schema_0009 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0009))
+
+    sql = _read_text(UP_MIGRATION_PATH_0009).lower()
+    assert "create table raw_odds_observations" in sql
+    assert "create table provider_bookmaker_mappings" in sql
+    assert "effective_to" not in sql
+    assert "add column odds_origin odds_origin" in sql
+    assert "chk_odds_snapshots_live_provider_lineage" in sql
 
 
 def test_day5_forward_migration_is_separate_from_bootstrap():

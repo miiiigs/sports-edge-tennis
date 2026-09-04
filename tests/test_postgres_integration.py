@@ -119,6 +119,8 @@ _TRUNCATE_TABLE_ORDER = (
     "prediction_runs",
     "rating_snapshots",
     "odds_snapshots",
+    "raw_odds_observations",
+    "provider_bookmaker_mappings",
     "match_stat_observations",
     "match_result_observations",
     "match_version_sources",
