@@ -17,7 +17,13 @@ from sports_edge_tennis.market import (
     ensure_market_policy_version_v1,
     snapshot_lineage_hash,
 )
-from sports_edge_tennis.market.contracts import MarketExecutionError
+from sports_edge_tennis.market.contracts import (
+    MARKET_FEATURE_VERSION,
+    MARKET_MODEL_VERSION,
+    MarketExecutionError,
+    MarketIdempotencyMismatchError,
+    MarketPolicyError,
+)
 
 A1 = "AGENT_1_SURFACE_ELO"
 A2 = "AGENT_2_HIERARCHICAL_MARKOV"
@@ -354,12 +360,97 @@ def _lineage(conn: psycopg.Connection, decision_id: int) -> list:
     ).fetchall()
 
 
+def _insert_canonical_market_decision(
+    conn: psycopg.Connection,
+    *,
+    run_id: int,
+    match_id: int,
+    manager_id: int,
+    policy_id: int,
+    lineage: tuple[tuple[str, int], ...],
+    decision_as_of: datetime | None = None,
+    overrides: dict | None = None,
+) -> int:
+    values = {
+        "match_id": match_id,
+        "prediction_run_id": run_id,
+        "signal_type": "TYPE_A_MODEL_EDGE",
+        "decision_status": "BET",
+        "reason_code": "NONE",
+        "market_type": "MATCH_WINNER",
+        "selection_type": "PLAYER_1",
+        "selection_side": 1,
+        "consensus_probability": Decimal("0.600000"),
+        "consensus_fair_odds": Decimal("1.666667"),
+        "market_decimal_price": Decimal("2.200000"),
+        "sharp_reference_price": Decimal("2.000000"),
+        "price_source_system": "SOFT",
+        "price_bookmaker_code": "BOOK_A",
+        "devig_method": "POWER",
+        "devig_fair_odds": Decimal("2.000000"),
+        "edge_pct": Decimal("0.320000"),
+        "min_acceptable_odds": Decimal("1.750000"),
+        "active_agent_count": 3,
+        "abstaining_agent_count": 0,
+        "directional_disagreement": False,
+        "probability_spread": Decimal("0.000000"),
+        "model_version": MARKET_MODEL_VERSION,
+        "feature_version": MARKET_FEATURE_VERSION,
+        "as_of": decision_as_of or _utc(10, 45),
+        "prediction_locked_at": _utc(10, 46),
+        "created_at": _utc(10, 46),
+        "manager_consensus_result_id": manager_id,
+        "market_policy_version_id": policy_id,
+        "snapshot_lineage_hash": snapshot_lineage_hash(lineage),
+    }
+    if overrides:
+        values.update(overrides)
+    decision_id = _fetchval(
+        conn,
+        """
+        INSERT INTO decisions (
+            match_id, prediction_run_id, signal_type, decision_status, reason_code,
+            market_type, selection_type, selection_side, consensus_probability,
+            consensus_fair_odds, market_decimal_price, sharp_reference_price,
+            price_source_system, price_bookmaker_code, devig_method, devig_fair_odds,
+            edge_pct, min_acceptable_odds, active_agent_count, abstaining_agent_count,
+            directional_disagreement, probability_spread, model_version, feature_version,
+            as_of, prediction_locked_at, created_at, manager_consensus_result_id,
+            market_policy_version_id, snapshot_lineage_hash
+        )
+        VALUES (
+            %(match_id)s, %(prediction_run_id)s, %(signal_type)s, %(decision_status)s,
+            %(reason_code)s, %(market_type)s, %(selection_type)s, %(selection_side)s,
+            %(consensus_probability)s, %(consensus_fair_odds)s, %(market_decimal_price)s,
+            %(sharp_reference_price)s, %(price_source_system)s, %(price_bookmaker_code)s,
+            %(devig_method)s, %(devig_fair_odds)s, %(edge_pct)s, %(min_acceptable_odds)s,
+            %(active_agent_count)s, %(abstaining_agent_count)s, %(directional_disagreement)s,
+            %(probability_spread)s, %(model_version)s, %(feature_version)s, %(as_of)s,
+            %(prediction_locked_at)s, %(created_at)s, %(manager_consensus_result_id)s,
+            %(market_policy_version_id)s, %(snapshot_lineage_hash)s
+        )
+        RETURNING decision_id
+        """,
+        values,
+    )
+    for role, odds_snapshot_id in lineage:
+        conn.execute(
+            """
+            INSERT INTO decision_odds_snapshots (decision_id, odds_snapshot_id, snapshot_role)
+            VALUES (%s, %s, %s)
+            """,
+            (decision_id, odds_snapshot_id, role),
+        )
+    return decision_id
+
+
 def _eval_market(
     conn: psycopg.Connection,
     run_id: int,
     *,
     decision_as_of: datetime | None = None,
     market_execution_now: datetime | None = None,
+    sharp_reference: SharpReferenceSpec = SHARP,
 ) -> object:
     return evaluate_and_persist_market_slate(
         conn,
@@ -367,7 +458,7 @@ def _eval_market(
         market_policy_version_id=_market_policy_id(conn),
         decision_as_of=decision_as_of or _utc(10, 45),
         market_execution_now=market_execution_now or _utc(10, 46),
-        sharp_reference=SHARP,
+        sharp_reference=sharp_reference,
     )
 
 
@@ -452,6 +543,51 @@ def test_valid_type_a_bet(db: psycopg.Connection):
     assert row[4] == 1
     roles = _lineage(db, row[0])
     assert [r[0] for r in roles] == ["OFFERED_SELECTION", "REFERENCE_PLAYER_1", "REFERENCE_PLAYER_2"]
+
+
+def test_sharp_policy_mismatch_rejects_without_market_write(db: psycopg.Connection):
+    run_id, match_id, _ = _setup_consensus(db, prob="0.60")
+    _insert_reference_pair(db, match_id, p1_price="2.00", p2_price="2.00")
+    _insert_offered(db, match_id, selection_type="PLAYER_1", price="2.20")
+
+    with pytest.raises(MarketPolicyError):
+        _eval_market(
+            db,
+            run_id,
+            sharp_reference=SharpReferenceSpec(source_system="SHARP", bookmaker_code="BOOK_B"),
+        )
+
+    assert _decision_rows(db, run_id) == []
+
+
+def test_unknown_sharp_policy_rejects_without_market_write(db: psycopg.Connection):
+    run_id, match_id, _ = _setup_consensus(db, prob="0.60")
+    policy_id = _fetchval(
+        db,
+        """
+        INSERT INTO market_policy_versions (
+            policy_key, policy_version, atp_main_min_edge_pct, challenger_min_edge_pct,
+            long_price_threshold, long_price_min_edge_pct, default_devig_method,
+            sharp_reference_policy_code, odds_max_staleness_minutes, type_b_enabled
+        )
+        VALUES ('tennis_market_value', 'unknown-sharp-test', 0.050000, 0.080000,
+                4.000000, 0.080000, 'POWER', 'OTHER_SHARP', 15, FALSE)
+        RETURNING market_policy_version_id
+        """,
+    )
+    _insert_reference_pair(db, match_id, p1_price="2.00", p2_price="2.00")
+
+    with pytest.raises(MarketPolicyError):
+        evaluate_and_persist_market_slate(
+            db,
+            prediction_run_id=run_id,
+            market_policy_version_id=policy_id,
+            decision_as_of=_utc(10, 45),
+            market_execution_now=_utc(10, 46),
+            sharp_reference=SHARP,
+        )
+
+    assert _decision_rows(db, run_id) == []
 
 
 def test_no_model_edge_vs_sharp(db: psycopg.Connection):
@@ -686,6 +822,92 @@ def test_idempotent_retry(db: psycopg.Connection):
     assert len(_decision_rows(db, run_id)) == 1
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"market_decimal_price": Decimal("2.210000")},
+        {
+            "edge_pct": Decimal("0.310000"),
+            "min_acceptable_odds": Decimal("1.760000"),
+            "devig_fair_odds": Decimal("2.010000"),
+        },
+        {"price_source_system": "OTHER", "price_bookmaker_code": "BOOK_B"},
+        {"model_version": "other-model", "feature_version": "other-feature"},
+    ],
+)
+def test_same_key_canonical_field_mismatch_rejects(db: psycopg.Connection, overrides: dict):
+    run_id, match_id, manager_id = _setup_consensus(db, prob="0.60")
+    ref_p1, ref_p2 = _insert_reference_pair(db, match_id, p1_price="2.00", p2_price="2.00")
+    offered = _insert_offered(db, match_id, selection_type="PLAYER_1", price="2.20")
+    lineage = (
+        ("REFERENCE_PLAYER_1", ref_p1),
+        ("REFERENCE_PLAYER_2", ref_p2),
+        ("OFFERED_SELECTION", offered),
+    )
+    _insert_canonical_market_decision(
+        db,
+        run_id=run_id,
+        match_id=match_id,
+        manager_id=manager_id,
+        policy_id=_market_policy_id(db),
+        lineage=lineage,
+        overrides=overrides,
+    )
+
+    with pytest.raises(MarketIdempotencyMismatchError):
+        _eval_market(db, run_id)
+
+    assert len(_decision_rows(db, run_id)) == 1
+
+
+def test_same_key_lineage_mismatch_rejects_even_when_hash_matches(db: psycopg.Connection):
+    run_id, match_id, manager_id = _setup_consensus(db, prob="0.60")
+    ref_p1, ref_p2 = _insert_reference_pair(db, match_id, p1_price="2.00", p2_price="2.00")
+    offered = _insert_offered(db, match_id, selection_type="PLAYER_1", price="2.20")
+    expected_lineage = (
+        ("REFERENCE_PLAYER_1", ref_p1),
+        ("REFERENCE_PLAYER_2", ref_p2),
+        ("OFFERED_SELECTION", offered),
+    )
+    persisted_lineage = (
+        ("REFERENCE_PLAYER_1", ref_p1),
+        ("REFERENCE_PLAYER_2", ref_p2),
+    )
+    _insert_canonical_market_decision(
+        db,
+        run_id=run_id,
+        match_id=match_id,
+        manager_id=manager_id,
+        policy_id=_market_policy_id(db),
+        lineage=persisted_lineage,
+        overrides={"snapshot_lineage_hash": snapshot_lineage_hash(expected_lineage)},
+    )
+
+    with pytest.raises(MarketIdempotencyMismatchError):
+        _eval_market(db, run_id)
+
+    assert len(_decision_rows(db, run_id)) == 1
+
+
+def test_no_bet_with_identical_null_canonical_fields_is_idempotent(db: psycopg.Connection):
+    match_id = _insert_match(db)
+    agents = {
+        A1: ("PREDICTED", 1, Decimal("0.60")),
+        A2: ("PREDICTED", 2, Decimal("0.60")),
+        A3: ("PREDICTED", 1, Decimal("0.60")),
+    }
+    run_id = _build_finalized_run(db, match_id=match_id, agents=agents, as_of=_utc(10, 0))
+    _run_manager(db, run_id)
+
+    first = _eval_market(db, run_id)
+    second = _eval_market(db, run_id)
+
+    assert first.status == "PERSISTED"
+    assert second.status == "IDEMPOTENT_SUCCESS"
+    assert second.existing_decision_count == 1
+    assert len(_decision_rows(db, run_id)) == 1
+
+
 def test_late_arriving_snapshot_creates_new_decision(db: psycopg.Connection):
     run_id, match_id, _ = _setup_consensus(db, prob="0.60")
     _insert_reference_pair(db, match_id, p1_price="2.00", p2_price="2.00")
@@ -819,6 +1041,53 @@ def test_two_match_slate_mixed_retry(db: psycopg.Connection):
     assert second.new_decision_count == 1
     assert second.existing_decision_count == 1
     assert len(_decision_rows(db, run_id)) == 3
+
+
+def test_same_key_mismatch_rolls_back_mixed_slate_new_writes(db: psycopg.Connection):
+    match_1 = _insert_match(db)
+    match_2 = _insert_match(db)
+    run_id = _build_finalized_multi_run(
+        db,
+        matches={match_1: _agreeing(prob="0.60"), match_2: _agreeing(prob="0.62")},
+        as_of=_utc(10, 0),
+    )
+    _run_manager(db, run_id)
+    manager_ids = dict(
+        db.execute(
+            """
+            SELECT match_id, manager_consensus_result_id
+            FROM manager_consensus_results
+            WHERE prediction_run_id = %s
+            """,
+            (run_id,),
+        ).fetchall()
+    )
+
+    ref_1_p1, ref_1_p2 = _insert_reference_pair(db, match_1, p1_price="2.00", p2_price="2.00")
+    offered_1 = _insert_offered(db, match_1, selection_type="PLAYER_1", price="2.20")
+    _insert_reference_pair(db, match_2, p1_price="2.00", p2_price="2.00", source_snapshot_id="ref-2")
+    _insert_offered(db, match_2, selection_type="PLAYER_1", price="2.25")
+    lineage = (
+        ("REFERENCE_PLAYER_1", ref_1_p1),
+        ("REFERENCE_PLAYER_2", ref_1_p2),
+        ("OFFERED_SELECTION", offered_1),
+    )
+    _insert_canonical_market_decision(
+        db,
+        run_id=run_id,
+        match_id=match_1,
+        manager_id=manager_ids[match_1],
+        policy_id=_market_policy_id(db),
+        lineage=lineage,
+        overrides={"market_decimal_price": Decimal("2.210000")},
+    )
+
+    with pytest.raises(MarketIdempotencyMismatchError):
+        _eval_market(db, run_id)
+
+    rows = _decision_rows(db, run_id)
+    assert len(rows) == 1
+    assert rows[0][1] == manager_ids[match_1]
 
 
 def test_zero_bet_slate_valid(db: psycopg.Connection):

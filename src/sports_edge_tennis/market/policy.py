@@ -7,7 +7,11 @@ from sports_edge_tennis.market.contracts import (
     SUPPORTED_ATP_TIERS,
     MarketPolicyError,
     MarketPolicyV1,
+    SharpReferenceSpec,
 )
+
+PINNACLE_SHARP_SOURCE_SYSTEM = "SHARP"
+PINNACLE_SHARP_BOOKMAKER_CODE = "PINNACLE"
 
 
 def resolve_threshold(
@@ -44,3 +48,24 @@ def resolve_threshold(
 def is_fresh(source_observed_at: datetime, decision_as_of: datetime, ttl_minutes: int) -> bool:
     """Return True when the quote age (decision_as_of - source_observed_at) is within TTL."""
     return (decision_as_of - source_observed_at) <= timedelta(minutes=ttl_minutes)
+
+
+def validate_sharp_reference(
+    policy: MarketPolicyV1,
+    sharp_reference: SharpReferenceSpec,
+) -> None:
+    if policy.sharp_reference_policy_code != "PINNACLE_SHARP":
+        raise MarketPolicyError(
+            f"unsupported sharp_reference_policy_code {policy.sharp_reference_policy_code!r}"
+        )
+
+    expected = SharpReferenceSpec(
+        source_system=PINNACLE_SHARP_SOURCE_SYSTEM,
+        bookmaker_code=PINNACLE_SHARP_BOOKMAKER_CODE,
+    )
+    if sharp_reference != expected:
+        raise MarketPolicyError(
+            "sharp_reference does not match PINNACLE_SHARP policy identity "
+            f"(expected source_system={expected.source_system!r}, "
+            f"bookmaker_code={expected.bookmaker_code!r})"
+        )

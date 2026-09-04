@@ -7,6 +7,7 @@ from decimal import Decimal
 import psycopg
 
 from sports_edge_tennis.market.contracts import (
+    CANONICAL_ROLE_ORDER,
     MARKET_FEATURE_VERSION,
     MARKET_MODEL_VERSION,
     SUPPORTED_TIERS,
@@ -30,7 +31,7 @@ from sports_edge_tennis.market.persistence import (
     load_match_winner_odds,
     load_run_parent,
 )
-from sports_edge_tennis.market.policy import is_fresh, resolve_threshold
+from sports_edge_tennis.market.policy import is_fresh, resolve_threshold, validate_sharp_reference
 from sports_edge_tennis.market.pricing import (
     booksum,
     edge_pct,
@@ -46,6 +47,49 @@ class _SharpResolution:
     p1: OddsSnapshotV1 | None = None
     p2: OddsSnapshotV1 | None = None
     lineage: tuple[tuple[SnapshotRole, int], ...] = ()
+
+
+@dataclass(frozen=True)
+class _PersistedMarketDecisionTruth:
+    decision_id: int
+    prediction_run_id: int
+    match_id: int
+    signal_type: str
+    decision_status: str
+    reason_code: str
+    market_type: str
+    selection_type: str | None
+    selection_side: int | None
+    consensus_probability: Decimal | None
+    consensus_fair_odds: Decimal | None
+    market_decimal_price: Decimal | None
+    sharp_reference_price: Decimal | None
+    price_source_system: str | None
+    price_bookmaker_code: str | None
+    devig_method: str | None
+    devig_fair_odds: Decimal | None
+    edge_pct: Decimal | None
+    min_acceptable_odds: Decimal | None
+    active_agent_count: int
+    abstaining_agent_count: int
+    directional_disagreement: bool
+    probability_spread: Decimal | None
+    model_version: str
+    feature_version: str
+    manager_consensus_result_id: int
+    market_policy_version_id: int
+    as_of: datetime
+    snapshot_lineage_hash: str
+    lineage: tuple[tuple[SnapshotRole, int], ...]
+
+    @property
+    def natural_key(self) -> tuple[int, int, datetime, str]:
+        return (
+            self.manager_consensus_result_id,
+            self.market_policy_version_id,
+            self.as_of,
+            self.snapshot_lineage_hash,
+        )
 
 
 def _resolve_sharp_pair(
@@ -144,6 +188,8 @@ def evaluate_market_match(
     odds_snapshots: list[OddsSnapshotV1],
     decision_as_of: datetime,
 ) -> MarketDecisionV1:
+    validate_sharp_reference(policy, sharp_reference)
+
     def no_bet(reason: MarketReasonCode, lineage: tuple[tuple[SnapshotRole, int], ...] = ()) -> MarketDecisionV1:
         return MarketDecisionV1(
             manager_consensus_result_id=manager_row.manager_consensus_result_id,
@@ -273,11 +319,22 @@ def _audit_probability(manager_row: PersistedManagerConsensusRow) -> Decimal | N
     return manager_row.consensus_probability
 
 
-def _persist_decision(
-    conn: psycopg.Connection,
-    decision: MarketDecisionV1,
-    market_execution_now: datetime,
-) -> int:
+def _selection_type(selected_side: int | None) -> str | None:
+    if selected_side == 1:
+        return "PLAYER_1"
+    if selected_side == 2:
+        return "PLAYER_2"
+    return None
+
+
+def _canonical_lineage_mapping(
+    lineage: tuple[tuple[SnapshotRole, int], ...],
+) -> tuple[tuple[SnapshotRole, int], ...]:
+    role_order = {role: index for index, role in enumerate(CANONICAL_ROLE_ORDER)}
+    return tuple(sorted(lineage, key=lambda entry: role_order[entry[0]]))
+
+
+def _canonical_decision_truth(decision: MarketDecisionV1, decision_id: int = 0) -> _PersistedMarketDecisionTruth:
     consensus_probability = (
         quantize_probability(decision.consensus_probability)
         if decision.consensus_probability is not None
@@ -288,30 +345,66 @@ def _persist_decision(
         if decision.decision_status == "BET" and decision.consensus_probability is not None
         else None
     )
-    edge = quantize_price(decision.edge_pct) if decision.edge_pct is not None else None
-    min_price = (
-        quantize_price(decision.min_acceptable_odds) if decision.min_acceptable_odds is not None else None
-    )
-    market_price = (
-        quantize_price(decision.market_decimal_price) if decision.market_decimal_price is not None else None
-    )
-    sharp_price = (
-        quantize_price(decision.sharp_reference_price) if decision.sharp_reference_price is not None else None
-    )
-    devig_fair_odds = (
-        quantize_price(decision.devig_fair_odds) if decision.devig_fair_odds is not None else None
-    )
-    probability_spread = (
-        quantize_probability(decision.probability_spread)
-        if decision.probability_spread is not None
-        else None
+    return _PersistedMarketDecisionTruth(
+        decision_id=decision_id,
+        prediction_run_id=decision.prediction_run_id,
+        match_id=decision.match_id,
+        signal_type="TYPE_A_MODEL_EDGE",
+        decision_status=decision.decision_status,
+        reason_code=decision.reason_code,
+        market_type="MATCH_WINNER",
+        selection_type=_selection_type(decision.selected_side),
+        selection_side=decision.selected_side,
+        consensus_probability=consensus_probability,
+        consensus_fair_odds=consensus_fair_odds,
+        market_decimal_price=(
+            quantize_price(decision.market_decimal_price)
+            if decision.market_decimal_price is not None
+            else None
+        ),
+        sharp_reference_price=(
+            quantize_price(decision.sharp_reference_price)
+            if decision.sharp_reference_price is not None
+            else None
+        ),
+        price_source_system=decision.price_source_system,
+        price_bookmaker_code=decision.price_bookmaker_code,
+        devig_method=decision.devig_method,
+        devig_fair_odds=(
+            quantize_price(decision.devig_fair_odds)
+            if decision.devig_fair_odds is not None
+            else None
+        ),
+        edge_pct=quantize_price(decision.edge_pct) if decision.edge_pct is not None else None,
+        min_acceptable_odds=(
+            quantize_price(decision.min_acceptable_odds)
+            if decision.min_acceptable_odds is not None
+            else None
+        ),
+        active_agent_count=decision.active_agent_count,
+        abstaining_agent_count=decision.abstaining_agent_count,
+        directional_disagreement=False,
+        probability_spread=(
+            quantize_probability(decision.probability_spread)
+            if decision.probability_spread is not None
+            else None
+        ),
+        model_version=MARKET_MODEL_VERSION,
+        feature_version=MARKET_FEATURE_VERSION,
+        manager_consensus_result_id=decision.manager_consensus_result_id,
+        market_policy_version_id=decision.market_policy_version_id,
+        as_of=decision.decision_as_of,
+        snapshot_lineage_hash=decision.snapshot_lineage_hash,
+        lineage=_canonical_lineage_mapping(decision.lineage),
     )
 
-    selection_type = (
-        ("PLAYER_1" if decision.selected_side == 1 else "PLAYER_2")
-        if decision.selected_side is not None
-        else None
-    )
+
+def _persist_decision(
+    conn: psycopg.Connection,
+    decision: MarketDecisionV1,
+    market_execution_now: datetime,
+) -> int:
+    truth = _canonical_decision_truth(decision)
 
     return conn.execute(
         """
@@ -362,21 +455,21 @@ def _persist_decision(
             decision.prediction_run_id,
             decision.decision_status,
             decision.reason_code,
-            selection_type,
-            decision.selected_side,
-            consensus_probability,
-            consensus_fair_odds,
-            market_price,
-            sharp_price,
+            truth.selection_type,
+            truth.selection_side,
+            truth.consensus_probability,
+            truth.consensus_fair_odds,
+            truth.market_decimal_price,
+            truth.sharp_reference_price,
             decision.price_source_system,
             decision.price_bookmaker_code,
             decision.devig_method,
-            devig_fair_odds,
-            edge,
-            min_price,
+            truth.devig_fair_odds,
+            truth.edge_pct,
+            truth.min_acceptable_odds,
             decision.active_agent_count,
             decision.abstaining_agent_count,
-            probability_spread,
+            truth.probability_spread,
             MARKET_MODEL_VERSION,
             MARKET_FEATURE_VERSION,
             decision.decision_as_of,
@@ -407,26 +500,75 @@ def _persist_lineage(
 def _load_existing_market_decisions(
     conn: psycopg.Connection,
     prediction_run_id: int,
-) -> dict[tuple[int, int, datetime, str], tuple[str, str, int | None]]:
+) -> dict[tuple[int, int, datetime, str], _PersistedMarketDecisionTruth]:
     rows = conn.execute(
         """
         SELECT
+            decision_id,
+            prediction_run_id,
+            match_id,
+            signal_type::text,
+            decision_status::text,
+            reason_code::text,
+            market_type::text,
+            selection_type::text,
+            selection_side,
+            consensus_probability,
+            consensus_fair_odds,
+            market_decimal_price,
+            sharp_reference_price,
+            price_source_system,
+            price_bookmaker_code,
+            devig_method,
+            devig_fair_odds,
+            edge_pct,
+            min_acceptable_odds,
+            active_agent_count,
+            abstaining_agent_count,
+            directional_disagreement,
+            probability_spread,
+            model_version,
+            feature_version,
             manager_consensus_result_id,
             market_policy_version_id,
             as_of,
-            snapshot_lineage_hash,
-            decision_status::text,
-            reason_code::text,
-            selection_side
+            snapshot_lineage_hash
         FROM decisions
         WHERE prediction_run_id = %s
           AND manager_consensus_result_id IS NOT NULL
         """,
         (prediction_run_id,),
     ).fetchall()
-    return {
-        (row[0], row[1], row[2], row[3]): (row[4], row[5], row[6]) for row in rows
+    decisions = {
+        row[0]: _PersistedMarketDecisionTruth(*row, lineage=())
+        for row in rows
     }
+    if not decisions:
+        return {}
+
+    lineage_rows = conn.execute(
+        """
+        SELECT decision_id, snapshot_role::text, odds_snapshot_id
+        FROM decision_odds_snapshots
+        WHERE decision_id = ANY(%s)
+        ORDER BY decision_id, snapshot_role
+        """,
+        (list(decisions),),
+    ).fetchall()
+    lineages: dict[int, list[tuple[SnapshotRole, int]]] = {decision_id: [] for decision_id in decisions}
+    for decision_id, role, odds_snapshot_id in lineage_rows:
+        lineages[decision_id].append((role, odds_snapshot_id))
+
+    hydrated = {
+        decision_id: _PersistedMarketDecisionTruth(
+            **{
+                **truth.__dict__,
+                "lineage": _canonical_lineage_mapping(tuple(lineages[decision_id])),
+            }
+        )
+        for decision_id, truth in decisions.items()
+    }
+    return {truth.natural_key: truth for truth in hydrated.values()}
 
 
 def evaluate_and_persist_market_slate(
@@ -457,6 +599,7 @@ def evaluate_and_persist_market_slate(
         policy = load_market_policy_version(conn, market_policy_version_id=market_policy_version_id)
         if policy.type_b_enabled:
             raise MarketExecutionError("Type B is disabled in V1")
+        validate_sharp_reference(policy, sharp_reference)
 
         manager_rows = load_manager_slate(conn, prediction_run_id=prediction_run_id)
         if not manager_rows:
@@ -501,8 +644,8 @@ def evaluate_and_persist_market_slate(
                 decision.snapshot_lineage_hash,
             )
             if key in existing:
-                status, reason, side = existing[key]
-                if (status, reason, side) != (decision.decision_status, decision.reason_code, decision.selected_side):
+                expected = _canonical_decision_truth(decision, decision_id=existing[key].decision_id)
+                if existing[key] != expected:
                     raise MarketIdempotencyMismatchError(
                         "persisted Market truth differs from the computed canonical decision"
                     )

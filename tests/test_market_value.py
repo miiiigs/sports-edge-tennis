@@ -238,6 +238,58 @@ def test_qualifying_bet():
     assert decision.lineage == (("REFERENCE_PLAYER_1", 10), ("REFERENCE_PLAYER_2", 11), ("OFFERED_SELECTION", 12))
 
 
+def test_sharp_policy_accepts_canonical_reference():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="1.85",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.60"),
+        policy=_policy(),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.lineage == (("REFERENCE_PLAYER_1", 10), ("REFERENCE_PLAYER_2", 11), ("OFFERED_SELECTION", 12))
+
+
+@pytest.mark.parametrize(
+    "sharp_reference",
+    [
+        SharpReferenceSpec(source_system="SHARP", bookmaker_code="BOOK_B"),
+        SharpReferenceSpec(source_system="OTHER", bookmaker_code="PINNACLE"),
+    ],
+)
+def test_sharp_policy_rejects_noncanonical_runtime_reference(sharp_reference: SharpReferenceSpec):
+    with pytest.raises(MarketPolicyError):
+        evaluate_market_match(
+            manager_row=_manager_row(side=1, prob="0.60"),
+            policy=_policy(),
+            competition_tier="ATP_250",
+            sharp_reference=sharp_reference,
+            odds_snapshots=[],
+            decision_as_of=_utc(10, 5),
+        )
+
+
+def test_sharp_policy_rejects_unsupported_policy_code():
+    with pytest.raises(MarketPolicyError):
+        evaluate_market_match(
+            manager_row=_manager_row(side=1, prob="0.60"),
+            policy=_policy(sharp_reference_policy_code="SOME_OTHER_SHARP"),
+            competition_tier="ATP_250",
+            sharp_reference=SHARP,
+            odds_snapshots=[],
+            decision_as_of=_utc(10, 5),
+        )
+
+
 def test_manager_no_bet_is_never_qualified():
     decision = evaluate_market_match(
         manager_row=_manager_row(status="NO_BET"),
