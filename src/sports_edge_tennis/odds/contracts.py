@@ -37,13 +37,20 @@ class LiveOddsIntegrityError(RuntimeError):
 
 @dataclass(frozen=True)
 class ProviderSelection:
-    provider_player_id: str
+    provider_player_id: str | None
     decimal_price: Decimal
+    canonical_player_id: int | None = None
     provider_selection_key: str | None = None
 
     def __post_init__(self) -> None:
-        if not self.provider_player_id.strip():
+        has_provider_player_id = self.provider_player_id is not None and bool(self.provider_player_id.strip())
+        has_canonical_player_id = self.canonical_player_id is not None
+        if has_provider_player_id == has_canonical_player_id:
+            raise LiveOddsError("selection must provide exactly one identity path")
+        if self.provider_player_id is not None and not self.provider_player_id.strip():
             raise LiveOddsError("provider_player_id must be non-empty")
+        if self.canonical_player_id is not None and self.canonical_player_id <= 0:
+            raise LiveOddsError("canonical_player_id must be positive")
         if self.decimal_price <= Decimal("1"):
             raise LiveOddsError("decimal_price must be greater than 1")
 
