@@ -154,7 +154,7 @@ def ingest_api_tennis_source_a_fixtures(
         )
     records, rejected_rows = parse_api_tennis_fixtures(fixture_list, received_at=received_at)
     if dry_run:
-        status = "COMPLETED" if not rejected_rows else ("FAILED" if not records else "PARTIAL")
+        status = _ingest_status(success_count=len(records), rejected_count=len(rejected_rows))
         return ApiTennisIngestOutcome(
             rows_seen=len(fixture_list),
             rows_ingested=0,
@@ -168,6 +168,16 @@ def ingest_api_tennis_source_a_fixtures(
     ingested: list[ApiTennisIngestedMatch] = []
     try:
         for record in records:
+            try:
+                _ensure_existing_event_identity(conn, record)
+            except ApiTennisSourceAError as exc:
+                rejected_rows.append(
+                    {
+                        "event_key": record.source_match_id,
+                        "reason": str(exc),
+                    }
+                )
+                continue
             locator = _persist_fixture(repository, record)
             ingested.append(
                 ApiTennisIngestedMatch(
@@ -179,7 +189,7 @@ def ingest_api_tennis_source_a_fixtures(
                     match_status=record.match_status,
                 )
             )
-        status = "COMPLETED" if not rejected_rows else ("FAILED" if not records else "PARTIAL")
+        status = _ingest_status(success_count=len(ingested), rejected_count=len(rejected_rows))
         _finish_ingest_run(
             conn,
             ingest_run_id=ingest_run_id,
@@ -209,6 +219,14 @@ def ingest_api_tennis_source_a_fixtures(
         matches=tuple(ingested),
         rejected_rows=tuple(rejected_rows),
     )
+
+
+def _ingest_status(*, success_count: int, rejected_count: int) -> str:
+    if rejected_count == 0:
+        return "COMPLETED"
+    if success_count == 0:
+        return "FAILED"
+    return "PARTIAL"
 
 
 def _parse_fixture(
@@ -342,6 +360,74 @@ def _persist_fixture(
     )
 
 
+def _ensure_existing_event_identity(
+    conn: psycopg.Connection,
+    record: ApiTennisFixtureRecord,
+) -> None:
+    existing = conn.execute(
+        """
+        SELECT
+            msi.match_id,
+            latest.player_1_id,
+            latest.player_2_id,
+            te.tournament_id
+        FROM match_source_ids msi
+        JOIN matches m ON m.match_id = msi.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN LATERAL (
+            SELECT player_1_id, player_2_id
+            FROM match_versions mv
+            WHERE mv.match_id = msi.match_id
+            ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
+            LIMIT 1
+        ) latest ON TRUE
+        WHERE msi.source_system = %s
+          AND msi.source_match_id = %s
+        ORDER BY msi.match_source_id DESC
+        LIMIT 1
+        """,
+        (SOURCE_SYSTEM, record.source_match_id),
+    ).fetchone()
+    if existing is None:
+        return
+
+    _match_id, existing_player_1_id, existing_player_2_id, existing_tournament_id = existing
+    player_1_id = _existing_api_tennis_player_id(conn, record.first_player_source_id)
+    player_2_id = _existing_api_tennis_player_id(conn, record.second_player_source_id)
+    tournament_id = _existing_api_tennis_tournament_id(conn, record.tournament_source_id)
+
+    if player_1_id != existing_player_1_id:
+        raise ApiTennisSourceAError("event_identity_conflict:player_1")
+    if player_2_id != existing_player_2_id:
+        raise ApiTennisSourceAError("event_identity_conflict:player_2")
+    if tournament_id != existing_tournament_id:
+        raise ApiTennisSourceAError("event_identity_conflict:tournament")
+
+
+def _existing_api_tennis_player_id(conn: psycopg.Connection, source_player_id: str) -> int | None:
+    row = conn.execute(
+        """
+        SELECT player_id
+        FROM player_source_ids
+        WHERE source_system = %s AND source_player_id = %s
+        """,
+        (SOURCE_SYSTEM, source_player_id),
+    ).fetchone()
+    return None if row is None else row[0]
+
+
+def _existing_api_tennis_tournament_id(conn: psycopg.Connection, source_tournament_id: str) -> int | None:
+    row = conn.execute(
+        """
+        SELECT tournament_id
+        FROM tournament_source_ids
+        WHERE source_system = %s AND source_tournament_id = %s
+        """,
+        (SOURCE_SYSTEM, source_tournament_id),
+    ).fetchone()
+    return None if row is None else row[0]
+
+
 def _classify_event_type(event_type_type: str, fixture: Mapping[str, Any]) -> tuple[str, str]:
     normalized = _normalize_token(event_type_type)
     if _contains_out_of_scope_token(normalized):
@@ -399,30 +485,8 @@ def _match_start_at(*, event_date: str, event_time: str) -> datetime:
     return datetime.combine(parsed_date, parsed_time, tzinfo=UTC)
 
 
-def _source_observed_at(fixture: Mapping[str, Any], received_at: datetime) -> datetime:
-    raw = _optional_text_any(
-        fixture,
-        (
-            "source_observed_at",
-            "event_update",
-            "event_updated_at",
-            "updated_at",
-        ),
-    )
-    if not raw:
-        return received_at
-    return _parse_datetime(raw, field_name="source_observed_at")
-
-
-def _parse_datetime(value: str, *, field_name: str) -> datetime:
-    text = value.strip()
-    if text.endswith("Z"):
-        text = f"{text[:-1]}+00:00"
-    try:
-        parsed = datetime.fromisoformat(text)
-    except ValueError as exc:
-        raise ApiTennisSourceAError(f"invalid_{field_name}") from exc
-    return _aware_utc(parsed, field_name=field_name)
+def _source_observed_at(_fixture: Mapping[str, Any], received_at: datetime) -> datetime:
+    return received_at
 
 
 def _aware_utc(value: datetime, *, field_name: str) -> datetime:
