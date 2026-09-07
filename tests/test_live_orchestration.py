@@ -12,6 +12,7 @@ from sports_edge_tennis.live.orchestrator import (
     LivePilotApiTennisFailed,
     LivePilotPinnapiFailed,
     _client_state,
+    _final_status,
     run_live_mvp,
 )
 from sports_edge_tennis.live.transport import TransportError
@@ -217,6 +218,44 @@ def test_client_state_mapping():
     assert _client_state({"result": "CONSENSUS"}, {"reconciliation_status": "RESOLVED"}, True) == "AWAITING_OFFERED_PRICE"
     assert _client_state({"result": "CONSENSUS"}, {"reconciliation_status": "IDENTITY_CONFLICT"}, True) == "RECONCILIATION_FAILED"
     assert _client_state({"result": "CONSENSUS"}, {}, True) == "SHARP_UNAVAILABLE"
+
+
+def test_final_status_empty_slate():
+    assert _final_status((), ()) == "LIVE_MVP_SUCCESS_EMPTY_SLATE"
+
+
+def test_final_status_non_empty_zero_consensus():
+    assert _final_status((1001,), ()) == "LIVE_MVP_SUCCESS_NO_CONSENSUS"
+
+
+def test_final_status_success_with_consensus():
+    assert _final_status((1001,), (1001,)) == "LIVE_MVP_SUCCESS"
+
+
+def test_empty_slate_makes_zero_pinnapi_requests():
+    result, fetch_calls, _ = _run(consensus_ids=[], board_payload=None)
+    # _run always seeds one target; build an explicit empty-slate run instead.
+    assert result.status == "LIVE_MVP_SUCCESS_NO_CONSENSUS"
+
+    def fetch_fixtures(key, slate):
+        return FIXED, [{"event_key": "e1"}]
+
+    result2 = run_live_mvp(
+        None,
+        slate_date=SLATE,
+        api_tennis_key="APIKEY",
+        pinnapi_key="K",
+        preflight=lambda conn: None,
+        fetch_fixtures=fetch_fixtures,
+        ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome([]),
+        run_slate=lambda conn, ids, as_of: _run_outcome(),
+        load_consensus=lambda conn, rid: [],
+        build_match_entries=lambda *a, **k: [],
+        write_summary=lambda summary, **k: "p",
+        clock=lambda: FIXED,
+    )
+    assert result2.status == "LIVE_MVP_SUCCESS_EMPTY_SLATE"
+    assert result2.pinnapi_requests == 0
 
 
 # --- database integration (real reconcile + normalize) ----------------------

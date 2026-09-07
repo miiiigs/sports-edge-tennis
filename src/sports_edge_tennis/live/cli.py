@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     pinnapi_key = load_secret("PINNAPI_KEY")
 
     try:
-        with psycopg.connect(args.dsn) as conn:
+        with psycopg.connect(args.dsn, autocommit=True) as conn:
             result = run_live_mvp(
                 conn,
                 slate_date=args.slate_date,

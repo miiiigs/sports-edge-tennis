@@ -166,15 +166,17 @@ def ensure_agent_config_versions_v1(conn: psycopg.Connection) -> None:
 def _preflight_database(conn: psycopg.Connection) -> None:
     for table in _REQUIRED_TABLES:
         present = conn.execute(
-            "SELECT to_regclass('public.%s')", (table,)
+            "SELECT to_regclass(%s)", (f"public.{table}",)
         ).fetchone()[0]
         if present is None:
             raise BlockedNoLiveMvpDatabase(f"missing table public.{table}")
     match_count = conn.execute("SELECT count(*) FROM matches").fetchone()[0]
-    rating_count = conn.execute("SELECT count(*) FROM rating_snapshots").fetchone()[0]
-    if match_count == 0 or rating_count == 0:
+    result_count = conn.execute("SELECT count(*) FROM match_result_observations").fetchone()[0]
+    stat_count = conn.execute("SELECT count(*) FROM match_stat_observations").fetchone()[0]
+    if match_count == 0 or result_count == 0 or stat_count == 0:
         raise BlockedNoLiveMvpDatabase(
-            "existing Tennis database lacks historical feature corpus (matches/rating_snapshots)"
+            "existing Tennis database lacks historical feature corpus "
+            "(matches/match_result_observations/match_stat_observations)"
         )
 
 
@@ -315,6 +317,17 @@ def _ensure_bookmaker_mapping(conn: psycopg.Connection, observation_time: dateti
         )
 
 
+def _final_status(
+    target_match_ids: tuple[int, ...],
+    consensus_match_ids: tuple[int, ...],
+) -> str:
+    if not target_match_ids:
+        return "LIVE_MVP_SUCCESS_EMPTY_SLATE"
+    if consensus_match_ids:
+        return "LIVE_MVP_SUCCESS"
+    return "LIVE_MVP_SUCCESS_NO_CONSENSUS"
+
+
 def run_live_mvp(
     conn: psycopg.Connection,
     *,
@@ -424,7 +437,7 @@ def run_live_mvp(
     )
     summary_path = write_summary(summary, artifacts_dir=artifacts_dir, run_id=run_id)
 
-    status = "LIVE_MVP_SUCCESS" if consensus_match_ids else "LIVE_MVP_SUCCESS_NO_CONSENSUS"
+    status = _final_status(target_match_ids, consensus_match_ids)
     return LiveMvpResult(
         status=status,
         run_id=run_id,
