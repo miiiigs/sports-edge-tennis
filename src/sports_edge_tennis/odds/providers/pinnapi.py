@@ -10,19 +10,19 @@ Verified provider endpoint shape (not invoked here):
 returns a BOARD of Tennis events. One successful board response is one immutable
 board observation identity.
 
-Board payload shape accepted here (deterministic fixture representation of the
-verified shape)::
+Board payload shape accepted here (official pinnapi event contract)::
 
     {
       "events": [
         {
           "event_id": "1635768302",
           "parent_id": null,
-          "event_type": "prematch",          # optional; defaults to prematch
+          "event_type": "prematch",
           "league_id": "202301",
           "league_name": "ATP Challenger Mallorca - SF",
-          "start": "2026-09-05T13:10:00Z",
-          "participants": ["Mark Lajal", "Felix Balshaw"],   # [home, away]
+          "starts": "2026-09-05T13:10:00Z",
+          "home": "Mark Lajal",
+          "away": "Felix Balshaw",
           "periods": {
             "num_0": {
               "status": "open",
@@ -33,6 +33,12 @@ verified shape)::
         }
       ]
     }
+
+The official contract exposes top-level ``home`` / ``away`` participant fields,
+where ``home`` corresponds directly to ``money_line.home`` and ``away`` to
+``money_line.away``. The start time is parsed from ``starts`` (preferred) or
+``start_ts`` (fallback alias). ``periods.num_0.description`` is never used for
+classification.
 
 A top-level Tennis Match Winner event is normalization-eligible only if it is
 prematch, has no parent, carries no child suffix (``(Games)`` / ``(Sets)``),
@@ -231,6 +237,8 @@ def build_pinnapi_market(
     the already-reconciled Step 2 orientation and emits provider selections whose
     canonical ids come from that orientation.
     """
+    if orientation.provider_event_id != event.provider_event_id:
+        raise PinnapiBoardError("orientation_event_id_mismatch")
     home_selection = ProviderSelection(
         provider_player_id=None,
         decimal_price=event.home_decimal_price,
@@ -261,11 +269,16 @@ def _parse_event(raw_event: Mapping[str, Any]) -> PinnapiBoardEvent:
     if parent_id is not None and _optional_text(parent_id):
         raise PinnapiBoardError("child_parent_id")
 
-    home_name, away_name = _participants(raw_event.get("participants"))
+    home_name = _optional_text(raw_event.get("home"))
+    away_name = _optional_text(raw_event.get("away"))
+    if home_name is None or away_name is None:
+        raise PinnapiBoardError("missing_participant")
+    if home_name == away_name:
+        raise PinnapiBoardError("duplicate_participant")
     if _has_child_suffix(home_name) or _has_child_suffix(away_name):
         raise PinnapiBoardError("child_suffix")
 
-    scheduled_start = _parse_start(raw_event.get("start"))
+    scheduled_start = _parse_start_field(raw_event)
     if scheduled_start is None:
         raise PinnapiBoardError("invalid_start")
 
@@ -300,25 +313,17 @@ def _required_event_id(raw_event: Mapping[str, Any]) -> str:
     return event_id
 
 
-def _participants(value: Any) -> tuple[str, str]:
-    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
-        raise PinnapiBoardError("missing_participant")
-    if len(value) != 2:
-        raise PinnapiBoardError("invalid_participant_count")
-    home_name = _participant_name(value[0])
-    away_name = _participant_name(value[1])
-    if home_name is None or away_name is None:
-        raise PinnapiBoardError("missing_participant")
-    if home_name == away_name:
-        raise PinnapiBoardError("duplicate_participant")
-    return home_name, away_name
-
-
-def _participant_name(value: Any) -> str | None:
-    if isinstance(value, str):
-        return _optional_text(value)
-    if isinstance(value, Mapping):
-        return _optional_text(value.get("name"))
+def _parse_start_field(raw_event: Mapping[str, Any]) -> datetime | None:
+    starts = _parse_start(raw_event.get("starts"))
+    start_ts = _parse_start(raw_event.get("start_ts"))
+    if starts is not None and start_ts is not None:
+        if starts != start_ts:
+            raise PinnapiBoardError("start_alias_conflict")
+        return starts
+    if starts is not None:
+        return starts
+    if start_ts is not None:
+        return start_ts
     return None
 
 

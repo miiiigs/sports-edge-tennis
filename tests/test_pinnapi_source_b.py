@@ -40,8 +40,9 @@ def _event(**overrides) -> dict:
         "parent_id": None,
         "league_id": "202301",
         "league_name": "ATP Challenger Mallorca - SF",
-        "start": "2026-09-05T13:10:00Z",
-        "participants": ["Mark Lajal", "Felix Balshaw"],
+        "starts": "2026-09-05T13:10:00Z",
+        "home": "Mark Lajal",
+        "away": "Felix Balshaw",
         "periods": {
             "num_0": {
                 "status": "open",
@@ -135,13 +136,13 @@ def test_parent_id_child_not_eligible():
 
 
 def test_games_child_not_eligible():
-    result = _parse(_board(_event(participants=["Mark Lajal (Games)", "Felix Balshaw (Games)"])))
+    result = _parse(_board(_event(home="Mark Lajal (Games)", away="Felix Balshaw (Games)")))
     assert result.events == ()
     assert result.rejected_events[0].reason == "child_suffix"
 
 
 def test_sets_child_not_eligible():
-    result = _parse(_board(_event(participants=["Mark Lajal (Sets)", "Felix Balshaw (Sets)"])))
+    result = _parse(_board(_event(home="Mark Lajal (Sets)", away="Felix Balshaw (Sets)")))
     assert result.events == ()
     assert result.rejected_events[0].reason == "child_suffix"
 
@@ -188,7 +189,7 @@ def test_three_way_draw_not_treated_as_selection():
 
 
 def test_invalid_start_rejected():
-    result = _parse(_board(_event(start="not-a-date")))
+    result = _parse(_board(_event(starts="not-a-date")))
     assert result.rejected_events[0].reason == "invalid_start"
 
 
@@ -296,7 +297,7 @@ def test_parser_produces_step2_compatible_evidence():
 
 
 def test_reversed_participant_ordering_preserves_provider_orientation():
-    event = _only_event(_parse(_board(_event(participants=["Felix Balshaw", "Mark Lajal"]))))
+    event = _only_event(_parse(_board(_event(home="Felix Balshaw", away="Mark Lajal"))))
     evidence = to_pinnapi_event_evidence(event)
     assert evidence.home_name == "Felix Balshaw"
     assert evidence.away_name == "Mark Lajal"
@@ -331,6 +332,83 @@ def test_raw_observation_fields():
     assert obs.adapter_version == PINNAPI_ADAPTER_VERSION
     assert obs.provider_observed_at is None
     assert obs.received_at == _received_at()
+
+
+# --- official home/away participant shape -----------------------------------
+
+
+def test_missing_home_participant_fails_closed():
+    result = _parse(_board(_event(home=None)))
+    assert result.events == ()
+    assert result.rejected_events[0].reason == "missing_participant"
+
+
+def test_missing_away_participant_fails_closed():
+    result = _parse(_board(_event(away=None)))
+    assert result.events == ()
+    assert result.rejected_events[0].reason == "missing_participant"
+
+
+def test_duplicate_home_away_participant_fails_closed():
+    result = _parse(_board(_event(home="Mark Lajal", away="Mark Lajal")))
+    assert result.events == ()
+    assert result.rejected_events[0].reason == "duplicate_participant"
+
+
+def test_participants_only_speculative_shape_fails_closed():
+    event = _event()
+    del event["home"]
+    del event["away"]
+    event["participants"] = ["Mark Lajal", "Felix Balshaw"]
+    result = _parse(_board(event))
+    assert result.events == ()
+    assert result.rejected_events[0].reason == "missing_participant"
+
+
+def test_start_ts_fallback_parses():
+    event = _event()
+    del event["starts"]
+    event["start_ts"] = "2026-09-05T13:10:00Z"
+    parsed = _only_event(_parse(_board(event)))
+    assert parsed.scheduled_start == datetime(2026, 9, 5, 13, 10, 0, tzinfo=UTC)
+
+
+def test_contradictory_start_aliases_fail_closed():
+    result = _parse(_board(_event(start_ts="2026-09-05T14:00:00Z")))
+    assert result.events == ()
+    assert result.rejected_events[0].reason == "start_alias_conflict"
+
+
+def test_build_market_mismatched_event_id_fails_closed():
+    event = _only_event(_parse(_board(_event())))
+    orientation = OrientedPinnapiMatch(
+        match_id=1,
+        match_version_id=2,
+        provider_event_id="999999999",
+        home_canonical_player_id=101,
+        away_canonical_player_id=202,
+        home_selection_side="PLAYER_1",
+        away_selection_side="PLAYER_2",
+    )
+    with pytest.raises(PinnapiBoardError, match="orientation_event_id_mismatch"):
+        build_pinnapi_market(event, orientation)
+
+
+def test_reversed_orientation_maps_home_price_to_player_2():
+    event = _only_event(_parse(_board(_event())))
+    orientation = OrientedPinnapiMatch(
+        match_id=1,
+        match_version_id=2,
+        provider_event_id="1635768302",
+        home_canonical_player_id=202,
+        away_canonical_player_id=101,
+        home_selection_side="PLAYER_2",
+        away_selection_side="PLAYER_1",
+    )
+    market = build_pinnapi_market(event, orientation)
+    home, away = market.selections
+    assert home.canonical_player_id == 202 and home.decimal_price == Decimal("1.5682")
+    assert away.canonical_player_id == 101 and away.decimal_price == Decimal("2.55")
 
 
 # --- step 2 handoff (PostgreSQL) -----------------------------------------
