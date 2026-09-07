@@ -29,6 +29,36 @@ templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
 
 DEMO_MODE = os.environ.get("SPORTS_EDGE_DASHBOARD_DEMO", "0") == "1"
 
+MODEL_PERFORMANCE = (
+    {
+        "name": "Agent 1 · Surface Elo",
+        "sample": "77,458",
+        "accuracy": "64.27%",
+        "log_loss": "0.6317",
+        "brier": "0.2208",
+        "ece": "0.0252",
+        "note": "Broad historical coverage with surface-adjusted Elo probabilities.",
+    },
+    {
+        "name": "Agent 2 · Hierarchical Markov",
+        "sample": "73,986",
+        "accuracy": "60.11%",
+        "log_loss": "0.6674",
+        "brier": "0.2363",
+        "ece": "0.0341",
+        "note": "Point-level serve/return model with empirical-Bayes priors.",
+    },
+    {
+        "name": "Agent 3 · Intransitivity Filter",
+        "sample": "543",
+        "accuracy": "70.34%",
+        "log_loss": "0.6606",
+        "brier": "0.2338",
+        "ece": "0.1568",
+        "note": "Highly selective filter; it intentionally abstains on most matches.",
+    },
+)
+
 
 def _db_dsn() -> str | None:
     return os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
@@ -117,6 +147,20 @@ def today(request: Request, date: str | None = Query(default=None)):
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
             "next_date": requested_date.fromordinal(requested_date.toordinal() + 1),
+        },
+    )
+
+
+@app.get("/performance", response_class=HTMLResponse)
+def performance(request: Request):
+    return templates.TemplateResponse(
+        request,
+        "performance.html",
+        {
+            "models": MODEL_PERFORMANCE,
+            "pres": pres,
+            "demo_mode": DEMO_MODE,
+            "latest_activity": _latest_activity(),
         },
     )
 
