@@ -1,5 +1,9 @@
 """Live MVP wiring package: transport, orchestration, and summaries."""
 
+from sports_edge_tennis.live.bootstrap import (
+    BookmakerMappingConflictError,
+    ensure_pinnapi_bookmaker_mapping,
+)
 from sports_edge_tennis.live.credentials import (
     MissingCredentialError,
     load_secret,
@@ -31,6 +35,7 @@ __all__ = [
     "BlockedMissingPinnapiKey",
     "BlockedNoLiveMvpDatabase",
     "BlockedPinnapiBookmakerMapping",
+    "BookmakerMappingConflictError",
     "LiveMvpError",
     "LiveMvpResult",
     "LivePilotApiTennisFailed",
@@ -38,6 +43,7 @@ __all__ = [
     "MissingCredentialError",
     "TransportError",
     "build_live_summary",
+    "ensure_pinnapi_bookmaker_mapping",
     "fetch_api_tennis_fixtures",
     "fetch_pinnapi_board",
     "load_secret",
