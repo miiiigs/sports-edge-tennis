@@ -74,6 +74,23 @@ class _Candidate:
     tournament_source_id: str | None
 
 
+_CHILD_SUFFIX_RE = re.compile(r"\((Games|Sets)\)\s*$", flags=re.IGNORECASE)
+
+
+def _has_child_suffix(value: str) -> bool:
+    return bool(_CHILD_SUFFIX_RE.search(value.strip()))
+
+
+def _is_child_or_special_event(evidence: PinnapiEventEvidence) -> bool:
+    if evidence.parent_id is not None and evidence.parent_id.strip():
+        return True
+    if (evidence.event_type or "").strip().casefold() != "prematch":
+        return True
+    if _has_child_suffix(evidence.home_name) or _has_child_suffix(evidence.away_name):
+        return True
+    return False
+
+
 def reconcile_pinnapi_event(
     conn: psycopg.Connection,
     *,
@@ -84,6 +101,8 @@ def reconcile_pinnapi_event(
     if as_of.tzinfo is None:
         raise LiveOddsError("as_of must be timezone-aware")
     as_of_utc = as_of.astimezone(timezone.utc)
+    if _is_child_or_special_event(evidence):
+        return PinnapiReconciliationResult(status="UNMATCHED", reason="child_or_special_event")
     unique_candidate_ids = tuple(dict.fromkeys(int(match_id) for match_id in candidate_match_ids))
     existing_match_id = _existing_pinnapi_mapping(conn, evidence.provider_event_id_text)
     candidates = _load_candidates(conn, candidate_match_ids=unique_candidate_ids, as_of=as_of_utc)
@@ -132,8 +151,7 @@ def reconcile_pinnapi_event(
 
 
 def normalize_pinnapi_participant_name(value: str) -> str:
-    stripped = re.sub(r"\s+\((Games|Sets)\)\s*$", "", value.strip(), flags=re.IGNORECASE)
-    decomposed = unicodedata.normalize("NFKD", stripped)
+    decomposed = unicodedata.normalize("NFKD", value.strip())
     ascii_text = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
     punctuation_as_space = re.sub(r"[\W_]+", " ", ascii_text, flags=re.UNICODE)
     return " ".join(punctuation_as_space.casefold().split())

@@ -174,6 +174,16 @@ def _normalize_market(
                 )
                 continue
         else:
+            if raw.provider_code != "PINNAPI":
+                result.unknown_participant += 1
+                result.raw_only += 1
+                _record(
+                    result,
+                    "UNKNOWN_PARTICIPANT",
+                    provider_bookmaker_key=market.provider_bookmaker_key,
+                    reason="canonical_player_id_forbidden_for_provider",
+                )
+                continue
             player_id = selection.canonical_player_id
         try:
             quote = build_quote(

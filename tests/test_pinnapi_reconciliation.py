@@ -13,12 +13,14 @@ from sports_edge_tennis.odds.contracts import (
     ProviderSelection,
 )
 from sports_edge_tennis.odds.normalizer import build_quote
+from sports_edge_tennis.odds.persistence import insert_bookmaker_mapping
 from sports_edge_tennis.odds.reconciliation import (
     PINNAPI_SOURCE_SYSTEM,
     PinnapiEventEvidence,
     normalize_pinnapi_participant_name,
     reconcile_pinnapi_event,
 )
+from sports_edge_tennis.odds.service import ingest_provider_observation
 
 
 def _utc(day: int, hour: int = 12, minute: int = 0) -> datetime:
@@ -142,7 +144,7 @@ def _evidence(**overrides) -> PinnapiEventEvidence:
         "league_id": "321",
         "league_name": "ATP Challenger Porto",
         "parent_id": None,
-        "event_type": "moneyline",
+        "event_type": "prematch",
     }
     payload.update(overrides)
     return PinnapiEventEvidence(**payload)
@@ -156,10 +158,11 @@ def _count_pinnapi_mappings(conn: psycopg.Connection) -> int:
 
 
 def test_name_normalization_is_deterministic_and_not_fuzzy():
-    assert normalize_pinnapi_participant_name("  JOAO   Fonseca (Games) ") == "joao fonseca"
-    assert normalize_pinnapi_participant_name("Joao Fonseca (Sets)") == "joao fonseca"
+    assert normalize_pinnapi_participant_name("  JOAO   Fonseca ") == "joao fonseca"
     assert normalize_pinnapi_participant_name("Joao-Fonseca") == "joao fonseca"
     assert normalize_pinnapi_participant_name("Joao Fonseca (Total)") == "joao fonseca total"
+    assert normalize_pinnapi_participant_name("Joao Fonseca (Games)") == "joao fonseca games"
+    assert normalize_pinnapi_participant_name("Joao Fonseca (Sets)") == "joao fonseca sets"
     assert normalize_pinnapi_participant_name("Jon Fonseca") != normalize_pinnapi_participant_name("Joao Fonseca")
 
 
@@ -486,3 +489,197 @@ def test_pre_resolved_selection_path_builds_quote_and_validates_membership():
             match=match,
             mapping=mapping,
         )
+
+
+def test_child_event_via_parent_id_fails_closed(db: psycopg.Connection):
+    candidate = _insert_candidate(db)
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(parent_id="1635786676", home_name="Zed Alpha (Games)", away_name="Aaron Beta (Games)"),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "UNMATCHED"
+    assert result.reason == "child_or_special_event"
+    assert _count_pinnapi_mappings(db) == 0
+
+
+def test_child_suffix_without_parent_id_fails_closed(db: psycopg.Connection):
+    candidate = _insert_candidate(db)
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(home_name="Zed Alpha (Games)", away_name="Aaron Beta (Games)"),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "UNMATCHED"
+    assert result.reason == "child_or_special_event"
+    assert _count_pinnapi_mappings(db) == 0
+
+
+def test_sets_suffix_child_fails_closed(db: psycopg.Connection):
+    candidate = _insert_candidate(db)
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(home_name="Zed Alpha (Sets)", away_name="Aaron Beta (Sets)"),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "UNMATCHED"
+    assert result.reason == "child_or_special_event"
+    assert _count_pinnapi_mappings(db) == 0
+
+
+def test_non_prematch_event_type_fails_closed(db: psycopg.Connection):
+    candidate = _insert_candidate(db)
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(event_type="moneyline"),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "UNMATCHED"
+    assert result.reason == "child_or_special_event"
+    assert _count_pinnapi_mappings(db) == 0
+
+
+def test_valid_top_level_event_still_resolves(db: psycopg.Connection):
+    candidate = _insert_candidate(db)
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "RESOLVED"
+    assert result.match is not None
+    assert _count_pinnapi_mappings(db) == 1
+
+
+def _insert_ingest_match(conn: psycopg.Connection, *, provider_code: str, provider_event_id: str) -> dict[str, int]:
+    player_1_id = _insert_player(conn, "Ingest Player One")
+    player_2_id = _insert_player(conn, "Ingest Player Two")
+    tournament_id = _fetchval(
+        conn,
+        "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) VALUES (%s, 'ATP_MAIN', 'ATP_250') RETURNING tournament_id",
+        (f"{provider_code} Open",),
+    )
+    edition_id = _fetchval(
+        conn,
+        "INSERT INTO tournament_editions (tournament_id, season_year, edition_name, start_date) VALUES (%s, 2026, %s, %s) RETURNING tournament_edition_id",
+        (tournament_id, f"{provider_code} Open 2026", _utc(1).date()),
+    )
+    match_id = _fetchval(conn, "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id", (edition_id,))
+    version_id = _fetchval(
+        conn,
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
+            round_code, best_of_sets, qualifying_flag, match_status, source_observed_at, as_of
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'R32', 3, FALSE, 'SCHEDULED', %s, %s)
+        RETURNING match_version_id
+        """,
+        (match_id, player_1_id, player_2_id, _utc(21, 14), _utc(20, 10), _utc(20, 10)),
+    )
+    conn.execute(
+        "INSERT INTO match_source_ids (match_id, match_version_id, source_system, source_match_id) VALUES (%s, %s, %s, %s)",
+        (match_id, version_id, provider_code, provider_event_id),
+    )
+    return {"match_id": match_id, "match_version_id": version_id, "player_1_id": player_1_id, "player_2_id": player_2_id}
+
+
+def _canonical_observation(provider_code: str, provider_event_id: str, canonical_player_id: int) -> ProviderObservation:
+    selection = ProviderSelection(None, Decimal("2.10"), canonical_player_id=canonical_player_id)
+    market = ProviderBookmakerMarket(
+        provider_bookmaker_key="pinnacle",
+        provider_market_key="mw",
+        market_type="MATCH_WINNER",
+        market_status="OPEN",
+        selections=(selection,),
+    )
+    return ProviderObservation(
+        provider_code=provider_code,
+        provider_event_id=provider_event_id,
+        provider_observation_key=f"obs-{provider_code}-{provider_event_id}",
+        received_at=_utc(20, 11),
+        payload={},
+        adapter_version="offline-test",
+        markets=(market,),
+    )
+
+
+def test_other_provider_canonical_player_path_is_rejected(db: psycopg.Connection):
+    fixture = _insert_ingest_match(db, provider_code="SOME_OTHER_PROVIDER", provider_event_id="event-1")
+    insert_bookmaker_mapping(
+        db,
+        provider_code="SOME_OTHER_PROVIDER",
+        provider_bookmaker_key="pinnacle",
+        mapping_version=1,
+        bookmaker_code="PINNACLE",
+        normalization_class="SHARP",
+        effective_from=_utc(20, 10),
+    )
+
+    result = ingest_provider_observation(
+        db,
+        _canonical_observation("SOME_OTHER_PROVIDER", "event-1", fixture["player_1_id"]),
+    )
+
+    assert result.unknown_participant == 1
+    assert result.normalized_inserted == 0
+    assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 0
+
+
+def test_pinnapi_valid_canonical_player_is_accepted(db: psycopg.Connection):
+    fixture = _insert_ingest_match(db, provider_code="PINNAPI", provider_event_id="event-1")
+    insert_bookmaker_mapping(
+        db,
+        provider_code="PINNAPI",
+        provider_bookmaker_key="pinnacle",
+        mapping_version=1,
+        bookmaker_code="PINNACLE",
+        normalization_class="SHARP",
+        effective_from=_utc(20, 10),
+    )
+
+    result = ingest_provider_observation(
+        db,
+        _canonical_observation("PINNAPI", "event-1", fixture["player_1_id"]),
+    )
+
+    assert result.normalized_inserted == 1
+    assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 1
+
+
+def test_pinnapi_canonical_player_outside_match_is_rejected(db: psycopg.Connection):
+    fixture = _insert_ingest_match(db, provider_code="PINNAPI", provider_event_id="event-1")
+    outsider = _insert_player(db, "Ingest Outsider")
+    insert_bookmaker_mapping(
+        db,
+        provider_code="PINNAPI",
+        provider_bookmaker_key="pinnacle",
+        mapping_version=1,
+        bookmaker_code="PINNACLE",
+        normalization_class="SHARP",
+        effective_from=_utc(20, 10),
+    )
+
+    result = ingest_provider_observation(
+        db,
+        _canonical_observation("PINNAPI", "event-1", outsider),
+    )
+
+    assert result.normalized_inserted == 0
+    assert result.failed_groups == 1
+    assert db.execute("SELECT count(*) FROM odds_snapshots").fetchone()[0] == 0
