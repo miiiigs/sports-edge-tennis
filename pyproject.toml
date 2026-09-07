@@ -16,15 +16,23 @@ dependencies = [
     "fastapi>=0.110",
     "jinja2>=3.1",
     "uvicorn>=0.29",
+    "requests>=2.32",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "httpx2",
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"sports_edge_tennis.dashboard" = [
+    "static/*",
+    "templates/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
