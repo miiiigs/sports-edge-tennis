@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Model Performance · Sports Edge Tennis{% endblock %}
+{% set active_nav = 'performance' %}
+
+{% block content %}
+<section class="page-heading">
+  <h1>Model Performance</h1>
+  <p>Historical predictive validation for the three frozen Sports Edge Tennis models.</p>
+</section>
+
+<section class="panel panel-neutral">
+  <h2>How to read these results</h2>
+  <p>Accuracy measures directional winner calls. Log loss, Brier score, and calibration error assess probability quality. These are predictive validation metrics, not betting profit or guaranteed future performance.</p>
+</section>
+
+<section class="kpi-grid" aria-label="Model validation overview">
+  {% for model in models %}
+  <article class="kpi">
+    <span class="kpi-label">{{ model.name }}</span>
+    <span class="kpi-value">{{ model.accuracy }}</span>
+    <span class="muted">{{ model.sample }} predictions</span>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="history-list" aria-label="Detailed model performance">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Model</th>
+        <th scope="col">Predictions</th>
+        <th scope="col">Accuracy</th>
+        <th scope="col">Log Loss</th>
+        <th scope="col">Brier</th>
+        <th scope="col">ECE</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for model in models %}
+      <tr>
+        <td><strong>{{ model.name }}</strong><br><span class="muted">{{ model.note }}</span></td>
+        <td>{{ model.sample }}</td>
+        <td>{{ model.accuracy }}</td>
+        <td>{{ model.log_loss }}</td>
+        <td>{{ model.brier }}</td>
+        <td>{{ model.ece }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="panel panel-success">
+  <h2>Current decision stack</h2>
+  <p>Sports Edge does not rely on one model alone. Agent 1, Agent 2 and the selective Agent 3 feed the Manager consensus rules. A match can correctly end as <strong>No Bet</strong> when agreement, confidence spread, or market requirements are not satisfied.</p>
+</section>
+{% endblock %}
