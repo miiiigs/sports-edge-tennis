@@ -4,8 +4,13 @@
 
 {% block content %}
 <section class="page-heading">
-  <h1>Recent Runs</h1>
-  <p>Previously processed slates.</p>
+  <h1>Prediction & Bet History</h1>
+  <p>Previously processed Tennis slates and persisted model decisions.</p>
+</section>
+
+<section class="panel panel-neutral">
+  <h2>Bet ledger status</h2>
+  <p>Sports Edge is already recording prediction and consensus history. Live settled bet performance will appear here once a real offered-bookmaker price is integrated and actionable Market decisions begin to settle. Until then, this page does not fabricate wins, losses, ROI, or profit.</p>
 </section>
 
 {% if not history %}
@@ -20,22 +25,16 @@
       <tr>
         <th scope="col">Date</th>
         <th scope="col">Matches</th>
-        <th scope="col">Consensus</th>
+        <th scope="col">Consensus Picks</th>
         <th scope="col">No Bet</th>
-        <th scope="col">Sharp</th>
-        <th scope="col">Status</th>
+        <th scope="col">Sharp Prices</th>
+        <th scope="col">Run Status</th>
       </tr>
     </thead>
     <tbody>
       {% for r in history %}
       <tr>
-        <td>
-          {% if r.kind == 'POPULATED' %}
-          <a class="history-link" href="/today?date={{ r.run_date.isoformat() }}">{{ r.run_date.strftime('%a %d %b %Y') }}</a>
-          {% else %}
-          <a class="history-link" href="/today?date={{ r.run_date.isoformat() }}">{{ r.run_date.strftime('%a %d %b %Y') }}</a>
-          {% endif %}
-        </td>
+        <td><a class="history-link" href="/today?date={{ r.run_date.isoformat() }}">{{ r.run_date.strftime('%a %d %b %Y') }}</a></td>
         <td>{{ r.match_count }}</td>
         <td>{{ r.consensus_count }}</td>
         <td>{{ r.no_bet_count }}</td>
