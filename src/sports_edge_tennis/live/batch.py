@@ -32,6 +32,10 @@ def _today_utc() -> date:
     return datetime.now(timezone.utc).date()
 
 
+def _log(message: str) -> None:
+    print(message, flush=True)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -40,16 +44,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--artifacts-dir", default="artifacts/live_mvp")
     args = parser.parse_args(argv)
 
+    _log(
+        "LIVE_BATCH_START "
+        f"start_date={args.start_date.isoformat()} days={args.days} "
+        f"pinnapi_configured={bool(load_secret('PINNAPI_KEY'))}"
+    )
+
     if args.days < 1 or args.days > 7:
-        print("BLOCKED_INVALID_HORIZON: --days must be between 1 and 7")
+        _log("BLOCKED_INVALID_HORIZON: --days must be between 1 and 7")
         return 2
     if not args.dsn:
-        print("BLOCKED_NO_LIVE_MVP_DATABASE: no DSN configured")
+        _log("BLOCKED_NO_LIVE_MVP_DATABASE: no DSN configured")
         return 2
 
     api_tennis_key = load_secret("API_TENNIS_API_KEY")
     if not api_tennis_key:
-        print("BLOCKED_MISSING_API_TENNIS_KEY")
+        _log("BLOCKED_MISSING_API_TENNIS_KEY")
         return 2
 
     pinnapi_key = load_secret("PINNAPI_KEY")
@@ -62,9 +72,12 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     try:
+        _log("LIVE_BATCH_DB_CONNECT")
         with psycopg.connect(args.dsn, autocommit=True) as conn:
+            _log("LIVE_BATCH_DB_CONNECTED")
             if pinnapi_key:
                 ensure_pinnapi_bookmaker_mapping(conn)
+                _log("LIVE_BATCH_PINNAPI_MAPPING_READY")
 
             for offset in range(args.days):
                 slate_date = args.start_date + timedelta(days=offset)
@@ -75,6 +88,11 @@ def main(argv: list[str] | None = None) -> int:
                 # most one sharp board request per retrieval cycle.
                 slate_pinnapi_key = (
                     pinnapi_key if totals["pinnapi_requests"] == 0 else None
+                )
+                _log(
+                    "SLATE_START "
+                    f"date={slate_date.isoformat()} "
+                    f"pinnapi_allowed={bool(slate_pinnapi_key)}"
                 )
                 result = run_live_mvp(
                     conn,
@@ -89,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
                 totals["targets"] += result.target_count
                 totals["consensus"] += result.manager_consensus_count
                 totals["pinnapi_requests"] += result.pinnapi_requests
-                print(
+                _log(
                     "SLATE "
                     f"date={result.slate_date} status={result.status} "
                     f"fixtures={result.fixture_count} targets={result.target_count} "
@@ -97,16 +115,16 @@ def main(argv: list[str] | None = None) -> int:
                     f"pinnapi_requests={result.pinnapi_requests}"
                 )
     except LiveMvpError as exc:
-        print(f"{exc.result_code}: {exc}")
+        _log(f"{exc.result_code}: {exc}")
         return 2
     except MissingCredentialError as exc:
-        print(f"BLOCKED_MISSING_CREDENTIAL: {exc}")
+        _log(f"BLOCKED_MISSING_CREDENTIAL: {exc}")
         return 2
     except Exception as exc:  # noqa: BLE001 - fail closed and surface one concise error
-        print(f"IMPLEMENTATION_FAILED: {type(exc).__name__}: {exc}")
+        _log(f"IMPLEMENTATION_FAILED: {type(exc).__name__}: {exc}")
         return 2
 
-    print(
+    _log(
         "LIVE_BATCH_SUCCESS "
         + " ".join(f"{key}={value}" for key, value in totals.items())
     )
