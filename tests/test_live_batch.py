@@ -6,12 +6,25 @@ from types import SimpleNamespace
 import sports_edge_tennis.live.batch as batch
 
 
+class _Cursor:
+    def __init__(self, row=(True,)):
+        self._row = row
+
+    def fetchone(self):
+        return self._row
+
+
 class _Conn:
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc, tb):
         return False
+
+    def execute(self, sql, params=()):
+        if "pg_try_advisory_lock" in sql:
+            return _Cursor((True,))
+        raise AssertionError(f"unexpected SQL in fake connection: {sql}")
 
 
 class _Connect:
@@ -59,11 +72,40 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     assert rc == 0
     assert seen == [date(2026, 9, 7), date(2026, 9, 8), date(2026, 9, 9)]
     out = capsys.readouterr().out
+    assert "LIVE_BATCH_LOCK_ACQUIRED" in out
     assert "LIVE_BATCH_SUCCESS" in out
     assert "slates=3" in out
     assert "pinnapi_requests=0" in out
     assert "offered_requests=0" in out
     assert "bets=0" in out
+
+
+def test_batch_skips_when_previous_cron_run_still_holds_lock(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: "api-key" if name == "API_TENNIS_API_KEY" else "pinnapi-key",
+    )
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "_try_acquire_batch_lock", lambda conn: False)
+    monkeypatch.setattr(
+        batch,
+        "run_live_mvp",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("provider/model flow must not run")),
+    )
+
+    rc = batch.main([
+        "--start-date", "2026-09-08",
+        "--days", "3",
+        "--dsn", "postgresql://example",
+        "--artifacts-dir", str(tmp_path),
+    ])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "LIVE_BATCH_SKIPPED_OVERLAP" in out
+    assert "SLATE_START" not in out
+    assert "LIVE_BATCH_SUCCESS" not in out
 
 
 def test_batch_caps_pinnapi_to_one_board_request_per_cycle(monkeypatch, tmp_path):
