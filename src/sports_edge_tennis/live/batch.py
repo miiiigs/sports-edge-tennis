@@ -5,6 +5,11 @@ uses the existing single-run orchestrator. API-Tennis fixtures are fetched once
 per slate date, PINNAPI is allowed at most one board request across the entire
 multi-day batch cycle, and API-Tennis pre-match odds are fetched at most once
 for the whole bounded horizon when Manager consensus exists.
+
+A PostgreSQL session advisory lock prevents two Railway cron containers from
+processing the same live database concurrently. If a previous batch still owns
+the lock, the later invocation exits successfully without provider calls or DB
+mutations beyond opening the connection.
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ from sports_edge_tennis.market import (
 
 
 _SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
+_BATCH_ADVISORY_LOCK_KEY = 726_645_031_002_026
 
 
 def _db_dsn() -> str | None:
@@ -45,6 +51,14 @@ def _today_utc() -> date:
 
 def _log(message: str) -> None:
     print(message, flush=True)
+
+
+def _try_acquire_batch_lock(conn: psycopg.Connection) -> bool:
+    row = conn.execute(
+        "SELECT pg_try_advisory_lock(%s)",
+        (_BATCH_ADVISORY_LOCK_KEY,),
+    ).fetchone()
+    return bool(row and row[0])
 
 
 def _load_consensus_match_ids(
@@ -127,6 +141,11 @@ def main(argv: list[str] | None = None) -> int:
         _log("LIVE_BATCH_DB_CONNECT")
         with psycopg.connect(args.dsn, autocommit=True) as conn:
             _log("LIVE_BATCH_DB_CONNECTED")
+            if not _try_acquire_batch_lock(conn):
+                _log("LIVE_BATCH_SKIPPED_OVERLAP")
+                return 0
+            _log("LIVE_BATCH_LOCK_ACQUIRED")
+
             if pinnapi_key:
                 ensure_pinnapi_bookmaker_mapping(conn)
                 _log("LIVE_BATCH_PINNAPI_MAPPING_READY")
