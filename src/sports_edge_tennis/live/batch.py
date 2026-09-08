@@ -1,8 +1,9 @@
 """Scheduled multi-day Live MVP runner for Railway cron.
 
 Runs a bounded UTC slate horizon with no retries or polling. Each slate date
-uses the existing single-run orchestrator, so API-Tennis is fetched once for
-that date and PINNAPI is fetched at most once when Manager consensus exists.
+uses the existing single-run orchestrator. API-Tennis is fetched once per slate
+date, while PINNAPI is allowed at most one board request across the entire
+multi-day batch cycle.
 """
 
 from __future__ import annotations
@@ -15,6 +16,9 @@ from pathlib import Path
 
 import psycopg
 
+from sports_edge_tennis.live.api_tennis_fixture_compat import (
+    ingest_api_tennis_source_a_fixtures_with_upcoming_status,
+)
 from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.orchestrator import LiveMvpError, run_live_mvp
@@ -64,11 +68,20 @@ def main(argv: list[str] | None = None) -> int:
 
             for offset in range(args.days):
                 slate_date = args.start_date + timedelta(days=offset)
+                # The PINNAPI endpoint is a full prematch board. Until one board
+                # payload can be reused across all slate-date reconciliation in
+                # this batch, permit it only while this cycle has consumed zero
+                # board requests. This preserves the production contract of at
+                # most one sharp board request per retrieval cycle.
+                slate_pinnapi_key = (
+                    pinnapi_key if totals["pinnapi_requests"] == 0 else None
+                )
                 result = run_live_mvp(
                     conn,
                     slate_date=slate_date,
                     api_tennis_key=api_tennis_key,
-                    pinnapi_key=pinnapi_key,
+                    pinnapi_key=slate_pinnapi_key,
+                    ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
                     artifacts_dir=Path(args.artifacts_dir),
                 )
                 totals["slates"] += 1
