@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-# Internal client-state → human label (primary view).
 STATE_LABELS = {
     "MODEL_CONSENSUS": "Consensus",
     "NO_BET_MODEL": "No Bet — Model Filter",
@@ -17,9 +16,12 @@ STATE_LABELS = {
     "SHARP_UNAVAILABLE": "Pinnacle Unavailable",
     "RECONCILIATION_FAILED": "Price Match Unavailable",
     "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
+    "AWAITING_MARKET": "Awaiting Market Decision",
+    "BET": "Bet",
+    "NO_BET_MARKET": "No Bet — Market Filter",
+    "PREDICTION_PENDING": "Prediction Pending",
 }
 
-# Manager reason code → short human explanation. Presentation only.
 REASON_EXPLANATIONS = {
     "TWO_OR_MORE_ABSTENTIONS": "Not enough model agreement.",
     "UNSUPPORTED_ABSTENTION_CONFIGURATION": "Not enough model agreement.",
@@ -30,10 +32,25 @@ REASON_EXPLANATIONS = {
     "NONE": None,
 }
 
-# Canonical competition-tier display names.
+MARKET_REASON_EXPLANATIONS = {
+    "NOT_MANAGER_ELIGIBLE": "Model consensus was not eligible for market evaluation.",
+    "UNSUPPORTED_TIER": "Tournament tier is outside the current market policy.",
+    "MISSING_SHARP_REFERENCE": "A complete Pinnacle reference price was not available.",
+    "INCOMPLETE_MARKET": "The sharp match-winner market was incomplete.",
+    "INVALID_PRICE": "The available market price was invalid.",
+    "MARKET_SUSPENDED": "The market was not open.",
+    "CROSSED_MARKET": "The sharp market failed the pricing sanity check.",
+    "STALE_MARKET": "The available market price was too old.",
+    "NO_MODEL_EDGE_VS_SHARP": "The model did not beat the sharp fair probability.",
+    "MISSING_MARKET": "No fresh offered bookmaker price was available.",
+    "EDGE_BELOW_THRESHOLD": "The offered price did not meet the required value threshold.",
+    "NONE": None,
+}
+
 TIER_LABELS = {
     "GRAND_SLAM": "Grand Slam",
     "MASTERS_1000": "ATP Masters 1000",
+    "ATP_TOUR": "ATP Tour",
     "ATP_500": "ATP 500",
     "ATP_250": "ATP 250",
     "CHALLENGER": "Challenger",
@@ -50,17 +67,31 @@ def reason_explanation(reason_code: str | None) -> str | None:
     return REASON_EXPLANATIONS.get(reason_code)
 
 
+def market_reason_explanation(reason_code: str | None) -> str | None:
+    if reason_code is None:
+        return None
+    return MARKET_REASON_EXPLANATIONS.get(reason_code)
+
+
 def tier_label(competition_tier: str | None) -> str:
     return TIER_LABELS.get(competition_tier or "", competition_tier or "—")
 
 
-def client_state(manager_status: str | None, sharp_available: bool) -> str:
-    """Derive the client-facing state from persisted truth only.
+def client_state(
+    manager_status: str | None,
+    sharp_available: bool,
+    decision_status: str | None = None,
+) -> str:
+    """Derive the client-facing state from persisted Manager/Market truth only.
 
-    This never recomputes Manager C1-C4; it only labels the persisted result.
+    A Market decision can never rescue a persisted Manager non-consensus result.
     """
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
+    if decision_status == "BET":
+        return "BET"
+    if decision_status == "NO_BET":
+        return "NO_BET_MARKET"
     if sharp_available:
         return "AWAITING_OFFERED_PRICE"
     return "SHARP_UNAVAILABLE"
@@ -72,6 +103,12 @@ def percent(probability: Decimal | None) -> str:
     return f"{float(probability) * 100:.0f}%"
 
 
+def precise_percent(value: Decimal | None) -> str:
+    if value is None:
+        return "—"
+    return f"{float(value) * 100:.1f}%"
+
+
 def side_name(selection_side: int | None, player_1: str, player_2: str) -> str | None:
     if selection_side == 1:
         return player_1
@@ -81,7 +118,6 @@ def side_name(selection_side: int | None, player_1: str, player_2: str) -> str |
 
 
 def system_status(latest_activity) -> tuple[str, str]:
-    """Return (css-class, label) for the header status indicator."""
     if latest_activity is None:
         return ("no-data", "No data")
     age = (datetime.now(timezone.utc) - latest_activity).total_seconds()

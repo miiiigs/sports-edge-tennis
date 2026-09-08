@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.demo import build_demo_state
+from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
 from sports_edge_tennis.dashboard.read_model import (
     RunState,
     get_history,
@@ -104,6 +105,18 @@ def _load_state(requested_date: date) -> RunState:
         conn.close()
 
 
+def _load_market_overlay(prediction_run_id: int | None):
+    if DEMO_MODE or prediction_run_id is None:
+        return {}
+    conn = _connect()
+    if conn is None:
+        return {}
+    try:
+        return get_market_decisions_for_run(conn, prediction_run_id=prediction_run_id)
+    finally:
+        conn.close()
+
+
 def _load_history():
     if DEMO_MODE:
         state = build_demo_state()
@@ -153,6 +166,7 @@ def today(request: Request, date: str | None = Query(default=None)):
         return HTMLResponse("Invalid date", status_code=400)
 
     state = _load_state(requested_date)
+    market_by_match = _load_market_overlay(state.prediction_run_id)
     return templates.TemplateResponse(
         request,
         "today.html",
@@ -162,6 +176,7 @@ def today(request: Request, date: str | None = Query(default=None)):
             "selected_date": requested_date,
             "latest_activity": _latest_activity(),
             "upcoming": _load_upcoming(),
+            "market_by_match": market_by_match,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
             "next_date": requested_date.fromordinal(requested_date.toordinal() + 1),
@@ -208,6 +223,7 @@ def api_today(date: str | None = Query(default=None)):
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
     state = _load_state(requested_date)
+    market_by_match = _load_market_overlay(state.prediction_run_id)
     upcoming = _load_upcoming()
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
@@ -224,10 +240,32 @@ def api_today(date: str | None = Query(default=None)):
                 "model_pick": m.selected_player,
                 "consensus_probability": pres.percent(m.consensus_probability),
                 "manager_status": m.manager_status,
-                "client_state": m.client_state,
-                "client_state_label": pres.state_label(m.client_state),
+                "client_state": pres.client_state(
+                    m.manager_status,
+                    m.sharp_available,
+                    market_by_match.get(m.match_id).decision_status if market_by_match.get(m.match_id) else None,
+                ),
+                "client_state_label": pres.state_label(
+                    pres.client_state(
+                        m.manager_status,
+                        m.sharp_available,
+                        market_by_match.get(m.match_id).decision_status if market_by_match.get(m.match_id) else None,
+                    )
+                ),
                 "player_1_price": str(m.player_1_price) if m.player_1_price else None,
                 "player_2_price": str(m.player_2_price) if m.player_2_price else None,
+                "offered_price": str(market_by_match[m.match_id].market_decimal_price)
+                if m.match_id in market_by_match and market_by_match[m.match_id].market_decimal_price is not None
+                else None,
+                "offered_bookmaker": market_by_match[m.match_id].price_bookmaker_code
+                if m.match_id in market_by_match
+                else None,
+                "edge_pct": pres.precise_percent(market_by_match[m.match_id].edge_pct)
+                if m.match_id in market_by_match
+                else "—",
+                "market_reason": pres.market_reason_explanation(market_by_match[m.match_id].reason_code)
+                if m.match_id in market_by_match
+                else None,
             }
             for m in state.matches
         ],
@@ -241,6 +279,13 @@ def api_today(date: str | None = Query(default=None)):
                 "model_pick": m.selected_player,
                 "consensus_probability": pres.percent(m.consensus_probability),
                 "manager_status": m.manager_status,
+                "market_state": m.market_state,
+                "market_state_label": pres.state_label(m.market_state),
+                "offered_price": str(m.market_decimal_price) if m.market_decimal_price is not None else None,
+                "offered_bookmaker": m.price_bookmaker_code,
+                "edge_pct": pres.precise_percent(m.edge_pct),
+                "min_acceptable_odds": str(m.min_acceptable_odds) if m.min_acceptable_odds is not None else None,
+                "market_reason": pres.market_reason_explanation(m.market_reason_code),
             }
             for m in upcoming
         ],

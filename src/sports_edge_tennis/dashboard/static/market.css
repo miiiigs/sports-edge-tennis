@@ -1,0 +1,29 @@
+.badge-BET {
+  background: #1c5c3a;
+  color: #a7f3c6;
+  border: 1px solid #2f8a59;
+}
+
+.badge-NO_BET_MARKET {
+  background: #3a3417;
+  color: #e7c56a;
+}
+
+.badge-AWAITING_MARKET,
+.badge-PREDICTION_PENDING {
+  background: #232a3a;
+  color: #9aa6bc;
+}
+
+.decision-meta {
+  margin-top: 5px;
+  max-width: 260px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.upcoming-heading {
+  margin-top: 36px;
+  margin-bottom: 14px;
+}
