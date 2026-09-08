@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-# Internal client-state → human label (primary view).
 STATE_LABELS = {
     "MODEL_CONSENSUS": "Consensus",
     "NO_BET_MODEL": "No Bet — Model Filter",
@@ -23,7 +22,6 @@ STATE_LABELS = {
     "PREDICTION_PENDING": "Prediction Pending",
 }
 
-# Manager reason code → short human explanation. Presentation only.
 REASON_EXPLANATIONS = {
     "TWO_OR_MORE_ABSTENTIONS": "Not enough model agreement.",
     "UNSUPPORTED_ABSTENTION_CONFIGURATION": "Not enough model agreement.",
@@ -49,7 +47,6 @@ MARKET_REASON_EXPLANATIONS = {
     "NONE": None,
 }
 
-# Canonical competition-tier display names.
 TIER_LABELS = {
     "GRAND_SLAM": "Grand Slam",
     "MASTERS_1000": "ATP Masters 1000",
@@ -85,11 +82,14 @@ def client_state(
     sharp_available: bool,
     decision_status: str | None = None,
 ) -> str:
-    """Derive the client-facing state from persisted Manager/Market truth only."""
-    if decision_status == "BET":
-        return "BET"
+    """Derive the client-facing state from persisted Manager/Market truth only.
+
+    A Market decision can never rescue a persisted Manager non-consensus result.
+    """
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
+    if decision_status == "BET":
+        return "BET"
     if decision_status == "NO_BET":
         return "NO_BET_MARKET"
     if sharp_available:
@@ -118,7 +118,6 @@ def side_name(selection_side: int | None, player_1: str, player_2: str) -> str |
 
 
 def system_status(latest_activity) -> tuple[str, str]:
-    """Return (css-class, label) for the header status indicator."""
     if latest_activity is None:
         return ("no-data", "No data")
     age = (datetime.now(timezone.utc) - latest_activity).total_seconds()
