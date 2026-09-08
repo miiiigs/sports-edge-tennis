@@ -63,6 +63,52 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     assert "pinnapi_requests=0" in out
 
 
+def test_batch_caps_pinnapi_to_one_board_request_per_cycle(monkeypatch, tmp_path):
+    seen_keys = []
+
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: "api-key" if name == "API_TENNIS_API_KEY" else "pinnapi-key",
+    )
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+
+    def fake_run(
+        conn,
+        *,
+        slate_date,
+        api_tennis_key,
+        pinnapi_key,
+        ingest_fixtures,
+        artifacts_dir,
+    ):
+        seen_keys.append(pinnapi_key)
+        # Simulate no consensus/board call on the first slate, one board call
+        # on the second, then verify the third slate no longer receives a key.
+        board_calls = 1 if slate_date == date(2026, 9, 8) and pinnapi_key else 0
+        return SimpleNamespace(
+            slate_date=slate_date.isoformat(),
+            status="LIVE_MVP_SUCCESS" if board_calls else "LIVE_MVP_SUCCESS_NO_CONSENSUS",
+            fixture_count=10,
+            target_count=2,
+            manager_consensus_count=1 if board_calls else 0,
+            pinnapi_requests=board_calls,
+        )
+
+    monkeypatch.setattr(batch, "run_live_mvp", fake_run)
+
+    rc = batch.main([
+        "--start-date", "2026-09-07",
+        "--days", "3",
+        "--dsn", "postgresql://example",
+        "--artifacts-dir", str(tmp_path),
+    ])
+
+    assert rc == 0
+    assert seen_keys == ["pinnapi-key", "pinnapi-key", None]
+
+
 def test_batch_rejects_unbounded_horizon(monkeypatch, capsys):
     rc = batch.main(["--days", "8", "--dsn", "postgresql://example"])
     assert rc == 2
