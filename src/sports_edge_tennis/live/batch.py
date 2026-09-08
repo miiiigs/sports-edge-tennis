@@ -15,6 +15,9 @@ from pathlib import Path
 
 import psycopg
 
+from sports_edge_tennis.live.api_tennis_fixture_compat import (
+    ingest_api_tennis_source_a_fixtures_with_upcoming_status,
+)
 from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.orchestrator import LiveMvpError, run_live_mvp
@@ -69,6 +72,7 @@ def main(argv: list[str] | None = None) -> int:
                     slate_date=slate_date,
                     api_tennis_key=api_tennis_key,
                     pinnapi_key=pinnapi_key,
+                    ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
                     artifacts_dir=Path(args.artifacts_dir),
                 )
                 totals["slates"] += 1
