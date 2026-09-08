@@ -84,6 +84,24 @@ def _load_manager_reason_counts(
     return tuple((row[0], row[1], int(row[2])) for row in rows)
 
 
+def _load_agent_participation_counts(
+    conn: psycopg.Connection,
+    prediction_run_id: int,
+) -> tuple[tuple[str, str, int], ...]:
+    """Return per-agent ACTIVE/ABSTAINED/INACTIVE counts for live diagnostics."""
+    rows = conn.execute(
+        """
+        SELECT agent_code::text, participation_status::text, count(*)
+        FROM decision_agents
+        WHERE prediction_run_id = %s
+        GROUP BY agent_code, participation_status
+        ORDER BY agent_code, participation_status
+        """,
+        (prediction_run_id,),
+    ).fetchall()
+    return tuple((row[0], row[1], int(row[2])) for row in rows)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -161,6 +179,18 @@ def main(argv: list[str] | None = None) -> int:
                 totals["pinnapi_requests"] += result.pinnapi_requests
                 if result.prediction_run_id is not None:
                     prediction_run_ids.append(result.prediction_run_id)
+                    participation_counts = _load_agent_participation_counts(
+                        conn, result.prediction_run_id
+                    )
+                    if participation_counts:
+                        _log(
+                            "AGENT_PARTICIPATION "
+                            f"prediction_run_id={result.prediction_run_id} "
+                            + " ".join(
+                                f"{agent}:{status}={count}"
+                                for agent, status, count in participation_counts
+                            )
+                        )
                     reason_counts = _load_manager_reason_counts(
                         conn, result.prediction_run_id
                     )
