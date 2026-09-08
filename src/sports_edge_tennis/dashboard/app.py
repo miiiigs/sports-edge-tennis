@@ -1,4 +1,4 @@
-"""Sports Edge Tennis — Client Dashboard MVP (read-only FastAPI application)."""
+"""Sports Edge Tennis - Client Dashboard MVP (read-only FastAPI application)."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from sports_edge_tennis.dashboard.read_model import (
     get_latest_activity,
     get_run_for_date,
 )
+from sports_edge_tennis.dashboard.upcoming import get_upcoming_matches
 
 _BASE_DIR = Path(__file__).resolve().parent
 
@@ -74,8 +75,12 @@ def _connect() -> psycopg.Connection | None:
         return None
 
 
+def _now_utc() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 def _now_utc_date() -> date:
-    return datetime.now(timezone.utc).date()
+    return _now_utc().date()
 
 
 def _parse_date(raw: str | None) -> date | None:
@@ -124,6 +129,18 @@ def _latest_activity():
         conn.close()
 
 
+def _load_upcoming():
+    if DEMO_MODE:
+        return []
+    conn = _connect()
+    if conn is None:
+        return []
+    try:
+        return get_upcoming_matches(conn, now=_now_utc(), days=3, limit=24)
+    finally:
+        conn.close()
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return RedirectResponse(url="/today")
@@ -144,6 +161,7 @@ def today(request: Request, date: str | None = Query(default=None)):
             "pres": pres,
             "selected_date": requested_date,
             "latest_activity": _latest_activity(),
+            "upcoming": _load_upcoming(),
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
             "next_date": requested_date.fromordinal(requested_date.toordinal() + 1),
@@ -190,6 +208,7 @@ def api_today(date: str | None = Query(default=None)):
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
     state = _load_state(requested_date)
+    upcoming = _load_upcoming()
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
         "kind": state.kind,
@@ -211,6 +230,19 @@ def api_today(date: str | None = Query(default=None)):
                 "player_2_price": str(m.player_2_price) if m.player_2_price else None,
             }
             for m in state.matches
+        ],
+        "upcoming": [
+            {
+                "player_1": m.player_1,
+                "player_2": m.player_2,
+                "tournament": m.tournament,
+                "competition_tier": pres.tier_label(m.competition_tier),
+                "scheduled_start": m.scheduled_start.isoformat(),
+                "model_pick": m.selected_player,
+                "consensus_probability": pres.percent(m.consensus_probability),
+                "manager_status": m.manager_status,
+            }
+            for m in upcoming
         ],
     }
     return JSONResponse(payload)

@@ -165,4 +165,49 @@
   {% endfor %}
 </section>
 {% endif %}
+
+<section class="page-heading">
+  <h2>Upcoming Matches</h2>
+  <p>Next scheduled ATP and Challenger men's singles fixtures already ingested by Sports Edge.</p>
+</section>
+
+{% if upcoming %}
+<section class="history-list" aria-label="Upcoming matches">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Start</th>
+        <th scope="col">Match</th>
+        <th scope="col">Tournament</th>
+        <th scope="col">Tier</th>
+        <th scope="col">Model</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in upcoming %}
+      <tr>
+        <td>{{ m.scheduled_start.strftime('%a %d %b · %H:%M UTC') }}</td>
+        <td><strong>{{ m.player_1 }}</strong> vs <strong>{{ m.player_2 }}</strong></td>
+        <td>{{ m.tournament }}</td>
+        <td>{{ pres.tier_label(m.competition_tier) }}</td>
+        <td>
+          {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
+          <span class="badge badge-MODEL_CONSENSUS">{{ m.selected_player }} · {{ pres.percent(m.consensus_probability) }}</span>
+          {% elif m.manager_status %}
+          <span class="badge badge-NO_BET_MODEL">No Bet · Model Filter</span>
+          {% else %}
+          <span class="badge badge-neutral">Prediction pending</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="panel panel-neutral">
+  <h2>No upcoming fixtures ingested yet</h2>
+  <p>The scheduled live runner will populate this section from API-Tennis as new eligible fixtures become available.</p>
+</section>
+{% endif %}
 {% endblock %}
