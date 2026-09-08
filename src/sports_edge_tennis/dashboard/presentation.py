@@ -17,6 +17,10 @@ STATE_LABELS = {
     "SHARP_UNAVAILABLE": "Pinnacle Unavailable",
     "RECONCILIATION_FAILED": "Price Match Unavailable",
     "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
+    "AWAITING_MARKET": "Awaiting Market Decision",
+    "BET": "Bet",
+    "NO_BET_MARKET": "No Bet — Market Filter",
+    "PREDICTION_PENDING": "Prediction Pending",
 }
 
 # Manager reason code → short human explanation. Presentation only.
@@ -30,10 +34,26 @@ REASON_EXPLANATIONS = {
     "NONE": None,
 }
 
+MARKET_REASON_EXPLANATIONS = {
+    "NOT_MANAGER_ELIGIBLE": "Model consensus was not eligible for market evaluation.",
+    "UNSUPPORTED_TIER": "Tournament tier is outside the current market policy.",
+    "MISSING_SHARP_REFERENCE": "A complete Pinnacle reference price was not available.",
+    "INCOMPLETE_MARKET": "The sharp match-winner market was incomplete.",
+    "INVALID_PRICE": "The available market price was invalid.",
+    "MARKET_SUSPENDED": "The market was not open.",
+    "CROSSED_MARKET": "The sharp market failed the pricing sanity check.",
+    "STALE_MARKET": "The available market price was too old.",
+    "NO_MODEL_EDGE_VS_SHARP": "The model did not beat the sharp fair probability.",
+    "MISSING_MARKET": "No fresh offered bookmaker price was available.",
+    "EDGE_BELOW_THRESHOLD": "The offered price did not meet the required value threshold.",
+    "NONE": None,
+}
+
 # Canonical competition-tier display names.
 TIER_LABELS = {
     "GRAND_SLAM": "Grand Slam",
     "MASTERS_1000": "ATP Masters 1000",
+    "ATP_TOUR": "ATP Tour",
     "ATP_500": "ATP 500",
     "ATP_250": "ATP 250",
     "CHALLENGER": "Challenger",
@@ -48,6 +68,12 @@ def reason_explanation(reason_code: str | None) -> str | None:
     if reason_code is None:
         return None
     return REASON_EXPLANATIONS.get(reason_code)
+
+
+def market_reason_explanation(reason_code: str | None) -> str | None:
+    if reason_code is None:
+        return None
+    return MARKET_REASON_EXPLANATIONS.get(reason_code)
 
 
 def tier_label(competition_tier: str | None) -> str:
@@ -70,6 +96,12 @@ def percent(probability: Decimal | None) -> str:
     if probability is None:
         return "—"
     return f"{float(probability) * 100:.0f}%"
+
+
+def precise_percent(value: Decimal | None) -> str:
+    if value is None:
+        return "—"
+    return f"{float(value) * 100:.1f}%"
 
 
 def side_name(selection_side: int | None, player_1: str, player_2: str) -> str | None:
