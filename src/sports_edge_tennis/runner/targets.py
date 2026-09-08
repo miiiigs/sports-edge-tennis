@@ -98,6 +98,19 @@ def _resolve_model_player_id(
     return int(candidates[0][0])
 
 
+def _model_identity_status(
+    conn: psycopg.Connection,
+    *,
+    live_player_id: int,
+    model_player_id: int,
+) -> str:
+    if model_player_id != live_player_id:
+        return "BRIDGED"
+    if _has_non_api_source_identity(conn, live_player_id):
+        return "HISTORICAL"
+    return "LIVE_UNRESOLVED"
+
+
 def resolve_target(
     conn: psycopg.Connection,
     *,
@@ -170,6 +183,24 @@ def resolve_target(
         # Ambiguous/colliding bridges must never collapse a match to one player.
         model_player_1_id = player_1_id
         model_player_2_id = player_2_id
+
+    player_1_status = _model_identity_status(
+        conn,
+        live_player_id=player_1_id,
+        model_player_id=model_player_1_id,
+    )
+    player_2_status = _model_identity_status(
+        conn,
+        live_player_id=player_2_id,
+        model_player_id=model_player_2_id,
+    )
+    print(
+        "MODEL_IDENTITY "
+        f"match_id={match_id} "
+        f"p1_live={player_1_id} p1_model={model_player_1_id} p1_status={player_1_status} "
+        f"p2_live={player_2_id} p2_model={model_player_2_id} p2_status={player_2_status}",
+        flush=True,
+    )
 
     from sports_edge_tennis.data.agent2_history import normalize_tournament_alias
 
