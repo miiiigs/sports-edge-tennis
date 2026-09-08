@@ -81,6 +81,61 @@ def fetch_api_tennis_fixtures(
     return received_at, result
 
 
+def fetch_api_tennis_odds(
+    api_key: str,
+    start_date: date,
+    stop_date: date,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    base_url: str = API_TENNIS_BASE_URL,
+    clock: callable | None = None,
+) -> tuple[datetime, dict[str, dict[str, Any]]]:
+    """Fetch one bounded API-Tennis pre-match odds window.
+
+    The documented ``get_odds`` response is an object keyed by API-Tennis
+    match/event key. No retries or polling are performed.
+    """
+    if stop_date < start_date:
+        raise ValueError("stop_date must be >= start_date")
+    clock = clock or _utc_now
+    params = {
+        "method": "get_odds",
+        "APIkey": api_key,
+        "date_start": start_date.isoformat(),
+        "date_stop": stop_date.isoformat(),
+    }
+    try:
+        resp = requests.get(base_url, params=params, timeout=timeout)
+    except requests.exceptions.Timeout as exc:
+        raise TransportError("TIMEOUT", "api-tennis odds request timed out") from exc
+    except requests.exceptions.RequestException as exc:
+        raise TransportError("NETWORK", "api-tennis odds request failed") from exc
+
+    received_at = clock()
+    if resp.status_code != 200:
+        raise TransportError(f"HTTP_{resp.status_code}", "api-tennis odds non-200 response")
+
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise TransportError("PARSE", "api-tennis odds response was not valid JSON") from exc
+
+    if not isinstance(data, dict) or data.get("success") != 1:
+        raise TransportError("PROVIDER_ERROR", "api-tennis odds provider reported failure")
+
+    result = data.get("result")
+    if result in (None, []):
+        return received_at, {}
+    if not isinstance(result, dict):
+        raise TransportError("PARSE", "api-tennis odds response missing result object")
+
+    normalized: dict[str, dict[str, Any]] = {}
+    for event_key, event_payload in result.items():
+        if isinstance(event_payload, dict):
+            normalized[str(event_key)] = event_payload
+    return received_at, normalized
+
+
 def fetch_pinnapi_board(
     pinnapi_key: str,
     *,
