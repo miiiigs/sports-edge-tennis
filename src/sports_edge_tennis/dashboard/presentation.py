@@ -80,13 +80,18 @@ def tier_label(competition_tier: str | None) -> str:
     return TIER_LABELS.get(competition_tier or "", competition_tier or "—")
 
 
-def client_state(manager_status: str | None, sharp_available: bool) -> str:
-    """Derive the client-facing state from persisted truth only.
-
-    This never recomputes Manager C1-C4; it only labels the persisted result.
-    """
+def client_state(
+    manager_status: str | None,
+    sharp_available: bool,
+    decision_status: str | None = None,
+) -> str:
+    """Derive the client-facing state from persisted Manager/Market truth only."""
+    if decision_status == "BET":
+        return "BET"
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
+    if decision_status == "NO_BET":
+        return "NO_BET_MARKET"
     if sharp_available:
         return "AWAITING_OFFERED_PRICE"
     return "SHARP_UNAVAILABLE"
