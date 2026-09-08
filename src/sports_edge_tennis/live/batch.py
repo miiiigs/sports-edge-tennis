@@ -66,6 +66,24 @@ def _load_consensus_match_ids(
     return tuple(row[0] for row in rows)
 
 
+def _load_manager_reason_counts(
+    conn: psycopg.Connection,
+    prediction_run_id: int,
+) -> tuple[tuple[str, str, int], ...]:
+    """Return compact persisted Manager outcome counts for production diagnostics."""
+    rows = conn.execute(
+        """
+        SELECT manager_status::text, reason_code::text, count(*)
+        FROM manager_consensus_results
+        WHERE prediction_run_id = %s
+        GROUP BY manager_status, reason_code
+        ORDER BY manager_status, reason_code
+        """,
+        (prediction_run_id,),
+    ).fetchall()
+    return tuple((row[0], row[1], int(row[2])) for row in rows)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -143,6 +161,18 @@ def main(argv: list[str] | None = None) -> int:
                 totals["pinnapi_requests"] += result.pinnapi_requests
                 if result.prediction_run_id is not None:
                     prediction_run_ids.append(result.prediction_run_id)
+                    reason_counts = _load_manager_reason_counts(
+                        conn, result.prediction_run_id
+                    )
+                    if reason_counts:
+                        _log(
+                            "MANAGER_REASONS "
+                            f"prediction_run_id={result.prediction_run_id} "
+                            + " ".join(
+                                f"{status}:{reason}={count}"
+                                for status, reason, count in reason_counts
+                            )
+                        )
                 _log(
                     "SLATE "
                     f"date={result.slate_date} status={result.status} "
