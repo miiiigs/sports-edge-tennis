@@ -19,6 +19,34 @@ class _Connect:
         return _Conn()
 
 
+def test_load_agent_participation_counts_groups_persisted_decision_agents():
+    seen = {}
+
+    class _QueryConn:
+        def execute(self, query, params):
+            seen["query"] = query
+            seen["params"] = params
+            return SimpleNamespace(
+                fetchall=lambda: [
+                    ("AGENT_1_SURFACE_ELO", "ACTIVE", 7),
+                    ("AGENT_2_HIERARCHICAL_MARKOV", "ABSTAINED", 5),
+                    ("AGENT_2_HIERARCHICAL_MARKOV", "ACTIVE", 2),
+                    ("AGENT_3_INTRANSITIVITY", "ABSTAINED", 7),
+                ]
+            )
+
+    counts = batch._load_agent_participation_counts(_QueryConn(), 12)
+
+    assert seen["params"] == (12,)
+    assert "FROM decision_agents" in seen["query"]
+    assert counts == (
+        ("AGENT_1_SURFACE_ELO", "ACTIVE", 7),
+        ("AGENT_2_HIERARCHICAL_MARKOV", "ABSTAINED", 5),
+        ("AGENT_2_HIERARCHICAL_MARKOV", "ACTIVE", 2),
+        ("AGENT_3_INTRANSITIVITY", "ABSTAINED", 7),
+    )
+
+
 def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     seen = []
 
@@ -125,6 +153,15 @@ def test_batch_fetches_offered_odds_once_and_evaluates_market(monkeypatch, tmp_p
     monkeypatch.setattr(batch, "_load_consensus_match_ids", lambda conn, run_ids: (101, 202))
     monkeypatch.setattr(
         batch,
+        "_load_agent_participation_counts",
+        lambda conn, run_id: (
+            ("AGENT_1_SURFACE_ELO", "ACTIVE", 1),
+            ("AGENT_2_HIERARCHICAL_MARKOV", "ACTIVE", 1),
+            ("AGENT_3_INTRANSITIVITY", "ACTIVE", 1),
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
         "_load_manager_reason_counts",
         lambda conn, run_id: (("CONSENSUS", "NONE", 1),),
     )
@@ -182,6 +219,8 @@ def test_batch_fetches_offered_odds_once_and_evaluates_market(monkeypatch, tmp_p
     assert rc == 0
     assert market_runs == [1, 2, 3]
     out = capsys.readouterr().out
+    assert "AGENT_PARTICIPATION" in out
+    assert "AGENT_2_HIERARCHICAL_MARKOV:ACTIVE=1" in out
     assert "MANAGER_REASONS" in out
     assert "CONSENSUS:NONE=1" in out
     assert "offered_requests=1" in out
