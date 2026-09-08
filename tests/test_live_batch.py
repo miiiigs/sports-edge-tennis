@@ -26,7 +26,16 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
 
-    def fake_run(conn, *, slate_date, api_tennis_key, pinnapi_key, artifacts_dir):
+    def fake_run(
+        conn,
+        *,
+        slate_date,
+        api_tennis_key,
+        pinnapi_key,
+        ingest_fixtures,
+        artifacts_dir,
+    ):
+        assert ingest_fixtures is batch.ingest_api_tennis_source_a_fixtures_with_upcoming_status
         seen.append(slate_date)
         return SimpleNamespace(
             slate_date=slate_date.isoformat(),
