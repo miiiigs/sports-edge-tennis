@@ -53,7 +53,7 @@
   </div>
   <div class="kpi kpi-accent">
     <span class="kpi-value">{{ consensus_count }}</span>
-    <span class="kpi-label">Consensus Picks</span>
+    <span class="kpi-label">High-Confidence Picks</span>
   </div>
   <div class="kpi">
     <span class="kpi-value">{{ no_bet_count }}</span>
@@ -65,7 +65,7 @@
   </div>
   <div class="kpi kpi-accent">
     <span class="kpi-value">{{ ns.bets }}</span>
-    <span class="kpi-label">Actionable Bets</span>
+    <span class="kpi-label">Value-Qualified Bets</span>
   </div>
 </section>
 
@@ -73,6 +73,7 @@
   {% for m in state.matches %}
   {% set md = market_by_match.get(m.match_id) %}
   {% set display_state = pres.client_state(m.manager_status, m.sharp_available, md.decision_status if md else None) %}
+  {% set recommendation = pres.recommendation_classification(m.manager_status, md.decision_status if md else None) %}
   <details class="match-card">
     <summary class="match-summary">
       <div class="match-main">
@@ -117,7 +118,7 @@
       </div>
 
       <div class="match-status">
-        <span class="badge badge-{{ display_state }}">{{ pres.state_label(display_state) }}</span>
+        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
         {% if md and md.decision_status == 'BET' %}
         <span class="agreement">Edge {{ pres.precise_percent(md.edge_pct) }}</span>
         {% elif m.manager_status == 'CONSENSUS' %}
@@ -150,13 +151,13 @@
       <p class="detail-consensus">Consensus probability: <strong>{{ pres.percent(m.consensus_probability) }}</strong></p>
       {% endif %}
 
-      <h3>Decision</h3>
+      <h3>Recommendation</h3>
       <p class="manager-result">
-        <span class="badge badge-{{ display_state }}">{{ pres.state_label(display_state) }}</span>
+        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
         {% if md %}
           {% set market_reason = pres.market_reason_explanation(md.reason_code) %}
           {% if md.decision_status == 'BET' %}
-          <span class="reason">Offered price passed the sharp-reference and value thresholds.</span>
+          <span class="reason">Model confidence and the current offered price both qualify.</span>
           {% elif market_reason %}
           <span class="reason">{{ market_reason }}</span>
           {% endif %}
@@ -165,10 +166,11 @@
           {% if m.manager_status != 'CONSENSUS' and reason %}
           <span class="reason">{{ reason }}</span>
           {% elif m.manager_status == 'CONSENSUS' %}
-          <span class="reason">Model consensus passed. Waiting for a persisted market decision.</span>
+          <span class="reason">Model consensus passed. Price evaluation is still pending.</span>
           {% endif %}
         {% endif %}
       </p>
+      <p class="decision-meta">Execution state: {{ pres.state_label(display_state) }}</p>
 
       <h3>Market</h3>
       <table class="market-table">
@@ -219,11 +221,12 @@
           {% endif %}
         </td>
         <td>
-          <span class="badge badge-{{ m.market_state }}">{{ pres.state_label(m.market_state) }}</span>
+          {% set upcoming_recommendation = pres.recommendation_classification(m.manager_status, 'BET' if m.market_state == 'BET' else ('NO_BET' if m.market_state == 'NO_BET_MARKET' else None)) %}
+          <span class="badge badge-{{ upcoming_recommendation }}">{{ pres.recommendation_label(upcoming_recommendation) }}</span>
           {% if m.market_state == 'BET' %}
           <div class="decision-meta">{{ m.price_bookmaker_code or 'Bookmaker' }} @ {{ m.market_decimal_price }} · Edge {{ pres.precise_percent(m.edge_pct) }}</div>
           {% elif m.market_state == 'NO_BET_MARKET' %}
-          <div class="decision-meta">{{ pres.market_reason_explanation(m.market_reason_code) or 'Market filter did not qualify the price.' }}</div>
+          <div class="decision-meta">{{ pres.market_reason_explanation(m.market_reason_code) or 'Current price did not qualify as a value bet.' }}</div>
           {% elif m.market_state == 'AWAITING_MARKET' %}
           <div class="decision-meta">Consensus reached; price evaluation pending.</div>
           {% endif %}

@@ -18,8 +18,15 @@ STATE_LABELS = {
     "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
     "AWAITING_MARKET": "Awaiting Market Decision",
     "BET": "Bet",
-    "NO_BET_MARKET": "No Bet — Market Filter",
+    "NO_BET_MARKET": "No Bet · Market Filter",
     "PREDICTION_PENDING": "Prediction Pending",
+}
+
+RECOMMENDATION_LABELS = {
+    "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
+    "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
+    "PRICE_PENDING": "High-Confidence Pick · Price Pending",
+    "NO_BET": "No Bet",
 }
 
 REASON_EXPLANATIONS = {
@@ -41,9 +48,9 @@ MARKET_REASON_EXPLANATIONS = {
     "MARKET_SUSPENDED": "The market was not open.",
     "CROSSED_MARKET": "The sharp market failed the pricing sanity check.",
     "STALE_MARKET": "The available market price was too old.",
-    "NO_MODEL_EDGE_VS_SHARP": "The model did not beat the sharp fair probability.",
-    "MISSING_MARKET": "No fresh offered bookmaker price was available.",
-    "EDGE_BELOW_THRESHOLD": "The offered price did not meet the required value threshold.",
+    "NO_MODEL_EDGE_VS_SHARP": "The model pick remains valid, but the sharp market does not currently confirm a positive price edge.",
+    "MISSING_MARKET": "The model pick remains valid, but no fresh offered bookmaker price is available yet.",
+    "EDGE_BELOW_THRESHOLD": "The model pick remains valid, but the current offered price is below the stricter value-bet threshold.",
     "NONE": None,
 }
 
@@ -59,6 +66,10 @@ TIER_LABELS = {
 
 def state_label(internal_state: str | None) -> str:
     return STATE_LABELS.get(internal_state or "", internal_state or "Unknown")
+
+
+def recommendation_label(classification: str | None) -> str:
+    return RECOMMENDATION_LABELS.get(classification or "", classification or "Unknown")
 
 
 def reason_explanation(reason_code: str | None) -> str | None:
@@ -82,10 +93,7 @@ def client_state(
     sharp_available: bool,
     decision_status: str | None = None,
 ) -> str:
-    """Derive the client-facing state from persisted Manager/Market truth only.
-
-    A Market decision can never rescue a persisted Manager non-consensus result.
-    """
+    """Preserve the existing dashboard execution-state contract."""
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
     if decision_status == "BET":
@@ -95,6 +103,26 @@ def client_state(
     if sharp_available:
         return "AWAITING_OFFERED_PRICE"
     return "SHARP_UNAVAILABLE"
+
+
+def recommendation_classification(
+    manager_status: str | None,
+    decision_status: str | None = None,
+) -> str:
+    """Classify model confidence separately from market value.
+
+    This is deliberately independent from ``client_state`` so the existing
+    operational state contract remains stable. A persisted Manager consensus is
+    still a model pick even when Market V1 rejects the current price. A Market
+    BET is the stricter state where confidence and value are both present.
+    """
+    if manager_status != "CONSENSUS":
+        return "NO_BET"
+    if decision_status == "BET":
+        return "HIGH_CONFIDENCE_VALUE"
+    if decision_status == "NO_BET":
+        return "HIGH_CONFIDENCE_PICK"
+    return "PRICE_PENDING"
 
 
 def percent(probability: Decimal | None) -> str:
