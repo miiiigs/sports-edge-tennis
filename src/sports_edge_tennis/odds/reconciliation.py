@@ -118,7 +118,12 @@ def reconcile_pinnapi_event(
         if candidate is None:
             return PinnapiReconciliationResult(status="UNMATCHED", reason="no_pit_match_version")
         orientation = _orient_candidate(candidate, evidence)
-        if orientation is None or not _tournament_compatible(candidate, evidence):
+        # Once a provider event id has been persisted, participant identity is the
+        # stable revalidation key. Pinnacle league/tournament labels can change as
+        # round or competition wording is refreshed, so do not invalidate a known
+        # event solely because mutable tournament text no longer matches. Explicit
+        # tour-scope contradictions still fail closed.
+        if orientation is None or not _tour_scope_compatible(candidate, evidence):
             return PinnapiReconciliationResult(
                 status="IDENTITY_CONFLICT",
                 reason="existing_mapping_evidence_conflict",
