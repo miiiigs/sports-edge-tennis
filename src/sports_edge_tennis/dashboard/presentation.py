@@ -10,15 +10,17 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 STATE_LABELS = {
-    "MODEL_CONSENSUS": "Consensus",
-    "NO_BET_MODEL": "No Bet — Model Filter",
+    "MODEL_CONSENSUS": "High-Confidence Pick",
+    "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
+    "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
+    "NO_BET_MODEL": "No Bet · Model Filter",
     "SHARP_AVAILABLE": "Pinnacle Available",
     "SHARP_UNAVAILABLE": "Pinnacle Unavailable",
     "RECONCILIATION_FAILED": "Price Match Unavailable",
-    "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
-    "AWAITING_MARKET": "Awaiting Market Decision",
-    "BET": "Bet",
-    "NO_BET_MARKET": "No Bet — Market Filter",
+    "AWAITING_OFFERED_PRICE": "High-Confidence Pick · Price Pending",
+    "AWAITING_MARKET": "High-Confidence Pick · Price Pending",
+    "BET": "High-Confidence + Value",
+    "NO_BET_MARKET": "High-Confidence Pick · Watch Price",
     "PREDICTION_PENDING": "Prediction Pending",
 }
 
@@ -41,9 +43,9 @@ MARKET_REASON_EXPLANATIONS = {
     "MARKET_SUSPENDED": "The market was not open.",
     "CROSSED_MARKET": "The sharp market failed the pricing sanity check.",
     "STALE_MARKET": "The available market price was too old.",
-    "NO_MODEL_EDGE_VS_SHARP": "The model did not beat the sharp fair probability.",
-    "MISSING_MARKET": "No fresh offered bookmaker price was available.",
-    "EDGE_BELOW_THRESHOLD": "The offered price did not meet the required value threshold.",
+    "NO_MODEL_EDGE_VS_SHARP": "The model pick remains valid, but the sharp market does not currently confirm a positive price edge.",
+    "MISSING_MARKET": "The model pick remains valid, but no fresh offered bookmaker price is available yet.",
+    "EDGE_BELOW_THRESHOLD": "The model pick remains valid, but the current offered price is below the stricter value-bet threshold.",
     "NONE": None,
 }
 
@@ -82,19 +84,21 @@ def client_state(
     sharp_available: bool,
     decision_status: str | None = None,
 ) -> str:
-    """Derive the client-facing state from persisted Manager/Market truth only.
+    """Classify model confidence separately from market value.
 
-    A Market decision can never rescue a persisted Manager non-consensus result.
+    Persisted Manager consensus is the model-side eligibility signal. Market V1
+    remains the stricter value/action gate, so a market rejection never erases
+    a valid model pick and a Market decision never rescues non-consensus.
     """
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
     if decision_status == "BET":
-        return "BET"
+        return "HIGH_CONFIDENCE_VALUE"
     if decision_status == "NO_BET":
-        return "NO_BET_MARKET"
+        return "HIGH_CONFIDENCE_PICK"
     if sharp_available:
         return "AWAITING_OFFERED_PRICE"
-    return "SHARP_UNAVAILABLE"
+    return "MODEL_CONSENSUS"
 
 
 def percent(probability: Decimal | None) -> str:
