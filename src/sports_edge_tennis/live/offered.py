@@ -118,10 +118,14 @@ def ensure_api_tennis_offered_mapping(
         (API_TENNIS_PROVIDER_CODE, key),
     ).fetchone()
     if existing is not None:
-        mapping_id, _bookmaker_code, normalization_class = existing
+        mapping_id, existing_bookmaker_code, normalization_class = existing
         if normalization_class != "OFFERED":
             raise ApiTennisOfferedOddsError(
                 f"existing API_TENNIS/{key} mapping is not OFFERED"
+            )
+        if not str(existing_bookmaker_code).strip():
+            raise ApiTennisOfferedOddsError(
+                f"existing API_TENNIS/{key} mapping has an empty bookmaker code"
             )
         return mapping_id
 
