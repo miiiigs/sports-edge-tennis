@@ -10,18 +10,23 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 STATE_LABELS = {
-    "MODEL_CONSENSUS": "High-Confidence Pick",
-    "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
-    "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
+    "MODEL_CONSENSUS": "Consensus",
     "NO_BET_MODEL": "No Bet · Model Filter",
     "SHARP_AVAILABLE": "Pinnacle Available",
     "SHARP_UNAVAILABLE": "Pinnacle Unavailable",
     "RECONCILIATION_FAILED": "Price Match Unavailable",
-    "AWAITING_OFFERED_PRICE": "High-Confidence Pick · Price Pending",
-    "AWAITING_MARKET": "High-Confidence Pick · Price Pending",
-    "BET": "High-Confidence + Value",
-    "NO_BET_MARKET": "High-Confidence Pick · Watch Price",
+    "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
+    "AWAITING_MARKET": "Awaiting Market Decision",
+    "BET": "Bet",
+    "NO_BET_MARKET": "No Bet · Market Filter",
     "PREDICTION_PENDING": "Prediction Pending",
+}
+
+RECOMMENDATION_LABELS = {
+    "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
+    "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
+    "PRICE_PENDING": "High-Confidence Pick · Price Pending",
+    "NO_BET": "No Bet",
 }
 
 REASON_EXPLANATIONS = {
@@ -63,6 +68,10 @@ def state_label(internal_state: str | None) -> str:
     return STATE_LABELS.get(internal_state or "", internal_state or "Unknown")
 
 
+def recommendation_label(classification: str | None) -> str:
+    return RECOMMENDATION_LABELS.get(classification or "", classification or "Unknown")
+
+
 def reason_explanation(reason_code: str | None) -> str | None:
     if reason_code is None:
         return None
@@ -84,21 +93,36 @@ def client_state(
     sharp_available: bool,
     decision_status: str | None = None,
 ) -> str:
-    """Classify model confidence separately from market value.
-
-    Persisted Manager consensus is the model-side eligibility signal. Market V1
-    remains the stricter value/action gate, so a market rejection never erases
-    a valid model pick and a Market decision never rescues non-consensus.
-    """
+    """Preserve the existing dashboard execution-state contract."""
     if manager_status != "CONSENSUS":
         return "NO_BET_MODEL"
+    if decision_status == "BET":
+        return "BET"
+    if decision_status == "NO_BET":
+        return "NO_BET_MARKET"
+    if sharp_available:
+        return "AWAITING_OFFERED_PRICE"
+    return "SHARP_UNAVAILABLE"
+
+
+def recommendation_classification(
+    manager_status: str | None,
+    decision_status: str | None = None,
+) -> str:
+    """Classify model confidence separately from market value.
+
+    This is deliberately independent from ``client_state`` so the existing
+    operational state contract remains stable. A persisted Manager consensus is
+    still a model pick even when Market V1 rejects the current price. A Market
+    BET is the stricter state where confidence and value are both present.
+    """
+    if manager_status != "CONSENSUS":
+        return "NO_BET"
     if decision_status == "BET":
         return "HIGH_CONFIDENCE_VALUE"
     if decision_status == "NO_BET":
         return "HIGH_CONFIDENCE_PICK"
-    if sharp_available:
-        return "AWAITING_OFFERED_PRICE"
-    return "MODEL_CONSENSUS"
+    return "PRICE_PENDING"
 
 
 def percent(probability: Decimal | None) -> str:
