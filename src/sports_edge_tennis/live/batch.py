@@ -84,6 +84,25 @@ def _load_manager_reason_counts(
     return tuple((row[0], row[1], int(row[2])) for row in rows)
 
 
+def _load_market_reason_counts(
+    conn: psycopg.Connection,
+    prediction_run_id: int,
+) -> tuple[tuple[str, str, str, int], ...]:
+    """Return compact persisted Market outcome counts for production diagnostics."""
+    rows = conn.execute(
+        """
+        SELECT signal_type::text, decision_status::text, reason_code::text, count(*)
+        FROM decisions
+        WHERE prediction_run_id = %s
+          AND market_policy_version_id IS NOT NULL
+        GROUP BY signal_type, decision_status, reason_code
+        ORDER BY signal_type, decision_status, reason_code
+        """,
+        (prediction_run_id,),
+    ).fetchall()
+    return tuple((row[0], row[1], row[2], int(row[3])) for row in rows)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -233,6 +252,18 @@ def main(argv: list[str] | None = None) -> int:
                         f"decisions={outcome.new_decision_count} "
                         f"bets={outcome.qualified_bet_count}"
                     )
+                    market_reason_counts = _load_market_reason_counts(
+                        conn, prediction_run_id
+                    )
+                    if market_reason_counts:
+                        _log(
+                            "MARKET_REASONS "
+                            f"prediction_run_id={prediction_run_id} "
+                            + " ".join(
+                                f"{signal}:{status}:{reason}={count}"
+                                for signal, status, reason, count in market_reason_counts
+                            )
+                        )
     except LiveMvpError as exc:
         _log(f"{exc.result_code}: {exc}")
         return 2
