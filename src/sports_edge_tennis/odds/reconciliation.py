@@ -141,12 +141,24 @@ def reconcile_pinnapi_event(
             continue
         tour_compatible_count += 1
 
-        if _start_within_first_mapping_tolerance(candidate.match.match_start_at, evidence):
-            if _tournament_compatible(candidate, evidence):
-                strict_matches.append((candidate, orientation))
-                continue
+        tournament_compatible = _tournament_compatible(candidate, evidence)
+        if (
+            tournament_compatible
+            and _start_within_first_mapping_tolerance(candidate.match.match_start_at, evidence)
+        ):
+            strict_matches.append((candidate, orientation))
+            continue
 
-        if _start_within_unique_participant_tolerance(candidate.match.match_start_at, evidence):
+        # Provider tournament labels commonly carry prefixes / round suffixes that
+        # are not canonical tournament identity. Only in that naming-mismatch case
+        # may an exact, unique participant pair use the wider Tennis schedule window.
+        if (
+            not tournament_compatible
+            and _start_within_unique_participant_tolerance(
+                candidate.match.match_start_at,
+                evidence,
+            )
+        ):
             fallback_matches.append((candidate, orientation))
 
     if len(strict_matches) > 1:
@@ -184,7 +196,7 @@ def reconcile_pinnapi_event(
         return PinnapiReconciliationResult(
             status="RESOLVED",
             match=orientation,
-            reason="unique_participant_time_fallback",
+            reason="unique_participant_tournament_fallback",
         )
 
     if participant_match_count == 0:
@@ -192,7 +204,7 @@ def reconcile_pinnapi_event(
     elif tour_compatible_count == 0:
         reason = "tour_scope_conflict"
     else:
-        reason = "start_outside_fallback_tolerance"
+        reason = "start_or_tournament_mismatch"
     return PinnapiReconciliationResult(status="UNMATCHED", reason=reason)
 
 
