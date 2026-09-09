@@ -130,6 +130,11 @@ def test_batch_fetches_offered_odds_once_and_evaluates_market(monkeypatch, tmp_p
     )
     monkeypatch.setattr(
         batch,
+        "_load_market_reason_counts",
+        lambda conn, run_id: (("TYPE_A_MODEL_EDGE", "NO_BET", "EDGE_BELOW_THRESHOLD", 1),),
+    )
+    monkeypatch.setattr(
+        batch,
         "fetch_api_tennis_odds",
         lambda api_key, start_date, stop_date: (received_at, {"event": {}}),
     )
@@ -184,6 +189,8 @@ def test_batch_fetches_offered_odds_once_and_evaluates_market(monkeypatch, tmp_p
     out = capsys.readouterr().out
     assert "MANAGER_REASONS" in out
     assert "CONSENSUS:NONE=1" in out
+    assert "MARKET_REASONS" in out
+    assert "TYPE_A_MODEL_EDGE:NO_BET:EDGE_BELOW_THRESHOLD=1" in out
     assert "offered_requests=1" in out
     assert "offered_quotes=8" in out
     assert "bets=3" in out
