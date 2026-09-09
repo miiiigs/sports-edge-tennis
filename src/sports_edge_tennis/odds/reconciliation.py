@@ -149,9 +149,6 @@ def reconcile_pinnapi_event(
             strict_matches.append((candidate, orientation))
             continue
 
-        # Provider tournament labels commonly carry prefixes / round suffixes that
-        # are not canonical tournament identity. Only in that naming-mismatch case
-        # may an exact, unique participant pair use the wider Tennis schedule window.
         if (
             not tournament_compatible
             and _start_within_unique_participant_tolerance(
@@ -215,6 +212,56 @@ def normalize_pinnapi_participant_name(value: str) -> str:
     return " ".join(punctuation_as_space.casefold().split())
 
 
+def _participant_tokens(value: str) -> tuple[str, ...]:
+    return tuple(normalize_pinnapi_participant_name(value).split())
+
+
+def _token_compatible(left: str, right: str) -> bool:
+    if left == right:
+        return True
+    if len(left) == 1 and len(right) > 1:
+        return right.startswith(left)
+    if len(right) == 1 and len(left) > 1:
+        return left.startswith(right)
+    return False
+
+
+def _participant_name_compatible(left: str, right: str) -> bool:
+    """Match provider aliases without allowing fuzzy surname substitution.
+
+    Supports punctuation/diacritics, provider token-order differences such as
+    ``Surname, Given`` vs ``Given Surname``, and one-character initials such as
+    ``F Balshaw`` vs ``Felix Balshaw``. It deliberately requires the same token
+    count and a one-to-one token match, so missing surnames, nicknames, and
+    arbitrary edit-distance similarities remain fail-closed.
+    """
+    left_tokens = _participant_tokens(left)
+    right_tokens = _participant_tokens(right)
+    if not left_tokens or not right_tokens or len(left_tokens) != len(right_tokens):
+        return False
+    if left_tokens == right_tokens:
+        return True
+
+    unmatched = list(right_tokens)
+    for left_token in left_tokens:
+        exact_index = next(
+            (index for index, right_token in enumerate(unmatched) if left_token == right_token),
+            None,
+        )
+        if exact_index is not None:
+            unmatched.pop(exact_index)
+            continue
+        compatible_indexes = [
+            index
+            for index, right_token in enumerate(unmatched)
+            if _token_compatible(left_token, right_token)
+        ]
+        if len(compatible_indexes) != 1:
+            return False
+        unmatched.pop(compatible_indexes[0])
+    return not unmatched
+
+
 def _load_candidates(
     conn: psycopg.Connection,
     *,
@@ -261,14 +308,23 @@ def _orient_candidate(
     candidate: _Candidate,
     evidence: PinnapiEventEvidence,
 ) -> OrientedPinnapiMatch | None:
-    home = normalize_pinnapi_participant_name(evidence.home_name)
-    away = normalize_pinnapi_participant_name(evidence.away_name)
-    player_1 = normalize_pinnapi_participant_name(candidate.player_1_name)
-    player_2 = normalize_pinnapi_participant_name(candidate.player_2_name)
-    if player_1 == player_2 or home == away:
+    if _participant_name_compatible(candidate.player_1_name, candidate.player_2_name):
+        return None
+    if _participant_name_compatible(evidence.home_name, evidence.away_name):
         return None
 
-    if home == player_1 and away == player_2:
+    direct = (
+        _participant_name_compatible(evidence.home_name, candidate.player_1_name)
+        and _participant_name_compatible(evidence.away_name, candidate.player_2_name)
+    )
+    reverse = (
+        _participant_name_compatible(evidence.home_name, candidate.player_2_name)
+        and _participant_name_compatible(evidence.away_name, candidate.player_1_name)
+    )
+    if direct == reverse:
+        return None
+
+    if direct:
         return OrientedPinnapiMatch(
             match_id=candidate.match.match_id,
             match_version_id=candidate.match.match_version_id,
@@ -278,17 +334,15 @@ def _orient_candidate(
             home_selection_side="PLAYER_1",
             away_selection_side="PLAYER_2",
         )
-    if home == player_2 and away == player_1:
-        return OrientedPinnapiMatch(
-            match_id=candidate.match.match_id,
-            match_version_id=candidate.match.match_version_id,
-            provider_event_id=evidence.provider_event_id_text,
-            home_canonical_player_id=candidate.match.player_2_id,
-            away_canonical_player_id=candidate.match.player_1_id,
-            home_selection_side="PLAYER_2",
-            away_selection_side="PLAYER_1",
-        )
-    return None
+    return OrientedPinnapiMatch(
+        match_id=candidate.match.match_id,
+        match_version_id=candidate.match.match_version_id,
+        provider_event_id=evidence.provider_event_id_text,
+        home_canonical_player_id=candidate.match.player_2_id,
+        away_canonical_player_id=candidate.match.player_1_id,
+        home_selection_side="PLAYER_2",
+        away_selection_side="PLAYER_1",
+    )
 
 
 def _start_within_first_mapping_tolerance(
