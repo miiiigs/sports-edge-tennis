@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from time import perf_counter
 
 import psycopg
 
@@ -21,11 +22,13 @@ from sports_edge_tennis.data.agent2_history import (
     load_agent2_history,
     resolve_scoring_rule,
 )
-from sports_edge_tennis.data.agent3_history import (
-    build_history_snapshot as build_agent3_snapshot,
-    load_agent3_history,
-)
+from sports_edge_tennis.data.agent3_history import load_agent3_history
+from sports_edge_tennis.runner.agent3_live_snapshot import build_live_agent3_history_snapshot
 from sports_edge_tennis.runner.contracts import ResolvedTargetV1
+
+
+def _elapsed_ms(started: float) -> int:
+    return int((perf_counter() - started) * 1000)
 
 
 def build_agent1_request(target: ResolvedTargetV1, as_of: datetime) -> Agent1PredictionRequest:
@@ -42,12 +45,31 @@ def build_agent1_request(target: ResolvedTargetV1, as_of: datetime) -> Agent1Pre
 
 
 def load_agent1_history_observations(conn: psycopg.Connection, cutoff: datetime):
-    return load_agent1_history(conn, cutoff=cutoff)
+    started = perf_counter()
+    print("AGENT1_HISTORY_LOAD_START", flush=True)
+    observations = load_agent1_history(conn, cutoff=cutoff)
+    print(
+        f"AGENT1_HISTORY_LOAD_READY observations={len(observations)} elapsed_ms={_elapsed_ms(started)}",
+        flush=True,
+    )
+    return observations
 
 
 def build_agent2_history_snapshot(conn: psycopg.Connection, cutoff: datetime):
+    load_started = perf_counter()
+    print("AGENT2_HISTORY_LOAD_START", flush=True)
     observations = load_agent2_history(conn, cutoff=cutoff)
-    return build_agent2_snapshot(observations, cutoff=cutoff)
+    print(
+        f"AGENT2_HISTORY_LOAD_READY observations={len(observations)} elapsed_ms={_elapsed_ms(load_started)}",
+        flush=True,
+    )
+    snapshot_started = perf_counter()
+    snapshot = build_agent2_snapshot(observations, cutoff=cutoff)
+    print(
+        f"AGENT2_SNAPSHOT_READY players={len(snapshot.players)} elapsed_ms={_elapsed_ms(snapshot_started)}",
+        flush=True,
+    )
+    return snapshot
 
 
 def build_agent2_request(
@@ -82,8 +104,14 @@ def build_agent2_request(
 
 
 def build_agent3_history_snapshot(conn: psycopg.Connection, cutoff: datetime):
+    load_started = perf_counter()
+    print("AGENT3_HISTORY_LOAD_START", flush=True)
     observations = load_agent3_history(conn, cutoff=cutoff)
-    return build_agent3_snapshot(observations, cutoff=cutoff)
+    print(
+        f"AGENT3_HISTORY_LOAD_READY observations={len(observations)} elapsed_ms={_elapsed_ms(load_started)}",
+        flush=True,
+    )
+    return build_live_agent3_history_snapshot(observations, cutoff=cutoff)
 
 
 def build_agent3_request(
