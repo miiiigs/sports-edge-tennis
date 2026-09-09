@@ -44,7 +44,12 @@ def _resolve_model_player_id(
     This bridge is model-input-only: it does not rewrite append-only source mappings or
     live match identity. It only substitutes a historical player ID when the normalized
     TENNIS_DATA aliases resolve to exactly one non-API player with PIT-visible completed
-    history. Zero or multiple candidates fail closed by retaining the live player ID.
+    result truth. Zero or multiple candidates fail closed by retaining the live player
+    ID.
+
+    Historical Sackmann match timestamps may intentionally be unknown. Therefore model
+    eligibility must follow the authoritative result-observation PIT boundary rather
+    than requiring match_start_at to be populated.
     """
     if _has_non_api_source_identity(conn, player_id):
         return player_id
@@ -81,16 +86,19 @@ def _resolve_model_player_id(
           )
           AND EXISTS (
               SELECT 1
-              FROM match_versions hist_mv
+              FROM match_result_observations hist_mro
+              JOIN match_versions hist_mv
+                ON hist_mv.match_id = hist_mro.match_id
+               AND hist_mv.source_observed_at <= hist_mro.source_observed_at
+               AND hist_mv.as_of <= hist_mro.as_of
               WHERE (hist_mv.player_1_id = pa.player_id OR hist_mv.player_2_id = pa.player_id)
-                AND hist_mv.match_status = 'COMPLETED'
-                AND hist_mv.match_start_at < %s
-                AND hist_mv.source_observed_at <= %s
-                AND hist_mv.as_of <= %s
+                AND hist_mro.outcome_status = 'COMPLETED'
+                AND hist_mro.source_observed_at <= %s
+                AND hist_mro.as_of <= %s
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, player_id, as_of, as_of, as_of),
+        (normalized_aliases, player_id, as_of, as_of),
     ).fetchall()
 
     if len(candidates) != 1:
@@ -109,6 +117,68 @@ def _model_identity_status(
     if _has_non_api_source_identity(conn, live_player_id):
         return "HISTORICAL"
     return "LIVE_UNRESOLVED"
+
+
+def _resolve_model_surface(
+    conn: psycopg.Connection,
+    *,
+    tournament_id: int,
+    canonical_name: str,
+    tour_scope: str,
+    season_year: int,
+    live_surface: str | None,
+    edition_surface: str | None,
+    as_of: datetime,
+) -> tuple[str | None, str]:
+    """Resolve missing live surface from existing PIT-visible tournament history only.
+
+    API-Tennis fixtures do not consistently carry court surface. We never invent one
+    and do not make an extra provider call here. A missing match surface may use the
+    already-enriched current edition surface, or one unique surface from the latest
+    PIT-visible historical season for the same canonical tournament identity. Conflicts
+    fail closed.
+    """
+    if live_surface is not None:
+        return live_surface, "LIVE"
+    if edition_surface is not None:
+        return edition_surface, "CURRENT_EDITION"
+
+    rows = conn.execute(
+        """
+        SELECT
+            te_hist.season_year,
+            hist_mv.surface::text
+        FROM tournaments t_hist
+        JOIN tournament_editions te_hist
+          ON te_hist.tournament_id = t_hist.tournament_id
+        JOIN matches m_hist
+          ON m_hist.tournament_edition_id = te_hist.tournament_edition_id
+        JOIN match_versions hist_mv
+          ON hist_mv.match_id = m_hist.match_id
+        WHERE hist_mv.surface IS NOT NULL
+          AND hist_mv.source_observed_at <= %s
+          AND hist_mv.as_of <= %s
+          AND te_hist.season_year <= %s
+          AND (
+              t_hist.tournament_id = %s
+              OR (
+                  t_hist.canonical_name = %s
+                  AND t_hist.tour_scope::text = %s
+              )
+          )
+        ORDER BY te_hist.season_year DESC, hist_mv.as_of DESC, hist_mv.match_version_id DESC
+        """,
+        (as_of, as_of, season_year, tournament_id, canonical_name, tour_scope),
+    ).fetchall()
+
+    if not rows:
+        return None, "UNRESOLVED"
+
+    latest_historical_year = int(rows[0][0])
+    surfaces = {str(row[1]) for row in rows if int(row[0]) == latest_historical_year}
+    if len(surfaces) != 1:
+        return None, "AMBIGUOUS_HISTORY"
+    return next(iter(surfaces)), "HISTORICAL_TOURNAMENT"
 
 
 def resolve_target(
@@ -130,12 +200,14 @@ def resolve_target(
             mv.player_1_id,
             mv.player_2_id,
             mv.surface::text,
+            te.surface::text,
             mv.tour_scope::text,
             mv.competition_tier::text,
             mv.round_code,
             mv.best_of_sets,
             mv.qualifying_flag,
             mv.match_status::text,
+            t.tournament_id,
             t.canonical_name,
             te.season_year
         FROM match_versions mv
@@ -162,12 +234,14 @@ def resolve_target(
         player_1_id,
         player_2_id,
         surface,
+        edition_surface,
         tour_scope,
         competition_tier,
         round_code,
         best_of_sets,
         qualifying_flag,
         match_status,
+        tournament_id,
         canonical_name,
         season_year,
     ) = row
@@ -202,6 +276,23 @@ def resolve_target(
         flush=True,
     )
 
+    model_surface, surface_status = _resolve_model_surface(
+        conn,
+        tournament_id=int(tournament_id),
+        canonical_name=canonical_name,
+        tour_scope=tour_scope,
+        season_year=int(season_year),
+        live_surface=surface,
+        edition_surface=edition_surface,
+        as_of=as_of,
+    )
+    print(
+        "MODEL_SURFACE "
+        f"match_id={match_id} live={surface or '-'} edition={edition_surface or '-'} "
+        f"model={model_surface or '-'} status={surface_status}",
+        flush=True,
+    )
+
     from sports_edge_tennis.data.agent2_history import normalize_tournament_alias
 
     return ResolvedTargetV1(
@@ -209,7 +300,7 @@ def resolve_target(
         match_version_id=match_version_id,
         player_1_id=model_player_1_id,
         player_2_id=model_player_2_id,
-        surface=surface,
+        surface=model_surface,
         tour_scope=tour_scope,
         competition_tier=competition_tier,
         round_code=round_code,
