@@ -1,10 +1,15 @@
 """Production compatibility enrichment for API-Tennis upcoming fixtures.
 
-API-Tennis may return a blank ``event_status`` for prematch fixtures and its
-fixture payload does not consistently include court surface. This module keeps
-both compatibility fixes narrowly scoped and fail-closed:
+API-Tennis may return a blank ``event_status`` for prematch fixtures, exposes
+round metadata as ``tournament_round``, and its fixture payload does not
+consistently include court surface. This module keeps compatibility fixes
+narrowly scoped and fail-closed:
 
 * only safely identified future non-live fixtures get ``Not Started`` status;
+* documented tournament-round suffixes are mapped to the canonical round codes
+  already understood by the model; unknown wording remains unresolved;
+* explicit ``event_qualification`` is copied into the canonical qualifying flag
+  only when a fixture did not already provide one;
 * missing surface is filled from existing API-Tennis tournament metadata in our
   database or, when absent, one ``get_draw`` request per tournament/season.
 
@@ -34,6 +39,17 @@ _SUPPORTED_SURFACES = {
     "grass": "Grass",
     "carpet": "Carpet",
 }
+_ROUND_SUFFIX_MAP = {
+    "final": "F",
+    "semi-finals": "SF",
+    "quarter-finals": "QF",
+    "1/8-finals": "R16",
+    "1/16-finals": "R32",
+    "1/32-finals": "R64",
+    "1/64-finals": "R128",
+}
+_TRUE_VALUES = {"1", "true", "t", "yes", "y"}
+_FALSE_VALUES = {"0", "false", "f", "no", "n"}
 FetchDraw = Callable[[str, str, int], tuple[datetime, dict[str, Any]]]
 
 
@@ -95,6 +111,55 @@ def normalize_api_tennis_upcoming_status(
         row = dict(fixture)
         if _is_safe_blank_upcoming_fixture(row, received_at=received_at):
             row["event_status"] = "Not Started"
+        normalized.append(row)
+    return normalized
+
+
+def _canonical_tournament_round(value: Any) -> str | None:
+    raw = _text(value)
+    if not raw:
+        return None
+    suffix = raw.rsplit(" - ", 1)[-1].strip().casefold()
+    return _ROUND_SUFFIX_MAP.get(suffix)
+
+
+def _provider_bool(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    normalized = _text(value).casefold()
+    if normalized in _TRUE_VALUES:
+        return True
+    if normalized in _FALSE_VALUES:
+        return False
+    return None
+
+
+def normalize_api_tennis_fixture_rounds(
+    fixtures: Iterable[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Bridge documented provider round/qualification fields to canonical fields.
+
+    Existing canonical/legacy round fields win. Only exact reviewed
+    ``tournament_round`` suffixes are mapped; unknown provider wording remains
+    missing so Agent 2 can fail closed rather than infer a scoring rule.
+    """
+    normalized: list[dict[str, Any]] = []
+    for fixture in fixtures:
+        row = dict(fixture)
+        existing_round = any(
+            _text(row.get(field_name))
+            for field_name in ("round", "event_round", "round_code")
+        )
+        if not existing_round:
+            round_code = _canonical_tournament_round(row.get("tournament_round"))
+            if round_code is not None:
+                row["round_code"] = round_code
+
+        if not _text(row.get("qualifying_flag")):
+            qualifying = _provider_bool(row.get("event_qualification"))
+            if qualifying is not None:
+                row["qualifying_flag"] = qualifying
+
         normalized.append(row)
     return normalized
 
@@ -224,6 +289,7 @@ def ingest_api_tennis_source_a_fixtures_with_upcoming_status(
     received_at: datetime,
 ) -> ApiTennisIngestOutcome:
     normalized = normalize_api_tennis_upcoming_status(fixtures, received_at=received_at)
+    normalized = normalize_api_tennis_fixture_rounds(normalized)
     enriched = enrich_api_tennis_fixture_surfaces(
         conn,
         normalized,
