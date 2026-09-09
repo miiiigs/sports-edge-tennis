@@ -1,18 +1,20 @@
-"""Compatibility normalization for API-Tennis upcoming fixture status.
+"""Production compatibility enrichment for API-Tennis upcoming fixtures.
 
-API-Tennis may return a blank ``event_status`` for prematch fixtures. The
-canonical Source A adapter intentionally rejects blank/unknown statuses, so this
-module supplies a narrowly-scoped production compatibility layer: only fixtures
-with explicit non-live evidence, no winner/final result, and a future UTC start
-are promoted to the existing ``Not Started`` provider status before Source A
-parsing. Everything else remains untouched and therefore fails closed in the
-frozen adapter.
+API-Tennis may return a blank ``event_status`` for prematch fixtures and its
+fixture payload does not consistently include court surface. This module keeps
+both compatibility fixes narrowly scoped and fail-closed:
+
+* only safely identified future non-live fixtures get ``Not Started`` status;
+* missing surface is filled from existing API-Tennis tournament metadata in our
+  database or, when absent, one ``get_draw`` request per tournament/season.
+
+No model thresholds or betting policy are changed here.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, time
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 import psycopg
 
@@ -20,10 +22,19 @@ from sports_edge_tennis.data.sources.api_tennis_live import (
     ApiTennisIngestOutcome,
     ingest_api_tennis_source_a_fixtures,
 )
+from sports_edge_tennis.live.credentials import load_secret
+from sports_edge_tennis.live.transport import TransportError, fetch_api_tennis_draw
 
 
 _BLANK_FINAL_RESULTS = {"", "-"}
 _NON_LIVE_VALUES = {"0", "false", "no"}
+_SUPPORTED_SURFACES = {
+    "hard": "Hard",
+    "clay": "Clay",
+    "grass": "Grass",
+    "carpet": "Carpet",
+}
+FetchDraw = Callable[[str, str, int], tuple[datetime, dict[str, Any]]]
 
 
 def _text(value: Any) -> str:
@@ -88,14 +99,138 @@ def normalize_api_tennis_upcoming_status(
     return normalized
 
 
+def _normalize_surface(value: Any) -> str | None:
+    return _SUPPORTED_SURFACES.get(_text(value).lower())
+
+
+def _fixture_season(fixture: Mapping[str, Any]) -> int | None:
+    explicit = _text(fixture.get("tournament_season"))
+    if explicit:
+        try:
+            return int(explicit)
+        except ValueError:
+            pass
+    event_date = _text(fixture.get("event_date"))
+    if not event_date:
+        return None
+    try:
+        return date.fromisoformat(event_date).year
+    except ValueError:
+        return None
+
+
+def _stored_api_tennis_surface(
+    conn: psycopg.Connection,
+    *,
+    tournament_key: str,
+    season_year: int,
+) -> str | None:
+    rows = conn.execute(
+        """
+        SELECT DISTINCT te.surface::text
+        FROM tournament_source_ids tsi
+        JOIN tournament_editions te ON te.tournament_id = tsi.tournament_id
+        WHERE tsi.source_system = 'API_TENNIS'
+          AND tsi.source_tournament_id = %s
+          AND te.season_year = %s
+          AND te.surface IS NOT NULL
+        ORDER BY te.surface::text
+        """,
+        (tournament_key, season_year),
+    ).fetchall()
+    surfaces = {_normalize_surface(row[0]) for row in rows}
+    surfaces.discard(None)
+    if len(surfaces) != 1:
+        return None
+    return next(iter(surfaces))
+
+
+def _draw_surface(payload: Mapping[str, Any]) -> str | None:
+    tournament = payload.get("tournament")
+    if not isinstance(tournament, Mapping):
+        return None
+    return _normalize_surface(tournament.get("tournament_surface"))
+
+
+def enrich_api_tennis_fixture_surfaces(
+    conn: psycopg.Connection,
+    fixtures: Iterable[Mapping[str, Any]],
+    *,
+    api_key: str | None,
+    fetch_draw: FetchDraw = fetch_api_tennis_draw,
+) -> list[dict[str, Any]]:
+    """Fill missing fixture surface from stored truth or one draw call per tournament.
+
+    Surface is tournament-level metadata. We preserve any valid surface already supplied
+    by the fixture, query our stored API-Tennis tournament identity first, then use the
+    provider's draw endpoint only for unresolved tournament/season pairs. Unsupported,
+    missing, conflicting, or failed values remain missing so downstream agents fail closed.
+    """
+    rows = [dict(fixture) for fixture in fixtures]
+    cache: dict[tuple[str, int], tuple[str | None, str]] = {}
+
+    for row in rows:
+        existing = _normalize_surface(row.get("surface") or row.get("event_surface"))
+        if existing is not None:
+            continue
+
+        tournament_key = _text(row.get("tournament_key"))
+        season_year = _fixture_season(row)
+        if not tournament_key or season_year is None:
+            continue
+        cache_key = (tournament_key, season_year)
+
+        if cache_key not in cache:
+            stored = _stored_api_tennis_surface(
+                conn,
+                tournament_key=tournament_key,
+                season_year=season_year,
+            )
+            if stored is not None:
+                cache[cache_key] = (stored, "DB")
+            elif api_key:
+                try:
+                    _received_at, payload = fetch_draw(api_key, tournament_key, season_year)
+                    cache[cache_key] = (_draw_surface(payload), "DRAW")
+                except TransportError as exc:
+                    print(
+                        "API_TENNIS_SURFACE_UNAVAILABLE "
+                        f"tournament_key={tournament_key} season={season_year} kind={exc.kind}",
+                        flush=True,
+                    )
+                    cache[cache_key] = (None, "DRAW_FAILED")
+            else:
+                cache[cache_key] = (None, "NO_API_KEY")
+
+            surface, source = cache[cache_key]
+            if surface is not None:
+                print(
+                    "API_TENNIS_SURFACE "
+                    f"tournament_key={tournament_key} season={season_year} "
+                    f"surface={surface.upper()} source={source}",
+                    flush=True,
+                )
+
+        surface, _source = cache[cache_key]
+        if surface is not None:
+            row["surface"] = surface
+
+    return rows
+
+
 def ingest_api_tennis_source_a_fixtures_with_upcoming_status(
     conn: psycopg.Connection,
     fixtures: list[dict[str, Any]],
     received_at: datetime,
 ) -> ApiTennisIngestOutcome:
     normalized = normalize_api_tennis_upcoming_status(fixtures, received_at=received_at)
-    return ingest_api_tennis_source_a_fixtures(
+    enriched = enrich_api_tennis_fixture_surfaces(
         conn,
         normalized,
+        api_key=load_secret("API_TENNIS_API_KEY"),
+    )
+    return ingest_api_tennis_source_a_fixtures(
+        conn,
+        enriched,
         received_at=received_at,
     )
