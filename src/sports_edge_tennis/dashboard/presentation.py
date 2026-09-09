@@ -11,7 +11,7 @@ from decimal import Decimal
 
 STATE_LABELS = {
     "MODEL_CONSENSUS": "Consensus",
-    "NO_BET_MODEL": "No Bet · Model Filter",
+    "NO_BET_MODEL": "No Bet — Model Filter",
     "SHARP_AVAILABLE": "Pinnacle Available",
     "SHARP_UNAVAILABLE": "Pinnacle Unavailable",
     "RECONCILIATION_FAILED": "Price Match Unavailable",
