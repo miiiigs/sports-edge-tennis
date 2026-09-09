@@ -81,6 +81,50 @@ def fetch_api_tennis_fixtures(
     return received_at, result
 
 
+def fetch_api_tennis_draw(
+    api_key: str,
+    tournament_key: str,
+    tournament_season: int,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    base_url: str = API_TENNIS_BASE_URL,
+    clock: callable | None = None,
+) -> tuple[datetime, dict[str, Any]]:
+    """Fetch one tournament draw for authoritative tournament surface metadata."""
+    clock = clock or _utc_now
+    params = {
+        "method": "get_draw",
+        "APIkey": api_key,
+        "tournament_key": str(tournament_key),
+        "tournament_season": str(tournament_season),
+        "include_qualification": "1",
+    }
+    try:
+        resp = requests.get(base_url, params=params, timeout=timeout)
+    except requests.exceptions.Timeout as exc:
+        raise TransportError("TIMEOUT", "api-tennis draw request timed out") from exc
+    except requests.exceptions.RequestException as exc:
+        raise TransportError("NETWORK", "api-tennis draw request failed") from exc
+
+    received_at = clock()
+    if resp.status_code != 200:
+        raise TransportError(f"HTTP_{resp.status_code}", "api-tennis draw non-200 response")
+
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise TransportError("PARSE", "api-tennis draw response was not valid JSON") from exc
+
+    if not isinstance(data, dict) or data.get("success") != 1:
+        raise TransportError("PROVIDER_ERROR", "api-tennis draw provider reported failure")
+
+    result = data.get("result")
+    if not isinstance(result, dict):
+        raise TransportError("PARSE", "api-tennis draw response missing result object")
+
+    return received_at, result
+
+
 def fetch_api_tennis_odds(
     api_key: str,
     start_date: date,
