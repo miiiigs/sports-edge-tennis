@@ -7,6 +7,7 @@ import pytest
 import sports_edge_tennis.live.transport as transport
 from sports_edge_tennis.live.transport import (
     TransportError,
+    fetch_api_tennis_draw,
     fetch_api_tennis_fixtures,
     fetch_pinnapi_board,
 )
@@ -66,6 +67,42 @@ def test_api_tennis_returns_received_at_and_fixtures(fake_get):
     received_at, fixtures = fetch_api_tennis_fixtures("KEY123", SLATE, clock=lambda: CLOCK)
     assert received_at == CLOCK
     assert fixtures == FIXTURES
+
+
+def test_api_tennis_draw_request_and_surface_payload(fake_get):
+    payload = {
+        "tournament": {
+            "tournament_key": "1214",
+            "tournament_surface": "Hard",
+            "tournament_season": "2026",
+        }
+    }
+    fake_get.response = FakeResponse(json_data={"success": 1, "result": payload})
+    received_at, result = fetch_api_tennis_draw(
+        "KEY123",
+        "1214",
+        2026,
+        clock=lambda: CLOCK,
+    )
+    url, kwargs = fake_get.calls[0]
+    assert url.endswith("/tennis/")
+    assert kwargs["params"] == {
+        "method": "get_draw",
+        "APIkey": "KEY123",
+        "tournament_key": "1214",
+        "tournament_season": "2026",
+        "include_qualification": "1",
+    }
+    assert received_at == CLOCK
+    assert result["tournament"]["tournament_surface"] == "Hard"
+
+
+def test_api_tennis_draw_failure_never_leaks_key(fake_get):
+    fake_get.response = FakeResponse(status_code=403)
+    with pytest.raises(TransportError) as exc_info:
+        fetch_api_tennis_draw("SECRETKEY", "1214", 2026)
+    assert exc_info.value.kind == "HTTP_403"
+    assert "SECRETKEY" not in str(exc_info.value)
 
 
 def test_api_tennis_timeout(fake_get):
