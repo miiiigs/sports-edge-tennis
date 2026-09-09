@@ -4,5 +4,5 @@ buildCommand = "python -m pip install ."
 
 [deploy]
 startCommand = "python -m sports_edge_tennis.live.batch --days 3"
-cronSchedule = "55 */2 * * *"
+cronSchedule = "0 * * * *"
 restartPolicyType = "NEVER"
