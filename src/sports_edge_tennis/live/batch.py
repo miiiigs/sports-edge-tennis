@@ -256,6 +256,7 @@ def main(argv: list[str] | None = None) -> int:
                         board_observation_id=board_observation_id,
                         candidate_match_ids=candidate_match_ids,
                         as_of=board_received_at,
+                        log=_log,
                     )
                     market_as_of = max(market_as_of, board_received_at)
                     _log(

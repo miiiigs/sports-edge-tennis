@@ -211,6 +211,72 @@ def test_reversed_home_away_resolves_and_orients_home_player_2(db: psycopg.Conne
     assert result.match.away_selection_side == "PLAYER_1"
 
 
+def test_observed_pinnacle_initial_format_resolves_without_fuzzy_matching(db: psycopg.Connection):
+    candidate = _insert_candidate(
+        db,
+        player_1_name="Mark Lajal",
+        player_2_name="Felix Balshaw",
+        tournament_name="ATP Challenger Mallorca",
+        match_start_at=_utc(21, 14, 30),
+    )
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(
+            home_name="Mark Lajal",
+            away_name="F. Balshaw",
+            league_name="ATP Challenger Mallorca - SF",
+            scheduled_start=_utc(21, 14, 30),
+        ),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "RESOLVED"
+    assert result.match is not None
+    assert result.match.home_canonical_player_id == candidate["player_1_id"]
+    assert result.match.away_canonical_player_id == candidate["player_2_id"]
+
+
+def test_ambiguous_observed_initial_format_fails_closed(db: psycopg.Connection):
+    first = _insert_candidate(
+        db,
+        player_1_name="Mark Lajal",
+        player_2_name="Felix Balshaw",
+        player_1_source_id="api-p1",
+        player_2_source_id="api-p2",
+        tournament_source_id="api-t1",
+        tournament_name="ATP Challenger Mallorca",
+        match_start_at=_utc(21, 14, 30),
+    )
+    second = _insert_candidate(
+        db,
+        player_1_name="Mark Lajal",
+        player_2_name="Fabio Balshaw",
+        player_1_source_id="api-p3",
+        player_2_source_id="api-p4",
+        tournament_source_id="api-t2",
+        tournament_name="ATP Challenger Mallorca",
+        match_start_at=_utc(21, 14, 30),
+    )
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(
+            home_name="Mark Lajal",
+            away_name="F. Balshaw",
+            league_name="ATP Challenger Mallorca - SF",
+            scheduled_start=_utc(21, 14, 30),
+        ),
+        candidate_match_ids=[first["match_id"], second["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "IDENTITY_CONFLICT"
+    assert set(result.candidate_match_ids) == {first["match_id"], second["match_id"]}
+    assert _count_pinnapi_mappings(db) == 0
+
+
 @pytest.mark.parametrize("minute_delta", (30, -30))
 def test_thirty_minute_boundary_may_resolve(db: psycopg.Connection, minute_delta: int):
     candidate = _insert_candidate(db)

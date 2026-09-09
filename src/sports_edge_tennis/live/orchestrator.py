@@ -281,6 +281,8 @@ def _process_event(
         return {
             "event_id": event.provider_event_id,
             "reconciliation_status": result.status,
+            "reconciliation_reason": result.reason,
+            "candidate_match_ids": result.candidate_match_ids,
             "match_id": None,
             "normalized": False,
         }
@@ -295,6 +297,8 @@ def _process_event(
     return {
         "event_id": event.provider_event_id,
         "reconciliation_status": "RESOLVED",
+        "reconciliation_reason": result.reason,
+        "candidate_match_ids": result.candidate_match_ids,
         "match_id": orientation.match_id,
         "normalized": True,
     }
