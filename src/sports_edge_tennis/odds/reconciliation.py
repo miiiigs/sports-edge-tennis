@@ -14,6 +14,7 @@ from .persistence import load_pit_match_version
 
 PINNAPI_SOURCE_SYSTEM = "PINNAPI"
 MAX_FIRST_MAPPING_START_DELTA = timedelta(minutes=30)
+MAX_UNIQUE_PARTICIPANT_START_DELTA = timedelta(hours=12)
 
 ReconciliationStatus = Literal["RESOLVED", "UNMATCHED", "IDENTITY_CONFLICT"]
 CanonicalSide = Literal["PLAYER_1", "PLAYER_2"]
@@ -125,29 +126,86 @@ def reconcile_pinnapi_event(
             )
         return PinnapiReconciliationResult(status="RESOLVED", match=orientation)
 
-    matched: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
+    strict_matches: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
+    fallback_matches: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
+    participant_match_count = 0
+    tour_compatible_count = 0
+
     for candidate in candidates.values():
         orientation = _orient_candidate(candidate, evidence)
         if orientation is None:
             continue
-        if not _start_within_first_mapping_tolerance(candidate.match.match_start_at, evidence):
-            continue
-        if not _tournament_compatible(candidate, evidence):
-            continue
-        matched.append((candidate, orientation))
+        participant_match_count += 1
 
-    if not matched:
-        return PinnapiReconciliationResult(status="UNMATCHED")
-    if len(matched) > 1:
+        if not _tour_scope_compatible(candidate, evidence):
+            continue
+        tour_compatible_count += 1
+
+        tournament_compatible = _tournament_compatible(candidate, evidence)
+        if (
+            tournament_compatible
+            and _start_within_first_mapping_tolerance(candidate.match.match_start_at, evidence)
+        ):
+            strict_matches.append((candidate, orientation))
+            continue
+
+        # Provider tournament labels commonly carry prefixes / round suffixes that
+        # are not canonical tournament identity. Only in that naming-mismatch case
+        # may an exact, unique participant pair use the wider Tennis schedule window.
+        if (
+            not tournament_compatible
+            and _start_within_unique_participant_tolerance(
+                candidate.match.match_start_at,
+                evidence,
+            )
+        ):
+            fallback_matches.append((candidate, orientation))
+
+    if len(strict_matches) > 1:
         return PinnapiReconciliationResult(
             status="IDENTITY_CONFLICT",
             reason="multiple_candidate_matches",
-            candidate_match_ids=tuple(candidate.match.match_id for candidate, _orientation in matched),
+            candidate_match_ids=tuple(
+                candidate.match.match_id for candidate, _orientation in strict_matches
+            ),
+        )
+    if len(strict_matches) == 1:
+        candidate, orientation = strict_matches[0]
+        _persist_pinnapi_mapping(
+            conn,
+            provider_event_id=evidence.provider_event_id_text,
+            candidate=candidate,
+        )
+        return PinnapiReconciliationResult(status="RESOLVED", match=orientation)
+
+    if len(fallback_matches) > 1:
+        return PinnapiReconciliationResult(
+            status="IDENTITY_CONFLICT",
+            reason="multiple_unique_participant_fallback_candidates",
+            candidate_match_ids=tuple(
+                candidate.match.match_id for candidate, _orientation in fallback_matches
+            ),
+        )
+    if len(fallback_matches) == 1:
+        candidate, orientation = fallback_matches[0]
+        _persist_pinnapi_mapping(
+            conn,
+            provider_event_id=evidence.provider_event_id_text,
+            candidate=candidate,
+        )
+        return PinnapiReconciliationResult(
+            status="RESOLVED",
+            match=orientation,
+            reason="unique_participant_tournament_fallback",
         )
 
-    candidate, orientation = matched[0]
-    _persist_pinnapi_mapping(conn, provider_event_id=evidence.provider_event_id_text, candidate=candidate)
-    return PinnapiReconciliationResult(status="RESOLVED", match=orientation)
+    if participant_match_count == 0:
+        reason = "participant_mismatch"
+    elif tour_compatible_count == 0:
+        reason = "tour_scope_conflict"
+    else:
+        reason = "start_or_tournament_mismatch"
+    return PinnapiReconciliationResult(status="UNMATCHED", reason=reason)
 
 
 def normalize_pinnapi_participant_name(value: str) -> str:
@@ -237,21 +295,55 @@ def _start_within_first_mapping_tolerance(
     canonical_start_at: datetime | None,
     evidence: PinnapiEventEvidence,
 ) -> bool:
+    return _start_within_tolerance(
+        canonical_start_at,
+        evidence,
+        MAX_FIRST_MAPPING_START_DELTA,
+    )
+
+
+def _start_within_unique_participant_tolerance(
+    canonical_start_at: datetime | None,
+    evidence: PinnapiEventEvidence,
+) -> bool:
+    return _start_within_tolerance(
+        canonical_start_at,
+        evidence,
+        MAX_UNIQUE_PARTICIPANT_START_DELTA,
+    )
+
+
+def _start_within_tolerance(
+    canonical_start_at: datetime | None,
+    evidence: PinnapiEventEvidence,
+    tolerance: timedelta,
+) -> bool:
     if canonical_start_at is None:
         return False
     delta = abs(canonical_start_at.astimezone(timezone.utc) - evidence.scheduled_start_utc)
-    return delta <= MAX_FIRST_MAPPING_START_DELTA
+    return delta <= tolerance
 
 
-def _tournament_compatible(candidate: _Candidate, evidence: PinnapiEventEvidence) -> bool:
+def _tour_scope_compatible(candidate: _Candidate, evidence: PinnapiEventEvidence) -> bool:
     league_name = normalize_pinnapi_participant_name(evidence.league_name or "")
     if "challenger" in league_name and candidate.match.tour_scope != "CHALLENGER":
         return False
     if "challenger" not in league_name and candidate.match.tour_scope == "CHALLENGER":
         return "challenger" in normalize_pinnapi_participant_name(candidate.tournament_name)
+    return True
+
+
+def _tournament_compatible(candidate: _Candidate, evidence: PinnapiEventEvidence) -> bool:
+    if not _tour_scope_compatible(candidate, evidence):
+        return False
+    league_name = normalize_pinnapi_participant_name(evidence.league_name or "")
     if league_name:
         tournament_name = normalize_pinnapi_participant_name(candidate.tournament_name)
-        if league_name != tournament_name and league_name not in tournament_name and tournament_name not in league_name:
+        if (
+            league_name != tournament_name
+            and league_name not in tournament_name
+            and tournament_name not in league_name
+        ):
             return False
     return True
 
