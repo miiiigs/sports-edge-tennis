@@ -1,10 +1,10 @@
 """Scheduled multi-day Live MVP runner for Railway cron.
 
-Runs a bounded UTC slate horizon with no retries or polling. Each slate date
-uses the existing single-run orchestrator. API-Tennis fixtures are fetched once
-per slate date, PINNAPI is allowed at most one board request across the entire
-multi-day batch cycle, and API-Tennis pre-match odds are fetched at most once
-for the whole bounded horizon when Manager consensus exists.
+Runs a bounded UTC slate horizon with no retries or polling. API-Tennis fixtures
+are fetched once per slate date. PINNAPI is fetched at most once for the entire
+batch and the same board is reconciled across the full model slate so both
+Manager/Type A and independent Type B price-dispersion signals can use sharp
+reference truth. API-Tennis pre-match odds are fetched at most once per batch.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import os
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import psycopg
 
@@ -24,12 +25,19 @@ from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import LiveMvpError, run_live_mvp
-from sports_edge_tennis.live.transport import TransportError, fetch_api_tennis_odds
+from sports_edge_tennis.live.sharp_slate import normalize_pinnapi_board_for_matches
+from sports_edge_tennis.live.transport import (
+    TransportError,
+    fetch_api_tennis_odds,
+    fetch_pinnapi_board,
+)
 from sports_edge_tennis.market import (
     SharpReferenceSpec,
     ensure_market_policy_version_v1,
     evaluate_and_persist_market_slate,
 )
+from sports_edge_tennis.market.type_b import scan_type_b_value_signals
+from sports_edge_tennis.odds.providers.pinnapi import new_pinnapi_board_observation_id
 
 
 _SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
@@ -59,6 +67,25 @@ def _load_consensus_match_ids(
         FROM manager_consensus_results
         WHERE prediction_run_id = ANY(%s)
           AND manager_status = 'CONSENSUS'
+        ORDER BY match_id
+        """,
+        (list(prediction_run_ids),),
+    ).fetchall()
+    return tuple(row[0] for row in rows)
+
+
+def _load_market_candidate_match_ids(
+    conn: psycopg.Connection,
+    prediction_run_ids: tuple[int, ...],
+) -> tuple[int, ...]:
+    """Return every match evaluated by Manager, independent of consensus status."""
+    if not prediction_run_ids:
+        return ()
+    rows = conn.execute(
+        """
+        SELECT DISTINCT match_id
+        FROM manager_consensus_results
+        WHERE prediction_run_id = ANY(%s)
         ORDER BY match_id
         """,
         (list(prediction_run_ids),),
@@ -139,8 +166,19 @@ def main(argv: list[str] | None = None) -> int:
         "offered_requests": 0,
         "offered_quotes": 0,
         "bets": 0,
+        "type_b_value_signals": 0,
     }
     prediction_run_ids: list[int] = []
+
+    board_observation_id = new_pinnapi_board_observation_id()
+    board_cache: dict[str, Any] = {}
+
+    def fetch_board_once(key: str) -> tuple[datetime, dict[str, Any]]:
+        if not board_cache:
+            received_at, payload = fetch_pinnapi_board(key)
+            board_cache["received_at"] = received_at
+            board_cache["payload"] = payload
+        return board_cache["received_at"], board_cache["payload"]
 
     try:
         _log("LIVE_BATCH_DB_CONNECT")
@@ -152,11 +190,6 @@ def main(argv: list[str] | None = None) -> int:
 
             for offset in range(args.days):
                 slate_date = args.start_date + timedelta(days=offset)
-                # The PINNAPI endpoint is a full prematch board. Until one board
-                # payload can be reused across all slate-date reconciliation in
-                # this batch, permit it only while this cycle has consumed zero
-                # board requests. This preserves the production contract of at
-                # most one sharp board request per retrieval cycle.
                 slate_pinnapi_key = (
                     pinnapi_key if totals["pinnapi_requests"] == 0 else None
                 )
@@ -170,6 +203,8 @@ def main(argv: list[str] | None = None) -> int:
                     slate_date=slate_date,
                     api_tennis_key=api_tennis_key,
                     pinnapi_key=slate_pinnapi_key,
+                    fetch_board=fetch_board_once,
+                    board_observation_id_factory=lambda: board_observation_id,
                     ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
                     artifacts_dir=Path(args.artifacts_dir),
                 )
@@ -200,38 +235,66 @@ def main(argv: list[str] | None = None) -> int:
                     f"pinnapi_requests={result.pinnapi_requests}"
                 )
 
-            if totals["consensus"] > 0 and prediction_run_ids:
-                consensus_match_ids = _load_consensus_match_ids(
-                    conn, tuple(prediction_run_ids)
-                )
-                market_as_of = datetime.now(timezone.utc)
-                if consensus_match_ids:
-                    try:
-                        odds_received_at, odds_result = fetch_api_tennis_odds(
-                            api_tennis_key,
-                            args.start_date,
-                            args.start_date + timedelta(days=args.days - 1),
-                        )
-                        totals["offered_requests"] = 1
-                        offered = ingest_api_tennis_offered_odds(
-                            conn,
-                            odds_result=odds_result,
-                            received_at=odds_received_at,
-                            candidate_match_ids=consensus_match_ids,
-                        )
-                        totals["offered_quotes"] = offered.normalized_quotes
-                        market_as_of = max(market_as_of, odds_received_at)
-                        _log(
-                            "OFFERED_ODDS "
-                            f"candidates={offered.candidate_matches} "
-                            f"events={offered.events_with_odds} "
-                            f"quotes={offered.normalized_quotes} "
-                            f"missing={offered.missing_events} "
-                            f"bookmakers={offered.bookmaker_count}"
-                        )
-                    except TransportError as exc:
-                        _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+            candidate_match_ids = _load_market_candidate_match_ids(
+                conn, tuple(prediction_run_ids)
+            )
+            market_as_of = datetime.now(timezone.utc)
 
+            if candidate_match_ids and pinnapi_key:
+                if not board_cache:
+                    try:
+                        fetch_board_once(pinnapi_key)
+                        totals["pinnapi_requests"] = 1
+                    except TransportError as exc:
+                        _log(f"SHARP_SLATE_UNAVAILABLE kind={exc.kind}")
+                if board_cache:
+                    board_received_at = board_cache["received_at"]
+                    sharp = normalize_pinnapi_board_for_matches(
+                        conn,
+                        board_payload=board_cache["payload"],
+                        received_at=board_received_at,
+                        board_observation_id=board_observation_id,
+                        candidate_match_ids=candidate_match_ids,
+                        as_of=board_received_at,
+                    )
+                    market_as_of = max(market_as_of, board_received_at)
+                    _log(
+                        "SHARP_SLATE "
+                        f"candidates={sharp.candidate_matches} "
+                        f"board_events={sharp.board_events} "
+                        f"resolved={sharp.resolved_events} "
+                        f"normalized={sharp.normalized_events} "
+                        f"rejected={sharp.rejected_events}"
+                    )
+
+            if candidate_match_ids:
+                try:
+                    odds_received_at, odds_result = fetch_api_tennis_odds(
+                        api_tennis_key,
+                        args.start_date,
+                        args.start_date + timedelta(days=args.days - 1),
+                    )
+                    totals["offered_requests"] = 1
+                    offered = ingest_api_tennis_offered_odds(
+                        conn,
+                        odds_result=odds_result,
+                        received_at=odds_received_at,
+                        candidate_match_ids=candidate_match_ids,
+                    )
+                    totals["offered_quotes"] = offered.normalized_quotes
+                    market_as_of = max(market_as_of, odds_received_at)
+                    _log(
+                        "OFFERED_ODDS "
+                        f"candidates={offered.candidate_matches} "
+                        f"events={offered.events_with_odds} "
+                        f"quotes={offered.normalized_quotes} "
+                        f"missing={offered.missing_events} "
+                        f"bookmakers={offered.bookmaker_count}"
+                    )
+                except TransportError as exc:
+                    _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+
+            if prediction_run_ids:
                 policy = ensure_market_policy_version_v1(conn)
                 market_execution_now = datetime.now(timezone.utc)
                 market_as_of = max(market_as_of, market_execution_now)
@@ -264,6 +327,32 @@ def main(argv: list[str] | None = None) -> int:
                                 for signal, status, reason, count in market_reason_counts
                             )
                         )
+
+                type_b_signals = scan_type_b_value_signals(
+                    conn,
+                    match_ids=candidate_match_ids,
+                    policy=policy,
+                    decision_as_of=market_as_of,
+                    sharp_reference=_SHARP,
+                )
+                totals["type_b_value_signals"] = len(type_b_signals)
+                for signal in type_b_signals:
+                    _log(
+                        "TYPE_B_VALUE "
+                        f"match_id={signal.match_id} "
+                        f"side={signal.selection_side} "
+                        f"bookmaker={signal.bookmaker_code} "
+                        f"price={signal.offered_price} "
+                        f"sharp_fair_odds={signal.sharp_fair_odds} "
+                        f"edge={signal.edge_pct} "
+                        f"threshold={signal.threshold} "
+                        f"min_price={signal.min_acceptable_odds}"
+                    )
+                _log(
+                    "TYPE_B_VALUE_SUMMARY "
+                    f"candidates={len(candidate_match_ids)} "
+                    f"signals={len(type_b_signals)}"
+                )
     except LiveMvpError as exc:
         _log(f"{exc.result_code}: {exc}")
         return 2
