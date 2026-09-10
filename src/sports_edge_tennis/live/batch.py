@@ -41,6 +41,10 @@ from sports_edge_tennis.market import (
     evaluate_and_persist_market_slate,
 )
 from sports_edge_tennis.market.type_b import scan_type_b_value_signals
+from sports_edge_tennis.market.type_b_persistence import (
+    consecutive_zero_signal_days,
+    persist_type_b_scan,
+)
 from sports_edge_tennis.odds.providers.pinnapi import new_pinnapi_board_observation_id
 
 
@@ -373,6 +377,35 @@ def main(argv: list[str] | None = None) -> int:
                     f"candidates={len(candidate_match_ids)} "
                     f"signals={len(type_b_signals)}"
                 )
+
+                ledger = persist_type_b_scan(
+                    conn,
+                    signals=type_b_signals,
+                    candidate_match_ids=candidate_match_ids,
+                    market_policy_version_id=policy.market_policy_version_id,
+                    horizon_start=args.start_date,
+                    horizon_end=args.start_date + timedelta(days=args.days - 1),
+                    decision_as_of=market_as_of,
+                    sharp_reference=_SHARP,
+                )
+                _log(
+                    "TYPE_B_LEDGER "
+                    f"scan_run_id={ledger.scan_run_id} "
+                    f"inserted={ledger.inserted_signal_count} "
+                    f"persisted={ledger.persisted_signal_count}"
+                )
+
+                zero_days = consecutive_zero_signal_days(
+                    conn,
+                    through_day=market_as_of.date(),
+                    required_days=7,
+                )
+                if zero_days >= 7:
+                    _log(
+                        "VOLUME_ALERT "
+                        "signal=TYPE_B_PRICE_DISPERSION "
+                        f"consecutive_zero_days={zero_days}"
+                    )
     except LiveMvpError as exc:
         _log(f"{exc.result_code}: {exc}")
         return 2
