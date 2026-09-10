@@ -2,9 +2,9 @@
 
 Runs a bounded UTC slate horizon with no retries or polling. API-Tennis fixtures
 are fetched once per slate date. PINNAPI is fetched at most once for the entire
-batch and the same board is reconciled across the full model slate so both
-Manager/Type A and independent Type B price-dispersion signals can use sharp
-reference truth. API-Tennis pre-match odds are fetched at most once per batch.
+batch. Type A remains Manager/model dependent; Type B price dispersion scans the
+whole canonical in-scope scheduled fixture slate independently of model targets.
+API-Tennis pre-match odds are fetched at most once per batch.
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ from sports_edge_tennis.live.orchestrator import (
     LivePilotApiTennisFailed,
     run_live_mvp,
 )
+from sports_edge_tennis.live.price_slate import load_price_scanner_candidate_match_ids
 from sports_edge_tennis.live.sharp_slate import normalize_pinnapi_board_for_matches
 from sports_edge_tennis.live.transport import (
     TransportError,
@@ -63,44 +64,6 @@ def _log(message: str) -> None:
     print(message, flush=True)
 
 
-def _load_consensus_match_ids(
-    conn: psycopg.Connection,
-    prediction_run_ids: tuple[int, ...],
-) -> tuple[int, ...]:
-    if not prediction_run_ids:
-        return ()
-    rows = conn.execute(
-        """
-        SELECT DISTINCT match_id
-        FROM manager_consensus_results
-        WHERE prediction_run_id = ANY(%s)
-          AND manager_status = 'CONSENSUS'
-        ORDER BY match_id
-        """,
-        (list(prediction_run_ids),),
-    ).fetchall()
-    return tuple(row[0] for row in rows)
-
-
-def _load_market_candidate_match_ids(
-    conn: psycopg.Connection,
-    prediction_run_ids: tuple[int, ...],
-) -> tuple[int, ...]:
-    """Return every match evaluated by Manager, independent of consensus status."""
-    if not prediction_run_ids:
-        return ()
-    rows = conn.execute(
-        """
-        SELECT DISTINCT match_id
-        FROM manager_consensus_results
-        WHERE prediction_run_id = ANY(%s)
-        ORDER BY match_id
-        """,
-        (list(prediction_run_ids),),
-    ).fetchall()
-    return tuple(row[0] for row in rows)
-
-
 def _load_manager_reason_counts(
     conn: psycopg.Connection,
     prediction_run_id: int,
@@ -123,7 +86,7 @@ def _load_market_reason_counts(
     conn: psycopg.Connection,
     prediction_run_id: int,
 ) -> tuple[tuple[str, str, str, int], ...]:
-    """Return compact persisted Market outcome counts for production diagnostics."""
+    """Return compact persisted Type A Market outcome counts for diagnostics."""
     rows = conn.execute(
         """
         SELECT signal_type::text, decision_status::text, reason_code::text, count(*)
@@ -171,6 +134,7 @@ def main(argv: list[str] | None = None) -> int:
         "fixtures": 0,
         "targets": 0,
         "consensus": 0,
+        "price_candidates": 0,
         "pinnapi_requests": 0,
         "offered_requests": 0,
         "offered_quotes": 0,
@@ -258,10 +222,19 @@ def main(argv: list[str] | None = None) -> int:
                 _log("LIVE_BATCH_FAILED_NO_SUCCESSFUL_SLATES")
                 return 2
 
-            candidate_match_ids = _load_market_candidate_match_ids(
-                conn, tuple(prediction_run_ids)
-            )
             market_as_of = datetime.now(timezone.utc)
+            candidate_match_ids = load_price_scanner_candidate_match_ids(
+                conn,
+                horizon_start=args.start_date,
+                horizon_days=args.days,
+                as_of=market_as_of,
+            )
+            totals["price_candidates"] = len(candidate_match_ids)
+            _log(
+                "PRICE_SLATE "
+                f"candidates={len(candidate_match_ids)} "
+                f"model_targets={totals['targets']}"
+            )
 
             if candidate_match_ids and pinnapi_key:
                 if not board_cache:
@@ -318,10 +291,12 @@ def main(argv: list[str] | None = None) -> int:
                 except TransportError as exc:
                     _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
 
-            if prediction_run_ids:
+            policy = None
+            if prediction_run_ids or candidate_match_ids:
                 policy = ensure_market_policy_version_v1(conn)
-                market_execution_now = datetime.now(timezone.utc)
-                market_as_of = max(market_as_of, market_execution_now)
+                market_as_of = max(market_as_of, datetime.now(timezone.utc))
+
+            if prediction_run_ids and policy is not None:
                 for prediction_run_id in prediction_run_ids:
                     outcome = evaluate_and_persist_market_slate(
                         conn,
@@ -352,6 +327,7 @@ def main(argv: list[str] | None = None) -> int:
                             )
                         )
 
+            if candidate_match_ids and policy is not None:
                 type_b_signals = scan_type_b_value_signals(
                     conn,
                     match_ids=candidate_match_ids,
