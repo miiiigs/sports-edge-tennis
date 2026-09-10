@@ -44,8 +44,12 @@ CANONICAL_ROLE_ORDER: tuple[SnapshotRole, ...] = (
     "OFFERED_SELECTION",
 )
 
+# API-Tennis can identify an in-scope men's ATP singles event without exposing
+# the exact 250/500/1000 subclass. The ingestion/data/odds layers represent that
+# safely as ATP_TOUR. All ATP main tiers share the same locked 5% base market
+# threshold, so ATP_TOUR belongs to the supported ATP threshold family as well.
 SUPPORTED_ATP_TIERS = frozenset(
-    {"ATP_250", "ATP_500", "MASTERS_1000", "GRAND_SLAM"}
+    {"ATP_TOUR", "ATP_250", "ATP_500", "MASTERS_1000", "GRAND_SLAM"}
 )
 
 SUPPORTED_TIERS = SUPPORTED_ATP_TIERS | {"CHALLENGER"}
