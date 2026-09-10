@@ -24,7 +24,11 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
 from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
-from sports_edge_tennis.live.orchestrator import LiveMvpError, run_live_mvp
+from sports_edge_tennis.live.orchestrator import (
+    LiveMvpError,
+    LivePilotApiTennisFailed,
+    run_live_mvp,
+)
 from sports_edge_tennis.live.sharp_slate import normalize_pinnapi_board_for_matches
 from sports_edge_tennis.live.transport import (
     TransportError,
@@ -159,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
     pinnapi_key = load_secret("PINNAPI_KEY")
     totals = {
         "slates": 0,
+        "failed_slates": 0,
         "fixtures": 0,
         "targets": 0,
         "consensus": 0,
@@ -198,16 +203,26 @@ def main(argv: list[str] | None = None) -> int:
                     f"date={slate_date.isoformat()} "
                     f"pinnapi_allowed={bool(slate_pinnapi_key)}"
                 )
-                result = run_live_mvp(
-                    conn,
-                    slate_date=slate_date,
-                    api_tennis_key=api_tennis_key,
-                    pinnapi_key=slate_pinnapi_key,
-                    fetch_board=fetch_board_once,
-                    board_observation_id_factory=lambda: board_observation_id,
-                    ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
-                    artifacts_dir=Path(args.artifacts_dir),
-                )
+                try:
+                    result = run_live_mvp(
+                        conn,
+                        slate_date=slate_date,
+                        api_tennis_key=api_tennis_key,
+                        pinnapi_key=slate_pinnapi_key,
+                        fetch_board=fetch_board_once,
+                        board_observation_id_factory=lambda: board_observation_id,
+                        ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
+                        artifacts_dir=Path(args.artifacts_dir),
+                    )
+                except LivePilotApiTennisFailed as exc:
+                    totals["failed_slates"] += 1
+                    _log(
+                        "SLATE_UNAVAILABLE "
+                        f"date={slate_date.isoformat()} "
+                        f"result_code={exc.result_code} error={exc}"
+                    )
+                    continue
+
                 totals["slates"] += 1
                 totals["fixtures"] += result.fixture_count
                 totals["targets"] += result.target_count
@@ -234,6 +249,10 @@ def main(argv: list[str] | None = None) -> int:
                     f"consensus={result.manager_consensus_count} "
                     f"pinnapi_requests={result.pinnapi_requests}"
                 )
+
+            if totals["slates"] == 0 and totals["failed_slates"]:
+                _log("LIVE_BATCH_FAILED_NO_SUCCESSFUL_SLATES")
+                return 2
 
             candidate_match_ids = _load_market_candidate_match_ids(
                 conn, tuple(prediction_run_ids)
