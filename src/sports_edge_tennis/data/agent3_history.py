@@ -21,6 +21,7 @@ from sports_edge_tennis.agents.agent3_intransitivity import (
     residual_for_match,
     summarize_player_bucket,
 )
+from sports_edge_tennis.data.model_identity import resolve_model_player_id
 
 
 @dataclass(frozen=True)
@@ -42,6 +43,21 @@ class Agent3HistoricalMatch:
     @property
     def visibility_cohort(self) -> datetime:
         return max(self.result_source_observed_at, self.result_as_of)
+
+    @property
+    def recency_anchor(self) -> datetime:
+        """Return match occurrence time for decay without weakening PIT visibility.
+
+        Backfilled results become usable only at ``visibility_cohort``. Once visible,
+        however, a January match must decay from January rather than from the September
+        date on which it was imported. Missing, naive, or impossible future start times
+        fail closed to the visibility timestamp.
+        """
+        start = self.match_start_at
+        visibility = self.visibility_cohort
+        if start is None or start.tzinfo is None or start > visibility:
+            return visibility
+        return start
 
 
 @dataclass(frozen=True)
@@ -100,14 +116,47 @@ def _history_sort_key(
 
 def _cohort_sort_key(
     observation: Agent3HistoricalMatch,
-) -> tuple[datetime, datetime, int, int, int]:
+) -> tuple[datetime, datetime, datetime, int, int, int]:
     return (
+        observation.recency_anchor,
         observation.result_as_of,
         observation.result_source_observed_at,
         observation.match_id,
         observation.player_1_id,
         observation.player_2_id,
     )
+
+
+def _resolve_history_player_ids(
+    conn: psycopg.Connection,
+    rows: list[tuple],
+    *,
+    cutoff: datetime,
+) -> dict[int, int]:
+    """Bridge only API-only rows, caching each player resolution once per load."""
+    player_ids = sorted({int(row[1]) for row in rows} | {int(row[2]) for row in rows})
+    if not player_ids:
+        return {}
+    historical_rows = conn.execute(
+        """
+        SELECT DISTINCT player_id
+        FROM player_source_ids
+        WHERE player_id = ANY(%s)
+          AND source_system <> 'API_TENNIS'
+        """,
+        (player_ids,),
+    ).fetchall()
+    historical_ids = {int(row[0]) for row in historical_rows}
+    mapping = {player_id: player_id for player_id in historical_ids}
+    for player_id in player_ids:
+        if player_id in mapping:
+            continue
+        mapping[player_id] = resolve_model_player_id(
+            conn,
+            player_id=player_id,
+            as_of=cutoff,
+        )
+    return mapping
 
 
 def load_agent3_history(
@@ -220,11 +269,12 @@ def load_agent3_history(
     """
 
     rows = conn.execute(query, params).fetchall()
+    model_player_ids = _resolve_history_player_ids(conn, rows, cutoff=cutoff)
     return [
         Agent3HistoricalMatch(
             match_id=int(row[0]),
-            player_1_id=int(row[1]),
-            player_2_id=int(row[2]),
+            player_1_id=model_player_ids.get(int(row[1]), int(row[1])),
+            player_2_id=model_player_ids.get(int(row[2]), int(row[2])),
             match_start_at=row[3],
             surface=row[4],
             tour_scope=row[5],
@@ -335,7 +385,8 @@ def prepare_historical_match_update(
 ) -> _PreparedMatchUpdate | None:
     if not historical_match_is_eligible_for_update(observation):
         return None
-    observed_at = observation.visibility_cohort
+    observed_at = observation.recency_anchor
+    baseline_as_of = observation.visibility_cohort
     canonical_pair = (
         (observation.player_1_id, observation.player_2_id)
         if observation.player_1_id < observation.player_2_id
@@ -354,14 +405,14 @@ def prepare_historical_match_update(
         snapshot,
         canonical_pair[0],
         surface=None,
-        as_of=observed_at,
+        as_of=baseline_as_of,
         config=config,
     ).baseline
     baseline_high_all = summarize_player_bucket(
         snapshot,
         canonical_pair[1],
         surface=None,
-        as_of=observed_at,
+        as_of=baseline_as_of,
         config=config,
     ).baseline
     all_residual = ResidualObservation(
@@ -382,14 +433,14 @@ def prepare_historical_match_update(
             snapshot,
             canonical_pair[0],
             surface=observation.surface,
-            as_of=observed_at,
+            as_of=baseline_as_of,
             config=config,
         ).baseline
         baseline_high_surface = summarize_player_bucket(
             snapshot,
             canonical_pair[1],
             surface=observation.surface,
-            as_of=observed_at,
+            as_of=baseline_as_of,
             config=config,
         ).baseline
         surface_player_1_outcome = (observation.surface, player_1_outcome)

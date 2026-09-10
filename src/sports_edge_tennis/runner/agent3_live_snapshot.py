@@ -78,8 +78,9 @@ def _history_sort_key(
 
 def _cohort_sort_key(
     observation: Agent3HistoricalMatch,
-) -> tuple[object, object, int, int, int]:
+) -> tuple[object, object, object, int, int, int]:
     return (
+        observation.recency_anchor,
         observation.result_as_of,
         observation.result_source_observed_at,
         observation.match_id,
@@ -170,7 +171,8 @@ def _prepare_live_historical_match_update(
     """
     if not historical_match_is_eligible_for_update(observation):
         return None
-    observed_at = observation.visibility_cohort
+    observed_at = observation.recency_anchor
+    baseline_as_of = observation.visibility_cohort
     canonical_pair = (
         (observation.player_1_id, observation.player_2_id)
         if observation.player_1_id < observation.player_2_id
@@ -189,7 +191,7 @@ def _prepare_live_historical_match_update(
         players,
         canonical_pair[0],
         surface=None,
-        as_of=observed_at,
+        as_of=baseline_as_of,
         config=config,
         weight_cache=weight_cache,
     )
@@ -197,7 +199,7 @@ def _prepare_live_historical_match_update(
         players,
         canonical_pair[1],
         surface=None,
-        as_of=observed_at,
+        as_of=baseline_as_of,
         config=config,
         weight_cache=weight_cache,
     )
@@ -219,7 +221,7 @@ def _prepare_live_historical_match_update(
             players,
             canonical_pair[0],
             surface=observation.surface,
-            as_of=observed_at,
+            as_of=baseline_as_of,
             config=config,
             weight_cache=weight_cache,
         )
@@ -227,7 +229,7 @@ def _prepare_live_historical_match_update(
             players,
             canonical_pair[1],
             surface=observation.surface,
-            as_of=observed_at,
+            as_of=baseline_as_of,
             config=config,
             weight_cache=weight_cache,
         )
