@@ -20,6 +20,14 @@ class _Connect:
         return _Conn()
 
 
+def _stub_price_slate(monkeypatch, candidate_ids=()):
+    monkeypatch.setattr(
+        batch,
+        "load_price_scanner_candidate_match_ids",
+        lambda conn, **kwargs: tuple(candidate_ids),
+    )
+
+
 def _stub_type_b_ledger(monkeypatch, *, zero_days: int = 0):
     monkeypatch.setattr(
         batch,
@@ -43,6 +51,7 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(batch, "load_secret", lambda name: "key" if name == "API_TENNIS_API_KEY" else None)
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    _stub_price_slate(monkeypatch)
 
     def fake_run(conn, *, slate_date, api_tennis_key, pinnapi_key, ingest_fixtures, artifacts_dir, **kwargs):
         assert ingest_fixtures is batch.ingest_api_tennis_source_a_fixtures_with_upcoming_status
@@ -71,6 +80,7 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "LIVE_BATCH_SUCCESS" in out
     assert "slates=3" in out
+    assert "price_candidates=0" in out
     assert "pinnapi_requests=0" in out
     assert "offered_requests=0" in out
     assert "bets=0" in out
@@ -87,6 +97,7 @@ def test_batch_caps_pinnapi_to_one_board_request_per_cycle(monkeypatch, tmp_path
     )
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    _stub_price_slate(monkeypatch)
 
     def fake_run(conn, *, slate_date, api_tennis_key, pinnapi_key, ingest_fixtures, artifacts_dir, **kwargs):
         seen_keys.append(pinnapi_key)
@@ -125,7 +136,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
     )
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
-    monkeypatch.setattr(batch, "_load_market_candidate_match_ids", lambda conn, run_ids: (101, 202))
+    _stub_price_slate(monkeypatch, (101, 202))
     monkeypatch.setattr(
         batch,
         "_load_manager_reason_counts",
@@ -220,6 +231,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
     assert rc == 0
     assert market_runs == [1, 2, 3]
     out = capsys.readouterr().out
+    assert "PRICE_SLATE candidates=2 model_targets=6" in out
     assert "SHARP_SLATE candidates=2" in out
     assert "MANAGER_REASONS" in out
     assert "CONSENSUS:NONE=1" in out
@@ -245,7 +257,7 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
     )
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
-    monkeypatch.setattr(batch, "_load_market_candidate_match_ids", lambda conn, run_ids: (101,))
+    _stub_price_slate(monkeypatch, (101,))
     monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda conn, run_id: (("NO_BET", "DIRECTIONAL_DISAGREEMENT", 1),))
     monkeypatch.setattr(batch, "_load_market_reason_counts", lambda conn, run_id: ())
 
@@ -326,9 +338,93 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
     assert external_board_calls == ["pinnapi-key"]
     out = capsys.readouterr().out
     assert "consensus=0" in out
+    assert "PRICE_SLATE candidates=1 model_targets=1" in out
     assert "SHARP_SLATE candidates=1" in out
     assert "TYPE_B_VALUE_SUMMARY candidates=1 signals=1" in out
     assert "TYPE_B_LEDGER scan_run_id=88 inserted=1 persisted=1" in out
+
+
+def test_type_b_runs_without_any_model_prediction_run(monkeypatch, tmp_path, capsys):
+    received_at = datetime(2026, 9, 9, 1, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: "api-key" if name == "API_TENNIS_API_KEY" else "pinnapi-key",
+    )
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    _stub_price_slate(monkeypatch, (101,))
+    monkeypatch.setattr(batch, "fetch_pinnapi_board", lambda key: (received_at, {"events": []}))
+    monkeypatch.setattr(
+        batch,
+        "normalize_pinnapi_board_for_matches",
+        lambda conn, **kwargs: SimpleNamespace(
+            candidate_matches=1,
+            board_events=1,
+            resolved_events=1,
+            normalized_events=1,
+            rejected_events=0,
+        ),
+    )
+    monkeypatch.setattr(batch, "fetch_api_tennis_odds", lambda *args: (received_at, {}))
+    monkeypatch.setattr(
+        batch,
+        "ingest_api_tennis_offered_odds",
+        lambda conn, **kwargs: SimpleNamespace(
+            candidate_matches=1,
+            events_with_odds=1,
+            normalized_quotes=4,
+            missing_events=0,
+            bookmaker_count=2,
+        ),
+    )
+    policy = SimpleNamespace(market_policy_version_id=77)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(
+        batch,
+        "scan_type_b_value_signals",
+        lambda conn, **kwargs: (
+            SimpleNamespace(
+                match_id=101,
+                selection_side=1,
+                bookmaker_code="SOFT_A",
+                offered_price=Decimal("2.20"),
+                sharp_fair_odds=Decimal("2.00"),
+                edge_pct=Decimal("0.10"),
+                threshold=Decimal("0.05"),
+                min_acceptable_odds=Decimal("2.10"),
+            ),
+        ),
+    )
+    _stub_type_b_ledger(monkeypatch)
+    monkeypatch.setattr(
+        batch,
+        "run_live_mvp",
+        lambda conn, slate_date, **kwargs: SimpleNamespace(
+            slate_date=slate_date.isoformat(),
+            status="LIVE_MVP_SUCCESS_NO_TARGETS",
+            fixture_count=10,
+            target_count=0,
+            manager_consensus_count=0,
+            pinnapi_requests=0,
+            prediction_run_id=None,
+        ),
+    )
+
+    rc = batch.main([
+        "--start-date", "2026-09-09",
+        "--days", "1",
+        "--dsn", "postgresql://example",
+        "--artifacts-dir", str(tmp_path),
+    ])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "PRICE_SLATE candidates=1 model_targets=0" in out
+    assert "TYPE_B_VALUE match_id=101 side=1" in out
+    assert "TYPE_B_VALUE_SUMMARY candidates=1 signals=1" in out
+    assert "TYPE_B_LEDGER scan_run_id=88 inserted=1 persisted=1" in out
+    assert "MARKET prediction_run_id=" not in out
 
 
 def test_batch_emits_volume_alert_after_seven_zero_type_b_days(monkeypatch, tmp_path, capsys):
@@ -340,7 +436,7 @@ def test_batch_emits_volume_alert_after_seven_zero_type_b_days(monkeypatch, tmp_
     )
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
-    monkeypatch.setattr(batch, "_load_market_candidate_match_ids", lambda conn, run_ids: (101,))
+    _stub_price_slate(monkeypatch, (101,))
     monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda conn, run_id: (("NO_BET", "DIRECTIONAL_DISAGREEMENT", 1),))
     monkeypatch.setattr(batch, "_load_market_reason_counts", lambda conn, run_id: ())
     monkeypatch.setattr(batch, "fetch_pinnapi_board", lambda key: (received_at, {"events": []}))
