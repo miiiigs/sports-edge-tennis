@@ -22,7 +22,7 @@ from sports_edge_tennis.runner.agent3_live_snapshot import build_live_agent3_his
 
 
 def _received(hour: int = 3) -> datetime:
-    return datetime(2026, 9, 10, hour, 0, tzinfo=UTC)
+    return datetime(2026, 9, 9, hour, 0, tzinfo=UTC)
 
 
 def _fixture(**overrides):
