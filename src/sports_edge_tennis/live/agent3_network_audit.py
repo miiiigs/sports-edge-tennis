@@ -111,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
         _log(
             "A3_AUDIT_START "
             f"prediction_run_id={prediction_run_id} targets={len(match_ids)} "
+            f"checkpoint_cutoff={checkpoint_cutoff.isoformat()} "
             f"checkpoint_observations={int(observation_count)} players={len(snapshot.players)} "
             f"pairs={len(snapshot.pairs)}"
         )
