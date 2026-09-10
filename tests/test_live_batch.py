@@ -20,6 +20,23 @@ class _Connect:
         return _Conn()
 
 
+def _stub_type_b_ledger(monkeypatch, *, zero_days: int = 0):
+    monkeypatch.setattr(
+        batch,
+        "persist_type_b_scan",
+        lambda conn, **kwargs: SimpleNamespace(
+            scan_run_id=88,
+            inserted_signal_count=len(kwargs["signals"]),
+            persisted_signal_count=len(kwargs["signals"]),
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "consecutive_zero_signal_days",
+        lambda conn, **kwargs: zero_days,
+    )
+
+
 def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     seen = []
 
@@ -175,6 +192,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
             ),
         ),
     )
+    _stub_type_b_ledger(monkeypatch)
 
     counter = {"value": 0}
 
@@ -211,6 +229,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
     assert "offered_quotes=8" in out
     assert "TYPE_B_VALUE match_id=202 side=2" in out
     assert "TYPE_B_VALUE_SUMMARY candidates=2 signals=1" in out
+    assert "TYPE_B_LEDGER scan_run_id=88 inserted=1 persisted=1" in out
     assert "bets=3" in out
     assert "type_b_value_signals=1" in out
 
@@ -281,6 +300,7 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
             ),
         ),
     )
+    _stub_type_b_ledger(monkeypatch)
     monkeypatch.setattr(
         batch,
         "run_live_mvp",
@@ -308,6 +328,80 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
     assert "consensus=0" in out
     assert "SHARP_SLATE candidates=1" in out
     assert "TYPE_B_VALUE_SUMMARY candidates=1 signals=1" in out
+    assert "TYPE_B_LEDGER scan_run_id=88 inserted=1 persisted=1" in out
+
+
+def test_batch_emits_volume_alert_after_seven_zero_type_b_days(monkeypatch, tmp_path, capsys):
+    received_at = datetime(2026, 9, 9, 1, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: "api-key" if name == "API_TENNIS_API_KEY" else "pinnapi-key",
+    )
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    monkeypatch.setattr(batch, "_load_market_candidate_match_ids", lambda conn, run_ids: (101,))
+    monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda conn, run_id: (("NO_BET", "DIRECTIONAL_DISAGREEMENT", 1),))
+    monkeypatch.setattr(batch, "_load_market_reason_counts", lambda conn, run_id: ())
+    monkeypatch.setattr(batch, "fetch_pinnapi_board", lambda key: (received_at, {"events": []}))
+    monkeypatch.setattr(
+        batch,
+        "normalize_pinnapi_board_for_matches",
+        lambda conn, **kwargs: SimpleNamespace(
+            candidate_matches=1,
+            board_events=1,
+            resolved_events=1,
+            normalized_events=1,
+            rejected_events=0,
+        ),
+    )
+    monkeypatch.setattr(batch, "fetch_api_tennis_odds", lambda *args: (received_at, {}))
+    monkeypatch.setattr(
+        batch,
+        "ingest_api_tennis_offered_odds",
+        lambda conn, **kwargs: SimpleNamespace(
+            candidate_matches=1,
+            events_with_odds=1,
+            normalized_quotes=4,
+            missing_events=0,
+            bookmaker_count=2,
+        ),
+    )
+    policy = SimpleNamespace(market_policy_version_id=77)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(
+        batch,
+        "evaluate_and_persist_market_slate",
+        lambda conn, **kwargs: SimpleNamespace(status="PERSISTED", new_decision_count=1, qualified_bet_count=0),
+    )
+    monkeypatch.setattr(batch, "scan_type_b_value_signals", lambda conn, **kwargs: ())
+    _stub_type_b_ledger(monkeypatch, zero_days=7)
+    monkeypatch.setattr(
+        batch,
+        "run_live_mvp",
+        lambda conn, slate_date, **kwargs: SimpleNamespace(
+            slate_date=slate_date.isoformat(),
+            status="LIVE_MVP_SUCCESS_NO_CONSENSUS",
+            fixture_count=10,
+            target_count=1,
+            manager_consensus_count=0,
+            pinnapi_requests=0,
+            prediction_run_id=1,
+        ),
+    )
+
+    rc = batch.main([
+        "--start-date", "2026-09-09",
+        "--days", "1",
+        "--dsn", "postgresql://example",
+        "--artifacts-dir", str(tmp_path),
+    ])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "TYPE_B_VALUE_SUMMARY candidates=1 signals=0" in out
+    assert "TYPE_B_LEDGER scan_run_id=88 inserted=0 persisted=0" in out
+    assert "VOLUME_ALERT signal=TYPE_B_PRICE_DISPERSION consecutive_zero_days=7" in out
 
 
 def test_batch_rejects_unbounded_horizon(monkeypatch, capsys):
