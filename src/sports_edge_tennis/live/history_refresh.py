@@ -325,6 +325,8 @@ def _persist_terminal_results(
             retired_side=terminal.retired_side,
             sets_won_player_1=terminal.sets_won_player_1,
             sets_won_player_2=terminal.sets_won_player_2,
+            games_won_player_1=None,
+            games_won_player_2=None,
             scoreline_text=terminal.scoreline_text,
             source_observed_at=received_at,
             as_of=received_at,
@@ -342,6 +344,17 @@ def _persist_terminal_results(
         errors=rejected,
     )
     return len(parsed) + len(rejected), inserted, unchanged, len(rejected)
+
+
+def _invalidate_agent3_checkpoint(conn: psycopg.Connection) -> None:
+    table_exists = conn.execute(
+        "SELECT to_regclass('public.live_model_state_checkpoints')"
+    ).fetchone()[0]
+    if table_exists is None:
+        return
+    conn.execute(
+        "DELETE FROM live_model_state_checkpoints WHERE checkpoint_key = 'AGENT_3_INTRANSITIVITY'"
+    )
 
 
 def refresh_history_chunk(
@@ -377,10 +390,8 @@ def refresh_history_chunk(
 
     if result_inserted:
         # This is a derived, rebuildable cache. Removing only Agent 3's checkpoint
-        # guarantees the next live run rebuilds from the newly visible canonical truth.
-        conn.execute(
-            "DELETE FROM live_model_state_checkpoints WHERE checkpoint_key = 'AGENT_3_INTRANSITIVITY'"
-        )
+        # guarantees the next live run rebuilds from newly visible canonical truth.
+        _invalidate_agent3_checkpoint(conn)
 
     return HistoryRefreshChunkOutcome(
         start_date=start_date,
