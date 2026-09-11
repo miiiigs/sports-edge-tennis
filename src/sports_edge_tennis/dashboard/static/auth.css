@@ -1,0 +1,12 @@
+.auth-signout-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.auth-signout {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
