@@ -5,19 +5,12 @@ from datetime import datetime
 
 import psycopg
 
+from sports_edge_tennis.market import evaluator as market_evaluator
 from sports_edge_tennis.market.contracts import (
     MarketExecutionError,
     MarketIdempotencyMismatchError,
     MarketSlateOutcome,
     SharpReferenceSpec,
-)
-from sports_edge_tennis.market.evaluator import (
-    _canonical_decision_truth,
-    _count_market_decisions,
-    _load_existing_market_decisions,
-    _persist_decision,
-    _persist_lineage,
-    evaluate_market_match,
 )
 from sports_edge_tennis.market.persistence import (
     load_competition_tier,
@@ -57,6 +50,10 @@ def evaluate_and_persist_market_slate_with_veto(
     evaluation is invoked only for decisions that Market would otherwise persist
     as BET. It cannot convert a NO_BET into a BET and cannot alter probabilities,
     prices, thresholds, or Manager state.
+
+    Market internals are called through the evaluator module rather than copied
+    function aliases. This preserves the existing failure-injection/rollback test
+    contract and ensures a persistence failure still aborts the whole transaction.
     """
     if market_execution_now < decision_as_of:
         raise MarketExecutionError("market_execution_now must be >= decision_as_of")
@@ -105,7 +102,7 @@ def evaluate_and_persist_market_slate_with_veto(
                 match_id=manager_row.match_id,
                 decision_as_of=decision_as_of,
             )
-            decision = evaluate_market_match(
+            decision = market_evaluator.evaluate_market_match(
                 manager_row=manager_row,
                 policy=policy,
                 competition_tier=competition_tier,
@@ -128,7 +125,9 @@ def evaluate_and_persist_market_slate_with_veto(
                 veto_evaluations[_decision_key(decision)] = evaluation
             decisions.append(decision)
 
-        existing = _load_existing_market_decisions(conn, prediction_run_id)
+        existing = market_evaluator._load_existing_market_decisions(
+            conn, prediction_run_id
+        )
         before_count = len(existing)
         new_decisions = []
         existing_count = 0
@@ -137,7 +136,7 @@ def evaluate_and_persist_market_slate_with_veto(
             key = _decision_key(decision)
             persisted = existing.get(key)
             if persisted is not None:
-                expected = _canonical_decision_truth(
+                expected = market_evaluator._canonical_decision_truth(
                     decision,
                     decision_id=persisted.decision_id,
                 )
@@ -158,8 +157,10 @@ def evaluate_and_persist_market_slate_with_veto(
                 new_decisions.append(decision)
 
         for decision in new_decisions:
-            decision_id = _persist_decision(conn, decision, market_execution_now)
-            _persist_lineage(conn, decision_id, decision.lineage)
+            decision_id = market_evaluator._persist_decision(
+                conn, decision, market_execution_now
+            )
+            market_evaluator._persist_lineage(conn, decision_id, decision.lineage)
             evaluation = veto_evaluations.get(_decision_key(decision))
             if evaluation is not None:
                 persist_veto_audit(
@@ -169,7 +170,9 @@ def evaluate_and_persist_market_slate_with_veto(
                     evaluation=evaluation,
                 )
 
-        after_count = _count_market_decisions(conn, prediction_run_id)
+        after_count = market_evaluator._count_market_decisions(
+            conn, prediction_run_id
+        )
         if after_count != before_count + len(new_decisions):
             raise MarketExecutionError(
                 "Market/Veto slate persistence produced an unexpected row count "
