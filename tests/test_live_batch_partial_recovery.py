@@ -37,7 +37,7 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
     monkeypatch.setattr(batch, "load_secret", lambda name: "api-key" if name == "API_TENNIS_API_KEY" else None)
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda conn, run_id: ())
-    monkeypatch.setattr(batch, "_load_market_candidate_match_ids", lambda conn, run_ids: ())
+    monkeypatch.setattr(batch, "load_price_scanner_candidate_match_ids", lambda conn, **kwargs: ())
     monkeypatch.setattr(batch, "_load_market_reason_counts", lambda conn, run_id: ())
     monkeypatch.setattr(
         batch,
