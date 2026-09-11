@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sports Edge Tennis{% endblock %}</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+  <link rel="stylesheet" href="/static/market.css">
+  <link rel="stylesheet" href="/static/auth.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-mark">SE</span>
+        <div class="brand-text">
+          <span class="brand-name">Sports Edge</span>
+          <span class="brand-sub">Tennis</span>
+        </div>
+      </div>
+      <nav class="main-nav" aria-label="Primary">
+        <a href="/today" class="nav-link{% if active_nav == 'today' %} is-active{% endif %}">Today</a>
+        <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}">Model Performance</a>
+        <a href="/history" class="nav-link{% if active_nav == 'history' %} is-active{% endif %}">History</a>
+        {% if tennis_auth_enabled %}
+        <form class="auth-signout-form" method="post" action="/logout">
+          <button class="nav-link auth-signout" type="submit">Sign out</button>
+        </form>
+        {% endif %}
+      </nav>
+      <div class="header-meta">
+        {% set status_class, status_label = pres.system_status(latest_activity) %}
+        <span class="status-dot status-{{ status_class }}"></span>
+        <span class="status-label">{{ status_label }}</span>
+        {% if latest_activity %}
+        <span class="updated">Updated {{ latest_activity.strftime('%H:%M UTC') }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  {% if demo_mode %}
+  <div class="demo-banner" role="alert">DEMO DATA — for visual preview only</div>
+  {% endif %}
+
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <span>Sports Edge Tennis — probabilistic model analysis, not guaranteed outcomes.</span>
+  </footer>
+
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

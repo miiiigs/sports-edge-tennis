@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Today · Sports Edge Tennis{% endblock %}
+{% set active_nav = 'today' %}
+
+{% block content %}
+<section class="date-nav" aria-label="Slate date navigation">
+  <a class="date-btn" href="/today?date={{ prev_date.isoformat() }}">‹ {{ prev_date.strftime('%a %d %b') }}</a>
+  <div class="date-current">
+    <span class="date-label">Slate date</span>
+    <span class="date-value">{{ selected_date.strftime('%A, %d %B %Y') }}</span>
+  </div>
+  <a class="date-btn" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
+</section>
+
+{% if state.kind == 'DB_ERROR' %}
+<section class="panel panel-error" role="alert">
+  <h2>Dashboard data is temporarily unavailable</h2>
+  <p>We could not reach the Sports Edge data service. Please try again shortly.</p>
+</section>
+
+{% elif state.kind == 'NO_RUN' %}
+<section class="panel panel-neutral">
+  <div class="empty-icon">○</div>
+  <h2>No run available</h2>
+  <p>Sports Edge has not processed this slate yet.</p>
+</section>
+
+{% elif state.kind == 'EMPTY_SLATE' %}
+<section class="panel panel-success">
+  <div class="empty-icon">✓</div>
+  <h2>No eligible matches on this slate</h2>
+  <p>The latest Sports Edge run completed successfully, but there are no remaining eligible ATP or Challenger men's singles matches for this date.</p>
+  <div class="empty-meta">
+    <span>Slate date: {{ selected_date.isoformat() }}</span>
+    <span>Run status: {{ state.run_status or 'completed' }}</span>
+    <span>Last updated: {{ state.as_of.strftime('%H:%M UTC') if state.as_of else '—' }}</span>
+  </div>
+</section>
+
+{% else %}
+<section class="kpi-grid" aria-label="Summary">
+  {% set consensus_count = state.matches | selectattr('manager_status', 'equalto', 'CONSENSUS') | list | length %}
+  {% set no_bet_count = state.matches | length - consensus_count %}
+  {% set sharp_count = state.matches | selectattr('sharp_available') | list | length %}
+  {% set ns = namespace(bets=0, market_no_bets=0) %}
+  {% for md in market_by_match.values() %}
+    {% if md.decision_status == 'BET' %}{% set ns.bets = ns.bets + 1 %}{% endif %}
+    {% if md.decision_status == 'NO_BET' %}{% set ns.market_no_bets = ns.market_no_bets + 1 %}{% endif %}
+  {% endfor %}
+  <div class="kpi">
+    <span class="kpi-value">{{ state.matches | length }}</span>
+    <span class="kpi-label">Matches Analyzed</span>
+  </div>
+  <div class="kpi kpi-accent">
+    <span class="kpi-value">{{ consensus_count }}</span>
+    <span class="kpi-label">High-Confidence Picks</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-value">{{ no_bet_count }}</span>
+    <span class="kpi-label">No Bet · Model Filter</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-value">{{ sharp_count }}</span>
+    <span class="kpi-label">Sharp Prices</span>
+  </div>
+  <div class="kpi kpi-accent">
+    <span class="kpi-value">{{ ns.bets }}</span>
+    <span class="kpi-label">Value-Qualified Bets</span>
+  </div>
+</section>
+
+<section class="match-list" aria-label="Matches">
+  {% for m in state.matches %}
+  {% set md = market_by_match.get(m.match_id) %}
+  {% set display_state = pres.client_state(m.manager_status, m.sharp_available, md.decision_status if md else None) %}
+  {% set recommendation = pres.recommendation_classification(m.manager_status, md.decision_status if md else None) %}
+  <details class="match-card">
+    <summary class="match-summary">
+      <div class="match-main">
+        <div class="match-players">
+          <span class="player">{{ m.player_1 }}</span>
+          <span class="vs">vs</span>
+          <span class="player">{{ m.player_2 }}</span>
+        </div>
+        <div class="match-sub">
+          <span class="tournament">{{ m.tournament }}</span>
+          <span class="dot-sep">·</span>
+          <span class="tier">{{ pres.tier_label(m.competition_tier) }}</span>
+          <span class="dot-sep">·</span>
+          <span class="start">{{ pres.start_time(m.scheduled_start) }}</span>
+        </div>
+      </div>
+
+      <div class="match-pick">
+        {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
+        <span class="pick-label">MODEL PICK</span>
+        <span class="pick-player">{{ m.selected_player }}</span>
+        <span class="pick-prob">{{ pres.percent(m.consensus_probability) }}</span>
+        {% else %}
+        <span class="pick-label">NO BET</span>
+        <span class="pick-player pick-none">Model filter</span>
+        {% endif %}
+      </div>
+
+      <div class="match-pinnacle">
+        {% if md and md.decision_status == 'BET' and md.market_decimal_price %}
+        <span class="pinn-label">Best Offered</span>
+        <span class="pinn-price">{{ md.market_decimal_price }}</span>
+        <span class="pick-label">{{ md.price_bookmaker_code or 'Bookmaker' }}</span>
+        {% elif m.sharp_available %}
+        <span class="pinn-label">Pinnacle</span>
+        <span class="pinn-price">{{ m.player_1_price }}</span>
+        <span class="pinn-price">{{ m.player_2_price }}</span>
+        {% else %}
+        <span class="pinn-label">Pinnacle</span>
+        <span class="pinn-price pinn-none">—</span>
+        {% endif %}
+      </div>
+
+      <div class="match-status">
+        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
+        {% if md and md.decision_status == 'BET' %}
+        <span class="agreement">Edge {{ pres.precise_percent(md.edge_pct) }}</span>
+        {% elif m.manager_status == 'CONSENSUS' %}
+        <span class="agreement">{{ pres.agreement_text(m.active_agent_count, m.abstaining_agent_count) }}</span>
+        {% endif %}
+      </div>
+    </summary>
+
+    <div class="match-detail">
+      <h3>Prediction</h3>
+      <table class="agent-table">
+        <thead><tr><th scope="col">Model</th><th scope="col">Selection</th><th scope="col">Probability</th></tr></thead>
+        <tbody>
+          {% for code, label in [('AGENT_1_SURFACE_ELO','Agent 1 · Elo'), ('AGENT_2_HIERARCHICAL_MARKOV','Agent 2 · Markov'), ('AGENT_3_INTRANSITIVITY','Agent 3 · Intransitivity')] %}
+          {% set a = m.agents.get(code) %}
+          <tr>
+            <td>{{ label }}</td>
+            {% if a and a.status == 'PREDICTED' %}
+            <td>{{ pres.side_name(a.selection, m.player_1, m.player_2) }}</td>
+            <td>{{ pres.percent(a.probability) }}</td>
+            {% else %}
+            <td>—</td><td>Abstained</td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      {% if m.manager_status == 'CONSENSUS' %}
+      <p class="detail-consensus">Consensus probability: <strong>{{ pres.percent(m.consensus_probability) }}</strong></p>
+      {% endif %}
+
+      <h3>Recommendation</h3>
+      <p class="manager-result">
+        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
+        {% if md %}
+          {% set market_reason = pres.market_reason_explanation(md.reason_code) %}
+          {% if md.decision_status == 'BET' %}
+          <span class="reason">Model confidence and the current offered price both qualify.</span>
+          {% elif market_reason %}
+          <span class="reason">{{ market_reason }}</span>
+          {% endif %}
+        {% else %}
+          {% set reason = pres.reason_explanation(m.reason_code) %}
+          {% if m.manager_status != 'CONSENSUS' and reason %}
+          <span class="reason">{{ reason }}</span>
+          {% elif m.manager_status == 'CONSENSUS' %}
+          <span class="reason">Model consensus passed. Price evaluation is still pending.</span>
+          {% endif %}
+        {% endif %}
+      </p>
+      <p class="decision-meta">Execution state: {{ pres.state_label(display_state) }}</p>
+
+      <h3>Market</h3>
+      <table class="market-table">
+        <tbody>
+          <tr><th scope="row">Pinnacle · {{ m.player_1 }}</th><td>{% if m.player_1_price %}{{ m.player_1_price }}{% else %}—{% endif %}</td></tr>
+          <tr><th scope="row">Pinnacle · {{ m.player_2 }}</th><td>{% if m.player_2_price %}{{ m.player_2_price }}{% else %}—{% endif %}</td></tr>
+          <tr><th scope="row">Best offered price</th><td>{% if md and md.market_decimal_price %}{{ md.market_decimal_price }} · {{ md.price_bookmaker_code or 'Bookmaker' }}{% else %}—{% endif %}</td></tr>
+          <tr><th scope="row">Minimum acceptable odds</th><td>{% if md and md.min_acceptable_odds %}{{ md.min_acceptable_odds }}{% else %}—{% endif %}</td></tr>
+          <tr><th scope="row">Model edge at offered price</th><td>{% if md and md.edge_pct is not none %}{{ pres.precise_percent(md.edge_pct) }}{% else %}—{% endif %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section class="page-heading upcoming-heading">
+  <h2>Upcoming Matches</h2>
+  <p>Next scheduled ATP and Challenger men's singles fixtures with the latest persisted model and market decision.</p>
+</section>
+
+{% if upcoming %}
+<section class="history-list" aria-label="Upcoming matches">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Start</th>
+        <th scope="col">Match</th>
+        <th scope="col">Tournament</th>
+        <th scope="col">Model</th>
+        <th scope="col">Decision</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in upcoming %}
+      <tr>
+        <td>{{ m.scheduled_start.strftime('%a %d %b · %H:%M UTC') }}</td>
+        <td><strong>{{ m.player_1 }}</strong> vs <strong>{{ m.player_2 }}</strong><br><span class="muted">{{ pres.tier_label(m.competition_tier) }}</span></td>
+        <td>{{ m.tournament }}</td>
+        <td>
+          {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
+          <span class="badge badge-MODEL_CONSENSUS">{{ m.selected_player }} · {{ pres.percent(m.consensus_probability) }}</span>
+          {% elif m.manager_status %}
+          <span class="badge badge-NO_BET_MODEL">No Bet · Model Filter</span>
+          {% else %}
+          <span class="badge badge-neutral">Prediction pending</span>
+          {% endif %}
+        </td>
+        <td>
+          {% set upcoming_recommendation = pres.recommendation_classification(m.manager_status, 'BET' if m.market_state == 'BET' else ('NO_BET' if m.market_state == 'NO_BET_MARKET' else None)) %}
+          <span class="badge badge-{{ upcoming_recommendation }}">{{ pres.recommendation_label(upcoming_recommendation) }}</span>
+          {% if m.market_state == 'BET' %}
+          <div class="decision-meta">{{ m.price_bookmaker_code or 'Bookmaker' }} @ {{ m.market_decimal_price }} · Edge {{ pres.precise_percent(m.edge_pct) }}</div>
+          {% elif m.market_state == 'NO_BET_MARKET' %}
+          <div class="decision-meta">{{ pres.market_reason_explanation(m.market_reason_code) or 'Current price did not qualify as a value bet.' }}</div>
+          {% elif m.market_state == 'AWAITING_MARKET' %}
+          <div class="decision-meta">Consensus reached; price evaluation pending.</div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<section class="panel panel-neutral">
+  <h2>No upcoming fixtures ingested yet</h2>
+  <p>The scheduled live runner will populate this section from API-Tennis as new eligible fixtures become available.</p>
+</section>
+{% endif %}
+{% endblock %}

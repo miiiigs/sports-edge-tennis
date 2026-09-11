@@ -75,6 +75,49 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _diagnostic_value(result, key: str) -> str:
+    payload = result.diagnostics_payload or {}
+    value = payload.get(key)
+    return "-" if value is None else str(value)
+
+
+def _status_reason(result) -> str:
+    return f"{result.prediction_status}:{result.abstain_reason or 'NONE'}"
+
+
+def _log_target_diagnostics(match_id: int, agent1, agent2, agent3) -> None:
+    """Emit one bounded line explaining model-history eligibility for a live target."""
+    print(
+        "AGENT_DIAGNOSTIC "
+        f"match_id={match_id} "
+        f"a1={_status_reason(agent1)} "
+        f"a1_overall={_diagnostic_value(agent1, 'player_1_overall_matches')}/"
+        f"{_diagnostic_value(agent1, 'player_2_overall_matches')} "
+        f"a1_surface={_diagnostic_value(agent1, 'player_1_surface_matches')}/"
+        f"{_diagnostic_value(agent1, 'player_2_surface_matches')} "
+        f"a2={_status_reason(agent2)} "
+        f"a2_usable={_diagnostic_value(agent2, 'player_1_prior_usable_matches')}/"
+        f"{_diagnostic_value(agent2, 'player_2_prior_usable_matches')} "
+        f"a2_serve={_diagnostic_value(agent2, 'player_1_overall_serve_points')}/"
+        f"{_diagnostic_value(agent2, 'player_2_overall_serve_points')} "
+        f"a2_return={_diagnostic_value(agent2, 'player_1_overall_return_points')}/"
+        f"{_diagnostic_value(agent2, 'player_2_overall_return_points')} "
+        f"a2_surface_serve={_diagnostic_value(agent2, 'player_1_surface_serve_points')}/"
+        f"{_diagnostic_value(agent2, 'player_2_surface_serve_points')} "
+        f"a2_surface_return={_diagnostic_value(agent2, 'player_1_surface_return_points')}/"
+        f"{_diagnostic_value(agent2, 'player_2_surface_return_points')} "
+        f"a3={_status_reason(agent3)} "
+        f"a3_direct_all={_diagnostic_value(agent3, 'direct_raw_count_all')} "
+        f"a3_direct_surface={_diagnostic_value(agent3, 'direct_raw_count_surface')} "
+        f"a3_shared_all={_diagnostic_value(agent3, 'network_shared_opponents_all')} "
+        f"a3_q_all={_diagnostic_value(agent3, 'network_q_all')} "
+        f"a3_shared_surface={_diagnostic_value(agent3, 'network_shared_opponents_surface')} "
+        f"a3_q_surface={_diagnostic_value(agent3, 'network_q_surface')} "
+        f"a3_mode={_diagnostic_value(agent3, 'activation_mode')}",
+        flush=True,
+    )
+
+
 def run_full_slate(
     conn: psycopg.Connection,
     request: FullSlateRunRequestV1,
@@ -208,14 +251,15 @@ def _execute_matrix(
 
     matrix: list[PredictiveAgentMatrixPrediction] = []
     for target in targets:
-        matrix.append(
-            _run_agent1(target, agent1_history, configs[AGENT_1], as_of)
-        )
-        matrix.append(
-            _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
-        )
-        matrix.append(
-            _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of)
+        agent1 = _run_agent1(target, agent1_history, configs[AGENT_1], as_of)
+        agent2 = _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
+        agent3 = _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of)
+        matrix.extend((agent1, agent2, agent3))
+        _log_target_diagnostics(
+            target.match_id,
+            agent1.result,
+            agent2.result,
+            agent3.result,
         )
     return matrix
 

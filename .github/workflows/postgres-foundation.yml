@@ -48,5 +48,29 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
 
+      - name: Verify dashboard assets are packaged in wheel
+        run: |
+          rm -rf dist
+          python -m pip wheel . --no-deps --wheel-dir dist
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheels = list(Path("dist").glob("sports_edge_tennis-*.whl"))
+          assert len(wheels) == 1, f"expected one wheel, found {wheels}"
+          with ZipFile(wheels[0]) as wheel:
+              names = set(wheel.namelist())
+          required = {
+              "sports_edge_tennis/dashboard/static/dashboard.css",
+              "sports_edge_tennis/dashboard/static/dashboard.js",
+              "sports_edge_tennis/dashboard/templates/base.html",
+              "sports_edge_tennis/dashboard/templates/history.html",
+              "sports_edge_tennis/dashboard/templates/performance.html",
+              "sports_edge_tennis/dashboard/templates/today.html",
+          }
+          missing = sorted(required - names)
+          assert not missing, f"dashboard package data missing from wheel: {missing}"
+          PY
+
       - name: Run test suite
         run: python -m pytest -q

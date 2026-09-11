@@ -156,21 +156,35 @@ def _normalize_market(
 
     inserted_any = False
     for selection in market.selections:
-        player_status, player_id = resolve_provider_player(
-            conn,
-            provider_code=raw.provider_code,
-            provider_player_id=selection.provider_player_id,
-        )
-        if player_status != "RESOLVED" or player_id is None:
-            result.unknown_participant += 1
-            result.raw_only += 1
-            _record(
-                result,
-                "UNKNOWN_PARTICIPANT",
-                provider_bookmaker_key=market.provider_bookmaker_key,
+        if selection.canonical_player_id is None:
+            assert selection.provider_player_id is not None
+            player_status, player_id = resolve_provider_player(
+                conn,
+                provider_code=raw.provider_code,
                 provider_player_id=selection.provider_player_id,
             )
-            continue
+            if player_status != "RESOLVED" or player_id is None:
+                result.unknown_participant += 1
+                result.raw_only += 1
+                _record(
+                    result,
+                    "UNKNOWN_PARTICIPANT",
+                    provider_bookmaker_key=market.provider_bookmaker_key,
+                    provider_player_id=selection.provider_player_id,
+                )
+                continue
+        else:
+            if raw.provider_code != "PINNAPI":
+                result.unknown_participant += 1
+                result.raw_only += 1
+                _record(
+                    result,
+                    "UNKNOWN_PARTICIPANT",
+                    provider_bookmaker_key=market.provider_bookmaker_key,
+                    reason="canonical_player_id_forbidden_for_provider",
+                )
+                continue
+            player_id = selection.canonical_player_id
         try:
             quote = build_quote(
                 observation=observation,
