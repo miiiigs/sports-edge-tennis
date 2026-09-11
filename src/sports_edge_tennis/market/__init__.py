@@ -18,10 +18,7 @@ from sports_edge_tennis.market.contracts import (
     SharpReferenceSpec,
     SnapshotRole,
 )
-from sports_edge_tennis.market.evaluator import (
-    evaluate_and_persist_market_slate,
-    evaluate_market_match,
-)
+from sports_edge_tennis.market.evaluator import evaluate_market_match
 from sports_edge_tennis.market.persistence import (
     ensure_market_policy_version_v1,
     load_market_policy_version,
@@ -34,6 +31,9 @@ from sports_edge_tennis.market.pricing import (
     snapshot_lineage_hash,
 )
 from sports_edge_tennis.market.policy import is_fresh, resolve_threshold
+from sports_edge_tennis.veto.integration import (
+    evaluate_and_persist_market_slate_with_veto as evaluate_and_persist_market_slate,
+)
 
 __all__ = [
     "CANONICAL_ROLE_ORDER",
