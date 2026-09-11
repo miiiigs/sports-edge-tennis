@@ -1,8 +1,8 @@
 # Sports Edge Tennis Production Handoff
 
-Status: final stabilization candidate. This document contains no credentials.
+Status: canonical `main` is complete; Railway source handoff is pending. This document contains no credentials.
 
-## Canonical source target
+## Canonical source
 
 Repository:
 
@@ -10,20 +10,19 @@ Repository:
 miiiigs/sports-edge-tennis
 ```
 
-Canonical target branch after the final reconciliation gate:
+Canonical branch:
 
 ```text
 main
 ```
 
-Final stabilization candidate before merge:
+Final source-reconciliation merge:
 
 ```text
-integration/final-stabilization-livebase-2026-09
-PR #58
+76062c77d73747a0445158c370eab3f3f9c70d90
 ```
 
-Do not maintain separate product behavior on the old dashboard/live feature branches after `main` is canonical.
+PR #58 passed the final combined PostgreSQL CI gate and was merged. Do not maintain separate product behavior on the old dashboard/live feature branches after Railway has been moved to `main`.
 
 ## Railway project
 
@@ -35,11 +34,13 @@ sports-edge-tennis
 
 Production application services:
 
-| Service | Current Git source before reconciliation | Runtime purpose |
+| Service | Current Git source before Railway reconciliation | Runtime purpose |
 |---|---|---|
 | `tennis-dashboard` | `feat/tennis-client-dashboard` | FastAPI client dashboard |
 | `tennis-live-runner` | `feat/tennis-live-scheduled-runner` | hourly bounded live prediction/market runner |
 | `tennis-validation-runner` | `feat/tennis-live-scheduled-runner` | bounded history/result refresh utility |
+
+The target Git source for all three application services is now `main`.
 
 ### Dashboard
 
@@ -152,7 +153,13 @@ Live runner / validation known-good production lineage after durable Type B:
 09f058f0512ecd95f8011a49fbb2b21af84022ea
 ```
 
-Keep these values during source reconciliation. If a service regression occurs, restore its previous Git source/commit and previous start command before attempting a new fix.
+Canonical main source-reconciliation merge:
+
+```text
+76062c77d73747a0445158c370eab3f3f9c70d90
+```
+
+Keep the old production commit values during Railway source reconciliation. If a service regression occurs, restore its previous Git source/commit and previous start command before attempting a new fix.
 
 ## Verified live behavior on the Type B production baseline
 
@@ -180,28 +187,27 @@ TYPE_B_LEDGER scan_run_id=1 inserted=0 persisted=0
 
 The third slate was unavailable because the provider response did not contain the expected result list; the batch surfaced that explicitly rather than fabricating data.
 
-## Source reconciliation order
+## Railway source reconciliation order
 
-After PR #58 is green and merged to `main`:
+Canonical Git reconciliation is complete. The remaining branch-selector change is operational:
 
-1. Record the merge SHA as the new canonical candidate and retain the rollback SHAs above.
-2. Change only `tennis-dashboard` Git source branch to `main`.
-3. Preserve its existing unauthenticated start command until owner access is ready.
-4. Verify deployment success and `/healthz`.
-5. Verify `/today`, `/history`, and `/performance` read persisted data without provider calls.
-6. Change only `tennis-live-runner` Git source branch to `main`.
-7. Preserve the hourly cron and existing command.
-8. Verify the next bounded scheduled execution completes and persists expected diagnostics.
-9. Change only `tennis-validation-runner` Git source branch to `main`.
-10. Preserve its bounded history-refresh command unless a new refresh window is explicitly required.
-11. Re-check all three services against the same authoritative `TENNIS_DATABASE_URL` reference.
-12. Only after those checks should obsolete feature branches be treated as non-authoritative.
+1. Change only `tennis-dashboard` Git source branch to `main`.
+2. Preserve its existing unauthenticated start command until owner access is ready.
+3. Verify deployment success and `/healthz`.
+4. Verify `/today`, `/history`, and `/performance` read persisted data without provider calls.
+5. Change only `tennis-live-runner` Git source branch to `main`.
+6. Preserve the hourly cron and existing command.
+7. Verify the next bounded scheduled execution completes and persists expected diagnostics.
+8. Change only `tennis-validation-runner` Git source branch to `main`.
+9. Preserve its bounded history-refresh command unless a new refresh window is explicitly required.
+10. Re-check all three services against the same authoritative `TENNIS_DATABASE_URL` reference.
+11. Only after those checks should obsolete feature branches be treated as non-authoritative.
 
 The currently connected Railway tool can inspect service sources and update runtime configuration, but does not expose an action for changing an existing service's GitHub source branch. If that capability remains unavailable, perform only the branch-selector step manually in Railway UI. Do not simulate it by force-moving old feature branch refs.
 
 ## Model and decision invariants
 
-The reconciliation is operational only. It must not change:
+The handoff is operational only. It must not change:
 
 - Agent 1/2/3 model logic merely to increase outputs
 - Manager C1-C4 thresholds
