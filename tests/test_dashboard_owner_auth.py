@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 import psycopg
@@ -17,18 +16,19 @@ import sports_edge_tennis.dashboard.owner_access as owner_access
 
 
 @pytest.fixture()
-def auth_store(postgres_dsn: str, monkeypatch):
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+def auth_store(migrated_postgres: str, monkeypatch):
+    dsn = migrated_postgres
+    with psycopg.connect(dsn, autocommit=True) as conn:
         conn.execute(f"DROP SCHEMA IF EXISTS {AUTH_SCHEMA} CASCADE")
 
     monkeypatch.setenv("TENNIS_DASHBOARD_AUTH_ALLOWED_EMAILS", "owner@example.com")
-    store = AuthStore(postgres_dsn)
+    store = AuthStore(dsn)
     store.initialize()
     try:
         yield store
     finally:
-        owner_access._store.cache_clear()
-        with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        owner_access.templates.env.globals["tennis_auth_enabled"] = False
+        with psycopg.connect(dsn, autocommit=True) as conn:
             conn.execute(f"DROP SCHEMA IF EXISTS {AUTH_SCHEMA} CASCADE")
 
 
