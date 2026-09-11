@@ -18,6 +18,7 @@ STATE_LABELS = {
     "AWAITING_OFFERED_PRICE": "Awaiting Bookmaker Price",
     "AWAITING_MARKET": "Awaiting Market Decision",
     "BET": "Bet",
+    "VETOED": "Vetoed",
     "NO_BET_MARKET": "No Bet · Market Filter",
     "PREDICTION_PENDING": "Prediction Pending",
 }
@@ -26,6 +27,7 @@ RECOMMENDATION_LABELS = {
     "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
     "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
     "PRICE_PENDING": "High-Confidence Pick · Price Pending",
+    "VETOED": "Vetoed · Safety Filter",
     "NO_BET": "No Bet",
 }
 
@@ -51,6 +53,7 @@ MARKET_REASON_EXPLANATIONS = {
     "NO_MODEL_EDGE_VS_SHARP": "The model pick remains valid, but the sharp market does not currently confirm a positive price edge.",
     "MISSING_MARKET": "The model pick remains valid, but no fresh offered bookmaker price is available yet.",
     "EDGE_BELOW_THRESHOLD": "The model pick remains valid, but the current offered price is below the stricter value-bet threshold.",
+    "VETO_TRIGGERED": "The pick qualified on model and price, but a safety-veto condition blocked publication.",
     "NONE": None,
 }
 
@@ -98,6 +101,8 @@ def client_state(
         return "NO_BET_MODEL"
     if decision_status == "BET":
         return "BET"
+    if decision_status == "VETOED":
+        return "VETOED"
     if decision_status == "NO_BET":
         return "NO_BET_MARKET"
     if sharp_available:
@@ -109,17 +114,18 @@ def recommendation_classification(
     manager_status: str | None,
     decision_status: str | None = None,
 ) -> str:
-    """Classify model confidence separately from market value.
+    """Classify model confidence separately from market value and safety.
 
-    This is deliberately independent from ``client_state`` so the existing
-    operational state contract remains stable. A persisted Manager consensus is
-    still a model pick even when Market V1 rejects the current price. A Market
-    BET is the stricter state where confidence and value are both present.
+    A VETOED decision means the model and price qualified but the downstream
+    kill-only safety layer blocked publication. It must never be presented as a
+    price-pending or actionable pick.
     """
     if manager_status != "CONSENSUS":
         return "NO_BET"
     if decision_status == "BET":
         return "HIGH_CONFIDENCE_VALUE"
+    if decision_status == "VETOED":
+        return "VETOED"
     if decision_status == "NO_BET":
         return "HIGH_CONFIDENCE_PICK"
     return "PRICE_PENDING"

@@ -15,7 +15,7 @@ MARKET_FEATURE_VERSION = "type_a"
 _PRICE_QUANTIZER = Decimal("0.000001")
 _PROBABILITY_QUANTIZER = Decimal("0.000001")
 
-MarketDecisionStatus = Literal["BET", "NO_BET"]
+MarketDecisionStatus = Literal["BET", "NO_BET", "VETOED"]
 
 MarketReasonCode = Literal[
     "NONE",
@@ -30,6 +30,7 @@ MarketReasonCode = Literal[
     "EDGE_BELOW_THRESHOLD",
     "UNSUPPORTED_TIER",
     "MISSING_SHARP_REFERENCE",
+    "VETO_TRIGGERED",
 ]
 
 SnapshotRole = Literal[
