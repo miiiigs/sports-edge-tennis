@@ -1,17 +1,21 @@
 # Project Status
 
-Last updated: 2026-09-11
+Last updated: 2026-09-12
 
 ## Current milestone
 
-`FINAL STABILIZATION / CANONICAL MAIN + PRODUCTION HANDOFF`
+`PRODUCTION SOURCE HANDOFF + PROSPECTIVE EVIDENCE`
 
-The predictive/model build is no longer the active milestone. The remaining work is operational reconciliation: land the already-tested combined implementation on one canonical branch, align Railway service sources deliberately, confirm database authority, and close the prospective evidence/runbook gaps without changing the locked betting logic.
+The final combined Tennis implementation is now canonical on `main`. The predictive/model build and Git source-of-truth reconciliation are complete. Remaining work is operational: point Railway services at canonical `main`, confirm database authority, enable owner authentication only after the owner bootstrap is ready, and close the prospective closing-price / CLV lifecycle without changing locked betting logic.
 
 ## Current implementation truth
 
 ```text
 TENNIS REPOSITORY: ACTIVE
+CANONICAL MAIN: COMPLETE
+CANONICAL MAIN MERGE SHA: 76062c77d73747a0445158c370eab3f3f9c70d90
+FINAL COMBINED CI GATE: PASSED
+
 TENNIS POSTGRESQL FOUNDATION: COMPLETE
 TENNIS HISTORICAL ATP CORPUS: COMPLETE (2016-2025 baseline)
 TENNIS RECENT API-TENNIS RESULT REFRESH: IMPLEMENTED
@@ -38,34 +42,49 @@ TENNIS VETO AUDIT LEDGER: IMPLEMENTED
 TENNIS INJURY / MEDICAL-TIMEOUT FEED: NOT CONNECTED; EXPLICITLY UNAVAILABLE
 TENNIS OWNER AUTHENTICATION: IMPLEMENTED; DISABLED BY DEFAULT
 TENNIS AUTH BOOTSTRAP / ROLLBACK RUNBOOK: IMPLEMENTED
-CLOSING-PRICE / CLV LIFECYCLE: NOT YET CLOSED END-TO-END
-CANONICAL MAIN RECONCILIATION: IN PROGRESS
-RAILWAY SOURCE RECONCILIATION: PENDING CANONICAL MAIN
+
+RAILWAY SOURCE RECONCILIATION: PENDING MANUAL BRANCH-SELECTOR CHANGES
 AUTHORITATIVE POSTGRES SERVICE: MUST BE CONFIRMED BEFORE ANY DB RETIREMENT
+CLOSING-PRICE / CLV LIFECYCLE: NOT YET CLOSED END-TO-END
 ```
 
-## Final stabilization candidate
+## Canonical source
 
-The current combined candidate is:
+Repository:
 
-- branch: `integration/final-stabilization-livebase-2026-09`
-- PR: `#58`
+```text
+miiiigs/sports-edge-tennis
+```
 
-It starts from the current live-runner production lineage, reconciles the current dashboard files, and now also contains the completed Veto and owner-auth work. The reconciliation deliberately avoided forcing unrelated divergent Git history together.
+Canonical branch:
 
-No Railway application service is pointed at this integration branch.
+```text
+main
+```
 
-## Current production topology before source reconciliation
+Canonical reconciliation merge:
 
-Railway production currently uses separate source branches:
+```text
+76062c77d73747a0445158c370eab3f3f9c70d90
+```
+
+The final stabilization candidate PR #58 passed its full PostgreSQL CI gate and was merged to `main`. The former dashboard and live-runner feature branches are now rollback/history branches, not product source-of-truth branches.
+
+## Current production topology before Railway source reconciliation
+
+Railway production still uses the previous source branches:
 
 - `tennis-dashboard` -> `feat/tennis-client-dashboard`
 - `tennis-live-runner` -> `feat/tennis-live-scheduled-runner`
 - `tennis-validation-runner` -> `feat/tennis-live-scheduled-runner`
 
+The connected Railway control surface can inspect these sources and update runtime configuration but does not currently expose an action for changing an existing service's GitHub branch. Do not simulate that operation by force-moving the old feature branch refs.
+
+The manual Railway source change should therefore be limited to changing each service's branch selector to `main`, one service at a time, with the existing start command and rollback point preserved.
+
 The live runner remains hourly with a bounded three-day horizon.
 
-Current known-good production rollback points before canonicalization:
+Known-good rollback points before Railway source reconciliation:
 
 - dashboard: `c8a6cbb17a8055e9891e4567a088212aaaf2069d`
 - live runner / validation lineage: `09f058f0512ecd95f8011a49fbb2b21af84022ea`
@@ -74,7 +93,7 @@ Do not delete either PostgreSQL service while database authority is being reconc
 
 ## Verified live baseline
 
-The durable Type B build has already run successfully in production on the live-runner lineage.
+The durable Type B build has already run successfully in production on the pre-canonical live-runner lineage.
 
 A verified post-deploy live batch reported:
 
@@ -150,31 +169,30 @@ Properties:
 
 Production enablement must follow `docs/TENNIS_DASHBOARD_AUTH.md` and requires the authorized owner email to be confirmed first.
 
-## Remaining work
+## Remaining operational work
 
-### 1. Canonical `main`
+### 1. Railway source reconciliation
 
-PR #58 must pass the final full CI gate on the combined Veto + auth + dashboard + live-runner tree. Only then should it be merged to `main`.
+Change source branches one service at a time:
 
-### 2. Railway source reconciliation
+1. `tennis-dashboard` -> `main`
+2. verify deploy + `/healthz` + read-only pages
+3. `tennis-live-runner` -> `main`
+4. verify the next bounded hourly execution
+5. `tennis-validation-runner` -> `main`
+6. verify its bounded command remains unchanged
 
-After `main` is canonical, reconcile services one at a time and preserve rollback points:
+Preserve existing start commands, schedule, environment variables, and rollback SHAs during these branch-selector changes.
 
-1. dashboard
-2. live runner
-3. validation/history runner
+### 2. PostgreSQL authority
 
-The current Railway connector can inspect service sources/configuration but cannot directly change a service's GitHub source branch. If that remains true at handoff, the branch selector must be changed to `main` in Railway UI rather than simulated by rewriting Git feature refs.
-
-### 3. PostgreSQL authority
-
-Two PostgreSQL services are visible in Railway. One currently exposes a dedicated persistent volume while the other does not expose one through the connector, but this alone is not sufficient evidence to delete either service.
+Two PostgreSQL services are visible in Railway. `Postgres-Sdqz` exposes a 5 GB persistent volume through the current connector while `Postgres` does not expose a mounted volume in that view. This is useful topology evidence but is not sufficient evidence to delete either service.
 
 The connected Railway OAuth surface redacts variable values/reference targets. Confirm which PostgreSQL service the three `TENNIS_DATABASE_URL` variables actually reference before retiring anything.
 
-### 4. Closing-price / CLV evidence
+### 3. Closing-price / CLV evidence
 
-Current sharp/offered pricing infrastructure supports value decisions, but the project still needs a deliberately closed prospective closing-price capture and CLV reporting lifecycle before making claims about durable live market edge.
+The schema already contains `decision_clv`, but the project still needs a deliberately closed prospective closing-price capture and reporting lifecycle before making claims about durable live market edge.
 
 ## Historical validation baseline
 
@@ -202,6 +220,5 @@ Those are historical model-validation metrics, not proof of prospective profitab
 - do not treat Manager consensus as a value bet unless Market truth qualifies it
 - do not treat Type B dispersion as predictive-agent consensus
 - do not enable owner auth until the owner bootstrap path is confirmed
-- do not retarget Railway to an unverified branch
 - do not delete either PostgreSQL service until connection authority is proven
 - do not delete or rewrite append-only historical, odds, decision, Veto, or Type B evidence
