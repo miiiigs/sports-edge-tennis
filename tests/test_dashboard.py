@@ -44,16 +44,22 @@ def test_reason_translation():
     assert pres.reason_explanation(None) is None
 
 
-def test_client_state_never_generates_bet():
-    # A consensus + sharp-only match must be AWAITING_OFFERED_PRICE, never a BET.
+def test_client_state_requires_persisted_market_bet():
+    # Consensus + sharp-only remains pending until a persisted Market decision exists.
     assert pres.client_state("CONSENSUS", True) == "AWAITING_OFFERED_PRICE"
     assert pres.client_state("CONSENSUS", False) == "SHARP_UNAVAILABLE"
-    assert pres.client_state("NO_BET", False) == "NO_BET_MODEL"
-    assert pres.client_state("NO_BET", True) == "NO_BET_MODEL"
+    assert pres.client_state("CONSENSUS", True, "BET") == "BET"
+    assert pres.client_state("CONSENSUS", True, "NO_BET") == "NO_BET_MARKET"
+    # Market state can never rescue a Manager-level NO_BET.
+    assert pres.client_state("NO_BET", False, "BET") == "NO_BET_MODEL"
+    assert pres.client_state("NO_BET", True, "BET") == "NO_BET_MODEL"
 
 
-def test_no_bet_terminology_never_present():
-    for label in pres.STATE_LABELS.values():
+def test_bet_terminology_is_scoped_to_market_bet_state():
+    assert pres.STATE_LABELS["BET"] == "Bet"
+    for state, label in pres.STATE_LABELS.items():
+        if state == "BET":
+            continue
         assert "BET" not in label.upper() or "NO BET" in label.upper()
 
 
