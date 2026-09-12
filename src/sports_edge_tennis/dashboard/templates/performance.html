@@ -50,6 +50,55 @@
   </table>
 </section>
 
+<section class="page-heading upcoming-heading">
+  <h2>Prospective Closing-Line Evidence</h2>
+  <p>Forward-collected closing-price coverage and CLV. This evidence is separate from the historical model validation above.</p>
+</section>
+
+{% if clv.initialized %}
+<section class="kpi-grid" aria-label="Prospective CLV overview">
+  <article class="kpi">
+    <span class="kpi-label">Decision Close Coverage</span>
+    <span class="kpi-value">{{ ratio_text(clv.close_coverage) or '—' }}</span>
+    <span class="muted">{{ clv.complete_closes }} complete of {{ clv.close_records }} finalized</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">Priced CLV Coverage</span>
+    <span class="kpi-value">{{ ratio_text(clv.priced_clv_coverage) or '—' }}</span>
+    <span class="muted">{{ clv.clv_records }} calculable of {{ clv.priced_decisions }} priced decisions</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">Mean CLV</span>
+    <span class="kpi-value">{{ clv_text(clv.mean_clv) or '—' }}</span>
+    <span class="muted">same-book close, margin adjusted</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">Median CLV</span>
+    <span class="kpi-value">{{ clv_text(clv.median_clv) or '—' }}</span>
+    <span class="muted">same prospective sample</span>
+  </article>
+</section>
+
+<section class="panel panel-neutral">
+  <h3>Coverage diagnostics</h3>
+  <p>
+    Complete closes: <strong>{{ clv.complete_closes }}</strong> ·
+    Partial: <strong>{{ clv.partial_closes }}</strong> ·
+    Missing: <strong>{{ clv.missing_closes }}</strong> ·
+    No-bet closes: <strong>{{ clv.no_bet_complete_closes }}/{{ clv.no_bet_close_records }}</strong>
+  </p>
+  {% if clv.activation_at %}
+  <p class="muted">Prospective activation: {{ clv.activation_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+  {% endif %}
+  <p class="muted">Positive CLV over a small sample is not proof of profitability. Coverage and sample size must be read alongside the estimate.</p>
+</section>
+{% else %}
+<section class="panel panel-neutral">
+  <h3>Prospective CLV not activated yet</h3>
+  <p>No prospective closing-line ledger has been initialized. Historical odds are not being backfilled and relabeled as live closing evidence.</p>
+</section>
+{% endif %}
+
 <section class="panel panel-success">
   <h2>Current decision stack</h2>
   <p>Sports Edge does not rely on one model alone. Agent 1, Agent 2 and the selective Agent 3 feed the Manager consensus rules. A match can correctly end as <strong>No Bet</strong> when agreement, confidence spread, or market requirements are not satisfied.</p>

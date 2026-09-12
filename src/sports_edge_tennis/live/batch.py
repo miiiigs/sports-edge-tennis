@@ -4,7 +4,8 @@ Runs a bounded UTC slate horizon with no retries or polling. API-Tennis fixtures
 are fetched once per slate date. PINNAPI is fetched at most once for the entire
 batch. Type A remains Manager/model dependent; Type B price dispersion scans the
 whole canonical in-scope scheduled fixture slate independently of model targets.
-API-Tennis pre-match odds are fetched at most once per batch.
+API-Tennis pre-match odds are fetched at most once per batch. Prospective CLV
+finalization reuses already-persisted odds snapshots and makes no provider calls.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ from typing import Any
 
 import psycopg
 
+from sports_edge_tennis.clv import activation_from_env, finalize_closing_evidence
 from sports_edge_tennis.live.api_tennis_fixture_compat import (
     ingest_api_tennis_source_a_fixtures_with_upcoming_status,
 )
@@ -140,6 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         "offered_quotes": 0,
         "bets": 0,
         "type_b_value_signals": 0,
+        "close_finalized": 0,
+        "clv_calculated": 0,
     }
     prediction_run_ids: list[int] = []
 
@@ -382,6 +386,30 @@ def main(argv: list[str] | None = None) -> int:
                         "signal=TYPE_B_PRICE_DISPERSION "
                         f"consecutive_zero_days={zero_days}"
                     )
+
+            clv_activation = activation_from_env()
+            if clv_activation is None:
+                _log("CLV_CAPTURE_DISABLED activation_env_unset=1")
+            else:
+                close_outcome = finalize_closing_evidence(
+                    conn,
+                    activation_at=clv_activation,
+                    captured_at=datetime.now(timezone.utc),
+                    sharp_reference=_SHARP,
+                )
+                totals["close_finalized"] = close_outcome.finalized_count
+                totals["clv_calculated"] = close_outcome.clv_created_count
+                _log(
+                    "CLV_CLOSE "
+                    f"activation_at={close_outcome.activation_at.isoformat()} "
+                    f"eligible={close_outcome.eligible_count} "
+                    f"finalized={close_outcome.finalized_count} "
+                    f"complete={close_outcome.complete_count} "
+                    f"partial={close_outcome.partial_count} "
+                    f"missing={close_outcome.missing_count} "
+                    f"clv_created={close_outcome.clv_created_count} "
+                    f"clv_unavailable={close_outcome.clv_unavailable_count}"
+                )
     except LiveMvpError as exc:
         _log(f"{exc.result_code}: {exc}")
         return 2

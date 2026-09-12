@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from sports_edge_tennis.clv import ClvSummary, load_clv_summary
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.demo import build_demo_state
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
@@ -154,6 +155,30 @@ def _load_upcoming():
         conn.close()
 
 
+def _load_clv_performance() -> ClvSummary:
+    if DEMO_MODE:
+        return ClvSummary(initialized=False)
+    conn = _connect()
+    if conn is None:
+        return ClvSummary(initialized=False)
+    try:
+        return load_clv_summary(conn)
+    finally:
+        conn.close()
+
+
+def _ratio_text(value) -> str | None:
+    if value is None:
+        return None
+    return f"{float(value) * 100:.1f}%"
+
+
+def _clv_text(value) -> str | None:
+    if value is None:
+        return None
+    return f"{float(value) * 100:+.2f}%"
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return RedirectResponse(url="/today")
@@ -194,6 +219,9 @@ def performance(request: Request):
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
+            "clv": _load_clv_performance(),
+            "ratio_text": _ratio_text,
+            "clv_text": _clv_text,
         },
     )
 
@@ -309,4 +337,28 @@ def api_history():
             }
             for r in rows
         ]
+    )
+
+
+@app.get("/api/dashboard/clv")
+def api_clv():
+    summary = _load_clv_performance()
+    return JSONResponse(
+        {
+            "initialized": summary.initialized,
+            "activation_at": summary.activation_at.isoformat() if summary.activation_at else None,
+            "close_records": summary.close_records,
+            "complete_closes": summary.complete_closes,
+            "partial_closes": summary.partial_closes,
+            "missing_closes": summary.missing_closes,
+            "close_coverage": _ratio_text(summary.close_coverage),
+            "no_bet_close_records": summary.no_bet_close_records,
+            "no_bet_complete_closes": summary.no_bet_complete_closes,
+            "priced_decisions": summary.priced_decisions,
+            "clv_records": summary.clv_records,
+            "priced_clv_coverage": _ratio_text(summary.priced_clv_coverage),
+            "mean_clv": _clv_text(summary.mean_clv),
+            "median_clv": _clv_text(summary.median_clv),
+            "interpretation": "Prospective closing-line evidence only; not proof of profitability.",
+        }
     )
