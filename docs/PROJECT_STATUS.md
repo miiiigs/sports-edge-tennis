@@ -4,9 +4,9 @@ Last updated: 2026-09-12
 
 ## Current milestone
 
-`PRODUCTION SOURCE HANDOFF + PROSPECTIVE EVIDENCE`
+`PRODUCTION SOURCE HANDOFF + PROSPECTIVE CLV ACTIVATION`
 
-The final combined Tennis implementation is now canonical on `main`. The predictive/model build and Git source-of-truth reconciliation are complete. Remaining work is operational: point Railway services at canonical `main`, confirm database authority, enable owner authentication only after the owner bootstrap is ready, and close the prospective closing-price / CLV lifecycle without changing locked betting logic.
+The final combined Tennis implementation is now canonical on `main`. The predictive/model build, Git source-of-truth reconciliation, Veto, owner-auth code, and prospective closing-price / CLV lifecycle are complete in source. Remaining work is operational: point Railway services at canonical `main`, confirm database authority, leave CLV activation unset until that handoff is verified, and enable owner authentication only after the owner bootstrap is ready.
 
 ## Current implementation truth
 
@@ -43,9 +43,12 @@ TENNIS INJURY / MEDICAL-TIMEOUT FEED: NOT CONNECTED; EXPLICITLY UNAVAILABLE
 TENNIS OWNER AUTHENTICATION: IMPLEMENTED; DISABLED BY DEFAULT
 TENNIS AUTH BOOTSTRAP / ROLLBACK RUNBOOK: IMPLEMENTED
 
+PROSPECTIVE CLOSING-PRICE EVIDENCE: IMPLEMENTED
+TYPE A CLV CALCULATION / REPORTING: IMPLEMENTED
+CLV PROSPECTIVE ACTIVATION: NOT YET ENABLED IN RAILWAY
+
 RAILWAY SOURCE RECONCILIATION: PENDING MANUAL BRANCH-SELECTOR CHANGES
 AUTHORITATIVE POSTGRES SERVICE: MUST BE CONFIRMED BEFORE ANY DB RETIREMENT
-CLOSING-PRICE / CLV LIFECYCLE: NOT YET CLOSED END-TO-END
 ```
 
 ## Canonical source
@@ -68,7 +71,7 @@ Canonical reconciliation merge:
 76062c77d73747a0445158c370eab3f3f9c70d90
 ```
 
-The final stabilization candidate PR #58 passed its full PostgreSQL CI gate and was merged to `main`. The former dashboard and live-runner feature branches are now rollback/history branches, not product source-of-truth branches.
+The final stabilization candidate PR #58 passed its full PostgreSQL CI gate and was merged to `main`. The prospective closing-price / CLV lifecycle then passed the full repository PostgreSQL gate and was merged through PR #65 at merge commit `5f3e76f845e7532c1703bc203b03883c96937df8`. The former dashboard and live-runner feature branches are now rollback/history branches, not product source-of-truth branches.
 
 ## Current production topology before Railway source reconciliation
 
@@ -119,12 +122,15 @@ In parallel:
 
 `full canonical scheduled ATP/Challenger slate -> independent Type B price-dispersion evaluation -> append-only Type B scan/signal ledger`
 
+After Type A decisions exist, the hourly runner can also perform a bounded prospective close-finalization pass when `TENNIS_CLV_ACTIVATION_AT` is explicitly configured. That pass reuses already-persisted odds snapshots, waits at least two hours after scheduled start, selects genuine pre-start closing evidence, and does not add provider polling.
+
 Type A and Type B remain deliberately separate:
 
 - Type A requires model/Manager eligibility and then evaluates value against market truth.
 - Veto can only kill an otherwise-qualified Type A BET. It never creates or rescues one.
 - Type B scans the full canonical in-scope scheduled slate independently of model consensus.
 - Type B signals and zero-signal scans are persisted separately rather than fabricating Manager consensus rows.
+- Prospective CLV V1 applies to Type A decisions only and does not silently relabel Type B output.
 
 ## Veto evidence boundary
 
@@ -169,6 +175,27 @@ Properties:
 
 Production enablement must follow `docs/TENNIS_DASHBOARD_AUTH.md` and requires the authorized owner email to be confirmed first.
 
+## Prospective closing-price / CLV lifecycle
+
+The source implementation is complete and merged, but prospective capture is deliberately not activated in Railway yet.
+
+Key properties:
+
+- explicit activation boundary via `TENNIS_CLV_ACTIVATION_AT`
+- no activation value means no CLV ledger creation/finalization work from the live runner
+- one append-only `decision_close_evidence` record per eligible Type A decision
+- BET/VETOED and NO_BET decisions can all receive genuine closing-market evidence
+- NO_BET rows do not receive invented selected sides or fake prices
+- executable CLV requires real offered-price lineage plus a complete compatible same-book pre-start close
+- sharp close remains reference evidence
+- post-start/in-play observations are rejected as closing prices
+- two-hour finalization delay protects schedule/status corrections without changing the close cutoff
+- repeated hourly finalization is idempotent
+- CLV margin/booksum arithmetic is canonicalized to the persisted 8-decimal precision
+- dashboard reporting exposes close coverage, priced-decision CLV coverage, missing/partial counts, and mean/median CLV when available
+
+This is evidence infrastructure, not proof of profitability.
+
 ## Remaining operational work
 
 ### 1. Railway source reconciliation
@@ -190,9 +217,13 @@ Two PostgreSQL services are visible in Railway. `Postgres-Sdqz` exposes a 5 GB p
 
 The connected Railway OAuth surface redacts variable values/reference targets. Confirm which PostgreSQL service the three `TENNIS_DATABASE_URL` variables actually reference before retiring anything.
 
-### 3. Closing-price / CLV evidence
+### 3. Prospective CLV activation
 
-The schema already contains `decision_clv`, but the project still needs a deliberately closed prospective closing-price capture and reporting lifecycle before making claims about durable live market edge.
+Do not set `TENNIS_CLV_ACTIVATION_AT` until the dashboard/live/validation services have been deliberately reconciled to canonical `main` and the authoritative database reference has been confirmed.
+
+When those gates are complete, set one explicit timezone-aware ISO-8601 activation timestamp on the live runner. That timestamp is the prospective boundary: only Type A decisions created at or after it are eligible. Do not move the boundary backward to manufacture historical prospective evidence.
+
+After activation, verify the first eligible finalization through the live-runner `CLV_CLOSE` log and the read-only dashboard/API coverage reporting before interpreting any CLV sample.
 
 ## Historical validation baseline
 
@@ -220,5 +251,6 @@ Those are historical model-validation metrics, not proof of prospective profitab
 - do not treat Manager consensus as a value bet unless Market truth qualifies it
 - do not treat Type B dispersion as predictive-agent consensus
 - do not enable owner auth until the owner bootstrap path is confirmed
+- do not activate prospective CLV until canonical Railway source and database authority are verified
 - do not delete either PostgreSQL service until connection authority is proven
-- do not delete or rewrite append-only historical, odds, decision, Veto, or Type B evidence
+- do not delete or rewrite append-only historical, odds, decision, Veto, Type B, or closing-line evidence
