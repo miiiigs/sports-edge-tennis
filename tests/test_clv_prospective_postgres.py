@@ -18,7 +18,9 @@ SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
 
 
 def _dt(hour: int, minute: int = 0) -> datetime:
-    return datetime(2026, 9, 12, hour, minute, tzinfo=timezone.utc)
+    # Keep fixture timestamps safely in the past so database-created audit timestamps
+    # never precede the synthetic point-in-time evidence on CI runners in any timezone.
+    return datetime(2026, 9, 1, hour, minute, tzinfo=timezone.utc)
 
 
 def _fetchval(conn: psycopg.Connection, sql: str, params=()):
