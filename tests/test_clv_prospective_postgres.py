@@ -397,14 +397,26 @@ def _evaluate_market_decision(
 
 
 def _clv_window(conn: psycopg.Connection, decision_id: int) -> tuple[datetime, datetime]:
-    decision_created_at = _fetchval(
-        conn,
-        "SELECT created_at FROM decisions WHERE decision_id = %s",
+    row = conn.execute(
+        """
+        SELECT d.created_at, mv.match_start_at
+        FROM decisions d
+        JOIN LATERAL (
+            SELECT match_start_at
+            FROM match_versions
+            WHERE match_id = d.match_id
+            ORDER BY source_observed_at DESC, match_version_id DESC
+            LIMIT 1
+        ) mv ON TRUE
+        WHERE d.decision_id = %s
+        """,
         (decision_id,),
-    )
+    ).fetchone()
+    assert row is not None
+    decision_created_at, match_start_at = row
     return (
         decision_created_at - timedelta(seconds=1),
-        decision_created_at + timedelta(hours=3),
+        match_start_at + timedelta(hours=2, seconds=1),
     )
 
 
