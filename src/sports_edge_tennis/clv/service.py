@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Iterable
 
 import psycopg
 
@@ -123,9 +122,10 @@ class PairEvidence:
         if not self.complete:
             return None
         assert self.player_1 is not None and self.player_2 is not None
-        return (Decimal("1") / self.player_1.decimal_price) + (
+        raw_booksum = (Decimal("1") / self.player_1.decimal_price) + (
             Decimal("1") / self.player_2.decimal_price
         )
+        return raw_booksum.quantize(_CLV_QUANTIZER, rounding=ROUND_HALF_UP)
 
 
 @dataclass(frozen=True)
