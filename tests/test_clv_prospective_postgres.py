@@ -8,7 +8,7 @@ import pytest
 
 from sports_edge_tennis.agents.contracts import AGENT_PROBABILITY_REPRESENTATIONS
 from sports_edge_tennis.clv import finalize_closing_evidence, load_clv_summary
-from sports_edge_tennis.market import SharpReferenceSpec
+from sports_edge_tennis.market import SharpReferenceSpec, evaluate_and_persist_market_slate
 
 A1 = "AGENT_1_SURFACE_ELO"
 A2 = "AGENT_2_HIERARCHICAL_MARKOV"
@@ -76,12 +76,7 @@ def _seed_match(conn: psycopg.Connection, *, start: datetime) -> int:
 
 
 def _seed_parent(conn: psycopg.Connection, *, match_id: int) -> tuple[int, int, int]:
-    """Create a canonical finalized predictive parent before seeding Market truth.
-
-    The production lifecycle only permits targets/predictions while the run is
-    RUNNING and unfinalized. The CLV fixture must preserve that invariant rather
-    than inserting children beneath an already-completed run.
-    """
+    """Create a canonical finalized predictive parent before seeding Market truth."""
     run_as_of = _dt(8)
     finalized_at = _dt(8, 10)
 
@@ -254,85 +249,33 @@ def _insert_pair(
     )
 
 
-def _insert_decision(
+def _evaluate_market_decision(
     conn: psycopg.Connection,
     *,
-    match_id: int,
     run_id: int,
-    manager_id: int,
     market_policy_id: int,
-    status: str,
-    created_at: datetime,
-    offered_snapshot_id: int | None = None,
-    offered_price: str | None = None,
-) -> int:
-    priced = status in {"BET", "VETOED"}
-    reason = "NONE" if status == "BET" else (
-        "VETO_TRIGGERED" if status == "VETOED" else "EDGE_BELOW_THRESHOLD"
-    )
-    hash_value = ("a" if priced else "b") * 64
-    decision_id = _fetchval(
+) -> tuple[int, str, str, object]:
+    outcome = evaluate_and_persist_market_slate(
         conn,
-        """
-        INSERT INTO decisions (
-            match_id, prediction_run_id, signal_type, decision_status, reason_code,
-            market_type, selection_type, selection_side,
-            consensus_probability, consensus_fair_odds,
-            market_decimal_price, sharp_reference_price,
-            price_source_system, price_bookmaker_code,
-            devig_method, devig_fair_odds, edge_pct, min_acceptable_odds,
-            active_agent_count, abstaining_agent_count, directional_disagreement,
-            probability_spread, model_version, feature_version,
-            as_of, prediction_locked_at, created_at,
-            manager_consensus_result_id, market_policy_version_id,
-            snapshot_lineage_hash
-        )
-        VALUES (
-            %s, %s, 'TYPE_A_MODEL_EDGE', %s, %s,
-            'MATCH_WINNER', %s, %s,
-            0.60, %s,
-            %s, %s,
-            %s, %s,
-            %s, %s, %s, %s,
-            3, 0, FALSE, 0.00, 'market_value_v1', 'type_a',
-            %s, %s, %s,
-            %s, %s, %s
-        )
-        RETURNING decision_id
-        """,
-        (
-            match_id,
-            run_id,
-            status,
-            reason,
-            "PLAYER_1" if priced else None,
-            1 if priced else None,
-            Decimal("1.666667") if priced else None,
-            Decimal(offered_price) if priced and offered_price is not None else None,
-            Decimal("1.850000") if priced else None,
-            "SOFT" if priced else None,
-            "BOOK_A" if priced else None,
-            "POWER" if priced else None,
-            Decimal("1.900000") if priced else None,
-            Decimal("0.260000") if priced else None,
-            Decimal("1.750000") if priced else None,
-            _dt(8, 40),
-            _dt(8, 41),
-            created_at,
-            manager_id,
-            market_policy_id,
-            hash_value,
-        ),
+        prediction_run_id=run_id,
+        market_policy_version_id=market_policy_id,
+        decision_as_of=_dt(8, 40),
+        market_execution_now=_dt(8, 41),
+        sharp_reference=SHARP,
     )
-    if priced and offered_snapshot_id is not None:
-        conn.execute(
-            """
-            INSERT INTO decision_odds_snapshots (decision_id, odds_snapshot_id, snapshot_role)
-            VALUES (%s, %s, 'OFFERED_SELECTION')
-            """,
-            (decision_id, offered_snapshot_id),
-        )
-    return int(decision_id)
+    row = conn.execute(
+        """
+        SELECT decision_id, decision_status::text, reason_code::text
+        FROM decisions
+        WHERE prediction_run_id = %s
+          AND manager_consensus_result_id IS NOT NULL
+        ORDER BY decision_id DESC
+        LIMIT 1
+        """,
+        (run_id,),
+    ).fetchone()
+    assert row is not None
+    return int(row[0]), str(row[1]), str(row[2]), outcome
 
 
 def _seed_priced_decision(conn: psycopg.Connection, *, start: datetime = _dt(12)):
@@ -348,7 +291,7 @@ def _seed_priced_decision(conn: psycopg.Connection, *, start: datetime = _dt(12)
         snapshot_id="sharp-open",
         observed_at=_dt(8, 30),
     )
-    offered_p1, _ = _insert_pair(
+    _insert_pair(
         conn,
         match_id=match_id,
         source_system="SOFT",
@@ -358,17 +301,14 @@ def _seed_priced_decision(conn: psycopg.Connection, *, start: datetime = _dt(12)
         snapshot_id="book-open",
         observed_at=_dt(8, 35),
     )
-    decision_id = _insert_decision(
+    decision_id, status, reason, outcome = _evaluate_market_decision(
         conn,
-        match_id=match_id,
         run_id=run_id,
-        manager_id=manager_id,
         market_policy_id=market_policy_id,
-        status="BET",
-        created_at=_dt(8, 41),
-        offered_snapshot_id=offered_p1,
-        offered_price="2.10",
     )
+    assert status == "BET"
+    assert reason == "NONE"
+    assert outcome.qualified_bet_count == 1
     return decision_id, match_id, run_id, manager_id, market_policy_id
 
 
@@ -480,16 +420,36 @@ def test_no_bet_receives_closing_evidence_without_fake_price_or_clv(
     db: psycopg.Connection,
 ):
     match_id = _seed_match(db, start=_dt(12))
-    run_id, manager_id, market_policy_id = _seed_parent(db, match_id=match_id)
-    decision_id = _insert_decision(
+    run_id, _, market_policy_id = _seed_parent(db, match_id=match_id)
+    _insert_pair(
         db,
         match_id=match_id,
-        run_id=run_id,
-        manager_id=manager_id,
-        market_policy_id=market_policy_id,
-        status="NO_BET",
-        created_at=_dt(8, 42),
+        source_system="SHARP",
+        bookmaker_code="PINNACLE",
+        p1="2.00",
+        p2="2.00",
+        snapshot_id="sharp-open-no-bet",
+        observed_at=_dt(8, 30),
     )
+    _insert_snapshot(
+        db,
+        match_id=match_id,
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        selection_type="PLAYER_1",
+        price="1.70",
+        snapshot_id="book-low-value",
+        observed_at=_dt(8, 35),
+    )
+    decision_id, status, reason, outcome = _evaluate_market_decision(
+        db,
+        run_id=run_id,
+        market_policy_id=market_policy_id,
+    )
+    assert status == "NO_BET"
+    assert reason == "EDGE_BELOW_THRESHOLD"
+    assert outcome.qualified_bet_count == 0
+
     _insert_pair(
         db,
         match_id=match_id,
@@ -501,15 +461,15 @@ def test_no_bet_receives_closing_evidence_without_fake_price_or_clv(
         observed_at=_dt(11, 57),
     )
 
-    outcome = finalize_closing_evidence(
+    close_outcome = finalize_closing_evidence(
         db,
         activation_at=_dt(8),
         captured_at=_dt(14, 30),
         sharp_reference=SHARP,
     )
-    assert outcome.finalized_count == 1
-    assert outcome.clv_created_count == 0
-    assert outcome.clv_unavailable_count == 1
+    assert close_outcome.finalized_count == 1
+    assert close_outcome.clv_created_count == 0
+    assert close_outcome.clv_unavailable_count == 1
 
     evidence = db.execute(
         """
@@ -528,7 +488,36 @@ def test_missing_complete_same_book_close_never_fabricates_clv(
     db: psycopg.Connection,
 ):
     match_id = _seed_match(db, start=_dt(12))
-    run_id, manager_id, market_policy_id = _seed_parent(db, match_id=match_id)
+    run_id, _, market_policy_id = _seed_parent(db, match_id=match_id)
+    _insert_pair(
+        db,
+        match_id=match_id,
+        source_system="SHARP",
+        bookmaker_code="PINNACLE",
+        p1="1.80",
+        p2="2.10",
+        snapshot_id="sharp-open",
+        observed_at=_dt(8, 30),
+    )
+    _insert_snapshot(
+        db,
+        match_id=match_id,
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        selection_type="PLAYER_1",
+        price="2.20",
+        snapshot_id="book-selected-only",
+        observed_at=_dt(8, 35),
+    )
+    decision_id, status, reason, outcome = _evaluate_market_decision(
+        db,
+        run_id=run_id,
+        market_policy_id=market_policy_id,
+    )
+    assert status == "BET"
+    assert reason == "NONE"
+    assert outcome.qualified_bet_count == 1
+
     _insert_pair(
         db,
         match_id=match_id,
@@ -539,36 +528,15 @@ def test_missing_complete_same_book_close_never_fabricates_clv(
         snapshot_id="sharp-close",
         observed_at=_dt(11, 55),
     )
-    offered_p1 = _insert_snapshot(
-        db,
-        match_id=match_id,
-        source_system="SOFT",
-        bookmaker_code="BOOK_A",
-        selection_type="PLAYER_1",
-        price="2.10",
-        snapshot_id="book-selected-only",
-        observed_at=_dt(8, 35),
-    )
-    decision_id = _insert_decision(
-        db,
-        match_id=match_id,
-        run_id=run_id,
-        manager_id=manager_id,
-        market_policy_id=market_policy_id,
-        status="BET",
-        created_at=_dt(8, 41),
-        offered_snapshot_id=offered_p1,
-        offered_price="2.10",
-    )
 
-    outcome = finalize_closing_evidence(
+    close_outcome = finalize_closing_evidence(
         db,
         activation_at=_dt(8),
         captured_at=_dt(14, 30),
         sharp_reference=SHARP,
     )
-    assert outcome.finalized_count == 1
-    assert outcome.clv_created_count == 0
+    assert close_outcome.finalized_count == 1
+    assert close_outcome.clv_created_count == 0
     evidence = db.execute(
         """
         SELECT close_status, clv_available, clv_unavailable_reason
