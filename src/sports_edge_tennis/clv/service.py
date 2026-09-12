@@ -427,7 +427,10 @@ def _clv_values(
         return False, "SAME_BOOK_CLOSE_PRECEDES_PRICE_TAKEN", None
     booksum = same_book.booksum
     assert booksum is not None
-    margin = booksum - Decimal("1")
+    margin = (booksum - Decimal("1")).quantize(
+        _CLV_QUANTIZER,
+        rounding=ROUND_HALF_UP,
+    )
     if margin <= 0:
         return False, "SAME_BOOK_MARGIN_NON_POSITIVE", None
 
