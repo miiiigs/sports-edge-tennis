@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 import psycopg
 import pytest
 
+from sports_edge_tennis.agents.contracts import AGENT_PROBABILITY_REPRESENTATIONS
 from sports_edge_tennis.clv import finalize_closing_evidence, load_clv_summary
 from sports_edge_tennis.market import SharpReferenceSpec
 
+A1 = "AGENT_1_SURFACE_ELO"
+A2 = "AGENT_2_HIERARCHICAL_MARKOV"
+A3 = "AGENT_3_INTRANSITIVITY"
+AGENTS = (A1, A2, A3)
 SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
 
 
@@ -71,23 +76,81 @@ def _seed_match(conn: psycopg.Connection, *, start: datetime) -> int:
 
 
 def _seed_parent(conn: psycopg.Connection, *, match_id: int) -> tuple[int, int, int]:
+    """Create a canonical finalized predictive parent before seeding Market truth.
+
+    The production lifecycle only permits targets/predictions while the run is
+    RUNNING and unfinalized. The CLV fixture must preserve that invariant rather
+    than inserting children beneath an already-completed run.
+    """
     run_as_of = _dt(8)
-    run_id = _fetchval(
-        conn,
-        """
-        INSERT INTO prediction_runs (
-            run_status, as_of, started_at, prediction_finalized_at,
-            ended_at, prediction_contract_version
+    finalized_at = _dt(8, 10)
+
+    with conn.transaction():
+        conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
+        run_id = _fetchval(
+            conn,
+            """
+            INSERT INTO prediction_runs (
+                run_status, as_of, started_at, prediction_finalized_at,
+                ended_at, prediction_contract_version
+            )
+            VALUES ('RUNNING', %s, %s, NULL, NULL, 'predictive_agent_result_v1')
+            RETURNING prediction_run_id
+            """,
+            (run_as_of, run_as_of),
         )
-        VALUES ('COMPLETED', %s, %s, %s, %s, 'predictive_agent_result_v1')
-        RETURNING prediction_run_id
-        """,
-        (run_as_of, run_as_of, _dt(8, 10), _dt(8, 11)),
-    )
-    conn.execute(
-        "INSERT INTO prediction_run_targets (prediction_run_id, match_id) VALUES (%s, %s)",
-        (run_id, match_id),
-    )
+        conn.execute(
+            "INSERT INTO prediction_run_targets (prediction_run_id, match_id) VALUES (%s, %s)",
+            (run_id, match_id),
+        )
+
+        for agent in AGENTS:
+            config_id = _fetchval(
+                conn,
+                """
+                INSERT INTO agent_config_versions (
+                    agent_code, config_version, model_version, feature_version,
+                    parameter_schema_version, config_payload
+                )
+                VALUES (%s, %s, 'clv-fixture-model', 'clv-fixture-feature',
+                        'params-v1', '{"clv_fixture": true}'::jsonb)
+                RETURNING agent_config_version_id
+                """,
+                (agent, f"{agent.lower()}-clv-fixture-v1"),
+            )
+            conn.execute(
+                """
+                INSERT INTO predictions (
+                    match_id, prediction_run_id, agent_config_version_id, agent_code,
+                    prediction_status, selection_side, win_probability,
+                    model_version, feature_version, as_of, prediction_locked_at,
+                    probability_representation
+                )
+                VALUES (
+                    %s, %s, %s, %s, 'PREDICTED', 1, 0.60,
+                    'clv-fixture-model', 'clv-fixture-feature', %s, %s, %s
+                )
+                """,
+                (
+                    match_id,
+                    run_id,
+                    config_id,
+                    agent,
+                    run_as_of,
+                    finalized_at,
+                    AGENT_PROBABILITY_REPRESENTATIONS[agent],
+                ),
+            )
+
+        conn.execute(
+            """
+            UPDATE prediction_runs
+            SET run_status = 'COMPLETED', prediction_finalized_at = %s, ended_at = %s
+            WHERE prediction_run_id = %s
+            """,
+            (finalized_at, _dt(8, 11), run_id),
+        )
+
     manager_policy_id = _fetchval(
         conn,
         "SELECT manager_policy_version_id FROM manager_policy_versions ORDER BY manager_policy_version_id LIMIT 1",
@@ -101,7 +164,7 @@ def _seed_parent(conn: psycopg.Connection, *, match_id: int) -> tuple[int, int, 
             active_agent_count, abstaining_agent_count, probability_spread,
             reason_code, as_of
         )
-        VALUES (%s, %s, %s, 'CONSENSUS', 1, 0.60, 3, 0, 0.02, 'NONE', %s)
+        VALUES (%s, %s, %s, 'CONSENSUS', 1, 0.60, 3, 0, 0.00, 'NONE', %s)
         RETURNING manager_consensus_result_id
         """,
         (run_id, match_id, manager_policy_id, run_as_of),
@@ -204,7 +267,9 @@ def _insert_decision(
     offered_price: str | None = None,
 ) -> int:
     priced = status in {"BET", "VETOED"}
-    reason = "NONE" if status == "BET" else ("VETO_TRIGGERED" if status == "VETOED" else "EDGE_BELOW_THRESHOLD")
+    reason = "NONE" if status == "BET" else (
+        "VETO_TRIGGERED" if status == "VETOED" else "EDGE_BELOW_THRESHOLD"
+    )
     hash_value = ("a" if priced else "b") * 64
     decision_id = _fetchval(
         conn,
@@ -229,7 +294,7 @@ def _insert_decision(
             %s, %s,
             %s, %s,
             %s, %s, %s, %s,
-            3, 0, FALSE, 0.02, 'market_value_v1', 'type_a',
+            3, 0, FALSE, 0.00, 'market_value_v1', 'type_a',
             %s, %s, %s,
             %s, %s, %s
         )
@@ -307,7 +372,9 @@ def _seed_priced_decision(conn: psycopg.Connection, *, start: datetime = _dt(12)
     return decision_id, match_id, run_id, manager_id, market_policy_id
 
 
-def test_latest_complete_prestart_pairs_drive_clv_and_poststart_quotes_are_rejected(db: psycopg.Connection):
+def test_latest_complete_prestart_pairs_drive_clv_and_poststart_quotes_are_rejected(
+    db: psycopg.Connection,
+):
     decision_id, match_id, *_ = _seed_priced_decision(db)
 
     sharp_close = _insert_pair(
@@ -393,13 +460,25 @@ def test_latest_complete_prestart_pairs_drive_clv_and_poststart_quotes_are_rejec
     assert clv[0] == Decimal("2.100000")
     assert clv[1] == Decimal("1.950000")
     assert clv[2] == Decimal("1.900000")
-    expected_margin = (Decimal("1") / Decimal("1.95")) + (Decimal("1") / Decimal("2.00")) - Decimal("1")
+    raw_margin = (
+        (Decimal("1") / Decimal("1.95"))
+        + (Decimal("1") / Decimal("2.00"))
+        - Decimal("1")
+    )
+    expected_margin = raw_margin.quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP)
     assert clv[3] == expected_margin
-    expected_clv = (Decimal("2.10") / Decimal("1.95") / (Decimal("1") + expected_margin) - Decimal("1")).quantize(Decimal("0.00000001"))
+    expected_clv = (
+        Decimal("2.10")
+        / Decimal("1.95")
+        / (Decimal("1") + expected_margin)
+        - Decimal("1")
+    ).quantize(Decimal("0.00000001"), rounding=ROUND_HALF_UP)
     assert clv[6] == expected_clv
 
 
-def test_no_bet_receives_closing_evidence_without_fake_price_or_clv(db: psycopg.Connection):
+def test_no_bet_receives_closing_evidence_without_fake_price_or_clv(
+    db: psycopg.Connection,
+):
     match_id = _seed_match(db, start=_dt(12))
     run_id, manager_id, market_policy_id = _seed_parent(db, match_id=match_id)
     decision_id = _insert_decision(
@@ -445,7 +524,9 @@ def test_no_bet_receives_closing_evidence_without_fake_price_or_clv(db: psycopg.
     ).fetchone()[0] == 0
 
 
-def test_missing_complete_same_book_close_never_fabricates_clv(db: psycopg.Connection):
+def test_missing_complete_same_book_close_never_fabricates_clv(
+    db: psycopg.Connection,
+):
     match_id = _seed_match(db, start=_dt(12))
     run_id, manager_id, market_policy_id = _seed_parent(db, match_id=match_id)
     _insert_pair(
@@ -489,13 +570,18 @@ def test_missing_complete_same_book_close_never_fabricates_clv(db: psycopg.Conne
     assert outcome.finalized_count == 1
     assert outcome.clv_created_count == 0
     evidence = db.execute(
-        "SELECT close_status, clv_available, clv_unavailable_reason FROM decision_close_evidence WHERE decision_id = %s",
+        """
+        SELECT close_status, clv_available, clv_unavailable_reason
+        FROM decision_close_evidence WHERE decision_id = %s
+        """,
         (decision_id,),
     ).fetchone()
     assert evidence == ("COMPLETE", False, "SAME_BOOK_CLOSE_MISSING")
 
 
-def test_activation_boundary_and_repeated_finalization_are_idempotent(db: psycopg.Connection):
+def test_activation_boundary_and_repeated_finalization_are_idempotent(
+    db: psycopg.Connection,
+):
     decision_id, match_id, *_ = _seed_priced_decision(db)
     _insert_pair(
         db,
