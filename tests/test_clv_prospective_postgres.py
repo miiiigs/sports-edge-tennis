@@ -8,7 +8,15 @@ import pytest
 
 from sports_edge_tennis.agents.contracts import AGENT_PROBABILITY_REPRESENTATIONS
 from sports_edge_tennis.clv import finalize_closing_evidence, load_clv_summary
-from sports_edge_tennis.market import SharpReferenceSpec, evaluate_and_persist_market_slate
+from sports_edge_tennis.manager import (
+    ensure_manager_policy_version_v1,
+    evaluate_and_persist_manager_consensus,
+)
+from sports_edge_tennis.market import (
+    SharpReferenceSpec,
+    ensure_market_policy_version_v1,
+    evaluate_and_persist_market_slate,
+)
 
 A1 = "AGENT_1_SURFACE_ELO"
 A2 = "AGENT_2_HIERARCHICAL_MARKOV"
@@ -78,7 +86,7 @@ def _seed_match(conn: psycopg.Connection, *, start: datetime) -> int:
 
 
 def _seed_parent(conn: psycopg.Connection, *, match_id: int) -> tuple[int, int, int]:
-    """Create a canonical finalized predictive parent before seeding Market truth."""
+    """Create canonical Predictive -> Manager -> Market lineage for CLV tests."""
     run_as_of = _dt(8)
     finalized_at = _dt(8, 10)
 
@@ -148,29 +156,24 @@ def _seed_parent(conn: psycopg.Connection, *, match_id: int) -> tuple[int, int, 
             (finalized_at, _dt(8, 11), run_id),
         )
 
-    manager_policy_id = _fetchval(
+    manager_policy = ensure_manager_policy_version_v1(conn)
+    manager_outcome = evaluate_and_persist_manager_consensus(
         conn,
-        "SELECT manager_policy_version_id FROM manager_policy_versions ORDER BY manager_policy_version_id LIMIT 1",
+        prediction_run_id=run_id,
+        manager_policy_version_id=manager_policy.manager_policy_version_id,
     )
+    assert manager_outcome.status == "PERSISTED"
     manager_id = _fetchval(
         conn,
         """
-        INSERT INTO manager_consensus_results (
-            prediction_run_id, match_id, manager_policy_version_id,
-            manager_status, selected_side, consensus_probability,
-            active_agent_count, abstaining_agent_count, probability_spread,
-            reason_code, as_of
-        )
-        VALUES (%s, %s, %s, 'CONSENSUS', 1, 0.60, 3, 0, 0.00, 'NONE', %s)
-        RETURNING manager_consensus_result_id
+        SELECT manager_consensus_result_id
+        FROM manager_consensus_results
+        WHERE prediction_run_id = %s AND match_id = %s
         """,
-        (run_id, match_id, manager_policy_id, run_as_of),
+        (run_id, match_id),
     )
-    market_policy_id = _fetchval(
-        conn,
-        "SELECT market_policy_version_id FROM market_policy_versions ORDER BY market_policy_version_id LIMIT 1",
-    )
-    return int(run_id), int(manager_id), int(market_policy_id)
+    market_policy = ensure_market_policy_version_v1(conn)
+    return int(run_id), int(manager_id), int(market_policy.market_policy_version_id)
 
 
 def _insert_snapshot(
