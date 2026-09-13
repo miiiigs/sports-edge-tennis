@@ -70,7 +70,7 @@ def _summary_from_row(row) -> DailyBetSummary:
 def load_daily_bet_summaries(
     conn: psycopg.Connection,
     *,
-    limit: int = 366,
+    limit: int = 5000,
 ) -> tuple[DailyBetSummary, ...]:
     """Return one aggregate row per UTC decision day, newest first."""
     if limit < 1 or limit > 5000:
@@ -91,7 +91,7 @@ def load_daily_bet_summaries(
             )::int AS pending,
             COUNT(*) FILTER (WHERE ds.settlement_status = 'WON')::int AS wins,
             COUNT(*) FILTER (WHERE ds.settlement_status = 'LOST')::int AS losses,
-            COUNT(*) FILTER (WHERE ds.settlement_status = 'VOID')::int AS voids,
+            COUNT(*) FILTER (WHERE ds.settlement_status IN ('VOID', 'PUSH'))::int AS voids,
             COUNT(*) FILTER (WHERE ds.settlement_status = 'CANCELLED')::int AS cancelled,
             COALESCE(
                 SUM(
@@ -99,6 +99,7 @@ def load_daily_bet_summaries(
                         WHEN 'WON' THEN d.market_decimal_price - 1
                         WHEN 'LOST' THEN -1
                         WHEN 'VOID' THEN 0
+                        WHEN 'PUSH' THEN 0
                         WHEN 'CANCELLED' THEN 0
                         ELSE 0
                     END
@@ -124,7 +125,7 @@ def _profit_for_status(status: str, price: Decimal) -> Decimal | None:
         return price - Decimal("1")
     if status == "LOST":
         return Decimal("-1")
-    if status in {"VOID", "CANCELLED"}:
+    if status in {"VOID", "PUSH", "CANCELLED"}:
         return Decimal("0")
     if status == "PENDING":
         return None
