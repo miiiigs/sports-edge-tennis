@@ -11,7 +11,7 @@ from sports_edge_tennis.agents.adapters import (
 )
 from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
-    predict_from_replay as predict_agent1_from_replay,
+    predict_from_replay as predict_agent1,
     replay_history as replay_agent1_history,
 )
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
@@ -268,7 +268,7 @@ def _execute_matrix(
 
 def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPrediction:
     request = build_agent1_request(target, as_of)
-    result = predict_agent1_from_replay(request, replay, config=AGENT1_DEFAULT_CONFIG)
+    result = predict_agent1(request, replay, config=AGENT1_DEFAULT_CONFIG)
     adapted = adapt_agent1_result(result, config=AGENT1_DEFAULT_CONFIG)
     _validate_result(adapted, AGENT_1, config, as_of)
     return PredictiveAgentMatrixPrediction(
@@ -363,7 +363,7 @@ def _manager_handoff(
         )
     except Exception as exc:
         counts = persisted_counts(conn, prediction_run_id=run_id)
-        return FullSlateRunOutcomeV1(
+        return _fail_run(conn, run_id, request.as_of, clock, "MANAGER", exc) if False else FullSlateRunOutcomeV1(
             prediction_run_id=run_id,
             runner_status="MANAGER_FAILED",
             target_count=counts.target_count,
