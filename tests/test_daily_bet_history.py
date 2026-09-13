@@ -4,6 +4,9 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sports_edge_tennis.dashboard.daily_bets import (
+    DailyBetSummary,
+    aggregate_bet_summaries,
+    build_performance_windows,
     load_daily_bet_summaries,
     load_daily_bets,
 )
@@ -59,6 +62,67 @@ def test_daily_summary_uses_settled_count_for_roi_and_wl_for_hit_rate():
     assert row.hit_rate == 0.75
     assert "TYPE_A_MODEL_EDGE" in conn.calls[0][0]
     assert "decision_status = 'BET'" in conn.calls[0][0]
+
+
+def test_period_summary_rolls_up_daily_profit_and_settled_stake():
+    rows = (
+        DailyBetSummary(
+            decision_date=date(2026, 9, 13),
+            bets=3,
+            settled=2,
+            pending=1,
+            wins=1,
+            losses=1,
+            voids=0,
+            cancelled=0,
+            one_unit_profit=Decimal("0.50"),
+            roi=Decimal("0.25"),
+            hit_rate=0.5,
+        ),
+        DailyBetSummary(
+            decision_date=date(2026, 9, 12),
+            bets=4,
+            settled=4,
+            pending=0,
+            wins=3,
+            losses=1,
+            voids=0,
+            cancelled=0,
+            one_unit_profit=Decimal("1.50"),
+            roi=Decimal("0.375"),
+            hit_rate=0.75,
+        ),
+    )
+
+    summary = aggregate_bet_summaries(rows)
+
+    assert summary.bets == 7
+    assert summary.settled == 6
+    assert summary.pending == 1
+    assert summary.wins == 4
+    assert summary.losses == 2
+    assert summary.one_unit_profit == Decimal("2.00")
+    assert summary.roi == Decimal("2.00") / Decimal("6")
+    assert summary.hit_rate == 4 / 6
+
+
+def test_performance_windows_use_current_utc_date_boundaries():
+    rows = (
+        DailyBetSummary(date(2026, 9, 13), 2, 2, 0, 2, 0, 0, 0, Decimal("1.00"), Decimal("0.50"), 1.0),
+        DailyBetSummary(date(2026, 9, 7), 2, 2, 0, 1, 1, 0, 0, Decimal("0.20"), Decimal("0.10"), 0.5),
+        DailyBetSummary(date(2026, 9, 6), 2, 2, 0, 1, 1, 0, 0, Decimal("-0.20"), Decimal("-0.10"), 0.5),
+        DailyBetSummary(date(2026, 8, 15), 2, 2, 0, 1, 1, 0, 0, Decimal("0.40"), Decimal("0.20"), 0.5),
+        DailyBetSummary(date(2026, 8, 14), 2, 2, 0, 1, 1, 0, 0, Decimal("0.60"), Decimal("0.30"), 0.5),
+    )
+
+    windows = build_performance_windows(rows, as_of_date=date(2026, 9, 13))
+
+    assert windows["today"].bets == 2
+    assert windows["last_7_days"].bets == 4
+    assert windows["last_30_days"].bets == 8
+    assert windows["all_time"].bets == 10
+    assert windows["last_7_days"].one_unit_profit == Decimal("1.20")
+    assert windows["last_7_days"].roi == Decimal("1.20") / Decimal("4")
 
 
 def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
