@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Query, Request
@@ -11,6 +11,8 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect, _latest_activity, templates
 from sports_edge_tennis.dashboard.daily_bets import (
     DailyBetSummary,
+    PeriodBetSummary,
+    build_performance_windows,
     load_daily_bet_summaries,
     load_daily_bets,
 )
@@ -38,6 +40,21 @@ def _units(value: Decimal | None) -> str:
     if value is None:
         return "—"
     return f"{value:+.2f}u"
+
+
+def _period_json(summary: PeriodBetSummary) -> dict[str, object]:
+    return {
+        "bets": summary.bets,
+        "settled": summary.settled,
+        "pending": summary.pending,
+        "wins": summary.wins,
+        "losses": summary.losses,
+        "voids": summary.voids,
+        "cancelled": summary.cancelled,
+        "profit_units": str(summary.one_unit_profit),
+        "roi": str(summary.roi) if summary.roi is not None else None,
+        "hit_rate": summary.hit_rate,
+    }
 
 
 def _load_history(requested_date: date | None):
@@ -72,6 +89,8 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
         return HTMLResponse("Invalid date", status_code=400)
 
     summaries, selected_date, selected_summary, bets, failed = _load_history(requested_date)
+    as_of_date = datetime.now(UTC).date()
+    performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
     return templates.TemplateResponse(
         request,
         "bet_history.html",
@@ -83,6 +102,8 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
             "selected_date": selected_date,
             "selected_summary": selected_summary,
             "daily_bets": bets,
+            "performance_windows": performance_windows,
+            "performance_as_of": as_of_date,
             "bet_history_error": failed,
             "pct": _pct,
             "units": _units,
@@ -101,8 +122,16 @@ def api_bet_history(date: str | None = Query(default=None)):
     if failed:
         return JSONResponse({"error": "bet history unavailable"}, status_code=503)
 
+    as_of_date = datetime.now(UTC).date()
+    performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
+
     return JSONResponse(
         {
+            "as_of_date": as_of_date.isoformat(),
+            "performance_windows": {
+                key: _period_json(value)
+                for key, value in performance_windows.items()
+            },
             "selected_date": selected_date.isoformat() if selected_date else None,
             "selected_summary": None
             if selected_summary is None
