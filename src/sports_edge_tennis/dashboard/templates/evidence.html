@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Live Evidence · Sports Edge Tennis{% endblock %}
+{% set active_nav = 'performance' %}
+
+{% block content %}
+<section class="page-heading">
+  <h1>Prospective Live Evidence</h1>
+  <p>Forward-collected outcomes for real Type A decisions. Prediction quality, wager settlement, and CLV are kept as separate evidence layers.</p>
+</section>
+
+{% if evidence_error %}
+<section class="panel panel-warning">
+  <h2>Evidence temporarily unavailable</h2>
+  <p>The aggregate evidence query failed closed. No metric was inferred or backfilled.</p>
+</section>
+{% elif not prospective.initialized %}
+<section class="panel panel-neutral">
+  <h2>No prospective decision sample yet</h2>
+  <p>The reporting layer is ready, but there are no persisted Type A decisions available to score.</p>
+</section>
+{% else %}
+<section class="kpi-grid" aria-label="Prospective wagering evidence">
+  <article class="kpi">
+    <span class="kpi-label">Settled BETs</span>
+    <span class="kpi-value">{{ prospective.settled_bets }}</span>
+    <span class="muted">{{ prospective.pending_bets }} pending</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">1-unit ROI</span>
+    <span class="kpi-value">{% if prospective.roi is not none %}{{ '%.2f%%'|format(prospective.roi * 100) }}{% else %}—{% endif %}</span>
+    <span class="muted">profit {% if prospective.one_unit_profit is not none %}{{ prospective.one_unit_profit }}u{% else %}—{% endif %}</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">Hit Rate</span>
+    <span class="kpi-value">{% if prospective.hit_rate is not none %}{{ '%.2f%%'|format(prospective.hit_rate * 100) }}{% else %}—{% endif %}</span>
+    <span class="muted">{{ prospective.wins }}W / {{ prospective.losses }}L</span>
+  </article>
+  <article class="kpi">
+    <span class="kpi-label">Calibration Sample</span>
+    <span class="kpi-value">{{ prospective.calibration_sample }}</span>
+    <span class="muted">matured Manager calls</span>
+  </article>
+</section>
+
+<section class="history-list" aria-label="Prospective decision and calibration evidence">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Evidence</th>
+        <th scope="col">Value</th>
+        <th scope="col">Interpretation</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Total Type A decisions</td><td>{{ prospective.total_decisions }}</td><td>{{ prospective.bet_decisions }} BET · {{ prospective.no_bet_decisions }} NO_BET · {{ prospective.vetoed_decisions }} VETOED</td></tr>
+      <tr><td>Brier score</td><td>{% if prospective.brier_score is not none %}{{ '%.4f'|format(prospective.brier_score) }}{% else %}—{% endif %}</td><td>Lower is better; scored only after a normal completed result.</td></tr>
+      <tr><td>Log loss</td><td>{% if prospective.log_loss is not none %}{{ '%.4f'|format(prospective.log_loss) }}{% else %}—{% endif %}</td><td>Penalizes confident probability errors.</td></tr>
+      <tr><td>ECE</td><td>{% if prospective.ece is not none %}{{ '%.4f'|format(prospective.ece) }}{% else %}—{% endif %}</td><td>Expected calibration error across fixed probability bins.</td></tr>
+      <tr><td>Non-win/loss settlements</td><td>{{ prospective.voids }} VOID · {{ prospective.cancelled }} CANCELLED</td><td>Provider-neutral settlement policy; no bookmaker-specific rule is invented.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="panel panel-neutral">
+  <h2>Evidence boundaries</h2>
+  <p>Calibration scores matured Manager consensus calls across BET, NO_BET, and VETOED decisions. ROI uses only executed Type A BET settlements. Closing-line evidence remains a separate prospective CLV lifecycle.</p>
+  <p class="muted">Small samples are descriptive only. Historical or prospective performance is not a guarantee of future results.</p>
+</section>
+{% endif %}
+{% endblock %}
