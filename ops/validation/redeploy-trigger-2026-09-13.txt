@@ -1,0 +1,1 @@
+Validation runner source refresh trigger for production result catch-up and settlement. No runtime logic changes.
