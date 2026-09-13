@@ -636,12 +636,17 @@ def replay_history(
     )
 
 
-def predict(
+def predict_from_replay(
     request: PredictionRequest,
-    history: list[HistoricalMatchObservation] | tuple[HistoricalMatchObservation, ...] = (),
+    replay: ReplayResult,
     config: SurfaceEloConfig = DEFAULT_CONFIG,
 ) -> PredictionResult:
-    replay = replay_history(history, request.as_of, config)
+    """Predict from a replay already built for the request's point-in-time boundary.
+
+    This is output-equivalent to :func:`predict` but lets full-slate callers replay
+    the historical Elo ledger once and reuse the immutable result across every
+    target sharing the same ``as_of`` boundary.
+    """
     player_1_state = replay.player_states.get(
         request.player_1_id, _default_player_state(request.player_1_id, config)
     )
@@ -705,3 +710,12 @@ def predict(
         as_of=request.as_of,
         diagnostics=diagnostics,
     )
+
+
+def predict(
+    request: PredictionRequest,
+    history: list[HistoricalMatchObservation] | tuple[HistoricalMatchObservation, ...] = (),
+    config: SurfaceEloConfig = DEFAULT_CONFIG,
+) -> PredictionResult:
+    replay = replay_history(history, request.as_of, config)
+    return predict_from_replay(request, replay, config)
