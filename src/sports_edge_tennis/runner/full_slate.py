@@ -11,7 +11,8 @@ from sports_edge_tennis.agents.adapters import (
 )
 from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
-    predict as predict_agent1,
+    predict_from_replay as predict_agent1,
+    replay_history as replay_agent1_history,
 )
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
     DEFAULT_CONFIG as AGENT2_DEFAULT_CONFIG,
@@ -246,12 +247,13 @@ def _execute_matrix(
     as_of: datetime,
 ) -> list[PredictiveAgentMatrixPrediction]:
     agent1_history = load_agent1_history_observations(conn, as_of)
+    agent1_replay = replay_agent1_history(agent1_history, as_of, AGENT1_DEFAULT_CONFIG)
     agent2_snapshot = build_agent2_history_snapshot(conn, as_of)
     agent3_snapshot = build_agent3_history_snapshot(conn, as_of)
 
     matrix: list[PredictiveAgentMatrixPrediction] = []
     for target in targets:
-        agent1 = _run_agent1(target, agent1_history, configs[AGENT_1], as_of)
+        agent1 = _run_agent1(target, agent1_replay, configs[AGENT_1], as_of)
         agent2 = _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
         agent3 = _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of)
         matrix.extend((agent1, agent2, agent3))
@@ -264,9 +266,9 @@ def _execute_matrix(
     return matrix
 
 
-def _run_agent1(target, history, config, as_of) -> PredictiveAgentMatrixPrediction:
+def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPrediction:
     request = build_agent1_request(target, as_of)
-    result = predict_agent1(request, history=history, config=AGENT1_DEFAULT_CONFIG)
+    result = predict_agent1(request, replay, config=AGENT1_DEFAULT_CONFIG)
     adapted = adapt_agent1_result(result, config=AGENT1_DEFAULT_CONFIG)
     _validate_result(adapted, AGENT_1, config, as_of)
     return PredictiveAgentMatrixPrediction(
