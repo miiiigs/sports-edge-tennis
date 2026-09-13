@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Bet History · Sports Edge Tennis{% endblock %}
+{% set active_nav = 'bet-history' %}
+
+{% block content %}
+<section class="page-heading">
+  <h1>Daily Bet History</h1>
+  <p>Real Type A match-winner bets grouped by the UTC date the decision was made.</p>
+</section>
+
+{% if bet_history_error %}
+<section class="panel panel-error">
+  <h2>Bet history unavailable</h2>
+  <p>The read-only bet ledger could not be loaded. Model execution and settlement are unaffected.</p>
+</section>
+{% elif not daily_summaries %}
+<section class="panel panel-neutral">
+  <h2>No Type A bets yet</h2>
+  <p>Daily results will appear here automatically once real Type A BET decisions are persisted.</p>
+</section>
+{% else %}
+
+{% if selected_summary %}
+<section class="page-heading" style="margin-top: 28px;">
+  <h1>{{ selected_date.strftime('%a %d %b %Y') }}</h1>
+  <p>Performance for bets created on this UTC decision day.</p>
+</section>
+
+<section class="kpi-grid" aria-label="Daily bet performance">
+  <div class="kpi"><span class="kpi-value">{{ selected_summary.bets }}</span><span class="kpi-label">Bets</span></div>
+  <div class="kpi"><span class="kpi-value">{{ selected_summary.wins }}</span><span class="kpi-label">Wins</span></div>
+  <div class="kpi"><span class="kpi-value">{{ selected_summary.losses }}</span><span class="kpi-label">Losses</span></div>
+  <div class="kpi"><span class="kpi-value">{{ selected_summary.pending }}</span><span class="kpi-label">Pending</span></div>
+  <div class="kpi"><span class="kpi-value">{{ pct(selected_summary.hit_rate) }}</span><span class="kpi-label">Win Rate</span></div>
+  <div class="kpi"><span class="kpi-value">{{ units(selected_summary.one_unit_profit) }}</span><span class="kpi-label">Daily P/L</span></div>
+  <div class="kpi"><span class="kpi-value">{{ pct(selected_summary.roi) }}</span><span class="kpi-label">Daily ROI</span></div>
+</section>
+
+<section class="history-list" aria-label="Bets for selected day">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Decision</th>
+        <th scope="col">Match</th>
+        <th scope="col">Selection</th>
+        <th scope="col">Odds</th>
+        <th scope="col">Model</th>
+        <th scope="col">Result</th>
+        <th scope="col">P/L</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bet in daily_bets %}
+      <tr>
+        <td>{{ bet.decision_at.strftime('%H:%M UTC') }}</td>
+        <td>
+          <strong>{{ bet.player_1 or 'Player 1' }} vs {{ bet.player_2 or 'Player 2' }}</strong><br>
+          <span class="muted">{{ bet.tournament or 'Tournament unavailable' }}{% if bet.match_start_at %} · {{ bet.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
+        </td>
+        <td>{{ bet.selection or '—' }}</td>
+        <td>{{ '%.2f'|format(bet.market_decimal_price) }}{% if bet.bookmaker_code %}<br><span class="muted">{{ bet.bookmaker_code }}</span>{% endif %}</td>
+        <td>{% if bet.consensus_probability is not none %}{{ pct(bet.consensus_probability) }}{% else %}—{% endif %}</td>
+        <td><span class="badge badge-neutral">{{ bet.settlement_status }}</span></td>
+        <td>{{ units(bet.profit_units) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="page-heading" style="margin-top: 40px;">
+  <h1>Daily Performance</h1>
+  <p>Select any day to inspect every Type A bet that contributed to its result.</p>
+</section>
+<section class="history-list" aria-label="Daily performance history">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Date</th>
+        <th scope="col">Bets</th>
+        <th scope="col">W</th>
+        <th scope="col">L</th>
+        <th scope="col">Void</th>
+        <th scope="col">Pending</th>
+        <th scope="col">Win Rate</th>
+        <th scope="col">P/L</th>
+        <th scope="col">ROI</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for day in daily_summaries %}
+      <tr>
+        <td><a class="history-link" href="/bet-history?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></td>
+        <td>{{ day.bets }}</td>
+        <td>{{ day.wins }}</td>
+        <td>{{ day.losses }}</td>
+        <td>{{ day.voids + day.cancelled }}</td>
+        <td>{{ day.pending }}</td>
+        <td>{{ pct(day.hit_rate) }}</td>
+        <td>{{ units(day.one_unit_profit) }}</td>
+        <td>{{ pct(day.roi) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}
