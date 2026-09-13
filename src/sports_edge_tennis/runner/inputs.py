@@ -48,6 +48,40 @@ def _elapsed_ms(started: float) -> int:
     return int((perf_counter() - started) * 1000)
 
 
+def _has_visible_result_delta(
+    conn: psycopg.Connection,
+    *,
+    previous_cutoff: datetime,
+    cutoff: datetime,
+) -> bool:
+    """Return whether a result can enter an incremental model window.
+
+    Agent 2 and Agent 3 both define result visibility as the later of
+    ``source_observed_at`` and ``as_of``. Their existing incremental loaders then
+    discard every row whose visibility cohort predates the previous checkpoint.
+    Checking that condition first lets an empty hour avoid expensive history joins
+    while preserving the exact loader/advance path whenever any row could qualify.
+    """
+    if previous_cutoff >= cutoff:
+        return False
+    row = conn.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM match_result_observations mro
+            WHERE mro.source_observed_at <= %s
+              AND mro.as_of <= %s
+              AND (
+                    mro.source_observed_at >= %s
+                 OR mro.as_of >= %s
+              )
+        )
+        """,
+        (cutoff, cutoff, previous_cutoff, previous_cutoff),
+    ).fetchone()
+    return bool(row and row[0])
+
+
 def build_agent1_request(target: ResolvedTargetV1, as_of: datetime) -> Agent1PredictionRequest:
     return Agent1PredictionRequest(
         player_1_id=target.player_1_id,
@@ -110,20 +144,30 @@ def build_agent2_history_snapshot(conn: psycopg.Connection, cutoff: datetime):
             try:
                 snapshot = decode_agent2_snapshot(checkpoint.payload)
                 delta_started = perf_counter()
-                delta_start = (checkpoint.checkpoint_cutoff - timedelta(days=1)).date()
-                observations = load_agent2_history(
+                if _has_visible_result_delta(
                     conn,
+                    previous_cutoff=checkpoint.checkpoint_cutoff,
                     cutoff=cutoff,
-                    date_start=delta_start,
-                )
-                delta = [
-                    item
-                    for item in observations
-                    if item.visibility_cohort >= checkpoint.checkpoint_cutoff
-                ]
+                ):
+                    delta_start = (checkpoint.checkpoint_cutoff - timedelta(days=1)).date()
+                    observations = load_agent2_history(
+                        conn,
+                        cutoff=cutoff,
+                        date_start=delta_start,
+                    )
+                    delta = [
+                        item
+                        for item in observations
+                        if item.visibility_cohort >= checkpoint.checkpoint_cutoff
+                    ]
+                    delta_source = "QUERY"
+                else:
+                    delta = []
+                    delta_source = "NO_VISIBLE_DELTA"
                 print(
                     "AGENT2_HISTORY_LOAD_READY "
-                    f"mode=INCREMENTAL observations={len(delta)} elapsed_ms={_elapsed_ms(delta_started)}",
+                    f"mode=INCREMENTAL observations={len(delta)} elapsed_ms={_elapsed_ms(delta_started)} "
+                    f"source={delta_source}",
                     flush=True,
                 )
                 snapshot = advance_agent2_history_snapshot(snapshot, delta, cutoff=cutoff)
@@ -239,20 +283,30 @@ def build_agent3_history_snapshot(conn: psycopg.Connection, cutoff: datetime):
             try:
                 snapshot = decode_agent3_snapshot(checkpoint.payload)
                 delta_started = perf_counter()
-                delta_start = (checkpoint.checkpoint_cutoff - timedelta(days=1)).date()
-                observations = load_agent3_history(
+                if _has_visible_result_delta(
                     conn,
+                    previous_cutoff=checkpoint.checkpoint_cutoff,
                     cutoff=cutoff,
-                    date_start=delta_start,
-                )
-                delta = [
-                    item
-                    for item in observations
-                    if item.visibility_cohort >= checkpoint.checkpoint_cutoff
-                ]
+                ):
+                    delta_start = (checkpoint.checkpoint_cutoff - timedelta(days=1)).date()
+                    observations = load_agent3_history(
+                        conn,
+                        cutoff=cutoff,
+                        date_start=delta_start,
+                    )
+                    delta = [
+                        item
+                        for item in observations
+                        if item.visibility_cohort >= checkpoint.checkpoint_cutoff
+                    ]
+                    delta_source = "QUERY"
+                else:
+                    delta = []
+                    delta_source = "NO_VISIBLE_DELTA"
                 print(
                     "AGENT3_HISTORY_LOAD_READY "
-                    f"mode=INCREMENTAL observations={len(delta)} elapsed_ms={_elapsed_ms(delta_started)}",
+                    f"mode=INCREMENTAL observations={len(delta)} elapsed_ms={_elapsed_ms(delta_started)} "
+                    f"source={delta_source}",
                     flush=True,
                 )
                 snapshot = advance_live_agent3_history_snapshot(
