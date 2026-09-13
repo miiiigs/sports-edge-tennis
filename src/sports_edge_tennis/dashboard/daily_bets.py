@@ -9,8 +9,9 @@ settles later.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
+from typing import Iterable
 
 import psycopg
 
@@ -18,6 +19,20 @@ import psycopg
 @dataclass(frozen=True)
 class DailyBetSummary:
     decision_date: date
+    bets: int
+    settled: int
+    pending: int
+    wins: int
+    losses: int
+    voids: int
+    cancelled: int
+    one_unit_profit: Decimal
+    roi: Decimal | None
+    hit_rate: float | None
+
+
+@dataclass(frozen=True)
+class PeriodBetSummary:
     bets: int
     settled: int
     pending: int
@@ -65,6 +80,72 @@ def _summary_from_row(row) -> DailyBetSummary:
         roi=(profit / Decimal(settled)) if settled else None,
         hit_rate=(wins / (wins + losses)) if (wins + losses) else None,
     )
+
+
+def aggregate_bet_summaries(
+    summaries: Iterable[DailyBetSummary],
+    *,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> PeriodBetSummary:
+    """Roll daily summaries into one read-only period summary.
+
+    ROI intentionally uses the same denominator as the daily ledger: one unit per
+    settled bet. Pending bets do not contribute P/L or stake until they settle.
+    """
+    selected = [
+        row
+        for row in summaries
+        if (start_date is None or row.decision_date >= start_date)
+        and (end_date is None or row.decision_date <= end_date)
+    ]
+    bets = sum(row.bets for row in selected)
+    settled = sum(row.settled for row in selected)
+    pending = sum(row.pending for row in selected)
+    wins = sum(row.wins for row in selected)
+    losses = sum(row.losses for row in selected)
+    voids = sum(row.voids for row in selected)
+    cancelled = sum(row.cancelled for row in selected)
+    profit = sum((row.one_unit_profit for row in selected), Decimal("0"))
+    return PeriodBetSummary(
+        bets=bets,
+        settled=settled,
+        pending=pending,
+        wins=wins,
+        losses=losses,
+        voids=voids,
+        cancelled=cancelled,
+        one_unit_profit=profit,
+        roi=(profit / Decimal(settled)) if settled else None,
+        hit_rate=(wins / (wins + losses)) if (wins + losses) else None,
+    )
+
+
+def build_performance_windows(
+    summaries: Iterable[DailyBetSummary],
+    *,
+    as_of_date: date,
+) -> dict[str, PeriodBetSummary]:
+    """Return current UTC performance windows from the persisted daily ledger."""
+    rows = tuple(summaries)
+    return {
+        "today": aggregate_bet_summaries(
+            rows,
+            start_date=as_of_date,
+            end_date=as_of_date,
+        ),
+        "last_7_days": aggregate_bet_summaries(
+            rows,
+            start_date=as_of_date - timedelta(days=6),
+            end_date=as_of_date,
+        ),
+        "last_30_days": aggregate_bet_summaries(
+            rows,
+            start_date=as_of_date - timedelta(days=29),
+            end_date=as_of_date,
+        ),
+        "all_time": aggregate_bet_summaries(rows, end_date=as_of_date),
+    }
 
 
 def load_daily_bet_summaries(
