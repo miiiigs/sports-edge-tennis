@@ -5,18 +5,20 @@ from fastapi.responses import HTMLResponse
 from sports_edge_tennis.dashboard.app import app
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 
-app.add_api_route(
+app.get(
     "/bet-history",
-    bet_history,
-    methods=["GET"],
     response_class=HTMLResponse,
     name="bet_history",
-)
-app.add_api_route(
+)(bet_history)
+app.get(
     "/api/dashboard/bet-history",
-    api_bet_history,
-    methods=["GET"],
     name="api_bet_history",
-)
+)(api_bet_history)
+
+_required_paths = {"/bet-history", "/api/dashboard/bet-history"}
+_registered_paths = {getattr(route, "path", None) for route in app.routes}
+_missing_paths = _required_paths - _registered_paths
+if _missing_paths:
+    raise RuntimeError(f"production dashboard missing required routes: {sorted(_missing_paths)}")
 
 __all__ = ["app"]
