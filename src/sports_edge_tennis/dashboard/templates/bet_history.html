@@ -20,6 +20,57 @@
 </section>
 {% else %}
 
+<section class="page-heading" style="margin-top: 28px;">
+  <h1>Performance Overview</h1>
+  <p>One-unit performance through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only.</p>
+</section>
+
+<section class="kpi-grid" aria-label="Rolling bet performance">
+  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.today.roi) }}</span><span class="kpi-label">Today ROI</span></div>
+  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.last_7_days.roi) }}</span><span class="kpi-label">7-Day ROI</span></div>
+  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.last_30_days.roi) }}</span><span class="kpi-label">30-Day ROI</span></div>
+  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.all_time.roi) }}</span><span class="kpi-label">All-Time ROI</span></div>
+</section>
+
+<section class="history-list" aria-label="Rolling performance details">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th scope="col">Period</th>
+        <th scope="col">Bets</th>
+        <th scope="col">Settled</th>
+        <th scope="col">W</th>
+        <th scope="col">L</th>
+        <th scope="col">Pending</th>
+        <th scope="col">Win Rate</th>
+        <th scope="col">P/L</th>
+        <th scope="col">ROI</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set periods = [
+        ('Today', performance_windows.today),
+        ('Last 7 Days', performance_windows.last_7_days),
+        ('Last 30 Days', performance_windows.last_30_days),
+        ('All Time', performance_windows.all_time)
+      ] %}
+      {% for label, period in periods %}
+      <tr>
+        <td><strong>{{ label }}</strong></td>
+        <td>{{ period.bets }}</td>
+        <td>{{ period.settled }}</td>
+        <td>{{ period.wins }}</td>
+        <td>{{ period.losses }}</td>
+        <td>{{ period.pending }}</td>
+        <td>{{ pct(period.hit_rate) }}</td>
+        <td>{{ units(period.one_unit_profit) }}</td>
+        <td>{{ pct(period.roi) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
 {% if selected_summary %}
 <section class="page-heading" style="margin-top: 28px;">
   <h1>{{ selected_date.strftime('%a %d %b %Y') }}</h1>
