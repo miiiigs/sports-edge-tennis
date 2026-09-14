@@ -64,6 +64,13 @@
       "up": "db/migrations/0009_live_odds_ingestion_v1.up.sql",
       "down": "db/migrations/0009_live_odds_ingestion_v1.down.sql",
       "schema_snapshot": "db/schema/0009_live_odds_ingestion_v1.sql"
+    },
+    {
+      "version": "0010",
+      "name": "quarter_kelly_stake_v1",
+      "up": "db/migrations/0010_quarter_kelly_stake_v1.up.sql",
+      "down": "db/migrations/0010_quarter_kelly_stake_v1.down.sql",
+      "schema_snapshot": "db/schema/0010_quarter_kelly_stake_v1.sql"
     }
   ]
 }

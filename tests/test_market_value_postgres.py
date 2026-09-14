@@ -344,7 +344,9 @@ def _decision_rows(conn: psycopg.Connection, run_id: int) -> list:
     return conn.execute(
         """
         SELECT decision_id, manager_consensus_result_id, decision_status::text, reason_code::text,
-               selection_side, edge_pct, min_acceptable_odds, snapshot_lineage_hash
+               selection_side, edge_pct, min_acceptable_odds, snapshot_lineage_hash,
+               staking_rule_version, staking_probability, staking_decimal_price,
+               full_kelly_fraction, quarter_kelly_fraction, suggested_stake_fraction
         FROM decisions
         WHERE prediction_run_id = %s AND manager_consensus_result_id IS NOT NULL
         ORDER BY decision_id
@@ -390,6 +392,12 @@ def _insert_canonical_market_decision(
         "devig_fair_odds": Decimal("2.000000"),
         "edge_pct": Decimal("0.320000"),
         "min_acceptable_odds": Decimal("1.750000"),
+        "staking_rule_version": "QUARTER_KELLY_CAP_2_V1",
+        "staking_probability": Decimal("0.600000"),
+        "staking_decimal_price": Decimal("2.200000"),
+        "full_kelly_fraction": Decimal("0.266667"),
+        "quarter_kelly_fraction": Decimal("0.066667"),
+        "suggested_stake_fraction": Decimal("0.020000"),
         "active_agent_count": 3,
         "abstaining_agent_count": 0,
         "directional_disagreement": False,
@@ -413,7 +421,9 @@ def _insert_canonical_market_decision(
             market_type, selection_type, selection_side, consensus_probability,
             consensus_fair_odds, market_decimal_price, sharp_reference_price,
             price_source_system, price_bookmaker_code, devig_method, devig_fair_odds,
-            edge_pct, min_acceptable_odds, active_agent_count, abstaining_agent_count,
+            edge_pct, min_acceptable_odds, staking_rule_version, staking_probability,
+            staking_decimal_price, full_kelly_fraction, quarter_kelly_fraction,
+            suggested_stake_fraction, active_agent_count, abstaining_agent_count,
             directional_disagreement, probability_spread, model_version, feature_version,
             as_of, prediction_locked_at, created_at, manager_consensus_result_id,
             market_policy_version_id, snapshot_lineage_hash
@@ -424,6 +434,8 @@ def _insert_canonical_market_decision(
             %(consensus_probability)s, %(consensus_fair_odds)s, %(market_decimal_price)s,
             %(sharp_reference_price)s, %(price_source_system)s, %(price_bookmaker_code)s,
             %(devig_method)s, %(devig_fair_odds)s, %(edge_pct)s, %(min_acceptable_odds)s,
+            %(staking_rule_version)s, %(staking_probability)s, %(staking_decimal_price)s,
+            %(full_kelly_fraction)s, %(quarter_kelly_fraction)s, %(suggested_stake_fraction)s,
             %(active_agent_count)s, %(abstaining_agent_count)s, %(directional_disagreement)s,
             %(probability_spread)s, %(model_version)s, %(feature_version)s, %(as_of)s,
             %(prediction_locked_at)s, %(created_at)s, %(manager_consensus_result_id)s,
@@ -482,6 +494,7 @@ def test_manager_no_bet_becomes_not_manager_eligible(db: psycopg.Connection):
     row = _decision_rows(db, run_id)[0]
     assert row[2] == "NO_BET"
     assert row[3] == "NOT_MANAGER_ELIGIBLE"
+    assert row[8:] == (None, None, None, None, None, None)
     assert _lineage(db, row[0]) == []
 
 
@@ -541,6 +554,14 @@ def test_valid_type_a_bet(db: psycopg.Connection):
     assert row[2] == "BET"
     assert row[3] == "NONE"
     assert row[4] == 1
+    assert row[8:] == (
+        "QUARTER_KELLY_CAP_2_V1",
+        Decimal("0.600000000000"),
+        Decimal("2.20000000"),
+        Decimal("0.266667000000"),
+        Decimal("0.066667000000"),
+        Decimal("0.020000000000"),
+    )
     roles = _lineage(db, row[0])
     assert [r[0] for r in roles] == ["OFFERED_SELECTION", "REFERENCE_PLAYER_1", "REFERENCE_PLAYER_2"]
 

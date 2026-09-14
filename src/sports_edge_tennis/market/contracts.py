@@ -150,6 +150,12 @@ class MarketDecisionV1:
     consensus_probability: Decimal | None
     edge_pct: Decimal | None
     min_acceptable_odds: Decimal | None
+    staking_rule_version: str | None
+    staking_probability: Decimal | None
+    staking_decimal_price: Decimal | None
+    full_kelly_fraction: Decimal | None
+    quarter_kelly_fraction: Decimal | None
+    suggested_stake_fraction: Decimal | None
     market_decimal_price: Decimal | None
     sharp_reference_price: Decimal | None
     price_source_system: str | None

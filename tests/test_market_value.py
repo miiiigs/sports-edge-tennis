@@ -22,6 +22,7 @@ from sports_edge_tennis.market.pricing import (
     power_devig,
     snapshot_lineage_hash,
 )
+from sports_edge_tennis.market.staking import quarter_kelly_stake_fraction
 
 
 def _utc(hour: int, minute: int = 0) -> datetime:
@@ -145,6 +146,51 @@ def test_minimum_acceptable_price_formula():
     assert minimum_acceptable_price(Decimal("0.60"), Decimal("0.05")) == Decimal("1.75")
 
 
+def test_quarter_kelly_zero_at_break_even():
+    stake = quarter_kelly_stake_fraction(
+        probability=Decimal("0.50"),
+        decimal_price=Decimal("2.00"),
+    )
+    assert stake.full_kelly_fraction == Decimal("0.000000")
+    assert stake.quarter_kelly_fraction == Decimal("0.000000")
+    assert stake.suggested_stake_fraction == Decimal("0.000000")
+
+
+def test_quarter_kelly_positive_below_cap():
+    stake = quarter_kelly_stake_fraction(
+        probability=Decimal("0.55"),
+        decimal_price=Decimal("2.00"),
+    )
+    assert stake.full_kelly_fraction == Decimal("0.100000")
+    assert stake.quarter_kelly_fraction == Decimal("0.025000")
+    assert stake.suggested_stake_fraction == Decimal("0.020000")
+
+
+def test_quarter_kelly_positive_below_two_percent_cap():
+    stake = quarter_kelly_stake_fraction(
+        probability=Decimal("0.525"),
+        decimal_price=Decimal("2.00"),
+    )
+    assert stake.full_kelly_fraction == Decimal("0.050000")
+    assert stake.quarter_kelly_fraction == Decimal("0.012500")
+    assert stake.suggested_stake_fraction == Decimal("0.012500")
+
+
+def test_quarter_kelly_negative_edge_is_zero():
+    stake = quarter_kelly_stake_fraction(
+        probability=Decimal("0.49"),
+        decimal_price=Decimal("2.00"),
+    )
+    assert stake.suggested_stake_fraction == Decimal("0.000000")
+
+
+def test_quarter_kelly_rejects_invalid_inputs():
+    with pytest.raises(ValueError, match="greater than 1"):
+        quarter_kelly_stake_fraction(probability=Decimal("0.50"), decimal_price=Decimal("1.00"))
+    with pytest.raises(ValueError, match=r"\[0, 1\]"):
+        quarter_kelly_stake_fraction(probability=Decimal("1.01"), decimal_price=Decimal("2.00"))
+
+
 # --- threshold resolution ---
 
 
@@ -235,6 +281,12 @@ def test_qualifying_bet():
     assert decision.decision_status == "BET"
     assert decision.reason_code == "NONE"
     assert decision.selected_side == 1
+    assert decision.staking_rule_version == "QUARTER_KELLY_CAP_2_V1"
+    assert decision.staking_probability == Decimal("0.60")
+    assert decision.staking_decimal_price == Decimal("1.85")
+    assert decision.full_kelly_fraction == Decimal("0.129412")
+    assert decision.quarter_kelly_fraction == Decimal("0.032353")
+    assert decision.suggested_stake_fraction == Decimal("0.020000")
     assert decision.lineage == (("REFERENCE_PLAYER_1", 10), ("REFERENCE_PLAYER_2", 11), ("OFFERED_SELECTION", 12))
 
 
@@ -301,6 +353,7 @@ def test_manager_no_bet_is_never_qualified():
     )
     assert decision.decision_status == "NO_BET"
     assert decision.reason_code == "NOT_MANAGER_ELIGIBLE"
+    assert decision.suggested_stake_fraction is None
     assert decision.lineage == ()
 
 
