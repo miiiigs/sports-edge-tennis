@@ -35,6 +35,21 @@ def _decision_key(decision) -> tuple[int, int, datetime, str]:
     )
 
 
+def _mark_decision_vetoed(decision):
+    """Preserve priced decision evidence while clearing executable stake guidance."""
+    return replace(
+        decision,
+        decision_status="VETOED",
+        reason_code="VETO_TRIGGERED",
+        staking_rule_version=None,
+        staking_probability=None,
+        staking_decimal_price=None,
+        full_kelly_fraction=None,
+        quarter_kelly_fraction=None,
+        suggested_stake_fraction=None,
+    )
+
+
 def evaluate_and_persist_market_slate_with_veto(
     conn: psycopg.Connection,
     *,
@@ -117,11 +132,7 @@ def evaluate_and_persist_market_slate_with_veto(
                     sharp_reference=sharp_reference,
                 )
                 if evaluation.vetoed:
-                    decision = replace(
-                        decision,
-                        decision_status="VETOED",
-                        reason_code="VETO_TRIGGERED",
-                    )
+                    decision = _mark_decision_vetoed(decision)
                 veto_evaluations[_decision_key(decision)] = evaluation
             decisions.append(decision)
 
