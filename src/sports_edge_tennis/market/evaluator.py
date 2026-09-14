@@ -39,6 +39,7 @@ from sports_edge_tennis.market.pricing import (
     power_devig,
     snapshot_lineage_hash,
 )
+from sports_edge_tennis.market.staking import quarter_kelly_stake_fraction, quantize_stake_fraction
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,12 @@ class _PersistedMarketDecisionTruth:
     devig_fair_odds: Decimal | None
     edge_pct: Decimal | None
     min_acceptable_odds: Decimal | None
+    staking_rule_version: str | None
+    staking_probability: Decimal | None
+    staking_decimal_price: Decimal | None
+    full_kelly_fraction: Decimal | None
+    quarter_kelly_fraction: Decimal | None
+    suggested_stake_fraction: Decimal | None
     active_agent_count: int
     abstaining_agent_count: int
     directional_disagreement: bool
@@ -203,6 +210,12 @@ def evaluate_market_match(
             consensus_probability=_audit_probability(manager_row),
             edge_pct=None,
             min_acceptable_odds=None,
+            staking_rule_version=None,
+            staking_probability=None,
+            staking_decimal_price=None,
+            full_kelly_fraction=None,
+            quarter_kelly_fraction=None,
+            suggested_stake_fraction=None,
             market_decimal_price=None,
             sharp_reference_price=None,
             price_source_system=None,
@@ -289,6 +302,10 @@ def evaluate_market_match(
         ("REFERENCE_PLAYER_2", ref_p2.odds_snapshot_id),
         ("OFFERED_SELECTION", offered.odds_snapshot_id),
     )
+    stake = quarter_kelly_stake_fraction(
+        probability=p_model,
+        decimal_price=offered.decimal_price,
+    )
     return MarketDecisionV1(
         manager_consensus_result_id=manager_row.manager_consensus_result_id,
         prediction_run_id=manager_row.prediction_run_id,
@@ -301,6 +318,12 @@ def evaluate_market_match(
         consensus_probability=p_model,
         edge_pct=edge,
         min_acceptable_odds=min_price,
+        staking_rule_version=stake.staking_rule_version,
+        staking_probability=stake.staking_probability,
+        staking_decimal_price=stake.staking_decimal_price,
+        full_kelly_fraction=stake.full_kelly_fraction,
+        quarter_kelly_fraction=stake.quarter_kelly_fraction,
+        suggested_stake_fraction=stake.suggested_stake_fraction,
         market_decimal_price=offered.decimal_price,
         sharp_reference_price=reference_price,
         price_source_system=offered.source_system,
@@ -381,6 +404,32 @@ def _canonical_decision_truth(decision: MarketDecisionV1, decision_id: int = 0) 
             if decision.min_acceptable_odds is not None
             else None
         ),
+        staking_rule_version=decision.staking_rule_version,
+        staking_probability=(
+            quantize_probability(decision.staking_probability)
+            if decision.staking_probability is not None
+            else None
+        ),
+        staking_decimal_price=(
+            quantize_price(decision.staking_decimal_price)
+            if decision.staking_decimal_price is not None
+            else None
+        ),
+        full_kelly_fraction=(
+            quantize_stake_fraction(decision.full_kelly_fraction)
+            if decision.full_kelly_fraction is not None
+            else None
+        ),
+        quarter_kelly_fraction=(
+            quantize_stake_fraction(decision.quarter_kelly_fraction)
+            if decision.quarter_kelly_fraction is not None
+            else None
+        ),
+        suggested_stake_fraction=(
+            quantize_stake_fraction(decision.suggested_stake_fraction)
+            if decision.suggested_stake_fraction is not None
+            else None
+        ),
         active_agent_count=decision.active_agent_count,
         abstaining_agent_count=decision.abstaining_agent_count,
         directional_disagreement=False,
@@ -428,6 +477,12 @@ def _persist_decision(
             devig_fair_odds,
             edge_pct,
             min_acceptable_odds,
+            staking_rule_version,
+            staking_probability,
+            staking_decimal_price,
+            full_kelly_fraction,
+            quarter_kelly_fraction,
+            suggested_stake_fraction,
             active_agent_count,
             abstaining_agent_count,
             directional_disagreement,
@@ -444,6 +499,7 @@ def _persist_decision(
         VALUES (
             %s, %s, 'TYPE_A_MODEL_EDGE', %s, %s, 'MATCH_WINNER', %s, %s, NULL,
             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s, %s,
             %s, %s, FALSE, %s, %s, %s,
             %s, %s, %s,
             %s, %s, %s
@@ -467,6 +523,12 @@ def _persist_decision(
             truth.devig_fair_odds,
             truth.edge_pct,
             truth.min_acceptable_odds,
+            truth.staking_rule_version,
+            truth.staking_probability,
+            truth.staking_decimal_price,
+            truth.full_kelly_fraction,
+            truth.quarter_kelly_fraction,
+            truth.suggested_stake_fraction,
             decision.active_agent_count,
             decision.abstaining_agent_count,
             truth.probability_spread,
@@ -523,6 +585,12 @@ def _load_existing_market_decisions(
             devig_fair_odds,
             edge_pct,
             min_acceptable_odds,
+            staking_rule_version,
+            staking_probability,
+            staking_decimal_price,
+            full_kelly_fraction,
+            quarter_kelly_fraction,
+            suggested_stake_fraction,
             active_agent_count,
             abstaining_agent_count,
             directional_disagreement,
