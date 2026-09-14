@@ -124,6 +124,10 @@ class LiveMvpResult:
     prediction_as_of: datetime | None
     prediction_run_id: int | None
     fixture_count: int
+    fixture_rows_seen: int
+    fixture_rows_ingested: int
+    fixture_rows_rejected: int
+    fixture_rejection_reasons: tuple[tuple[str, int], ...]
     target_count: int
     manager_consensus_count: int
     pinnapi_requests: int
@@ -186,6 +190,28 @@ def _ingest_fixtures(
     received_at: datetime,
 ) -> ApiTennisIngestOutcome:
     return ingest_api_tennis_source_a_fixtures(conn, fixtures, received_at=received_at)
+
+
+def fixture_reconciliation_summary(outcome: ApiTennisIngestOutcome) -> dict[str, Any]:
+    """Summarize Source A fixture reconciliation without raw provider payloads."""
+    if outcome.rows_seen != outcome.rows_ingested + outcome.rows_rejected:
+        raise LiveMvpError(
+            "fixture ingest reconciliation invariant failed: "
+            "rows_seen must equal rows_ingested + rows_rejected"
+        )
+
+    reason_counts: dict[str, int] = {}
+    for row in outcome.rejected_rows:
+        reason = row.get("reason")
+        key = str(reason) if reason is not None else "UNKNOWN"
+        reason_counts[key] = reason_counts.get(key, 0) + 1
+
+    return {
+        "fixture_rows_seen": outcome.rows_seen,
+        "fixture_rows_ingested": outcome.rows_ingested,
+        "fixture_rows_rejected": outcome.rows_rejected,
+        "fixture_rejection_reasons": dict(sorted(reason_counts.items())),
+    }
 
 
 def _parse_board(
@@ -364,6 +390,7 @@ def run_live_mvp(
         raise LivePilotApiTennisFailed(exc.message) from exc
 
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)
+    fixture_reconciliation = fixture_reconciliation_summary(ingest_outcome)
 
     target_matches = [m for m in ingest_outcome.matches if m.match_status == "SCHEDULED"]
     target_match_ids = tuple(m.match_id for m in target_matches)
@@ -434,6 +461,7 @@ def run_live_mvp(
         slate_date=slate_date.isoformat(),
         prediction_as_of=prediction_as_of,
         fixture_count=len(fixtures),
+        fixture_reconciliation=fixture_reconciliation,
         target_count=len(target_match_ids),
         manager_consensus_count=len(consensus_match_ids),
         pinnapi_requests=pinnapi_requests,
@@ -449,6 +477,12 @@ def run_live_mvp(
         prediction_as_of=prediction_as_of,
         prediction_run_id=prediction_run_id,
         fixture_count=len(fixtures),
+        fixture_rows_seen=fixture_reconciliation["fixture_rows_seen"],
+        fixture_rows_ingested=fixture_reconciliation["fixture_rows_ingested"],
+        fixture_rows_rejected=fixture_reconciliation["fixture_rows_rejected"],
+        fixture_rejection_reasons=tuple(
+            fixture_reconciliation["fixture_rejection_reasons"].items()
+        ),
         target_count=len(target_match_ids),
         manager_consensus_count=len(consensus_match_ids),
         pinnapi_requests=pinnapi_requests,

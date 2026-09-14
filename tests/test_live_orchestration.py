@@ -13,6 +13,7 @@ from sports_edge_tennis.live.orchestrator import (
     LivePilotPinnapiFailed,
     _client_state,
     _final_status,
+    fixture_reconciliation_summary,
     run_live_mvp,
 )
 from sports_edge_tennis.live.transport import TransportError
@@ -23,14 +24,14 @@ FIXED = datetime(2026, 9, 4, 12, 0, 0, tzinfo=timezone.utc)
 SLATE = date(2026, 9, 5)
 
 
-def _ingest_outcome(match_ids):
+def _ingest_outcome(match_ids, *, rejected_rows=()):
     return NS(
-        rows_seen=0,
+        rows_seen=len(match_ids) + len(rejected_rows),
         rows_ingested=len(match_ids),
-        rows_rejected=0,
+        rows_rejected=len(rejected_rows),
         status="COMPLETED",
         matches=tuple(NS(match_id=m, match_status="SCHEDULED") for m in match_ids),
-        rejected_rows=(),
+        rejected_rows=tuple(rejected_rows),
     )
 
 
@@ -130,6 +131,67 @@ def test_fixture_fetched_once():
     )
     assert len(calls) == 1
     assert calls[0][0] == "APIKEY"
+
+
+def test_fixture_reconciliation_survives_to_result_and_summary():
+    captured = {}
+    rejected = (
+        {"reason": "unsupported_surface", "event_key": "safe-1"},
+        {"reason": "invalid_date", "event_key": "safe-2"},
+        {"reason": "unsupported_surface", "event_key": "safe-3"},
+    )
+
+    def write_summary(summary, *, artifacts_dir, run_id):
+        captured.update(summary)
+        return "artifacts/live_mvp/tennis_live_mvp_x.json"
+
+    result = run_live_mvp(
+        None,
+        slate_date=SLATE,
+        api_tennis_key="APIKEY",
+        pinnapi_key=None,
+        preflight=lambda conn: None,
+        fetch_fixtures=lambda key, slate: (FIXED, [{"event_key": "e1"}] * 5),
+        ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome(
+            [1001, 1002],
+            rejected_rows=rejected,
+        ),
+        run_slate=lambda conn, ids, as_of: _run_outcome(),
+        load_consensus=lambda conn, rid: [],
+        build_match_entries=lambda *a, **k: [],
+        write_summary=write_summary,
+        clock=lambda: FIXED,
+    )
+
+    assert result.fixture_rows_seen == 5
+    assert result.fixture_rows_ingested == 2
+    assert result.fixture_rows_rejected == 3
+    assert result.fixture_rejection_reasons == (
+        ("invalid_date", 1),
+        ("unsupported_surface", 2),
+    )
+    assert captured["fixture_reconciliation"] == {
+        "fixture_rows_seen": 5,
+        "fixture_rows_ingested": 2,
+        "fixture_rows_rejected": 3,
+        "fixture_rejection_reasons": {
+            "invalid_date": 1,
+            "unsupported_surface": 2,
+        },
+    }
+    assert "safe-1" not in str(captured)
+
+
+def test_fixture_reconciliation_invariant_fails_closed():
+    bad = NS(
+        rows_seen=3,
+        rows_ingested=1,
+        rows_rejected=1,
+        rejected_rows=({"reason": "invalid_date"},),
+    )
+
+    with pytest.raises(RuntimeError, match="rows_seen must equal"):
+        fixture_reconciliation_summary(bad)
 
 
 def test_zero_consensus_makes_zero_pinnapi_requests():
