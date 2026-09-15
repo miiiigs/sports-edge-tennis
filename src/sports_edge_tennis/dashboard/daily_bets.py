@@ -1,9 +1,9 @@
 """Read-only daily ledger for real Type A Tennis bets.
 
 This module never mutates decisions, settlements, CLV, model state, or provider data.
-Daily performance is grouped by the UTC date on which the persisted BET decision
-was made so a wager remains attached to its original decision day even if it
-settles later.
+A match enters client performance once, at its first persisted Type A BET. Hourly
+refreshes may create newer decision evidence for the same match, but they must not
+manufacture duplicate historical wagers or inflate win/loss sample size.
 """
 
 from __future__ import annotations
@@ -153,12 +153,24 @@ def load_daily_bet_summaries(
     *,
     limit: int = 5000,
 ) -> tuple[DailyBetSummary, ...]:
-    """Return one aggregate row per UTC decision day, newest first."""
+    """Return one aggregate row per UTC first-BET day, newest first."""
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
 
     rows = conn.execute(
         """
+        WITH first_bets AS (
+            SELECT DISTINCT ON (d.match_id)
+                d.decision_id,
+                d.match_id,
+                d.as_of,
+                d.market_decimal_price
+            FROM decisions d
+            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
+              AND d.decision_status = 'BET'
+              AND d.market_type = 'MATCH_WINNER'
+            ORDER BY d.match_id, d.as_of, d.decision_id
+        )
         SELECT
             (d.as_of AT TIME ZONE 'UTC')::date AS decision_date,
             COUNT(*)::int AS bets,
@@ -187,11 +199,8 @@ def load_daily_bet_summaries(
                 ),
                 0
             ) AS one_unit_profit
-        FROM decisions d
+        FROM first_bets d
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
-          AND d.decision_status = 'BET'
-          AND d.market_type = 'MATCH_WINNER'
         GROUP BY (d.as_of AT TIME ZONE 'UTC')::date
         ORDER BY decision_date DESC
         LIMIT %s
@@ -218,9 +227,24 @@ def load_daily_bets(
     *,
     decision_date: date,
 ) -> tuple[DailyBetRow, ...]:
-    """Return real persisted Type A BET decisions for one UTC decision day."""
+    """Return the first persisted Type A BET per match for one UTC decision day."""
     rows = conn.execute(
         """
+        WITH first_bets AS (
+            SELECT DISTINCT ON (d.match_id)
+                d.decision_id,
+                d.match_id,
+                d.as_of,
+                d.selection_side,
+                d.market_decimal_price,
+                d.price_bookmaker_code,
+                d.consensus_probability
+            FROM decisions d
+            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
+              AND d.decision_status = 'BET'
+              AND d.market_type = 'MATCH_WINNER'
+            ORDER BY d.match_id, d.as_of, d.decision_id
+        )
         SELECT
             d.decision_id,
             d.as_of,
@@ -238,7 +262,7 @@ def load_daily_bets(
             d.consensus_probability,
             COALESCE(ds.settlement_status::text, 'PENDING') AS settlement_status,
             ds.settled_at
-        FROM decisions d
+        FROM first_bets d
         JOIN matches m ON m.match_id = d.match_id
         JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
         JOIN tournaments t ON t.tournament_id = te.tournament_id
@@ -258,10 +282,7 @@ def load_daily_bets(
         LEFT JOIN players p1 ON p1.player_id = mv.player_1_id
         LEFT JOIN players p2 ON p2.player_id = mv.player_2_id
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
-          AND d.decision_status = 'BET'
-          AND d.market_type = 'MATCH_WINNER'
-          AND (d.as_of AT TIME ZONE 'UTC')::date = %s
+        WHERE (d.as_of AT TIME ZONE 'UTC')::date = %s
         ORDER BY d.as_of DESC, d.decision_id DESC
         """,
         (decision_date,),
