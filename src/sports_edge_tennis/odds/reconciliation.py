@@ -14,7 +14,11 @@ from .persistence import load_pit_match_version
 
 PINNAPI_SOURCE_SYSTEM = "PINNAPI"
 MAX_FIRST_MAPPING_START_DELTA = timedelta(minutes=30)
+MAX_VARIANT_FIRST_MAPPING_START_DELTA = timedelta(minutes=60)
 MAX_UNIQUE_PARTICIPANT_START_DELTA = timedelta(hours=12)
+PINNAPI_TOKEN_ALIASES = {
+    "dar": "darwin",
+}
 
 ReconciliationStatus = Literal["RESOLVED", "UNMATCHED", "IDENTITY_CONFLICT"]
 CanonicalSide = Literal["PLAYER_1", "PLAYER_2"]
@@ -132,6 +136,7 @@ def reconcile_pinnapi_event(
         return PinnapiReconciliationResult(status="RESOLVED", match=orientation)
 
     strict_matches: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
+    variant_time_matches: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
     fallback_matches: list[tuple[_Candidate, OrientedPinnapiMatch]] = []
     participant_match_count = 0
     tour_compatible_count = 0
@@ -154,6 +159,22 @@ def reconcile_pinnapi_event(
             strict_matches.append((candidate, orientation))
             continue
 
+        # Production evidence shows that Pinnacle can shift a Challenger start by
+        # exactly one hour while also using a deterministic participant variant
+        # (initials, one middle initial, or a known source abbreviation). Extend
+        # only that already-identified path to 60 minutes; exact-name mappings
+        # remain on the original 30-minute first-mapping guard.
+        if (
+            tournament_compatible
+            and _participant_pair_uses_deterministic_variant(candidate, evidence, orientation)
+            and _start_within_variant_first_mapping_tolerance(
+                candidate.match.match_start_at,
+                evidence,
+            )
+        ):
+            variant_time_matches.append((candidate, orientation))
+            continue
+
         if (
             not tournament_compatible
             and _start_within_unique_participant_tolerance(
@@ -163,12 +184,13 @@ def reconcile_pinnapi_event(
         ):
             fallback_matches.append((candidate, orientation))
 
-    if len(strict_matches) > 1:
+    first_mapping_matches = strict_matches + variant_time_matches
+    if len(first_mapping_matches) > 1:
         return PinnapiReconciliationResult(
             status="IDENTITY_CONFLICT",
             reason="multiple_candidate_matches",
             candidate_match_ids=tuple(
-                candidate.match.match_id for candidate, _orientation in strict_matches
+                candidate.match.match_id for candidate, _orientation in first_mapping_matches
             ),
         )
     if len(strict_matches) == 1:
@@ -179,6 +201,18 @@ def reconcile_pinnapi_event(
             candidate=candidate,
         )
         return PinnapiReconciliationResult(status="RESOLVED", match=orientation)
+    if len(variant_time_matches) == 1:
+        candidate, orientation = variant_time_matches[0]
+        _persist_pinnapi_mapping(
+            conn,
+            provider_event_id=evidence.provider_event_id_text,
+            candidate=candidate,
+        )
+        return PinnapiReconciliationResult(
+            status="RESOLVED",
+            match=orientation,
+            reason="deterministic_participant_variant_time_fallback",
+        )
 
     if len(fallback_matches) > 1:
         return PinnapiReconciliationResult(
@@ -224,6 +258,10 @@ def _participant_tokens(value: str) -> tuple[str, ...]:
 def _token_compatible(left: str, right: str) -> bool:
     if left == right:
         return True
+    if PINNAPI_TOKEN_ALIASES.get(left) == right:
+        return True
+    if PINNAPI_TOKEN_ALIASES.get(right) == left:
+        return True
     if len(left) == 1 and len(right) > 1:
         return right.startswith(left)
     if len(right) == 1 and len(left) > 1:
@@ -232,39 +270,96 @@ def _token_compatible(left: str, right: str) -> bool:
 
 
 def _participant_name_compatible(left: str, right: str) -> bool:
-    """Match provider aliases without allowing fuzzy surname substitution.
+    """Match deterministic provider aliases without edit-distance fuzziness.
 
-    Supports punctuation/diacritics, provider token-order differences such as
-    ``Surname, Given`` vs ``Given Surname``, and one-character initials such as
-    ``F Balshaw`` vs ``Felix Balshaw``. It deliberately requires the same token
-    count and a one-to-one token match, so missing surnames, nicknames, and
-    arbitrary edit-distance similarities remain fail-closed.
+    Supports punctuation/diacritics, token-order differences, one-character
+    initials, a single extra middle initial, and a small explicit source alias
+    table. Extra middle initials are accepted only when another multi-character
+    token matches exactly, keeping surname identity anchored.
     """
     left_tokens = _participant_tokens(left)
     right_tokens = _participant_tokens(right)
-    if not left_tokens or not right_tokens or len(left_tokens) != len(right_tokens):
+    if not left_tokens or not right_tokens:
         return False
     if left_tokens == right_tokens:
         return True
 
-    unmatched = list(right_tokens)
-    for left_token in left_tokens:
+    if len(left_tokens) == len(right_tokens):
+        unmatched = list(right_tokens)
+        for left_token in left_tokens:
+            exact_index = next(
+                (index for index, right_token in enumerate(unmatched) if left_token == right_token),
+                None,
+            )
+            if exact_index is not None:
+                unmatched.pop(exact_index)
+                continue
+            compatible_indexes = [
+                index
+                for index, right_token in enumerate(unmatched)
+                if _token_compatible(left_token, right_token)
+            ]
+            if len(compatible_indexes) != 1:
+                return False
+            unmatched.pop(compatible_indexes[0])
+        return not unmatched
+
+    if abs(len(left_tokens) - len(right_tokens)) != 1:
+        return False
+
+    shorter, longer = (
+        (left_tokens, right_tokens)
+        if len(left_tokens) < len(right_tokens)
+        else (right_tokens, left_tokens)
+    )
+    unmatched = list(longer)
+    exact_multi_character_match = False
+    for short_token in shorter:
         exact_index = next(
-            (index for index, right_token in enumerate(unmatched) if left_token == right_token),
+            (index for index, long_token in enumerate(unmatched) if short_token == long_token),
             None,
         )
         if exact_index is not None:
+            if len(short_token) > 1:
+                exact_multi_character_match = True
             unmatched.pop(exact_index)
             continue
         compatible_indexes = [
             index
-            for index, right_token in enumerate(unmatched)
-            if _token_compatible(left_token, right_token)
+            for index, long_token in enumerate(unmatched)
+            if _token_compatible(short_token, long_token)
         ]
         if len(compatible_indexes) != 1:
             return False
         unmatched.pop(compatible_indexes[0])
-    return not unmatched
+
+    return (
+        exact_multi_character_match
+        and len(unmatched) == 1
+        and len(unmatched[0]) == 1
+    )
+
+
+def _participant_pair_uses_deterministic_variant(
+    candidate: _Candidate,
+    evidence: PinnapiEventEvidence,
+    orientation: OrientedPinnapiMatch,
+) -> bool:
+    if orientation.home_selection_side == "PLAYER_1":
+        pairs = (
+            (evidence.home_name, candidate.player_1_name),
+            (evidence.away_name, candidate.player_2_name),
+        )
+    else:
+        pairs = (
+            (evidence.home_name, candidate.player_2_name),
+            (evidence.away_name, candidate.player_1_name),
+        )
+    return any(
+        normalize_pinnapi_participant_name(provider_name)
+        != normalize_pinnapi_participant_name(canonical_name)
+        for provider_name, canonical_name in pairs
+    )
 
 
 def _load_candidates(
@@ -358,6 +453,17 @@ def _start_within_first_mapping_tolerance(
         canonical_start_at,
         evidence,
         MAX_FIRST_MAPPING_START_DELTA,
+    )
+
+
+def _start_within_variant_first_mapping_tolerance(
+    canonical_start_at: datetime | None,
+    evidence: PinnapiEventEvidence,
+) -> bool:
+    return _start_within_tolerance(
+        canonical_start_at,
+        evidence,
+        MAX_VARIANT_FIRST_MAPPING_START_DELTA,
     )
 
 
