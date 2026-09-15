@@ -273,9 +273,9 @@ def _participant_name_compatible(left: str, right: str) -> bool:
     """Match deterministic provider aliases without edit-distance fuzziness.
 
     Supports punctuation/diacritics, token-order differences, one-character
-    initials, a single extra middle initial, and a small explicit source alias
-    table. Extra middle initials are accepted only when another multi-character
-    token matches exactly, keeping surname identity anchored.
+    initials, and a small explicit source alias table. One extra middle initial
+    is accepted only when another token also requires initial expansion and a
+    multi-character token matches exactly, keeping surname identity anchored.
     """
     left_tokens = _participant_tokens(left)
     right_tokens = _participant_tokens(right)
@@ -314,6 +314,7 @@ def _participant_name_compatible(left: str, right: str) -> bool:
     )
     unmatched = list(longer)
     exact_multi_character_match = False
+    used_initial_expansion = False
     for short_token in shorter:
         exact_index = next(
             (index for index, long_token in enumerate(unmatched) if short_token == long_token),
@@ -331,10 +332,17 @@ def _participant_name_compatible(left: str, right: str) -> bool:
         ]
         if len(compatible_indexes) != 1:
             return False
+        matched_long_token = unmatched[compatible_indexes[0]]
+        if (
+            (len(short_token) == 1 and len(matched_long_token) > 1)
+            or (len(matched_long_token) == 1 and len(short_token) > 1)
+        ):
+            used_initial_expansion = True
         unmatched.pop(compatible_indexes[0])
 
     return (
         exact_multi_character_match
+        and used_initial_expansion
         and len(unmatched) == 1
         and len(unmatched[0]) == 1
     )
