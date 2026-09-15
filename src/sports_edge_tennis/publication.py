@@ -19,10 +19,10 @@ def publish_new_bet_decision(
 
     Publication is intentionally narrower than decision persistence. Market has
     already validated the offered price and source freshness at ``decision.as_of``.
-    This boundary therefore checks only new observations that appeared after
-    generation and before publication. If the selected offered market closes or
-    the price drifts below the stored ``min_acceptable_odds`` in that interval,
-    publication fails closed.
+    This boundary therefore checks only snapshots that were not yet visible at
+    generation but became visible before publication. If the selected offered
+    market closes or its price drifts below the stored ``min_acceptable_odds`` in
+    that interval, publication fails closed.
 
     This preserves point-in-time historical replay semantics: a replay executed
     later in wall-clock time is not rejected merely because its already-validated
@@ -81,10 +81,10 @@ def publish_new_bet_decision(
     ):
         raise PublicationError("BET decision is missing publication price lineage")
 
-    # Market already validated all snapshots visible at decision_as_of. Only a
-    # later observation can change publication eligibility. Using this interval
-    # rather than wall-clock freshness keeps historical PIT replays deterministic
-    # while still killing live/replay bets whose price moves before publication.
+    # Market already validated snapshots for which BOTH source_observed_at and
+    # as_of were <= decision_as_of. A snapshot is newly visible before publication
+    # when either timestamp crossed that decision boundary and both are now within
+    # the publication cutoff.
     newer_offered = conn.execute(
         """
         SELECT decimal_price, market_status::text
@@ -94,10 +94,9 @@ def publish_new_bet_decision(
           AND selection_type::text = %s
           AND source_system = %s
           AND bookmaker_code = %s
-          AND source_observed_at > %s
           AND source_observed_at <= %s
-          AND as_of > %s
           AND as_of <= %s
+          AND (source_observed_at > %s OR as_of > %s)
         ORDER BY source_observed_at DESC, as_of DESC, odds_snapshot_id DESC
         LIMIT 1
         """,
@@ -106,10 +105,10 @@ def publish_new_bet_decision(
             selection_type,
             price_source_system,
             price_bookmaker_code,
-            decision_as_of,
+            published_at,
             published_at,
             decision_as_of,
-            published_at,
+            decision_as_of,
         ),
     ).fetchone()
 
