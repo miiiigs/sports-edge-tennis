@@ -1,16 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Model Performance · Sports Edge Tennis{% endblock %}
+{% block title %}Model Lab · Sports Edge Tennis{% endblock %}
 {% set active_nav = 'performance' %}
 
 {% block content %}
 <section class="page-heading">
-  <h1>Model Performance</h1>
-  <p>Historical predictive validation for the three frozen Sports Edge Tennis models.</p>
+  <h1>Model Lab</h1>
+  <p>See how each Tennis model performs, how reliable its probabilities are, and how much evidence sits behind the result.</p>
+</section>
+
+<section class="concept-strip" aria-label="How to read the Model Lab">
+  <div class="concept-card">
+    <strong>Accuracy</strong>
+    <p>How often the model picked the eventual winner. Useful, but not enough by itself to prove betting profitability.</p>
+  </div>
+  <div class="concept-card">
+    <strong>Calibration</strong>
+    <p>Whether probabilities behave like probabilities. A 70% forecast should win about 70% of the time over a large sample.</p>
+  </div>
+  <div class="concept-card">
+    <strong>Forward Market Evidence</strong>
+    <p>CLV and future paper results test whether the model is finding useful prices in live conditions, not just fitting history.</p>
+  </div>
 </section>
 
 <section class="panel panel-neutral">
-  <h2>How to read these results</h2>
-  <p>Accuracy measures directional winner calls. Log loss, Brier score, and calibration error assess probability quality. These are predictive validation metrics, not betting profit or guaranteed future performance.</p>
+  <h2>What each agent is looking for</h2>
+  <p><strong>Agent 1</strong> measures surface-adjusted player strength. <strong>Agent 2</strong> models serve/return and point-level matchup strength. <strong>Agent 3</strong> looks for matchup and intransitivity evidence that the first two may miss, and can abstain when evidence is too weak.</p>
 </section>
 
 <section class="kpi-grid" aria-label="Model validation overview">
@@ -18,7 +33,7 @@
   <article class="kpi">
     <span class="kpi-label">{{ model.name }}</span>
     <span class="kpi-value">{{ model.accuracy }}</span>
-    <span class="muted">{{ model.sample }} predictions</span>
+    <span class="muted">{{ model.sample }} historical predictions</span>
   </article>
   {% endfor %}
 </section>
@@ -29,10 +44,10 @@
       <tr>
         <th scope="col">Model</th>
         <th scope="col">Predictions</th>
-        <th scope="col">Accuracy</th>
+        <th scope="col">Winner Accuracy</th>
         <th scope="col">Log Loss</th>
         <th scope="col">Brier</th>
-        <th scope="col">ECE</th>
+        <th scope="col">Calibration Error</th>
       </tr>
     </thead>
     <tbody>
@@ -50,9 +65,14 @@
   </table>
 </section>
 
+<section class="panel panel-neutral">
+  <h3>Important distinction</h3>
+  <p>The table above measures <strong>prediction quality</strong>. It does not tell us whether the system makes money at available odds. Live profitability belongs on the Results page and must use point-in-time prices captured when a recommendation was published.</p>
+</section>
+
 <section class="page-heading upcoming-heading">
-  <h2>Prospective Closing-Line Evidence</h2>
-  <p>Forward-collected closing-price coverage and CLV. This evidence is separate from the historical model validation above.</p>
+  <h2>Forward market evidence</h2>
+  <p>Prospectively collected closing-price coverage and CLV. This is separate from the historical model validation above.</p>
 </section>
 
 {% if clv.initialized %}
@@ -94,13 +114,13 @@
 </section>
 {% else %}
 <section class="panel panel-neutral">
-  <h3>Prospective CLV not activated yet</h3>
+  <h3>Forward CLV evidence is not available yet</h3>
   <p>No prospective closing-line ledger has been initialized. Historical odds are not being backfilled and relabeled as live closing evidence.</p>
 </section>
 {% endif %}
 
 <section class="panel panel-success">
-  <h2>Current decision stack</h2>
-  <p>Sports Edge does not rely on one model alone. Agent 1, Agent 2 and the selective Agent 3 feed the Manager consensus rules. A match can correctly end as <strong>No Bet</strong> when agreement, confidence spread, or market requirements are not satisfied.</p>
+  <h2>Next experiment: does more agreement actually help?</h2>
+  <p>We will compare Agent 1, Agent 2, Agent 3, two-agent combinations, the governing consensus policy, and strict 3/3 agreement as separate evidence cohorts. The live rules stay unchanged while enough forward data accumulates to test whether stricter agreement improves results or only reduces coverage.</p>
 </section>
 {% endblock %}
