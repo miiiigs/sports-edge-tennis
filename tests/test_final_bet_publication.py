@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import psycopg
@@ -353,6 +353,39 @@ def test_publication_failure_rolls_back_new_decision(
 
     with pytest.raises(PublicationError, match="injected publication failure"):
         _run_market(db, run_id)
+
+    assert db.execute(
+        "SELECT count(*) FROM decisions WHERE prediction_run_id = %s",
+        (run_id,),
+    ).fetchone()[0] == 0
+
+
+def test_price_drop_below_minimum_before_publication_fails_closed(
+    db: psycopg.Connection,
+):
+    run_id, match_id = _setup_consensus(db)
+    _seed_value_market(db, match_id)
+
+    moved_at = _utc(10, 45) + timedelta(seconds=30)
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id, source_system, bookmaker_code, market_type, selection_type,
+            decimal_price, market_status, source_snapshot_id, source_record_hash,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, 'SOFT', 'BOOK_A', 'MATCH_WINNER', 'PLAYER_1', 1.50,
+                'OPEN', 'offer-moved', 'publication-offer-moved-player-1',
+                %s, %s, %s)
+        """,
+        (match_id, moved_at, moved_at, moved_at),
+    )
+
+    with pytest.raises(
+        PublicationError,
+        match="below min_acceptable_odds at publication",
+    ):
+        _run_market(db, run_id, execution_at=_utc(10, 46))
 
     assert db.execute(
         "SELECT count(*) FROM decisions WHERE prediction_run_id = %s",
