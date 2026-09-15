@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import psycopg
@@ -98,55 +98,59 @@ def _setup_consensus(conn: psycopg.Connection) -> tuple[int, int]:
         """,
         (_utc(10), _utc(10)),
     )
-    conn.execute(
-        "INSERT INTO prediction_run_targets (prediction_run_id, match_id) VALUES (%s, %s)",
-        (run_id, match_id),
-    )
 
     locked_at = _utc(10, 30)
-    for agent in AGENTS:
-        config_id = _fetchval(
-            conn,
-            """
-            INSERT INTO agent_config_versions (
-                agent_code, config_version, model_version, feature_version,
-                parameter_schema_version, config_payload
-            )
-            VALUES (%s, %s, 'm1', 'f1', 'params-v1', '{"publication": true}'::jsonb)
-            RETURNING agent_config_version_id
-            """,
-            (agent, f"publication-{agent.lower()}"),
-        )
+    with conn.transaction():
+        conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
         conn.execute(
-            """
-            INSERT INTO predictions (
-                match_id, prediction_run_id, agent_config_version_id, agent_code,
-                prediction_status, selection_side, win_probability,
-                model_version, feature_version, as_of, prediction_locked_at,
-                probability_representation
-            )
-            VALUES (%s, %s, %s, %s, 'PREDICTED', 1, 0.600000,
-                    'm1', 'f1', %s, %s, %s)
-            """,
-            (
-                match_id,
-                run_id,
-                config_id,
-                agent,
-                _utc(10),
-                locked_at,
-                AGENT_PROBABILITY_REPRESENTATIONS[agent],
-            ),
+            "INSERT INTO prediction_run_targets (prediction_run_id, match_id) VALUES (%s, %s)",
+            (run_id, match_id),
         )
 
-    conn.execute(
-        """
-        UPDATE prediction_runs
-        SET run_status = 'COMPLETED', prediction_finalized_at = %s, ended_at = %s
-        WHERE prediction_run_id = %s
-        """,
-        (locked_at, _utc(10, 35), run_id),
-    )
+        for agent in AGENTS:
+            config_id = _fetchval(
+                conn,
+                """
+                INSERT INTO agent_config_versions (
+                    agent_code, config_version, model_version, feature_version,
+                    parameter_schema_version, config_payload
+                )
+                VALUES (%s, %s, 'm1', 'f1', 'params-v1', '{"publication": true}'::jsonb)
+                RETURNING agent_config_version_id
+                """,
+                (agent, f"publication-{agent.lower()}"),
+            )
+            conn.execute(
+                """
+                INSERT INTO predictions (
+                    match_id, prediction_run_id, agent_config_version_id, agent_code,
+                    prediction_status, selection_side, win_probability,
+                    model_version, feature_version, as_of, prediction_locked_at,
+                    probability_representation
+                )
+                VALUES (%s, %s, %s, %s, 'PREDICTED', 1, 0.600000,
+                        'm1', 'f1', %s, %s, %s)
+                """,
+                (
+                    match_id,
+                    run_id,
+                    config_id,
+                    agent,
+                    _utc(10),
+                    locked_at,
+                    AGENT_PROBABILITY_REPRESENTATIONS[agent],
+                ),
+            )
+
+        conn.execute(
+            """
+            UPDATE prediction_runs
+            SET run_status = 'COMPLETED', prediction_finalized_at = %s, ended_at = %s
+            WHERE prediction_run_id = %s
+            """,
+            (locked_at, _utc(10, 35), run_id),
+        )
+
     manager_policy_id = ensure_manager_policy_version_v1(conn).manager_policy_version_id
     evaluate_and_persist_manager_consensus(
         conn,
