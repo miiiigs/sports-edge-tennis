@@ -103,6 +103,12 @@ def _load_market_reason_counts(
     return tuple((row[0], row[1], row[2], int(row[3])) for row in rows)
 
 
+def _format_fixture_rejection_reasons(reasons: tuple[tuple[str, int], ...]) -> str:
+    if not reasons:
+        return "none"
+    return ",".join(f"{reason}={count}" for reason, count in reasons)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -200,6 +206,15 @@ def main(argv: list[str] | None = None) -> int:
                 totals["targets"] += result.target_count
                 totals["consensus"] += result.manager_consensus_count
                 totals["pinnapi_requests"] += result.pinnapi_requests
+                _log(
+                    "FIXTURE_RECONCILIATION "
+                    f"date={result.slate_date} "
+                    f"seen={result.fixture_rows_seen} "
+                    f"ingested={result.fixture_rows_ingested} "
+                    f"rejected={result.fixture_rows_rejected} "
+                    "reasons="
+                    f"{_format_fixture_rejection_reasons(result.fixture_rejection_reasons)}"
+                )
                 if result.prediction_run_id is not None:
                     prediction_run_ids.append(result.prediction_run_id)
                     reason_counts = _load_manager_reason_counts(

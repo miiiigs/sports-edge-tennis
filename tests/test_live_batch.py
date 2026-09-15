@@ -20,6 +20,24 @@ class _Connect:
         return _Conn()
 
 
+def _live_result(**overrides):
+    base = {
+        "slate_date": date(2026, 9, 7).isoformat(),
+        "status": "LIVE_MVP_SUCCESS_NO_CONSENSUS",
+        "fixture_count": 10,
+        "fixture_rows_seen": 10,
+        "fixture_rows_ingested": 8,
+        "fixture_rows_rejected": 2,
+        "fixture_rejection_reasons": (("unsupported_surface", 2),),
+        "target_count": 2,
+        "manager_consensus_count": 0,
+        "pinnapi_requests": 0,
+        "prediction_run_id": None,
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
 def _stub_price_slate(monkeypatch, candidate_ids=()):
     monkeypatch.setattr(
         batch,
@@ -56,7 +74,7 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     def fake_run(conn, *, slate_date, api_tennis_key, pinnapi_key, ingest_fixtures, artifacts_dir, **kwargs):
         assert ingest_fixtures is batch.ingest_api_tennis_source_a_fixtures_with_upcoming_status
         seen.append(slate_date)
-        return SimpleNamespace(
+        return _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS_NO_CONSENSUS",
             fixture_count=10,
@@ -79,6 +97,7 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     assert seen == [date(2026, 9, 7), date(2026, 9, 8), date(2026, 9, 9)]
     out = capsys.readouterr().out
     assert "LIVE_BATCH_SUCCESS" in out
+    assert "FIXTURE_RECONCILIATION date=2026-09-07 seen=10 ingested=8 rejected=2 reasons=unsupported_surface=2" in out
     assert "slates=3" in out
     assert "price_candidates=0" in out
     assert "pinnapi_requests=0" in out
@@ -102,7 +121,7 @@ def test_batch_caps_pinnapi_to_one_board_request_per_cycle(monkeypatch, tmp_path
     def fake_run(conn, *, slate_date, api_tennis_key, pinnapi_key, ingest_fixtures, artifacts_dir, **kwargs):
         seen_keys.append(pinnapi_key)
         board_calls = 1 if slate_date == date(2026, 9, 8) and pinnapi_key else 0
-        return SimpleNamespace(
+        return _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS" if board_calls else "LIVE_MVP_SUCCESS_NO_CONSENSUS",
             fixture_count=10,
@@ -209,7 +228,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
 
     def fake_run(conn, *, slate_date, **kwargs):
         counter["value"] += 1
-        return SimpleNamespace(
+        return _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS",
             fixture_count=10,
@@ -316,7 +335,7 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
     monkeypatch.setattr(
         batch,
         "run_live_mvp",
-        lambda conn, slate_date, **kwargs: SimpleNamespace(
+        lambda conn, slate_date, **kwargs: _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS_NO_CONSENSUS",
             fixture_count=10,
@@ -400,7 +419,7 @@ def test_type_b_runs_without_any_model_prediction_run(monkeypatch, tmp_path, cap
     monkeypatch.setattr(
         batch,
         "run_live_mvp",
-        lambda conn, slate_date, **kwargs: SimpleNamespace(
+        lambda conn, slate_date, **kwargs: _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS_NO_TARGETS",
             fixture_count=10,
@@ -475,7 +494,7 @@ def test_batch_emits_volume_alert_after_seven_zero_type_b_days(monkeypatch, tmp_
     monkeypatch.setattr(
         batch,
         "run_live_mvp",
-        lambda conn, slate_date, **kwargs: SimpleNamespace(
+        lambda conn, slate_date, **kwargs: _live_result(
             slate_date=slate_date.isoformat(),
             status="LIVE_MVP_SUCCESS_NO_CONSENSUS",
             fixture_count=10,
