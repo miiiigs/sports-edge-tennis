@@ -158,7 +158,9 @@ def _unique_first_bet_metrics(conn: psycopg.Connection) -> tuple[int, int, int, 
         )
         SELECT
             count(*),
-            count(*) FILTER (WHERE ds.settlement_status IS NOT NULL),
+            count(*) FILTER (
+                WHERE ds.settlement_status IN ('WON', 'LOST', 'VOID', 'PUSH', 'CANCELLED')
+            ),
             count(*) FILTER (WHERE ds.settlement_status = 'WON'),
             count(*) FILTER (WHERE ds.settlement_status = 'LOST'),
             count(*) FILTER (WHERE ds.settlement_status IN ('VOID', 'CANCELLED', 'PUSH'))
