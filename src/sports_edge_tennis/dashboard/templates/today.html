@@ -6,10 +6,25 @@
 <section class="date-nav" aria-label="Slate date navigation">
   <a class="date-btn" href="/today?date={{ prev_date.isoformat() }}">‹ {{ prev_date.strftime('%a %d %b') }}</a>
   <div class="date-current">
-    <span class="date-label">Slate date</span>
+    <span class="date-label">Today's slate</span>
     <span class="date-value">{{ selected_date.strftime('%A, %d %B %Y') }}</span>
   </div>
   <a class="date-btn" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
+</section>
+
+<section class="concept-strip" aria-label="How to read Sports Edge Tennis">
+  <div class="concept-card">
+    <strong>1 · Model Pick</strong>
+    <p>Who the models currently think is more likely to win. This is the prediction, not the betting price.</p>
+  </div>
+  <div class="concept-card">
+    <strong>2 · Bet Status</strong>
+    <p>Whether the current market price makes that model pick worth backing now. A pick can remain valid without being a bet.</p>
+  </div>
+  <div class="concept-card">
+    <strong>3 · Stake</strong>
+    <p>Position sizing comes only after a value bet qualifies. Quarter-Kelly never decides who the model thinks will win.</p>
+  </div>
 </section>
 
 {% if state.kind == 'DB_ERROR' %}
@@ -21,7 +36,7 @@
 {% elif state.kind == 'NO_RUN' %}
 <section class="panel panel-neutral">
   <div class="empty-icon">○</div>
-  <h2>No run available</h2>
+  <h2>No model run available</h2>
   <p>Sports Edge has not processed this slate yet.</p>
 </section>
 
@@ -38,9 +53,9 @@
 </section>
 
 {% else %}
-<section class="kpi-grid" aria-label="Summary">
+<section class="kpi-grid" aria-label="Today's summary">
   {% set consensus_count = state.matches | selectattr('manager_status', 'equalto', 'CONSENSUS') | list | length %}
-  {% set no_bet_count = state.matches | length - consensus_count %}
+  {% set no_pick_count = state.matches | length - consensus_count %}
   {% set sharp_count = state.matches | selectattr('sharp_available') | list | length %}
   {% set ns = namespace(bets=0, market_no_bets=0) %}
   {% for md in market_by_match.values() %}
@@ -53,23 +68,28 @@
   </div>
   <div class="kpi kpi-accent">
     <span class="kpi-value">{{ consensus_count }}</span>
-    <span class="kpi-label">High-Confidence Picks</span>
+    <span class="kpi-label">Model Picks</span>
   </div>
   <div class="kpi">
-    <span class="kpi-value">{{ no_bet_count }}</span>
-    <span class="kpi-label">No Bet · Model Filter</span>
-  </div>
-  <div class="kpi">
-    <span class="kpi-value">{{ sharp_count }}</span>
-    <span class="kpi-label">Sharp Prices</span>
+    <span class="kpi-value">{{ no_pick_count }}</span>
+    <span class="kpi-label">No Model Pick</span>
   </div>
   <div class="kpi kpi-accent">
     <span class="kpi-value">{{ ns.bets }}</span>
-    <span class="kpi-label">Value-Qualified Bets</span>
+    <span class="kpi-label">Value Bets Now</span>
+  </div>
+  <div class="kpi">
+    <span class="kpi-value">{{ sharp_count }}</span>
+    <span class="kpi-label">Pinnacle Matched</span>
   </div>
 </section>
 
-<section class="match-list" aria-label="Matches">
+<section class="clarity-heading">
+  <h2>Today's model picks</h2>
+  <p>The model view and the market view are shown separately so a price move cannot look like the model changed its mind.</p>
+</section>
+
+<section class="match-list" aria-label="Today's matches">
   {% for m in state.matches %}
   {% set md = market_by_match.get(m.match_id) %}
   {% set display_state = pres.client_state(m.manager_status, m.sharp_available, md.decision_status if md else None) %}
@@ -91,48 +111,69 @@
         </div>
       </div>
 
-      <div class="match-pick">
+      <div class="pick-stack">
+        <span class="eyebrow">Our Pick</span>
         {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
-        <span class="pick-label">MODEL PICK</span>
-        <span class="pick-player">{{ m.selected_player }}</span>
-        <span class="pick-prob">{{ pres.percent(m.consensus_probability) }}</span>
+        <span class="pick-primary">{{ m.selected_player }}</span>
+        <span class="pick-confidence">{{ pres.percent(m.consensus_probability) }} chance to win</span>
         {% else %}
-        <span class="pick-label">NO BET</span>
-        <span class="pick-player pick-none">Model filter</span>
+        <span class="pick-primary pick-none">No model pick</span>
+        <span class="pick-confidence">The model gate did not qualify a winner.</span>
+        {% endif %}
+      </div>
+
+      <div class="bet-stack">
+        <span class="eyebrow">Bet Status</span>
+        {% if md and md.decision_status == 'BET' %}
+        <span class="bet-status is-bet">VALUE BET NOW</span>
+        <span class="pick-confidence">{{ md.price_bookmaker_code or 'Bookmaker' }} @ {{ md.market_decimal_price }}</span>
+        {% elif md and md.decision_status == 'VETOED' %}
+        <span class="bet-status is-no-pick">BLOCKED BY SAFETY</span>
+        <span class="pick-confidence">Model and price qualified, but a safety gate stopped publication.</span>
+        {% elif m.manager_status == 'CONSENSUS' and md and md.decision_status == 'NO_BET' %}
+        <span class="bet-status is-pick">PICK ONLY · NO VALUE NOW</span>
+        <span class="pick-confidence">We still have a model pick; the current price does not qualify.</span>
+        {% elif m.manager_status == 'CONSENSUS' %}
+        <span class="bet-status is-pending">PRICE CHECK PENDING</span>
+        <span class="pick-confidence">Model pick exists; market evaluation is not complete.</span>
+        {% else %}
+        <span class="bet-status is-no-pick">NO BET · MODEL FILTER</span>
+        <span class="pick-confidence">No winner passed the model gate.</span>
         {% endif %}
       </div>
 
       <div class="match-pinnacle">
-        {% if md and md.decision_status == 'BET' and md.market_decimal_price %}
-        <span class="pinn-label">Best Offered</span>
-        <span class="pinn-price">{{ md.market_decimal_price }}</span>
-        <span class="pick-label">{{ md.price_bookmaker_code or 'Bookmaker' }}</span>
-        {% elif m.sharp_available %}
         <span class="pinn-label">Pinnacle</span>
+        {% if m.sharp_available %}
         <span class="pinn-price">{{ m.player_1_price }}</span>
         <span class="pinn-price">{{ m.player_2_price }}</span>
         {% else %}
-        <span class="pinn-label">Pinnacle</span>
-        <span class="pinn-price pinn-none">—</span>
+        <span class="pinn-price pinn-none">Not matched</span>
         {% endif %}
       </div>
 
       <div class="match-status">
-        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
-        {% if md and md.decision_status == 'BET' %}
-        <span class="agreement">Edge {{ pres.precise_percent(md.edge_pct) }}</span>
-        {% elif m.manager_status == 'CONSENSUS' %}
+        {% if m.manager_status == 'CONSENSUS' %}
+        <span class="badge badge-MODEL_CONSENSUS">MODEL PICK</span>
         <span class="agreement">{{ pres.agreement_text(m.active_agent_count, m.abstaining_agent_count) }}</span>
+        {% else %}
+        <span class="badge badge-NO_BET_MODEL">NO MODEL PICK</span>
         {% endif %}
       </div>
     </summary>
 
     <div class="match-detail">
-      <h3>Prediction</h3>
+      <h3>What the models think</h3>
+      {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
+      <p class="plain-explanation"><strong>{{ m.selected_player }}</strong> is the current Sports Edge model pick with a <strong>{{ pres.percent(m.consensus_probability) }}</strong> estimated chance to win. This probability is separate from bookmaker odds.</p>
+      {% else %}
+      <p class="plain-explanation">Sports Edge did not publish a model pick for this match because the model-consensus rules were not satisfied.</p>
+      {% endif %}
+
       <table class="agent-table">
-        <thead><tr><th scope="col">Model</th><th scope="col">Selection</th><th scope="col">Probability</th></tr></thead>
+        <thead><tr><th scope="col">Model</th><th scope="col">Selection</th><th scope="col">Probability / Status</th></tr></thead>
         <tbody>
-          {% for code, label in [('AGENT_1_SURFACE_ELO','Agent 1 · Elo'), ('AGENT_2_HIERARCHICAL_MARKOV','Agent 2 · Markov'), ('AGENT_3_INTRANSITIVITY','Agent 3 · Intransitivity')] %}
+          {% for code, label in [('AGENT_1_SURFACE_ELO','Agent 1 · Surface Elo'), ('AGENT_2_HIERARCHICAL_MARKOV','Agent 2 · Serve / Return'), ('AGENT_3_INTRANSITIVITY','Agent 3 · Matchup')] %}
           {% set a = m.agents.get(code) %}
           <tr>
             <td>{{ label }}</td>
@@ -140,7 +181,15 @@
             <td>{{ pres.side_name(a.selection, m.player_1, m.player_2) }}</td>
             <td>{{ pres.percent(a.probability) }}</td>
             {% else %}
-            <td>—</td><td>Abstained</td>
+            <td>—</td>
+            <td>
+              Abstained
+              {% if code == 'AGENT_3_INTRANSITIVITY' %}
+              <span class="agent-note">Not enough reliable matchup evidence to make a call. This is not a vote for the other player.</span>
+              {% else %}
+              <span class="agent-note">This model did not produce a usable prediction for this match.</span>
+              {% endif %}
+            </td>
             {% endif %}
           </tr>
           {% endfor %}
@@ -148,31 +197,38 @@
       </table>
 
       {% if m.manager_status == 'CONSENSUS' %}
-      <p class="detail-consensus">Consensus probability: <strong>{{ pres.percent(m.consensus_probability) }}</strong></p>
+      <p class="detail-consensus">Combined model probability: <strong>{{ pres.percent(m.consensus_probability) }}</strong> · {{ pres.agreement_text(m.active_agent_count, m.abstaining_agent_count) }}</p>
+      {% else %}
+        {% set reason = pres.reason_explanation(m.reason_code) %}
+        {% if reason %}<p class="plain-explanation">Why there is no model pick: {{ reason }}</p>{% endif %}
       {% endif %}
 
-      <h3>Recommendation</h3>
+      <h3>Is it worth betting at the current price?</h3>
       <p class="manager-result">
-        <span class="badge badge-{{ recommendation }}">{{ pres.recommendation_label(recommendation) }}</span>
-        {% if md %}
+        {% if md and md.decision_status == 'BET' %}
+        <span class="badge badge-HIGH_CONFIDENCE_VALUE">VALUE BET NOW</span>
+        <span class="reason">The model pick remains valid and the current offered price passes the value rules.</span>
+        {% elif md and md.decision_status == 'VETOED' %}
+        <span class="badge badge-VETOED">BLOCKED BY SAFETY</span>
+        <span class="reason">The model and price qualified, but a downstream safety gate blocked publication.</span>
+        {% elif m.manager_status == 'CONSENSUS' and md and md.decision_status == 'NO_BET' %}
           {% set market_reason = pres.market_reason_explanation(md.reason_code) %}
-          {% if md.decision_status == 'BET' %}
-          <span class="reason">Model confidence and the current offered price both qualify.</span>
-          {% elif market_reason %}
-          <span class="reason">{{ market_reason }}</span>
-          {% endif %}
+        <span class="badge badge-HIGH_CONFIDENCE_PICK">MODEL PICK · NOT A BET NOW</span>
+        <span class="reason">{{ market_reason or 'The current price does not qualify as a value bet.' }}</span>
+        {% elif m.manager_status == 'CONSENSUS' %}
+        <span class="badge badge-PRICE_PENDING">MODEL PICK · PRICE PENDING</span>
+        <span class="reason">The winner prediction exists, but current price evaluation is incomplete.</span>
         {% else %}
-          {% set reason = pres.reason_explanation(m.reason_code) %}
-          {% if m.manager_status != 'CONSENSUS' and reason %}
-          <span class="reason">{{ reason }}</span>
-          {% elif m.manager_status == 'CONSENSUS' %}
-          <span class="reason">Model consensus passed. Price evaluation is still pending.</span>
-          {% endif %}
+        <span class="badge badge-NO_BET">NO BET</span>
+        <span class="reason">The match did not pass the model-selection gate.</span>
         {% endif %}
       </p>
-      <p class="decision-meta">Execution state: {{ pres.state_label(display_state) }}</p>
 
-      <h3>Market</h3>
+      {% if m.manager_status == 'CONSENSUS' %}
+      <p class="lifecycle-note">A later market refresh can change Bet Status without changing this model pick. Published prediction history should remain auditable even when price value changes.</p>
+      {% endif %}
+
+      <h3>Current market evidence</h3>
       <table class="market-table">
         <tbody>
           <tr><th scope="row">Pinnacle · {{ m.player_1 }}</th><td>{% if m.player_1_price %}{{ m.player_1_price }}{% else %}—{% endif %}</td></tr>
@@ -182,6 +238,7 @@
           <tr><th scope="row">Model edge at offered price</th><td>{% if md and md.edge_pct is not none %}{{ pres.precise_percent(md.edge_pct) }}{% else %}—{% endif %}</td></tr>
         </tbody>
       </table>
+      <p class="decision-meta">Current execution state: {{ pres.state_label(display_state) }}</p>
     </div>
   </details>
   {% endfor %}
@@ -189,8 +246,8 @@
 {% endif %}
 
 <section class="page-heading upcoming-heading">
-  <h2>Upcoming Matches</h2>
-  <p>Next scheduled ATP and Challenger men's singles fixtures with the latest persisted model and market decision.</p>
+  <h2>Upcoming matches</h2>
+  <p>Future ATP and Challenger men's singles fixtures. A model pick and a value-bet decision are shown as separate states.</p>
 </section>
 
 {% if upcoming %}
@@ -201,8 +258,8 @@
         <th scope="col">Start</th>
         <th scope="col">Match</th>
         <th scope="col">Tournament</th>
-        <th scope="col">Model</th>
-        <th scope="col">Decision</th>
+        <th scope="col">Our Pick</th>
+        <th scope="col">Bet Status</th>
       </tr>
     </thead>
     <tbody>
@@ -213,22 +270,26 @@
         <td>{{ m.tournament }}</td>
         <td>
           {% if m.manager_status == 'CONSENSUS' and m.selected_player %}
-          <span class="badge badge-MODEL_CONSENSUS">{{ m.selected_player }} · {{ pres.percent(m.consensus_probability) }}</span>
+          <strong>{{ m.selected_player }}</strong><br><span class="muted">{{ pres.percent(m.consensus_probability) }} chance to win</span>
           {% elif m.manager_status %}
-          <span class="badge badge-NO_BET_MODEL">No Bet · Model Filter</span>
+          <span class="muted">No model pick</span>
           {% else %}
-          <span class="badge badge-neutral">Prediction pending</span>
+          <span class="muted">Prediction pending</span>
           {% endif %}
         </td>
         <td>
-          {% set upcoming_recommendation = pres.recommendation_classification(m.manager_status, 'BET' if m.market_state == 'BET' else ('NO_BET' if m.market_state == 'NO_BET_MARKET' else None)) %}
-          <span class="badge badge-{{ upcoming_recommendation }}">{{ pres.recommendation_label(upcoming_recommendation) }}</span>
           {% if m.market_state == 'BET' %}
+          <span class="badge badge-HIGH_CONFIDENCE_VALUE">Value Bet Now</span>
           <div class="decision-meta">{{ m.price_bookmaker_code or 'Bookmaker' }} @ {{ m.market_decimal_price }} · Edge {{ pres.precise_percent(m.edge_pct) }}</div>
-          {% elif m.market_state == 'NO_BET_MARKET' %}
-          <div class="decision-meta">{{ pres.market_reason_explanation(m.market_reason_code) or 'Current price did not qualify as a value bet.' }}</div>
-          {% elif m.market_state == 'AWAITING_MARKET' %}
-          <div class="decision-meta">Consensus reached; price evaluation pending.</div>
+          {% elif m.market_state == 'NO_BET_MARKET' and m.manager_status == 'CONSENSUS' %}
+          <span class="badge badge-HIGH_CONFIDENCE_PICK">Pick Only · No Value Now</span>
+          <div class="decision-meta">{{ pres.market_reason_explanation(m.market_reason_code) or 'The current price does not qualify.' }}</div>
+          {% elif m.market_state == 'AWAITING_MARKET' and m.manager_status == 'CONSENSUS' %}
+          <span class="badge badge-PRICE_PENDING">Price Check Pending</span>
+          {% elif m.manager_status and m.manager_status != 'CONSENSUS' %}
+          <span class="badge badge-NO_BET">No Bet · Model Filter</span>
+          {% else %}
+          <span class="badge badge-neutral">Pending</span>
           {% endif %}
         </td>
       </tr>

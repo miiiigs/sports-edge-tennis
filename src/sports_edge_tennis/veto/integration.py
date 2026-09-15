@@ -20,6 +20,7 @@ from sports_edge_tennis.market.persistence import (
     load_run_parent,
 )
 from sports_edge_tennis.market.policy import validate_sharp_reference
+from sports_edge_tennis.publication import publish_new_bet_decision
 from sports_edge_tennis.veto.service import (
     evaluate_veto_for_decision,
     persist_veto_audit,
@@ -59,16 +60,23 @@ def evaluate_and_persist_market_slate_with_veto(
     market_execution_now: datetime,
     sharp_reference: SharpReferenceSpec,
 ) -> MarketSlateOutcome:
-    """Run Market V1, then apply a kill-only Veto before persistence.
+    """Run Market V1, apply kill-only Veto, then publish surviving new BETs.
 
     The existing Market evaluator remains the source of model/price truth. Veto
     evaluation is invoked only for decisions that Market would otherwise persist
     as BET. It cannot convert a NO_BET into a BET and cannot alter probabilities,
     prices, thresholds, or Manager state.
 
+    A newly persisted decision crosses the client publication boundary only after
+    its canonical decision row, snapshot lineage, and Veto audit have all been
+    written successfully in this same transaction. NO_BET and VETOED rows are
+    retained as evidence but are never marked published. Existing historical BET
+    rows are never implicitly backfilled on an idempotent rerun.
+
     Market internals are called through the evaluator module rather than copied
     function aliases. This preserves the existing failure-injection/rollback test
-    contract and ensures a persistence failure still aborts the whole transaction.
+    contract and ensures a persistence or publication failure still aborts the
+    whole transaction.
     """
     if market_execution_now < decision_as_of:
         raise MarketExecutionError("market_execution_now must be >= decision_as_of")
@@ -179,6 +187,12 @@ def evaluate_and_persist_market_slate_with_veto(
                     decision_id=decision_id,
                     evaluation_as_of=decision.decision_as_of,
                     evaluation=evaluation,
+                )
+            if decision.decision_status == "BET":
+                publish_new_bet_decision(
+                    conn,
+                    decision_id=decision_id,
+                    published_at=market_execution_now,
                 )
 
         after_count = market_evaluator._count_market_decisions(

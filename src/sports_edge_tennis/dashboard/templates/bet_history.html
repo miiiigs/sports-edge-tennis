@@ -1,28 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Bet History · Sports Edge Tennis{% endblock %}
+{% block title %}Results · Sports Edge Tennis{% endblock %}
 {% set active_nav = 'bet-history' %}
 
 {% block content %}
 <section class="page-heading">
-  <h1>Daily Bet History</h1>
-  <p>Real Type A match-winner bets grouped by the UTC date the decision was made.</p>
+  <h1>Results</h1>
+  <p>This page answers the simple question: are the live Sports Edge Tennis recommendations actually winning and making money at the prices recorded when they were published?</p>
+</section>
+
+<section class="concept-strip" aria-label="How to read Results">
+  <div class="concept-card">
+    <strong>Wins & Losses</strong>
+    <p>How the published value bets settled. Pending matches stay separate and never count as wins or losses early.</p>
+  </div>
+  <div class="concept-card">
+    <strong>ROI</strong>
+    <p>Profit relative to stake on settled recommendations. It is different from model accuracy and should be read with sample size.</p>
+  </div>
+  <div class="concept-card">
+    <strong>Forward Evidence</strong>
+    <p>These rows use persisted live decisions and their recorded prices. We do not invent historical prices after the fact.</p>
+  </div>
 </section>
 
 {% if bet_history_error %}
 <section class="panel panel-error">
-  <h2>Bet history unavailable</h2>
-  <p>The read-only bet ledger could not be loaded. Model execution and settlement are unaffected.</p>
+  <h2>Results are temporarily unavailable</h2>
+  <p>The read-only results ledger could not be loaded. Model execution and settlement are unaffected.</p>
 </section>
 {% elif not daily_summaries %}
 <section class="panel panel-neutral">
-  <h2>No Type A bets yet</h2>
-  <p>Daily results will appear here automatically once real Type A BET decisions are persisted.</p>
+  <h2>No settled live recommendations yet</h2>
+  <p>Forward results will appear here automatically once qualifying live value-bet decisions are persisted and settled.</p>
 </section>
 {% else %}
 
 <section class="page-heading" style="margin-top: 28px;">
-  <h1>Performance Overview</h1>
-  <p>One-unit performance through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only.</p>
+  <h2>Live performance overview</h2>
+  <p>One-unit forward performance through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled recommendations only; pending matches do not affect P/L yet.</p>
 </section>
 
 <section class="kpi-grid" aria-label="Rolling bet performance">
@@ -39,8 +54,8 @@
         <th scope="col">Period</th>
         <th scope="col">Bets</th>
         <th scope="col">Settled</th>
-        <th scope="col">W</th>
-        <th scope="col">L</th>
+        <th scope="col">Won</th>
+        <th scope="col">Lost</th>
         <th scope="col">Pending</th>
         <th scope="col">Win Rate</th>
         <th scope="col">P/L</th>
@@ -71,10 +86,15 @@
   </table>
 </section>
 
+<section class="panel panel-neutral">
+  <h3>What this does and does not prove</h3>
+  <p><strong>Win rate</strong> tells us how often the selected player won. <strong>ROI</strong> tells us whether the recorded prices produced profit. A high win rate can still lose money at poor prices, and a lower win rate can still be profitable at good prices.</p>
+</section>
+
 {% if selected_summary %}
 <section class="page-heading" style="margin-top: 28px;">
-  <h1>{{ selected_date.strftime('%a %d %b %Y') }}</h1>
-  <p>Performance for bets created on this UTC decision day.</p>
+  <h2>{{ selected_date.strftime('%a %d %b %Y') }}</h2>
+  <p>Every qualifying value-bet recommendation recorded on this UTC decision day.</p>
 </section>
 
 <section class="kpi-grid" aria-label="Daily bet performance">
@@ -91,11 +111,11 @@
   <table class="history-table">
     <thead>
       <tr>
-        <th scope="col">Decision</th>
+        <th scope="col">Published</th>
         <th scope="col">Match</th>
-        <th scope="col">Selection</th>
-        <th scope="col">Odds</th>
-        <th scope="col">Model</th>
+        <th scope="col">Our Bet</th>
+        <th scope="col">Recorded Odds</th>
+        <th scope="col">Model Probability</th>
         <th scope="col">Result</th>
         <th scope="col">P/L</th>
       </tr>
@@ -121,8 +141,8 @@
 {% endif %}
 
 <section class="page-heading" style="margin-top: 40px;">
-  <h1>Daily Performance</h1>
-  <p>Select any day to inspect every Type A bet that contributed to its result.</p>
+  <h2>Daily results</h2>
+  <p>Select a day to inspect every published value bet that contributed to that day's result.</p>
 </section>
 <section class="history-list" aria-label="Daily performance history">
   <table class="history-table">
@@ -130,8 +150,8 @@
       <tr>
         <th scope="col">Date</th>
         <th scope="col">Bets</th>
-        <th scope="col">W</th>
-        <th scope="col">L</th>
+        <th scope="col">Won</th>
+        <th scope="col">Lost</th>
         <th scope="col">Void</th>
         <th scope="col">Pending</th>
         <th scope="col">Win Rate</th>

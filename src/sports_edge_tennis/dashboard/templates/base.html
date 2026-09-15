@@ -6,6 +6,7 @@
   <title>{% block title %}Sports Edge Tennis{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <link rel="stylesheet" href="/static/market.css">
+  <link rel="stylesheet" href="/static/client_clarity.css">
   <link rel="stylesheet" href="/static/auth.css">
 </head>
 <body>
@@ -20,9 +21,9 @@
       </div>
       <nav class="main-nav" aria-label="Primary">
         <a href="/today" class="nav-link{% if active_nav == 'today' %} is-active{% endif %}">Today</a>
-        <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}">Model Performance</a>
-        <a href="/bet-history" class="nav-link{% if active_nav == 'bet-history' %} is-active{% endif %}">Bet History</a>
-        <a href="/history" class="nav-link{% if active_nav == 'history' %} is-active{% endif %}">History</a>
+        <a href="/bet-history" class="nav-link{% if active_nav == 'bet-history' %} is-active{% endif %}">Results</a>
+        <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}">Model Lab</a>
+        <a href="/history" class="nav-link{% if active_nav == 'history' %} is-active{% endif %}">Run History</a>
         {% if tennis_auth_enabled %}
         <form class="auth-signout-form" method="post" action="/logout">
           <button class="nav-link auth-signout" type="submit">Sign out</button>
