@@ -99,11 +99,19 @@ def get_latest_activity(conn: psycopg.Connection) -> datetime | None:
 
 
 def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
+    """Return the newest completed prediction run for a slate date.
+
+    In-progress runs are intentionally excluded from the client read model. A
+    RUNNING row may already contain targets while predictions or Manager rows
+    are still being persisted; exposing it would make previously published
+    picks temporarily disappear during an hourly refresh.
+    """
     run_row = conn.execute(
         """
         SELECT prediction_run_id, run_status, as_of
         FROM prediction_runs
         WHERE as_of::date = %s
+          AND run_status = 'COMPLETED'
         ORDER BY as_of DESC, prediction_run_id DESC
         LIMIT 1
         """,
