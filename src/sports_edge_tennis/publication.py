@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import psycopg
 
@@ -17,11 +17,17 @@ def publish_new_bet_decision(
 ) -> datetime:
     """Stamp a newly persisted final BET as client-published exactly once.
 
-    Publication is intentionally narrower than decision persistence. Only a
-    decision that has already survived Market and the kill-only Veto may cross
-    this boundary. Before stamping publication, the selected offered price is
-    revalidated at the publication timestamp against the decision's stored
-    ``min_acceptable_odds`` and Market odds freshness policy.
+    Publication is intentionally narrower than decision persistence. Market has
+    already validated the offered price and source freshness at ``decision.as_of``.
+    This boundary therefore checks only new observations that appeared after
+    generation and before publication. If the selected offered market closes or
+    the price drifts below the stored ``min_acceptable_odds`` in that interval,
+    publication fails closed.
+
+    This preserves point-in-time historical replay semantics: a replay executed
+    later in wall-clock time is not rejected merely because its already-validated
+    historical quote is old. A genuinely newer observation in the replay/live
+    publication interval is still authoritative.
 
     This helper never converts NO_BET/VETOED rows, never rewrites an existing
     publication timestamp, and never backfills historical rows implicitly.
@@ -32,19 +38,16 @@ def publish_new_bet_decision(
     state = conn.execute(
         """
         SELECT
-            d.decision_status::text,
-            d.published_at,
-            d.as_of,
-            d.match_id,
-            d.selection_type::text,
-            d.min_acceptable_odds,
-            d.price_source_system,
-            d.price_bookmaker_code,
-            mp.odds_max_staleness_minutes
-        FROM decisions d
-        JOIN market_policy_versions mp
-          ON mp.market_policy_version_id = d.market_policy_version_id
-        WHERE d.decision_id = %s
+            decision_status::text,
+            published_at,
+            as_of,
+            match_id,
+            selection_type::text,
+            min_acceptable_odds,
+            price_source_system,
+            price_bookmaker_code
+        FROM decisions
+        WHERE decision_id = %s
         """,
         (decision_id,),
     ).fetchone()
@@ -60,7 +63,6 @@ def publish_new_bet_decision(
         min_acceptable_odds,
         price_source_system,
         price_bookmaker_code,
-        odds_max_staleness_minutes,
     ) = state
 
     if status != "BET":
@@ -79,16 +81,22 @@ def publish_new_bet_decision(
     ):
         raise PublicationError("BET decision is missing publication price lineage")
 
-    offered = conn.execute(
+    # Market already validated all snapshots visible at decision_as_of. Only a
+    # later observation can change publication eligibility. Using this interval
+    # rather than wall-clock freshness keeps historical PIT replays deterministic
+    # while still killing live/replay bets whose price moves before publication.
+    newer_offered = conn.execute(
         """
-        SELECT decimal_price, market_status::text, source_observed_at
+        SELECT decimal_price, market_status::text
         FROM odds_snapshots
         WHERE match_id = %s
           AND market_type = 'MATCH_WINNER'
           AND selection_type::text = %s
           AND source_system = %s
           AND bookmaker_code = %s
+          AND source_observed_at > %s
           AND source_observed_at <= %s
+          AND as_of > %s
           AND as_of <= %s
         ORDER BY source_observed_at DESC, as_of DESC, odds_snapshot_id DESC
         LIMIT 1
@@ -98,22 +106,19 @@ def publish_new_bet_decision(
             selection_type,
             price_source_system,
             price_bookmaker_code,
+            decision_as_of,
             published_at,
+            decision_as_of,
             published_at,
         ),
     ).fetchone()
-    if offered is None:
-        raise PublicationError("no offered price is available at publication")
 
-    decimal_price, market_status, source_observed_at = offered
-    if market_status != "OPEN":
-        raise PublicationError("offered market is not open at publication")
-
-    freshness_floor = published_at - timedelta(minutes=odds_max_staleness_minutes)
-    if source_observed_at < freshness_floor:
-        raise PublicationError("offered price is stale at publication")
-    if decimal_price < min_acceptable_odds:
-        raise PublicationError("offered price is below min_acceptable_odds at publication")
+    if newer_offered is not None:
+        decimal_price, market_status = newer_offered
+        if market_status != "OPEN":
+            raise PublicationError("offered market closed before publication")
+        if decimal_price < min_acceptable_odds:
+            raise PublicationError("offered price is below min_acceptable_odds at publication")
 
     row = conn.execute(
         """
