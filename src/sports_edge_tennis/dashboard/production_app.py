@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 
 from sports_edge_tennis.dashboard.app import app
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
+from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.paper_bankroll_routes import api_paper_bankroll
 from sports_edge_tennis.dashboard.pick_lifecycle_routes import api_pick_lifecycle
 
@@ -24,12 +25,17 @@ app.get(
     "/api/dashboard/paper-bankroll",
     name="api_paper_bankroll",
 )(api_paper_bankroll)
+app.get(
+    "/api/dashboard/model-evidence",
+    name="api_model_evidence",
+)(api_model_evidence)
 
 _required_paths = {
     "/bet-history",
     "/api/dashboard/bet-history",
     "/api/dashboard/pick-lifecycle",
     "/api/dashboard/paper-bankroll",
+    "/api/dashboard/model-evidence",
 }
 _registered_paths = {getattr(route, "path", None) for route in app.routes}
 _missing_paths = _required_paths - _registered_paths
