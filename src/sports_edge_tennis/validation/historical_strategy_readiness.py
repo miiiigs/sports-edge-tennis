@@ -86,19 +86,34 @@ def load_historical_strategy_readiness(
             JOIN starts s ON s.match_id = os.match_id
             WHERE os.market_type = 'MATCH_WINNER'
               AND os.source_observed_at < s.match_start_at
+              AND os.as_of < s.match_start_at
               AND os.market_status = 'OPEN'
         ),
-        pinnacle_pairs AS (
-            SELECT os.match_id
+        pinnacle_snapshot_pairs AS (
+            SELECT
+                os.match_id,
+                COALESCE(os.source_snapshot_id, os.source_record_hash) AS snapshot_identity,
+                os.source_observed_at,
+                os.as_of
             FROM odds_snapshots os
             JOIN starts s ON s.match_id = os.match_id
             WHERE os.market_type = 'MATCH_WINNER'
+              AND os.source_system = 'SHARP'
               AND os.bookmaker_code = 'PINNACLE'
               AND os.source_observed_at < s.match_start_at
+              AND os.as_of < s.match_start_at
               AND os.market_status = 'OPEN'
               AND os.selection_type IN ('PLAYER_1', 'PLAYER_2')
-            GROUP BY os.match_id
+            GROUP BY
+                os.match_id,
+                COALESCE(os.source_snapshot_id, os.source_record_hash),
+                os.source_observed_at,
+                os.as_of
             HAVING count(DISTINCT os.selection_type) = 2
+        ),
+        pinnacle_pairs AS (
+            SELECT DISTINCT match_id
+            FROM pinnacle_snapshot_pairs
         )
         SELECT
             c.season_year,
