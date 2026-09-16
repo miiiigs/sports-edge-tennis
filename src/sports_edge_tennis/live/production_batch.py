@@ -1,8 +1,9 @@
 """Production wrapper: prepare schema, run live horizon, then settle matured Type A BETs.
 
 Keeping this wrapper additive avoids changing the already-stable live orchestration path.
-A non-zero schema/live-batch result prevents settlement. Settlement evidence conflicts fail
-closed so Railway surfaces the audit problem instead of silently continuing.
+Production settlement remains fail-closed. The prospective shadow strategy is intentionally
+fail-isolated: it records evidence and analytics without changing Today, Manager, or
+production decision/publication behavior.
 """
 
 from __future__ import annotations
@@ -14,6 +15,15 @@ from pathlib import Path
 import psycopg
 
 from sports_edge_tennis.live.batch import main as live_batch_main
+from sports_edge_tennis.market import SharpReferenceSpec
+from sports_edge_tennis.performance.shadow_strategy import (
+    STRATEGY_CODE as SHADOW_STRATEGY_CODE,
+    activate_shadow_strategy,
+    finalize_shadow_clv,
+    load_shadow_strategy_summary,
+    observe_pending_shadow_runs,
+    settle_shadow_positions,
+)
 from sports_edge_tennis.settlement import (
     SettlementEvidenceConflict,
     settle_type_a_match_winner_decisions,
@@ -30,6 +40,7 @@ _STAKING_CONSTRAINTS = frozenset(
         "chk_decisions_staking_rule_coherent",
     }
 )
+_SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
 
 
 def _db_dsn() -> str | None:
@@ -101,11 +112,90 @@ def _ensure_quarter_kelly_schema(
     return "APPLIED"
 
 
+def _shadow_cycle(
+    dsn: str,
+    *,
+    cycle_started_at: datetime,
+    captured_at: datetime,
+) -> None:
+    """Run the entire shadow lane without allowing it to affect production success."""
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            activated_at = activate_shadow_strategy(
+                conn,
+                activated_at=cycle_started_at,
+            )
+            outcomes = observe_pending_shadow_runs(
+                conn,
+                observed_at=captured_at,
+                sharp_reference=_SHARP,
+            )
+            for outcome in outcomes:
+                _log(
+                    "SHADOW_OBSERVATION "
+                    f"strategy={SHADOW_STRATEGY_CODE} "
+                    f"prediction_run_id={outcome.prediction_run_id} "
+                    f"candidates={outcome.candidates} "
+                    f"observations={outcome.observations} "
+                    f"market_bets={outcome.market_bets} "
+                    f"vetoed={outcome.vetoed} blocked={outcome.blocked} "
+                    f"positions_opened={outcome.positions_opened}"
+                )
+
+            settlement = settle_shadow_positions(
+                conn,
+                settled_at=captured_at,
+            )
+            clv = finalize_shadow_clv(
+                conn,
+                captured_at=captured_at,
+                sharp_reference=_SHARP,
+            )
+            summary = load_shadow_strategy_summary(conn)
+    except Exception as exc:
+        # This lane is intentionally observational. A bug or evidence gap here
+        # must never suppress canonical production picks, settlement, or Railway success.
+        _log(
+            "SHADOW_LANE_FAILED "
+            f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
+        )
+        return
+
+    bankroll = summary.bankroll
+    _log(
+        "SHADOW_SETTLEMENT "
+        f"strategy={SHADOW_STRATEGY_CODE} "
+        f"eligible={settlement.eligible} pending={settlement.pending} "
+        f"inserted={settlement.inserted} existing={settlement.existing} "
+        f"won={settlement.won} lost={settlement.lost} "
+        f"void={settlement.void} cancelled={settlement.cancelled}"
+    )
+    _log(
+        "SHADOW_CLV "
+        f"strategy={SHADOW_STRATEGY_CODE} "
+        f"eligible={clv.eligible} inserted={clv.inserted} "
+        f"available={clv.available} unavailable={clv.unavailable}"
+    )
+    _log(
+        "SHADOW_SUMMARY "
+        f"strategy={SHADOW_STRATEGY_CODE} "
+        f"activated_at={activated_at.isoformat()} "
+        f"runs={summary.observed_runs} observations={summary.observations} "
+        f"positions={summary.positions} settled={summary.settled} "
+        f"wins={summary.wins} losses={summary.losses} "
+        f"bankroll={bankroll.current_bankroll} roi={bankroll.roi} "
+        f"max_drawdown={bankroll.max_drawdown} "
+        f"clv_records={summary.clv_records} mean_clv={summary.mean_clv}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     dsn = _db_dsn()
     if not dsn:
         _log("SCHEMA_BLOCKED reason=NO_DATABASE")
         return 2
+
+    shadow_cycle_started_at = datetime.now(timezone.utc)
 
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
@@ -115,6 +205,25 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     _log(f"SCHEMA_QUARTER_KELLY status={schema_status} migration=0010")
+
+    # Establish the prospective boundary before the live batch creates this
+    # cycle's prediction runs. Failure is retried after the live batch using
+    # the same timestamp so current runs are never intentionally backfilled.
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            activated_at = activate_shadow_strategy(
+                conn,
+                activated_at=shadow_cycle_started_at,
+            )
+        _log(
+            "SHADOW_ACTIVATION "
+            f"strategy={SHADOW_STRATEGY_CODE} activated_at={activated_at.isoformat()}"
+        )
+    except Exception as exc:
+        _log(
+            "SHADOW_ACTIVATION_DEFERRED "
+            f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
+        )
 
     live_status = live_batch_main(argv)
     if live_status != 0:
@@ -142,6 +251,12 @@ def main(argv: list[str] | None = None) -> int:
         f"inserted={outcome.inserted} existing={outcome.existing} "
         f"won={outcome.won} lost={outcome.lost} "
         f"void={outcome.void} cancelled={outcome.cancelled}"
+    )
+
+    _shadow_cycle(
+        dsn,
+        cycle_started_at=shadow_cycle_started_at,
+        captured_at=datetime.now(timezone.utc),
     )
     return 0
 
