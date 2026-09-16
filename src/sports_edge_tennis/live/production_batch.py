@@ -16,14 +16,6 @@ import psycopg
 
 from sports_edge_tennis.live.batch import main as live_batch_main
 from sports_edge_tennis.market import SharpReferenceSpec
-from sports_edge_tennis.performance.shadow_strategy import (
-    STRATEGY_CODE as SHADOW_STRATEGY_CODE,
-    activate_shadow_strategy,
-    finalize_shadow_clv,
-    load_shadow_strategy_summary,
-    observe_pending_shadow_runs,
-    settle_shadow_positions,
-)
 from sports_edge_tennis.settlement import (
     SettlementEvidenceConflict,
     settle_type_a_match_winner_decisions,
@@ -41,6 +33,7 @@ _STAKING_CONSTRAINTS = frozenset(
     }
 )
 _SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
+SHADOW_STRATEGY_CODE = "A1_A2_AGREE_A3_ABSTAIN_V1"
 
 
 def _db_dsn() -> str | None:
@@ -120,6 +113,14 @@ def _shadow_cycle(
 ) -> None:
     """Run the entire shadow lane without allowing it to affect production success."""
     try:
+        from sports_edge_tennis.performance.shadow_strategy import (
+            activate_shadow_strategy,
+            finalize_shadow_clv,
+            load_shadow_strategy_summary,
+            observe_pending_shadow_runs,
+            settle_shadow_positions,
+        )
+
         with psycopg.connect(dsn, autocommit=True) as conn:
             activated_at = activate_shadow_strategy(
                 conn,
@@ -210,6 +211,8 @@ def main(argv: list[str] | None = None) -> int:
     # cycle's prediction runs. Failure is retried after the live batch using
     # the same timestamp so current runs are never intentionally backfilled.
     try:
+        from sports_edge_tennis.performance.shadow_strategy import activate_shadow_strategy
+
         with psycopg.connect(dsn, autocommit=True) as conn:
             activated_at = activate_shadow_strategy(
                 conn,
