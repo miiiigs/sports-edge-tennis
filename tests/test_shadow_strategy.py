@@ -63,7 +63,9 @@ def test_shadow_candidate_is_exact_a1_a2_agree_a3_abstain_contract():
     assert candidate.selected_side == 1
     assert candidate.a1_probability == Decimal("0.61")
     assert candidate.a2_probability == Decimal("0.57")
-    assert candidate.consensus_probability == Decimal("0.59000000000000000000000000000000000000000000000000")
+    assert candidate.consensus_probability == Decimal(
+        "0.59000000000000000000000000000000000000000000000000"
+    )
     assert candidate.probability_spread == Decimal("0.04")
 
 
@@ -108,3 +110,20 @@ def test_shadow_tables_are_separate_from_production_decisions():
     assert "create table if not exists shadow_strategy_clv" in sql
     assert "alter table decisions" not in sql
     assert "insert into decisions" not in sql
+
+
+def test_shadow_schema_bootstraps_on_postgres(db):
+    shadow.ensure_shadow_strategy_schema(db)
+
+    for table_name in (
+        "shadow_strategy_registry",
+        "shadow_strategy_runs",
+        "shadow_strategy_observations",
+        "shadow_strategy_observation_odds",
+        "shadow_strategy_positions",
+        "shadow_strategy_settlements",
+        "shadow_strategy_clv",
+    ):
+        row = db.execute("SELECT to_regclass(%s)", (f"public.{table_name}",)).fetchone()
+        assert row is not None
+        assert row[0] == table_name
