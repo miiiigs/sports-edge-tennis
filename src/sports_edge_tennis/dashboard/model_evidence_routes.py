@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi.responses import JSONResponse
 
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect
+from sports_edge_tennis.performance.coverage_evidence import load_agent_coverage_slices
 from sports_edge_tennis.performance.evidence import load_live_evidence_summary
 
 
@@ -26,6 +27,7 @@ def api_model_evidence():
         return JSONResponse({"initialized": False, "reason": "database unavailable"}, status_code=503)
     try:
         summary = load_live_evidence_summary(conn)
+        coverage_slices = load_agent_coverage_slices(conn)
     finally:
         conn.close()
 
@@ -76,6 +78,18 @@ def api_model_evidence():
                 }
                 for row in summary.agents
             ],
+            "coverage_slices": [
+                {
+                    "agent_code": row.agent_code,
+                    "dimension": row.dimension,
+                    "value": row.value,
+                    "unique_matches": row.unique_matches,
+                    "predicted": row.predicted,
+                    "abstained": row.abstained,
+                    "coverage_rate": _percent(row.coverage_rate),
+                }
+                for row in coverage_slices
+            ],
             "agent3_shadow": [
                 {
                     "cohort": row.cohort,
@@ -87,7 +101,8 @@ def api_model_evidence():
                 for row in summary.agent3_shadow
             ],
             "interpretation": (
-                "Read-only evidence. Agent 3 shadow cohorts are descriptive and do not alter "
+                "Read-only evidence. Coverage slices use fixture metadata visible at the first "
+                "prediction timestamp. Agent 3 shadow cohorts are descriptive and do not alter "
                 "the canonical C1-C4 Manager contract."
             ),
         }
