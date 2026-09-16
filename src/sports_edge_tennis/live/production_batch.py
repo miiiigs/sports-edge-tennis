@@ -113,11 +113,13 @@ def _shadow_cycle(
 ) -> None:
     """Run the entire shadow lane without allowing it to affect production success."""
     try:
+        from sports_edge_tennis.performance.live_shadow import (
+            observe_pending_live_shadow_runs,
+        )
         from sports_edge_tennis.performance.shadow_strategy import (
             activate_shadow_strategy,
             finalize_shadow_clv,
             load_shadow_strategy_summary,
-            observe_pending_shadow_runs,
             settle_shadow_positions,
         )
 
@@ -126,7 +128,7 @@ def _shadow_cycle(
                 conn,
                 activated_at=cycle_started_at,
             )
-            outcomes = observe_pending_shadow_runs(
+            outcomes = observe_pending_live_shadow_runs(
                 conn,
                 observed_at=captured_at,
                 sharp_reference=_SHARP,
