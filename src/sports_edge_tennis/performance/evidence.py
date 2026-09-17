@@ -1,7 +1,7 @@
 """Read-only model evidence diagnostics for Sports Edge Tennis.
 
 This module intentionally does not alter prediction, Manager, market, Veto, staking,
-or settlement behaviour.  It summarizes the persisted production evidence so historical
+or settlement behaviour. It summarizes persisted production-live evidence so historical
 model metrics can be compared with live coverage and unique-match outcomes without
 counting hourly reruns as independent sporting events.
 """
@@ -72,6 +72,7 @@ def _latest_run_id(conn: psycopg.Connection) -> int | None:
         WHERE prediction_contract_version = 'predictive_agent_result_v1'
           AND run_status = 'COMPLETED'
           AND prediction_finalized_at IS NOT NULL
+          AND experiment_id IS NULL
         ORDER BY ended_at DESC NULLS LAST, prediction_run_id DESC
         LIMIT 1
         """
@@ -185,6 +186,8 @@ def _agent_evidence(conn: psycopg.Connection) -> tuple[AgentEvidence, ...]:
             WHERE pr.prediction_contract_version = 'predictive_agent_result_v1'
               AND pr.run_status = 'COMPLETED'
               AND pr.prediction_finalized_at IS NOT NULL
+              AND pr.experiment_id IS NULL
+              AND p.experiment_id IS NULL
             ORDER BY p.match_id, p.agent_code, p.as_of, p.prediction_id
         ),
         latest_results AS (
@@ -238,9 +241,9 @@ def _agent_evidence(conn: psycopg.Connection) -> tuple[AgentEvidence, ...]:
 def _agent3_shadow(conn: psycopg.Connection) -> tuple[Agent3ShadowCohort, ...]:
     """Measure outcomes where A1/A2 agree, grouped by Agent 3 participation.
 
-    This is descriptive shadow evidence only.  It does not change the canonical Manager
-    contract and does not claim causality.  Hourly reruns are collapsed to the first
-    complete three-agent prediction set per sporting match.
+    This is descriptive shadow evidence only. It does not change the canonical Manager
+    contract and does not claim causality. Hourly reruns are collapsed to the first
+    complete three-agent production-live prediction set per sporting match.
     """
     rows = conn.execute(
         """
@@ -255,6 +258,8 @@ def _agent3_shadow(conn: psycopg.Connection) -> tuple[Agent3ShadowCohort, ...]:
             WHERE pr.prediction_contract_version = 'predictive_agent_result_v1'
               AND pr.run_status = 'COMPLETED'
               AND pr.prediction_finalized_at IS NOT NULL
+              AND pr.experiment_id IS NULL
+              AND p.experiment_id IS NULL
             ORDER BY p.match_id, p.agent_code, p.as_of, p.prediction_id
         ),
         pivoted AS (
