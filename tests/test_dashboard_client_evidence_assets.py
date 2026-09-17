@@ -10,6 +10,7 @@ def test_production_dashboard_registers_client_evidence_routes():
     assert "/api/dashboard/paper-bankroll" in paths
     assert "/api/dashboard/model-evidence" in paths
     assert "/api/dashboard/opportunity-evidence" in paths
+    assert "/api/dashboard/sharp-blockers" in paths
 
 
 def test_client_script_mounts_pick_timeline_and_paper_bankroll():
