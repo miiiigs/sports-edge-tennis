@@ -1,8 +1,6 @@
-"""Read-only dashboard and startup diagnostics for missing Pinnacle references."""
+"""Read-only dashboard diagnostics for missing Pinnacle references."""
 
 from __future__ import annotations
-
-from collections import Counter
 
 import psycopg
 from fastapi import Query
@@ -11,7 +9,6 @@ from fastapi.responses import JSONResponse
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect
 from sports_edge_tennis.live.sharp_blockers import (
     SharpReferenceBlocker,
-    format_sharp_blocker,
     load_missing_sharp_reference_blockers,
 )
 
@@ -123,52 +120,7 @@ def api_sharp_blockers(limit: int = Query(default=5, ge=1, le=20)):
     )
 
 
-def log_recent_sharp_blockers_on_startup(*, limit: int = 5) -> None:
-    """Emit bounded historical blocker evidence once per dashboard process startup.
-
-    This deliberately does not raise. Observability must never prevent the dashboard
-    from starting when the database is unavailable or a diagnostic query fails.
-    """
-    if DEMO_MODE:
-        return
-    conn = _connect()
-    if conn is None:
-        print("SHARP_BLOCKER_HISTORY_UNAVAILABLE database_unavailable", flush=True)
-        return
-    try:
-        run_ids = load_recent_live_missing_sharp_run_ids(conn, limit=limit)
-        blockers: list[SharpReferenceBlocker] = []
-        for prediction_run_id in run_ids:
-            blockers.extend(
-                load_missing_sharp_reference_blockers(
-                    conn,
-                    prediction_run_id=prediction_run_id,
-                )
-            )
-        for blocker in blockers:
-            print("SHARP_BLOCKER_HISTORY " + format_sharp_blocker(blocker), flush=True)
-        counts = Counter(blocker.classification for blocker in blockers)
-        classification_text = ",".join(
-            f"{classification}={count}"
-            for classification, count in sorted(counts.items())
-        ) or "none"
-        print(
-            "SHARP_BLOCKER_HISTORY_SUMMARY "
-            f"runs={len(run_ids)} blockers={len(blockers)} classifications={classification_text}",
-            flush=True,
-        )
-    except Exception as exc:  # pragma: no cover - production safety boundary
-        print(
-            "SHARP_BLOCKER_HISTORY_FAILED "
-            f"error={type(exc).__name__}",
-            flush=True,
-        )
-    finally:
-        conn.close()
-
-
 __all__ = [
     "api_sharp_blockers",
     "load_recent_live_missing_sharp_run_ids",
-    "log_recent_sharp_blockers_on_startup",
 ]
