@@ -12,6 +12,7 @@ Safety contract:
 * no match, match-version, result, player, alias, or source-id row is created/changed;
 * stats visibility is the actual backfill receive time, never the historical match date;
 * semantic reruns are deduped by ``persist_api_tennis_match_stats``;
+* dry-run mode measures strict eligibility without any database mutation;
 * Agent 2's cached snapshot is invalidated only when new stat rows are inserted.
 """
 
@@ -20,13 +21,17 @@ from __future__ import annotations
 import argparse
 import os
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, timedelta
 from typing import Any, Callable, Iterable, Mapping
 
 import psycopg
 
 from sports_edge_tennis.data.sources.api_tennis_live import ApiTennisIngestedMatch
-from sports_edge_tennis.live.api_tennis_match_stats import persist_api_tennis_match_stats
+from sports_edge_tennis.live.api_tennis_match_stats import (
+    StatsPersistOutcome,
+    _parse_api_tennis_match_point_stats_with_reason,
+    persist_api_tennis_match_stats,
+)
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.history_refresh import (
     MAX_WINDOW_DAYS,
@@ -39,13 +44,14 @@ DEFAULT_CHUNK_DAYS = 7
 MAX_CHUNK_DAYS = 31
 _TERMINAL_STATUSES = {"finished", "completed", "retired", "walkover"}
 
-FetchWindow = Callable[[str, date, date], tuple[datetime, list[dict[str, Any]]]]
+FetchWindow = Callable[[str, date, date], tuple[Any, list[dict[str, Any]]]]
 
 
 @dataclass(frozen=True)
 class StatsBackfillChunkOutcome:
     start_date: date
     end_date: date
+    dry_run: bool
     fixtures_seen: int
     terminal_fixtures: int
     matched_existing: int
@@ -246,6 +252,41 @@ def _load_existing_ingested_matches(
     )
 
 
+def _preview_stat_outcome(
+    fixtures: list[dict[str, Any]],
+    existing_matches: tuple[ApiTennisIngestedMatch, ...],
+) -> StatsPersistOutcome:
+    by_event = {
+        _text(fixture.get("event_key")): fixture
+        for fixture in fixtures
+        if _text(fixture.get("event_key"))
+    }
+    eligible = 0
+    skipped = 0
+    reasons: dict[str, int] = {}
+    for existing in existing_matches:
+        fixture = by_event.get(existing.source_match_id)
+        if fixture is None:
+            skipped += 1
+            reasons["MISSING_INGESTED_FIXTURE"] = reasons.get("MISSING_INGESTED_FIXTURE", 0) + 1
+            continue
+        parsed, reason = _parse_api_tennis_match_point_stats_with_reason(fixture)
+        if parsed is None:
+            skipped += 1
+            key = reason or "UNKNOWN_PARSE_GAP"
+            reasons[key] = reasons.get(key, 0) + 1
+            continue
+        eligible += 1
+    frozen = tuple(sorted((reason, count) for reason, count in reasons.items() if count > 0))
+    return StatsPersistOutcome(
+        eligible_matches=eligible,
+        inserted_rows=0,
+        existing_rows=0,
+        skipped_matches=skipped,
+        skip_reason_counts=frozen,
+    )
+
+
 def _invalidate_agent2_cache(conn: psycopg.Connection) -> None:
     table_exists = conn.execute(
         "SELECT to_regclass('public.live_model_state_checkpoints')"
@@ -264,6 +305,7 @@ def backfill_stats_chunk(
     api_key: str,
     start_date: date,
     end_date: date,
+    dry_run: bool = False,
     fetch_window: FetchWindow = fetch_api_tennis_fixture_window,
 ) -> StatsBackfillChunkOutcome:
     if end_date < start_date:
@@ -280,18 +322,22 @@ def backfill_stats_chunk(
         identity_mismatch,
     ) = _load_existing_ingested_matches(conn, fixtures)
 
-    stat_outcome = persist_api_tennis_match_stats(
-        conn,
-        fixtures=fixtures,
-        ingested_matches=existing_matches,
-        received_at=received_at,
-    )
-    if stat_outcome.inserted_rows:
-        _invalidate_agent2_cache(conn)
+    if dry_run:
+        stat_outcome = _preview_stat_outcome(fixtures, existing_matches)
+    else:
+        stat_outcome = persist_api_tennis_match_stats(
+            conn,
+            fixtures=fixtures,
+            ingested_matches=existing_matches,
+            received_at=received_at,
+        )
+        if stat_outcome.inserted_rows:
+            _invalidate_agent2_cache(conn)
 
     outcome = StatsBackfillChunkOutcome(
         start_date=start_date,
         end_date=end_date,
+        dry_run=dry_run,
         fixtures_seen=len(fixtures),
         terminal_fixtures=terminal_fixtures,
         matched_existing=len(existing_matches),
@@ -306,7 +352,7 @@ def backfill_stats_chunk(
     )
     print(
         "A2_STATS_BACKFILL_CHUNK "
-        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} dry_run={int(dry_run)} "
         f"fixtures_seen={outcome.fixtures_seen} terminal={outcome.terminal_fixtures} "
         f"matched_existing={outcome.matched_existing} unmatched_event={outcome.unmatched_event} "
         f"missing_player_identity={outcome.missing_player_identity} "
@@ -327,6 +373,7 @@ def backfill_stats_range(
     start_date: date,
     end_date: date,
     chunk_days: int = DEFAULT_CHUNK_DAYS,
+    dry_run: bool = False,
     fetch_window: FetchWindow = fetch_api_tennis_fixture_window,
 ) -> StatsBackfillTotals:
     if end_date < start_date:
@@ -346,6 +393,7 @@ def backfill_stats_range(
                 api_key=api_key,
                 start_date=cursor,
                 end_date=chunk_end,
+                dry_run=dry_run,
                 fetch_window=fetch_window,
             )
         )
@@ -353,7 +401,7 @@ def backfill_stats_range(
 
     print(
         "A2_STATS_BACKFILL_SUMMARY "
-        f"chunks={totals.chunks} fixtures_seen={totals.fixtures_seen} "
+        f"dry_run={int(dry_run)} chunks={totals.chunks} fixtures_seen={totals.fixtures_seen} "
         f"terminal={totals.terminal_fixtures} matched_existing={totals.matched_existing} "
         f"unmatched_event={totals.unmatched_event} "
         f"missing_player_identity={totals.missing_player_identity} "
@@ -375,6 +423,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start-date", type=date.fromisoformat, required=True)
     parser.add_argument("--end-date", type=date.fromisoformat, required=True)
     parser.add_argument("--chunk-days", type=int, default=DEFAULT_CHUNK_DAYS)
+    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--dsn", default=_db_dsn())
     args = parser.parse_args(argv)
 
@@ -397,6 +446,7 @@ def main(argv: list[str] | None = None) -> int:
                 start_date=args.start_date,
                 end_date=args.end_date,
                 chunk_days=args.chunk_days,
+                dry_run=args.dry_run,
             )
     except (ValueError, psycopg.Error) as exc:
         print(f"A2_STATS_BACKFILL_BLOCKED reason={type(exc).__name__}", flush=True)
