@@ -152,7 +152,7 @@ def test_future_history_is_reported_as_not_pit_visible(db: psycopg.Connection):
     _historical_result(
         db,
         historical,
-        observed_at=datetime(2026, 9, 18, 0, 0, tzinfo=UTC),
+        observed_at=datetime(2026, 9, 17, 15, 30, tzinfo=UTC),
     )
     live_player = _player(db, "Future Evidence")
 
