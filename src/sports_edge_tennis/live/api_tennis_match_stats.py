@@ -271,6 +271,18 @@ def _reason_counts(counts: Mapping[str, int]) -> tuple[tuple[str, int], ...]:
     return tuple(sorted((reason, int(count)) for reason, count in counts.items() if count > 0))
 
 
+def _emit_stats_telemetry(outcome: StatsPersistOutcome) -> None:
+    print(
+        "API_TENNIS_MATCH_STATS_DETAIL "
+        f"eligible_matches={outcome.eligible_matches} "
+        f"inserted_rows={outcome.inserted_rows} "
+        f"existing_rows={outcome.existing_rows} "
+        f"skipped_matches={outcome.skipped_matches} "
+        f"skip_reasons={outcome.skip_reason_summary}",
+        flush=True,
+    )
+
+
 def persist_api_tennis_match_stats(
     conn: psycopg.Connection,
     *,
@@ -297,7 +309,9 @@ def persist_api_tennis_match_stats(
 
     frozen_reasons = _reason_counts(skip_reasons)
     if not eligible:
-        return StatsPersistOutcome(0, 0, 0, skipped, frozen_reasons)
+        outcome = StatsPersistOutcome(0, 0, 0, skipped, frozen_reasons)
+        _emit_stats_telemetry(outcome)
+        return outcome
 
     ingest_run_id = _start_ingest_run(conn, received_at)
     repository = HistoricalRepository(conn, ingest_run_id)
@@ -358,7 +372,9 @@ def persist_api_tennis_match_stats(
         """,
         (received_at, len(eligible) * 2, inserted, ingest_run_id),
     )
-    return StatsPersistOutcome(len(eligible), inserted, existing, skipped, frozen_reasons)
+    outcome = StatsPersistOutcome(len(eligible), inserted, existing, skipped, frozen_reasons)
+    _emit_stats_telemetry(outcome)
+    return outcome
 
 
 __all__ = [
