@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from typing import Any, Callable, Mapping
 
@@ -11,13 +11,18 @@ import psycopg
 from sports_edge_tennis.live.orchestrator import _parse_board, _process_event
 from sports_edge_tennis.odds.providers.pinnapi import to_pinnapi_event_evidence
 from sports_edge_tennis.odds.reconciliation import (
+    MAX_VARIANT_FIRST_MAPPING_START_DELTA,
     _load_candidates,
     _orient_candidate,
+    _participant_pair_uses_deterministic_variant,
     _start_within_first_mapping_tolerance,
     _tour_scope_compatible,
     _tournament_compatible,
     normalize_pinnapi_participant_name,
 )
+
+
+_EXTENDED_VARIANT_DIAGNOSTIC_DELTA = timedelta(minutes=120)
 
 
 @dataclass(frozen=True)
@@ -76,6 +81,17 @@ def normalize_pinnapi_board_for_matches(
             reason_counts[bucket] += 1
             if result["match_id"] is None:
                 log(_reconcile_diagnostic_line(result, event, candidates, bucket))
+                extended = _extended_variant_time_candidate(event, candidates)
+                if extended is not None:
+                    candidate, delta_minutes = extended
+                    reason_counts["variant_time_60_120"] += 1
+                    log(
+                        _extended_variant_time_line(
+                            event,
+                            candidate,
+                            delta_minutes=delta_minutes,
+                        )
+                    )
     if log is not None:
         for rejected in parse_result.rejected_events:
             reason_counts["other"] += 1
@@ -86,6 +102,7 @@ def normalize_pinnapi_board_for_matches(
             f"no_player_pair={reason_counts['no_player_pair']} "
             f"ambiguous_player_pair={reason_counts['ambiguous_player_pair']} "
             f"time_mismatch={reason_counts['time_mismatch']} "
+            f"variant_time_60_120={reason_counts['variant_time_60_120']} "
             f"tour_mismatch={reason_counts['tour_mismatch']} "
             f"tournament_mismatch={reason_counts['tournament_mismatch']} "
             f"other={reason_counts['other']}"
@@ -143,6 +160,60 @@ def _diagnostic_bucket(
     ):
         return "time_mismatch"
     return "tournament_mismatch"
+
+
+def _extended_variant_time_candidate(
+    event: Any,
+    candidates: Mapping[int, Any],
+) -> tuple[Any, int] | None:
+    """Identify one safe observational candidate between 60 and 120 minutes.
+
+    This deliberately does not persist a mapping. It asks whether the exact existing
+    deterministic-variant path would have been unique if its 60-minute guard were
+    extended to 120 minutes, while retaining participant, tournament, and tour checks.
+    """
+    evidence = to_pinnapi_event_evidence(event)
+    matches: list[tuple[Any, int]] = []
+    for candidate in candidates.values():
+        orientation = _orient_candidate(candidate, evidence)
+        if orientation is None:
+            continue
+        if not _tour_scope_compatible(candidate, evidence):
+            continue
+        if not _tournament_compatible(candidate, evidence):
+            continue
+        if not _participant_pair_uses_deterministic_variant(candidate, evidence, orientation):
+            continue
+        start_at = candidate.match.match_start_at
+        if start_at is None:
+            continue
+        delta = abs(start_at.astimezone(evidence.scheduled_start_utc.tzinfo) - evidence.scheduled_start_utc)
+        if MAX_VARIANT_FIRST_MAPPING_START_DELTA < delta <= _EXTENDED_VARIANT_DIAGNOSTIC_DELTA:
+            matches.append((candidate, int(delta.total_seconds() // 60)))
+    if len(matches) != 1:
+        return None
+    return matches[0]
+
+
+def _extended_variant_time_line(
+    event: Any,
+    candidate: Any,
+    *,
+    delta_minutes: int,
+) -> str:
+    evidence = to_pinnapi_event_evidence(event)
+    canonical_start = candidate.match.match_start_at
+    return (
+        "PINNACLE_TIME_SHIFT_CANDIDATE "
+        f"provider_event_id={_safe_text(evidence.provider_event_id_text)} "
+        f"match_id={candidate.match.match_id} "
+        f"player1={_quoted(candidate.player_1_name)} "
+        f"player2={_quoted(candidate.player_2_name)} "
+        f"tournament={_quoted(candidate.tournament_name)} "
+        f"canonical_start={canonical_start.isoformat() if canonical_start is not None else '-'} "
+        f"provider_start={evidence.scheduled_start_utc.isoformat()} "
+        f"delta_minutes={delta_minutes} mapping_changed=0"
+    )
 
 
 def _reconcile_diagnostic_line(
