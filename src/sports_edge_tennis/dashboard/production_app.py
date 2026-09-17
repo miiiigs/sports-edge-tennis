@@ -8,10 +8,7 @@ from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidenc
 from sports_edge_tennis.dashboard.opportunity_evidence_routes import api_opportunity_evidence
 from sports_edge_tennis.dashboard.paper_bankroll_routes import api_paper_bankroll
 from sports_edge_tennis.dashboard.pick_lifecycle_routes import api_pick_lifecycle
-from sports_edge_tennis.dashboard.sharp_blocker_routes import (
-    api_sharp_blockers,
-    log_recent_sharp_blockers_on_startup,
-)
+from sports_edge_tennis.dashboard.sharp_blocker_routes import api_sharp_blockers
 
 app.get(
     "/bet-history",
@@ -42,11 +39,6 @@ app.get(
     "/api/dashboard/sharp-blockers",
     name="api_sharp_blockers",
 )(api_sharp_blockers)
-
-# Bounded and fail-isolated. This exists so historical missing-sharp blockers can be
-# inspected in Railway runtime logs even after their prediction runs were already
-# consumed by the prospective shadow ledger.
-app.add_event_handler("startup", log_recent_sharp_blockers_on_startup)
 
 _required_paths = {
     "/bet-history",
