@@ -11,6 +11,7 @@ Safety contract:
   separate UNKNOWN_SURFACE abstention class;
 * provider results are filtered to the ATP/Challenger singles scope and Agent 3's
   four-year lookback before support counts are reported;
+* provider-call failures are observational and never fail the validation pipeline;
 * no prediction, Manager, Market, Veto, staking, settlement, or canonical history
   state is written or changed.
 """
@@ -19,9 +20,10 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import Any, Callable, Mapping, Sequence
+from typing import Any, Callable
 
 import psycopg
 
@@ -359,7 +361,9 @@ def run_probe(
         "writes=0",
         flush=True,
     )
-    return 0 if failures == 0 else 1
+    # Provider coverage failures are evidence, not a validation-pipeline failure.
+    # Invalid configuration/database access is handled separately by main().
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
