@@ -10,8 +10,9 @@ narrowly scoped and fail-closed:
   already understood by the model; unknown wording remains unresolved;
 * explicit ``event_qualification`` is copied into the canonical qualifying flag
   only when a fixture did not already provide one;
-* missing surface is filled from existing API-Tennis tournament metadata in our
-  database or, when absent, one ``get_draw`` request per tournament/season.
+* missing surface is filled from current-season API-Tennis tournament metadata,
+  the live draw endpoint, or one unanimously consistent prior-season surface for
+  the same stable API-Tennis tournament id.
 
 No model thresholds or betting policy are changed here.
 """
@@ -210,6 +211,39 @@ def _stored_api_tennis_surface(
     return next(iter(surfaces))
 
 
+def _stored_api_tennis_prior_surface(
+    conn: psycopg.Connection,
+    *,
+    tournament_key: str,
+    season_year: int,
+) -> str | None:
+    """Return prior-season surface only when stable provider identity is unanimous.
+
+    ``source_tournament_id`` is the API-Tennis tournament identity used to create the
+    canonical tournament, while season lives on ``tournament_editions``. Reusing prior
+    metadata is therefore safe only when every stored earlier edition with a supported
+    surface agrees. Any historical surface change or conflicting metadata fails closed.
+    """
+    rows = conn.execute(
+        """
+        SELECT DISTINCT te.surface::text
+        FROM tournament_source_ids tsi
+        JOIN tournament_editions te ON te.tournament_id = tsi.tournament_id
+        WHERE tsi.source_system = 'API_TENNIS'
+          AND tsi.source_tournament_id = %s
+          AND te.season_year < %s
+          AND te.surface IS NOT NULL
+        ORDER BY te.surface::text
+        """,
+        (tournament_key, season_year),
+    ).fetchall()
+    surfaces = {_normalize_surface(row[0]) for row in rows}
+    surfaces.discard(None)
+    if len(surfaces) != 1:
+        return None
+    return next(iter(surfaces))
+
+
 def _draw_surface(payload: Mapping[str, Any]) -> str | None:
     tournament = payload.get("tournament")
     if not isinstance(tournament, Mapping):
@@ -224,12 +258,13 @@ def enrich_api_tennis_fixture_surfaces(
     api_key: str | None,
     fetch_draw: FetchDraw = fetch_api_tennis_draw,
 ) -> list[dict[str, Any]]:
-    """Fill missing fixture surface from stored truth or one draw call per tournament.
+    """Fill missing fixture surface without guessing tournament identity.
 
-    Surface is tournament-level metadata. We preserve any valid surface already supplied
-    by the fixture, query our stored API-Tennis tournament identity first, then use the
-    provider's draw endpoint only for unresolved tournament/season pairs. Unsupported,
-    missing, conflicting, or failed values remain missing so downstream agents fail closed.
+    Surface is tournament-level metadata. We preserve any valid fixture surface,
+    prefer current-season stored API-Tennis truth, then ask the live draw endpoint.
+    When a successful draw response has no usable surface, one prior-season fallback
+    is allowed only if all earlier editions for the same stable API-Tennis tournament
+    id agree on a single supported surface. Transport failures remain fail-closed.
     """
     rows = [dict(fixture) for fixture in fixtures]
     cache: dict[tuple[str, int], tuple[str | None, str]] = {}
@@ -256,7 +291,25 @@ def enrich_api_tennis_fixture_surfaces(
             elif api_key:
                 try:
                     _received_at, payload = fetch_draw(api_key, tournament_key, season_year)
-                    cache[cache_key] = (_draw_surface(payload), "DRAW")
+                    draw_surface = _draw_surface(payload)
+                    if draw_surface is not None:
+                        cache[cache_key] = (draw_surface, "DRAW")
+                    else:
+                        prior = _stored_api_tennis_prior_surface(
+                            conn,
+                            tournament_key=tournament_key,
+                            season_year=season_year,
+                        )
+                        if prior is not None:
+                            cache[cache_key] = (prior, "DB_PRIOR_SEASON")
+                        else:
+                            print(
+                                "API_TENNIS_SURFACE_UNAVAILABLE "
+                                f"tournament_key={tournament_key} season={season_year} "
+                                "kind=DRAW_NO_SURFACE",
+                                flush=True,
+                            )
+                            cache[cache_key] = (None, "DRAW_NO_SURFACE")
                 except TransportError as exc:
                     print(
                         "API_TENNIS_SURFACE_UNAVAILABLE "
@@ -265,7 +318,15 @@ def enrich_api_tennis_fixture_surfaces(
                     )
                     cache[cache_key] = (None, "DRAW_FAILED")
             else:
-                cache[cache_key] = (None, "NO_API_KEY")
+                prior = _stored_api_tennis_prior_surface(
+                    conn,
+                    tournament_key=tournament_key,
+                    season_year=season_year,
+                )
+                if prior is not None:
+                    cache[cache_key] = (prior, "DB_PRIOR_SEASON")
+                else:
+                    cache[cache_key] = (None, "NO_API_KEY")
 
             surface, source = cache[cache_key]
             if surface is not None:
