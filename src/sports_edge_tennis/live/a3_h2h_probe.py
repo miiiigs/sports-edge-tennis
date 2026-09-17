@@ -223,7 +223,7 @@ def load_probe_targets(
     horizon_days: int = DEFAULT_HORIZON_DAYS,
     limit: int = DEFAULT_MAX_PAIRS,
 ) -> tuple[A3H2HProbeTarget, ...]:
-    """Load bounded upcoming known-surface A3 abstentions from the latest live run."""
+    """Load latest known-surface A3 abstention per upcoming match across the horizon."""
     if as_of.tzinfo is None:
         raise ValueError("as_of must be timezone-aware")
     if not 1 <= horizon_days <= MAX_HORIZON_DAYS:
@@ -234,31 +234,38 @@ def load_probe_targets(
     horizon_end = as_of + timedelta(days=horizon_days)
     rows = conn.execute(
         """
-        WITH latest_run AS (
-            SELECT prediction_run_id
-            FROM prediction_runs
-            WHERE prediction_contract_version = 'predictive_agent_result_v1'
-              AND run_status = 'COMPLETED'
-              AND prediction_finalized_at IS NOT NULL
-              AND experiment_id IS NULL
-            ORDER BY prediction_finalized_at DESC, prediction_run_id DESC
-            LIMIT 1
+        WITH latest_a3 AS (
+            SELECT DISTINCT ON (p.match_id)
+                p.match_id,
+                p.as_of,
+                p.prediction_status::text AS prediction_status
+            FROM predictions p
+            JOIN prediction_runs pr
+              ON pr.prediction_run_id = p.prediction_run_id
+            WHERE pr.prediction_contract_version = 'predictive_agent_result_v1'
+              AND pr.run_status = 'COMPLETED'
+              AND pr.prediction_finalized_at IS NOT NULL
+              AND pr.experiment_id IS NULL
+              AND p.experiment_id IS NULL
+              AND p.agent_code = %s
+            ORDER BY
+                p.match_id,
+                pr.prediction_finalized_at DESC,
+                p.prediction_id DESC
         )
         SELECT
-            p.match_id,
+            latest_a3.match_id,
             p1.source_player_id,
             p2.source_player_id,
             mv.match_start_at,
             mv.surface::text
-        FROM predictions p
-        JOIN latest_run lr
-          ON lr.prediction_run_id = p.prediction_run_id
+        FROM latest_a3
         JOIN LATERAL (
             SELECT player_1_id, player_2_id, match_start_at, surface
             FROM match_versions
-            WHERE match_id = p.match_id
-              AND as_of <= p.as_of
-              AND source_observed_at <= p.as_of
+            WHERE match_id = latest_a3.match_id
+              AND as_of <= latest_a3.as_of
+              AND source_observed_at <= latest_a3.as_of
             ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
             LIMIT 1
         ) mv ON TRUE
@@ -268,13 +275,11 @@ def load_probe_targets(
         JOIN player_source_ids p2
           ON p2.player_id = mv.player_2_id
          AND p2.source_system = 'API_TENNIS'
-        WHERE p.agent_code = %s
-          AND p.prediction_status = 'ABSTAINED'
-          AND p.experiment_id IS NULL
+        WHERE latest_a3.prediction_status = 'ABSTAINED'
           AND mv.surface IS NOT NULL
           AND mv.match_start_at >= %s
           AND mv.match_start_at < %s
-        ORDER BY mv.match_start_at, p.match_id
+        ORDER BY mv.match_start_at, latest_a3.match_id
         LIMIT %s
         """,
         (AGENT_CODE, as_of, horizon_end, limit),
