@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 
 import psycopg
 
+from sports_edge_tennis.data.a2_stats_coverage import A2_STATS_SKIP_REASONS
 from sports_edge_tennis.live.api_tennis_match_stats import parse_api_tennis_match_point_stats
 from sports_edge_tennis.live.history_refresh import refresh_history_chunk
 from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, save_checkpoint
@@ -64,6 +65,18 @@ def _fetch(fixtures):
         return _received(), fixtures
 
     return fetch
+
+
+def test_skip_reason_contract_is_bounded_and_contains_logged_reasons():
+    assert A2_STATS_SKIP_REASONS == {
+        "MISSING_PLAYER_KEYS",
+        "NO_MATCH_PERIOD_STATS",
+        "FIRST_PLAYER_INCOMPLETE",
+        "SECOND_PLAYER_INCOMPLETE",
+        "BOTH_PLAYERS_INCOMPLETE",
+        "MISSING_INGESTED_FIXTURE",
+        "UNKNOWN_PARSE_GAP",
+    }
 
 
 def test_parse_api_tennis_match_stats_derives_service_and_return_basis():
