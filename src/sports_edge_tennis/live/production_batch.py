@@ -2,8 +2,8 @@
 
 Keeping this wrapper additive avoids changing the already-stable live orchestration path.
 Production settlement remains fail-closed. The prospective shadow strategy and runtime
-model diagnostics are intentionally fail-isolated: they record evidence and analytics
-without changing Today, Manager, or production decision/publication behavior.
+model/provider diagnostics are intentionally fail-isolated: they record evidence and
+analytics without changing Today, Manager, or production decision/publication behavior.
 """
 
 from __future__ import annotations
@@ -205,6 +205,30 @@ def _a1_evidence_cycle(dsn: str) -> None:
         _log(line)
 
 
+def _pncl_concordance_cycle(dsn: str, *, captured_at: datetime) -> None:
+    """Compare Pncl/Pinnacle persisted quotes without changing provider classification."""
+    try:
+        from sports_edge_tennis.performance.pncl_concordance import (
+            build_pncl_concordance_lines,
+            load_pncl_pinnacle_concordance,
+        )
+
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            evidence = load_pncl_pinnacle_concordance(
+                conn,
+                as_of=captured_at,
+                lookback_hours=24,
+                max_gap_minutes=15,
+            )
+        lines = build_pncl_concordance_lines(evidence)
+    except Exception as exc:
+        _log(f"PNCL_PINNACLE_CONCORDANCE_FAILED error_type={type(exc).__name__}")
+        return
+
+    for line in lines:
+        _log(line)
+
+
 def main(argv: list[str] | None = None) -> int:
     dsn = _db_dsn()
     if not dsn:
@@ -246,6 +270,8 @@ def main(argv: list[str] | None = None) -> int:
         return live_status
 
     settled_at = datetime.now(timezone.utc)
+    _pncl_concordance_cycle(dsn, captured_at=settled_at)
+
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
             outcome = settle_type_a_match_winner_decisions(
