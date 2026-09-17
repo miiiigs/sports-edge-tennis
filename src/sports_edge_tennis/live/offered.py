@@ -87,6 +87,17 @@ def ingest_api_tennis_offered_odds(
         reconciliation = ingest_provider_observation(conn, observation)
         normalized_quotes += reconciliation.normalized_inserted + reconciliation.normalized_existing
 
+    if bookmakers:
+        # Observability only: expose the actual bookmaker keys present in the
+        # current API-Tennis subscription response. This lets production
+        # evidence answer whether a Pinnacle-labelled source is available
+        # without reclassifying any OFFERED price as SHARP.
+        print(
+            "OFFERED_BOOKMAKERS keys="
+            + ",".join(sorted(bookmakers, key=lambda value: value.casefold())),
+            flush=True,
+        )
+
     return ApiTennisOfferedOddsOutcome(
         candidate_matches=len(candidate_match_ids),
         events_with_odds=events_with_odds,
