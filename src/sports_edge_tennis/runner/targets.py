@@ -119,6 +119,115 @@ def _model_identity_status(
     return "LIVE_UNRESOLVED"
 
 
+def _model_identity_gap_diagnostic(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    as_of: datetime,
+) -> tuple[str, int, int, tuple[int, ...]]:
+    """Explain why the existing fail-closed live-to-history bridge did not resolve.
+
+    This helper is observation only. It deliberately mirrors the aliases and PIT
+    history conditions used by `_resolve_model_player_id` and never mutates identity.
+    """
+    row = conn.execute(
+        "SELECT canonical_name FROM players WHERE player_id = %s",
+        (player_id,),
+    ).fetchone()
+    if row is None:
+        return "NO_PLAYER_ROW", 0, 0, ()
+
+    normalized_aliases = sorted(
+        {
+            normalize_person_lookup(alias)
+            for alias in tennis_data_aliases(row[0])
+            if alias and normalize_person_lookup(alias)
+        }
+    )
+    if not normalized_aliases:
+        return "NO_NORMALIZED_ALIAS", 0, 0, ()
+
+    alias_candidates = conn.execute(
+        """
+        SELECT DISTINCT pa.player_id
+        FROM player_aliases pa
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> 'API_TENNIS'
+          )
+        ORDER BY pa.player_id
+        """,
+        (normalized_aliases, player_id),
+    ).fetchall()
+    alias_ids = tuple(int(candidate[0]) for candidate in alias_candidates)
+    if not alias_ids:
+        return "NO_HISTORICAL_ALIAS", 0, 0, ()
+
+    pit_candidates = conn.execute(
+        """
+        SELECT DISTINCT pa.player_id
+        FROM player_aliases pa
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> 'API_TENNIS'
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM match_result_observations hist_mro
+              JOIN match_versions hist_mv
+                ON hist_mv.match_id = hist_mro.match_id
+               AND hist_mv.source_observed_at <= hist_mro.source_observed_at
+               AND hist_mv.as_of <= hist_mro.as_of
+              WHERE (hist_mv.player_1_id = pa.player_id OR hist_mv.player_2_id = pa.player_id)
+                AND hist_mro.outcome_status = 'COMPLETED'
+                AND hist_mro.source_observed_at <= %s
+                AND hist_mro.as_of <= %s
+          )
+        ORDER BY pa.player_id
+        """,
+        (normalized_aliases, player_id, as_of, as_of),
+    ).fetchall()
+    pit_ids = tuple(int(candidate[0]) for candidate in pit_candidates)
+    if not pit_ids:
+        return "ALIAS_WITHOUT_PIT_HISTORY", len(alias_ids), 0, ()
+    if len(pit_ids) > 1:
+        return "AMBIGUOUS_PIT_CANDIDATES", len(alias_ids), len(pit_ids), pit_ids
+    return "UNEXPECTED_UNIQUE_PIT_CANDIDATE", len(alias_ids), 1, pit_ids
+
+
+def _log_model_identity_gap(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    slot: str,
+    player_id: int,
+    as_of: datetime,
+) -> None:
+    reason, alias_count, pit_count, pit_ids = _model_identity_gap_diagnostic(
+        conn,
+        player_id=player_id,
+        as_of=as_of,
+    )
+    print(
+        "MODEL_IDENTITY_GAP "
+        f"match_id={match_id} slot={slot} live_player_id={player_id} "
+        f"reason={reason} alias_candidates={alias_count} pit_candidates={pit_count} "
+        f"pit_candidate_ids={','.join(str(value) for value in pit_ids[:3]) or '-'} "
+        "mapping_changed=0",
+        flush=True,
+    )
+
+
 def _api_tennis_tournament_source_ids(
     conn: psycopg.Connection,
     *,
@@ -298,6 +407,22 @@ def resolve_target(
         f"p2_live={player_2_id} p2_model={model_player_2_id} p2_status={player_2_status}",
         flush=True,
     )
+    if player_1_status == "LIVE_UNRESOLVED":
+        _log_model_identity_gap(
+            conn,
+            match_id=int(match_id),
+            slot="P1",
+            player_id=int(player_1_id),
+            as_of=as_of,
+        )
+    if player_2_status == "LIVE_UNRESOLVED":
+        _log_model_identity_gap(
+            conn,
+            match_id=int(match_id),
+            slot="P2",
+            player_id=int(player_2_id),
+            as_of=as_of,
+        )
 
     model_surface, surface_status = _resolve_model_surface(
         conn,
