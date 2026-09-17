@@ -1,9 +1,9 @@
 """Production wrapper: prepare schema, run live horizon, then settle matured Type A BETs.
 
 Keeping this wrapper additive avoids changing the already-stable live orchestration path.
-Production settlement remains fail-closed. The prospective shadow strategy is intentionally
-fail-isolated: it records evidence and analytics without changing Today, Manager, or
-production decision/publication behavior.
+Production settlement remains fail-closed. The prospective shadow strategy and runtime
+model diagnostics are intentionally fail-isolated: they record evidence and analytics
+without changing Today, Manager, or production decision/publication behavior.
 """
 
 from __future__ import annotations
@@ -75,13 +75,7 @@ def _ensure_quarter_kelly_schema(
     *,
     migration_path: Path = _QUARTER_KELLY_MIGRATION,
 ) -> str:
-    """Apply migration 0010 once, then verify its sentinel column and constraints.
-
-    Production Railway pre-deploy runs before the built Python environment is available,
-    so this narrow bootstrap executes inside the installed runtime instead. The committed
-    migration is transactional. Existing historical decisions remain untouched because
-    all new staking columns are nullable and the migration only adds columns/constraints.
-    """
+    """Apply migration 0010 once, then verify its sentinel column and constraints."""
     column_present, constraints = _quarter_kelly_schema_state(conn)
     if column_present and constraints == _STAKING_CONSTRAINTS:
         return "EXISTING"
@@ -156,8 +150,6 @@ def _shadow_cycle(
             )
             summary = load_shadow_strategy_summary(conn)
     except Exception as exc:
-        # This lane is intentionally observational. A bug or evidence gap here
-        # must never suppress canonical production picks, settlement, or Railway success.
         _log(
             "SHADOW_LANE_FAILED "
             f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
@@ -192,6 +184,27 @@ def _shadow_cycle(
     )
 
 
+def _a1_evidence_cycle(dsn: str) -> None:
+    """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
+    try:
+        from sports_edge_tennis.performance.a1_diagnostic import (
+            load_a1_live_challenger_diagnostic,
+        )
+        from sports_edge_tennis.performance.a1_runtime_log import (
+            build_a1_runtime_evidence_lines,
+        )
+
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            diagnostic = load_a1_live_challenger_diagnostic(conn)
+        lines = build_a1_runtime_evidence_lines(diagnostic)
+    except Exception as exc:
+        _log(f"A1_LIVE_EVIDENCE_FAILED error_type={type(exc).__name__}")
+        return
+
+    for line in lines:
+        _log(line)
+
+
 def main(argv: list[str] | None = None) -> int:
     dsn = _db_dsn()
     if not dsn:
@@ -209,9 +222,6 @@ def main(argv: list[str] | None = None) -> int:
 
     _log(f"SCHEMA_QUARTER_KELLY status={schema_status} migration=0010")
 
-    # Establish the prospective boundary before the live batch creates this
-    # cycle's prediction runs. Failure is retried after the live batch using
-    # the same timestamp so current runs are never intentionally backfilled.
     try:
         from sports_edge_tennis.performance.shadow_strategy import activate_shadow_strategy
 
@@ -263,6 +273,7 @@ def main(argv: list[str] | None = None) -> int:
         cycle_started_at=shadow_cycle_started_at,
         captured_at=datetime.now(timezone.utc),
     )
+    _a1_evidence_cycle(dsn)
     return 0
 
 
