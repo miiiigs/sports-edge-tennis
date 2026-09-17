@@ -103,11 +103,11 @@ def test_full_slate_emits_bounded_reconciliation_diagnostics(monkeypatch):
     assert "reason=participant_mismatch" in logs[0]
     assert "PINNACLE_RECONCILE_SUMMARY events=1 resolved=0" in logs[1]
     assert "no_player_pair=1" in logs[1]
-    assert "variant_time_60_120=0" in logs[1]
+    assert "variant_time_120_180=0" in logs[1]
     assert "other=1" in logs[1]
 
 
-def test_extended_variant_time_candidate_is_read_only_60_to_120_minute_probe(monkeypatch):
+def test_extended_variant_time_candidate_is_read_only_120_to_180_minute_probe(monkeypatch):
     provider_start = datetime(2026, 9, 17, 19, 50, tzinfo=timezone.utc)
     evidence = NS(
         provider_event_id_text="pinn-zheng-svajda",
@@ -119,7 +119,7 @@ def test_extended_variant_time_candidate_is_read_only_60_to_120_minute_probe(mon
         tournament_name="Tiburon",
         match=NS(
             match_id=130401,
-            match_start_at=provider_start + timedelta(minutes=100),
+            match_start_at=provider_start + timedelta(minutes=150),
         ),
     )
 
@@ -137,11 +137,11 @@ def test_extended_variant_time_candidate_is_read_only_60_to_120_minute_probe(mon
 
     assert match is not None
     assert match[0] is candidate
-    assert match[1] == 100
-    line = sharp_slate._extended_variant_time_line("event", candidate, delta_minutes=100)
+    assert match[1] == 150
+    line = sharp_slate._extended_variant_time_line("event", candidate, delta_minutes=150)
     assert "PINNACLE_TIME_SHIFT_CANDIDATE" in line
-    assert "delta_minutes=100" in line
+    assert "delta_minutes=150" in line
     assert "mapping_changed=0" in line
 
-    candidate.match.match_start_at = provider_start + timedelta(minutes=121)
+    candidate.match.match_start_at = provider_start + timedelta(minutes=181)
     assert sharp_slate._extended_variant_time_candidate("event", {130401: candidate}) is None
