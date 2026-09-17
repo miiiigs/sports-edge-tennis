@@ -22,7 +22,7 @@ from sports_edge_tennis.odds.reconciliation import (
 )
 
 
-_EXTENDED_VARIANT_DIAGNOSTIC_DELTA = timedelta(minutes=120)
+_EXTENDED_VARIANT_DIAGNOSTIC_DELTA = timedelta(minutes=180)
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ def normalize_pinnapi_board_for_matches(
                 extended = _extended_variant_time_candidate(event, candidates)
                 if extended is not None:
                     candidate, delta_minutes = extended
-                    reason_counts["variant_time_60_120"] += 1
+                    reason_counts["variant_time_120_180"] += 1
                     log(
                         _extended_variant_time_line(
                             event,
@@ -102,7 +102,7 @@ def normalize_pinnapi_board_for_matches(
             f"no_player_pair={reason_counts['no_player_pair']} "
             f"ambiguous_player_pair={reason_counts['ambiguous_player_pair']} "
             f"time_mismatch={reason_counts['time_mismatch']} "
-            f"variant_time_60_120={reason_counts['variant_time_60_120']} "
+            f"variant_time_120_180={reason_counts['variant_time_120_180']} "
             f"tour_mismatch={reason_counts['tour_mismatch']} "
             f"tournament_mismatch={reason_counts['tournament_mismatch']} "
             f"other={reason_counts['other']}"
@@ -166,11 +166,12 @@ def _extended_variant_time_candidate(
     event: Any,
     candidates: Mapping[int, Any],
 ) -> tuple[Any, int] | None:
-    """Identify one safe observational candidate between 60 and 120 minutes.
+    """Identify one safe observational candidate between 120 and 180 minutes.
 
     This deliberately does not persist a mapping. It asks whether the exact existing
-    deterministic-variant path would have been unique if its 60-minute guard were
-    extended to 120 minutes, while retaining participant, tournament, and tour checks.
+    deterministic-variant path would have been unique if its 120-minute production
+    guard were extended to 180 minutes, while retaining participant, tournament, and
+    tour checks.
     """
     evidence = to_pinnapi_event_evidence(event)
     matches: list[tuple[Any, int]] = []

@@ -142,7 +142,7 @@ def test_initial_variant_can_reconcile_at_exactly_sixty_minutes(
     assert result.reason == "deterministic_participant_variant_time_fallback"
 
 
-def test_initial_variant_still_fails_closed_beyond_sixty_minutes(
+def test_initial_variant_still_fails_closed_beyond_one_hundred_twenty_minutes(
     db: psycopg.Connection,
 ):
     match_id = _insert_candidate(
@@ -156,7 +156,7 @@ def test_initial_variant_still_fails_closed_beyond_sixty_minutes(
         evidence=_evidence(
             home_name="Timo Legout",
             away_name="Henry Searle",
-            start_delta=timedelta(minutes=61),
+            start_delta=timedelta(minutes=121),
             provider_event_id="1636636588",
         ),
         candidate_match_ids=[match_id],

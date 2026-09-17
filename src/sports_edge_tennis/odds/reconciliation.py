@@ -14,7 +14,7 @@ from .persistence import load_pit_match_version
 
 PINNAPI_SOURCE_SYSTEM = "PINNAPI"
 MAX_FIRST_MAPPING_START_DELTA = timedelta(minutes=30)
-MAX_VARIANT_FIRST_MAPPING_START_DELTA = timedelta(minutes=60)
+MAX_VARIANT_FIRST_MAPPING_START_DELTA = timedelta(minutes=120)
 MAX_UNIQUE_PARTICIPANT_START_DELTA = timedelta(hours=12)
 PINNAPI_TOKEN_ALIASES = {
     "dar": "darwin",
@@ -159,11 +159,11 @@ def reconcile_pinnapi_event(
             strict_matches.append((candidate, orientation))
             continue
 
-        # Production evidence shows that Pinnacle can shift a Challenger start by
-        # exactly one hour while also using a deterministic participant variant
-        # (initials, one middle initial, or a known source abbreviation). Extend
-        # only that already-identified path to 60 minutes; exact-name mappings
-        # remain on the original 30-minute first-mapping guard.
+        # Production evidence repeatedly shows a 100-minute Pinnacle start-time shift
+        # for a Challenger match while the participant pair still uses only deterministic
+        # initial/name variants and both tournament and tour identity agree. Extend only
+        # this already-constrained path to 120 minutes; exact-name mappings remain on the
+        # original 30-minute first-mapping guard and ambiguity still fails closed.
         if (
             tournament_compatible
             and _participant_pair_uses_deterministic_variant(candidate, evidence, orientation)
