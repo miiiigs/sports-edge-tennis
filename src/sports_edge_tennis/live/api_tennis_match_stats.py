@@ -12,7 +12,6 @@ service points played and return points won to be derived without inventing valu
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Iterable, Mapping
@@ -87,10 +86,16 @@ def _stat_rows(fixture: Mapping[str, Any]) -> list[Mapping[str, Any]]:
     raw = fixture.get("statistics")
     if not isinstance(raw, list):
         return []
-    return [row for row in raw if isinstance(row, Mapping) and _name(row.get("stat_period")) == "match"]
+    return [
+        row
+        for row in raw
+        if isinstance(row, Mapping) and _name(row.get("stat_period")) == "match"
+    ]
 
 
-def _parse_player(rows: Iterable[Mapping[str, Any]], player_key: str) -> ParsedPlayerPointStats | None:
+def _parse_player(
+    rows: Iterable[Mapping[str, Any]], player_key: str
+) -> ParsedPlayerPointStats | None:
     first_won = first_total = second_won = second_total = None
     aces = double_faults = break_points_saved = break_points_faced = None
 
@@ -191,28 +196,6 @@ def _start_ingest_run(conn: psycopg.Connection, received_at: datetime) -> int:
     )
 
 
-def _finish_ingest_run(
-    conn: psycopg.Connection,
-    *,
-    ingest_run_id: int,
-    rows_seen: int,
-    rows_inserted: int,
-) -> None:
-    conn.execute(
-        """
-        UPDATE ingest_runs
-        SET finished_at = %s,
-            status = 'COMPLETED',
-            rows_seen = %s,
-            rows_inserted = %s,
-            rows_rejected = 0,
-            error_summary = '[]'::jsonb
-        WHERE ingest_run_id = %s
-        """,
-        (datetime.now(received_at.tzinfo) if False else received_at, rows_seen, rows_inserted, ingest_run_id),
-    )
-
-
 def _existing_semantic_stat(
     conn: psycopg.Connection,
     *,
@@ -263,7 +246,7 @@ def persist_api_tennis_match_stats(
     received_at: datetime,
 ) -> StatsPersistOutcome:
     by_event = _fixture_map(fixtures)
-    eligible: list[tuple[ApiTennisIngestedMatch, Mapping[str, Any], ParsedMatchPointStats]] = []
+    eligible: list[tuple[ApiTennisIngestedMatch, ParsedMatchPointStats]] = []
     skipped = 0
     for ingested in ingested_matches:
         fixture = by_event.get(ingested.source_match_id)
@@ -274,7 +257,7 @@ def persist_api_tennis_match_stats(
         if parsed is None:
             skipped += 1
             continue
-        eligible.append((ingested, fixture, parsed))
+        eligible.append((ingested, parsed))
 
     if not eligible:
         return StatsPersistOutcome(0, 0, 0, skipped)
@@ -283,14 +266,19 @@ def persist_api_tennis_match_stats(
     repository = HistoricalRepository(conn, ingest_run_id)
     inserted = 0
     existing = 0
-    for ingested, fixture, parsed in eligible:
+    for ingested, parsed in eligible:
         pairs = (
             (ingested.player_1_id, parsed.first, parsed.second),
             (ingested.player_2_id, parsed.second, parsed.first),
         )
         for player_id, player_stats, opponent_stats in pairs:
             line = _line(player_stats, opponent_stats)
-            if _existing_semantic_stat(conn, match_id=ingested.match_id, player_id=player_id, line=line):
+            if _existing_semantic_stat(
+                conn,
+                match_id=ingested.match_id,
+                player_id=player_id,
+                line=line,
+            ):
                 existing += 1
                 continue
             event_key = ingested.source_match_id
@@ -328,10 +316,10 @@ def persist_api_tennis_match_stats(
             rows_seen = %s,
             rows_inserted = %s,
             rows_rejected = 0,
-            error_summary = %s::jsonb
+            error_summary = '[]'::jsonb
         WHERE ingest_run_id = %s
         """,
-        (received_at, len(eligible) * 2, inserted, json.dumps([]), ingest_run_id),
+        (received_at, len(eligible) * 2, inserted, ingest_run_id),
     )
     return StatsPersistOutcome(len(eligible), inserted, existing, skipped)
 
