@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace as NS
 
 import sports_edge_tennis.live.sharp_slate as sharp_slate
@@ -103,4 +103,45 @@ def test_full_slate_emits_bounded_reconciliation_diagnostics(monkeypatch):
     assert "reason=participant_mismatch" in logs[0]
     assert "PINNACLE_RECONCILE_SUMMARY events=1 resolved=0" in logs[1]
     assert "no_player_pair=1" in logs[1]
+    assert "variant_time_60_120=0" in logs[1]
     assert "other=1" in logs[1]
+
+
+def test_extended_variant_time_candidate_is_read_only_60_to_120_minute_probe(monkeypatch):
+    provider_start = datetime(2026, 9, 17, 19, 50, tzinfo=timezone.utc)
+    evidence = NS(
+        provider_event_id_text="pinn-zheng-svajda",
+        scheduled_start_utc=provider_start,
+    )
+    candidate = NS(
+        player_1_name="M. Zheng",
+        player_2_name="T. Svajda",
+        tournament_name="Tiburon",
+        match=NS(
+            match_id=130401,
+            match_start_at=provider_start + timedelta(minutes=100),
+        ),
+    )
+
+    monkeypatch.setattr(sharp_slate, "to_pinnapi_event_evidence", lambda event: evidence)
+    monkeypatch.setattr(sharp_slate, "_orient_candidate", lambda candidate, evidence: NS())
+    monkeypatch.setattr(sharp_slate, "_tour_scope_compatible", lambda candidate, evidence: True)
+    monkeypatch.setattr(sharp_slate, "_tournament_compatible", lambda candidate, evidence: True)
+    monkeypatch.setattr(
+        sharp_slate,
+        "_participant_pair_uses_deterministic_variant",
+        lambda candidate, evidence, orientation: True,
+    )
+
+    match = sharp_slate._extended_variant_time_candidate("event", {130401: candidate})
+
+    assert match is not None
+    assert match[0] is candidate
+    assert match[1] == 100
+    line = sharp_slate._extended_variant_time_line("event", candidate, delta_minutes=100)
+    assert "PINNACLE_TIME_SHIFT_CANDIDATE" in line
+    assert "delta_minutes=100" in line
+    assert "mapping_changed=0" in line
+
+    candidate.match.match_start_at = provider_start + timedelta(minutes=121)
+    assert sharp_slate._extended_variant_time_candidate("event", {130401: candidate}) is None
