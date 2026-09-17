@@ -28,6 +28,7 @@ from typing import Any, Callable
 import psycopg
 
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
+from sports_edge_tennis.live.surface_history_probe import run_probe as run_surface_history_probe
 from sports_edge_tennis.live.transport import TransportError, fetch_api_tennis_h2h
 
 
@@ -401,13 +402,28 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         with psycopg.connect(args.dsn, autocommit=True) as conn:
-            return run_probe(
+            as_of = datetime.now(UTC)
+            status = run_probe(
                 conn,
                 api_key=api_key,
-                as_of=datetime.now(UTC),
+                as_of=as_of,
                 max_pairs=args.max_pairs,
                 horizon_days=args.horizon_days,
             )
+            try:
+                run_surface_history_probe(
+                    conn,
+                    api_key=api_key,
+                    as_of=as_of,
+                    horizon_days=args.horizon_days,
+                )
+            except Exception as exc:
+                print(
+                    "SURFACE_HISTORY_PROBE_FAILED "
+                    f"kind={type(exc).__name__} mapping_changed=0",
+                    flush=True,
+                )
+            return status
     except (ValueError, psycopg.Error) as exc:
         print(f"A3_H2H_PROBE_BLOCKED reason={type(exc).__name__}", flush=True)
         return 2
