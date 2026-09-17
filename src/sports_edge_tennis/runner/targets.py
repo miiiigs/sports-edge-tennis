@@ -119,6 +119,29 @@ def _model_identity_status(
     return "LIVE_UNRESOLVED"
 
 
+def _api_tennis_tournament_source_ids(
+    conn: psycopg.Connection,
+    *,
+    tournament_id: int,
+) -> tuple[str, ...]:
+    """Return deterministic API-Tennis tournament ids for diagnostics only."""
+    rows = conn.execute(
+        """
+        SELECT source_tournament_id
+        FROM tournament_source_ids
+        WHERE tournament_id = %s
+          AND source_system = 'API_TENNIS'
+        ORDER BY source_tournament_id
+        """,
+        (tournament_id,),
+    ).fetchall()
+    return tuple(dict.fromkeys(str(row[0]) for row in rows if row[0] is not None))
+
+
+def _safe_log_text(value: object) -> str:
+    return " ".join(str(value).replace("\n", " ").replace("\r", " ").split())[:120] or "-"
+
+
 def _resolve_model_surface(
     conn: psycopg.Connection,
     *,
@@ -292,6 +315,21 @@ def resolve_target(
         f"model={model_surface or '-'} status={surface_status}",
         flush=True,
     )
+    if model_surface is None:
+        api_tennis_source_ids = _api_tennis_tournament_source_ids(
+            conn,
+            tournament_id=int(tournament_id),
+        )
+        print(
+            "SURFACE_RESOLUTION_GAP "
+            f"match_id={match_id} tournament_id={tournament_id} "
+            f"tournament=\"{_safe_log_text(canonical_name).replace(chr(34), chr(39))}\" "
+            f"tour_scope={tour_scope} season={season_year} "
+            f"api_tennis_source_ids={','.join(api_tennis_source_ids[:3]) or '-'} "
+            f"api_tennis_source_id_count={len(api_tennis_source_ids)} "
+            f"fallback_status={surface_status}",
+            flush=True,
+        )
 
     from sports_edge_tennis.data.agent2_history import normalize_tournament_alias
 
