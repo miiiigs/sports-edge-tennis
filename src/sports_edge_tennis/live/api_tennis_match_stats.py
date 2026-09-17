@@ -61,6 +61,13 @@ class StatsPersistOutcome:
     inserted_rows: int
     existing_rows: int
     skipped_matches: int
+    skip_reason_counts: tuple[tuple[str, int], ...] = ()
+
+    @property
+    def skip_reason_summary(self) -> str:
+        if not self.skip_reason_counts:
+            return "-"
+        return ",".join(f"{reason}:{count}" for reason, count in self.skip_reason_counts)
 
 
 def _text(value: Any) -> str | None:
@@ -140,21 +147,39 @@ def _parse_player(
     )
 
 
-def parse_api_tennis_match_point_stats(
+def _parse_api_tennis_match_point_stats_with_reason(
     fixture: Mapping[str, Any],
-) -> ParsedMatchPointStats | None:
+) -> tuple[ParsedMatchPointStats | None, str | None]:
+    """Parse one fixture and classify why a fail-closed match was skipped.
+
+    Reasons are intentionally coarse and stable. They distinguish provider coverage
+    gaps from asymmetric/incomplete player statistics without changing eligibility.
+    """
     first_key = _text(fixture.get("first_player_key"))
     second_key = _text(fixture.get("second_player_key"))
     if first_key is None or second_key is None or first_key == second_key:
-        return None
+        return None, "MISSING_PLAYER_KEYS"
+
     rows = _stat_rows(fixture)
     if not rows:
-        return None
+        return None, "NO_MATCH_PERIOD_STATS"
+
     first = _parse_player(rows, first_key)
     second = _parse_player(rows, second_key)
-    if first is None or second is None:
-        return None
-    return ParsedMatchPointStats(first=first, second=second)
+    if first is None and second is None:
+        return None, "BOTH_PLAYERS_INCOMPLETE"
+    if first is None:
+        return None, "FIRST_PLAYER_INCOMPLETE"
+    if second is None:
+        return None, "SECOND_PLAYER_INCOMPLETE"
+    return ParsedMatchPointStats(first=first, second=second), None
+
+
+def parse_api_tennis_match_point_stats(
+    fixture: Mapping[str, Any],
+) -> ParsedMatchPointStats | None:
+    parsed, _reason = _parse_api_tennis_match_point_stats_with_reason(fixture)
+    return parsed
 
 
 def _line(player: ParsedPlayerPointStats, opponent: ParsedPlayerPointStats) -> MatchStatLine:
@@ -238,6 +263,26 @@ def _existing_semantic_stat(
     return row is not None
 
 
+def _increment_reason(counts: dict[str, int], reason: str) -> None:
+    counts[reason] = counts.get(reason, 0) + 1
+
+
+def _reason_counts(counts: Mapping[str, int]) -> tuple[tuple[str, int], ...]:
+    return tuple(sorted((reason, int(count)) for reason, count in counts.items() if count > 0))
+
+
+def _emit_stats_telemetry(outcome: StatsPersistOutcome) -> None:
+    print(
+        "API_TENNIS_MATCH_STATS_DETAIL "
+        f"eligible_matches={outcome.eligible_matches} "
+        f"inserted_rows={outcome.inserted_rows} "
+        f"existing_rows={outcome.existing_rows} "
+        f"skipped_matches={outcome.skipped_matches} "
+        f"skip_reasons={outcome.skip_reason_summary}",
+        flush=True,
+    )
+
+
 def persist_api_tennis_match_stats(
     conn: psycopg.Connection,
     *,
@@ -248,19 +293,25 @@ def persist_api_tennis_match_stats(
     by_event = _fixture_map(fixtures)
     eligible: list[tuple[ApiTennisIngestedMatch, ParsedMatchPointStats]] = []
     skipped = 0
+    skip_reasons: dict[str, int] = {}
     for ingested in ingested_matches:
         fixture = by_event.get(ingested.source_match_id)
         if fixture is None:
             skipped += 1
+            _increment_reason(skip_reasons, "MISSING_INGESTED_FIXTURE")
             continue
-        parsed = parse_api_tennis_match_point_stats(fixture)
+        parsed, reason = _parse_api_tennis_match_point_stats_with_reason(fixture)
         if parsed is None:
             skipped += 1
+            _increment_reason(skip_reasons, reason or "UNKNOWN_PARSE_GAP")
             continue
         eligible.append((ingested, parsed))
 
+    frozen_reasons = _reason_counts(skip_reasons)
     if not eligible:
-        return StatsPersistOutcome(0, 0, 0, skipped)
+        outcome = StatsPersistOutcome(0, 0, 0, skipped, frozen_reasons)
+        _emit_stats_telemetry(outcome)
+        return outcome
 
     ingest_run_id = _start_ingest_run(conn, received_at)
     repository = HistoricalRepository(conn, ingest_run_id)
@@ -321,7 +372,9 @@ def persist_api_tennis_match_stats(
         """,
         (received_at, len(eligible) * 2, inserted, ingest_run_id),
     )
-    return StatsPersistOutcome(len(eligible), inserted, existing, skipped)
+    outcome = StatsPersistOutcome(len(eligible), inserted, existing, skipped, frozen_reasons)
+    _emit_stats_telemetry(outcome)
+    return outcome
 
 
 __all__ = [

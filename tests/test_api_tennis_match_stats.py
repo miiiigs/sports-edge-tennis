@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 
 import psycopg
 
+from sports_edge_tennis.data.a2_stats_coverage import A2_STATS_SKIP_REASONS
 from sports_edge_tennis.live.api_tennis_match_stats import parse_api_tennis_match_point_stats
 from sports_edge_tennis.live.history_refresh import refresh_history_chunk
 from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, save_checkpoint
@@ -64,6 +65,18 @@ def _fetch(fixtures):
         return _received(), fixtures
 
     return fetch
+
+
+def test_skip_reason_contract_is_bounded_and_contains_logged_reasons():
+    assert A2_STATS_SKIP_REASONS == {
+        "MISSING_PLAYER_KEYS",
+        "NO_MATCH_PERIOD_STATS",
+        "FIRST_PLAYER_INCOMPLETE",
+        "SECOND_PLAYER_INCOMPLETE",
+        "BOTH_PLAYERS_INCOMPLETE",
+        "MISSING_INGESTED_FIXTURE",
+        "UNKNOWN_PARSE_GAP",
+    }
 
 
 def test_parse_api_tennis_match_stats_derives_service_and_return_basis():
@@ -144,3 +157,42 @@ def test_history_refresh_semantically_dedupes_same_api_tennis_stats(db: psycopg.
     assert db.execute(
         "SELECT count(*) FROM match_stat_observations WHERE source_system = 'API_TENNIS'"
     ).fetchone()[0] == 2
+
+
+def test_history_refresh_logs_no_match_period_stats_reason(
+    db: psycopg.Connection,
+    capsys,
+):
+    refresh_history_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 9, 16),
+        end_date=date(2026, 9, 16),
+        fetch_window=_fetch([_fixture(statistics=[])]),
+    )
+
+    output = capsys.readouterr().out
+    assert "API_TENNIS_MATCH_STATS_DETAIL" in output
+    assert "eligible_matches=0" in output
+    assert "skipped_matches=1" in output
+    assert "skip_reasons=NO_MATCH_PERIOD_STATS:1" in output
+
+
+def test_history_refresh_logs_asymmetric_incomplete_stats_reason(
+    db: psycopg.Connection,
+    capsys,
+):
+    incomplete = _complete_stats()[:-1]
+    refresh_history_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 9, 16),
+        end_date=date(2026, 9, 16),
+        fetch_window=_fetch([_fixture(statistics=incomplete)]),
+    )
+
+    output = capsys.readouterr().out
+    assert "API_TENNIS_MATCH_STATS_DETAIL" in output
+    assert "eligible_matches=0" in output
+    assert "skipped_matches=1" in output
+    assert "skip_reasons=SECOND_PLAYER_INCOMPLETE:1" in output
