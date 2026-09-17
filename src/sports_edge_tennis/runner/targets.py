@@ -28,6 +28,67 @@ def _has_non_api_source_identity(conn: psycopg.Connection, player_id: int) -> bo
     )
 
 
+def _identity_gap_reason(*, alias_candidate_count: int, eligible_candidate_count: int) -> str:
+    if eligible_candidate_count > 1:
+        return "AMBIGUOUS_PIT_ELIGIBLE"
+    if alias_candidate_count == 0:
+        return "NO_HISTORICAL_ALIAS"
+    if alias_candidate_count == 1:
+        return "ALIAS_WITHOUT_PIT_HISTORY"
+    return "MULTIPLE_ALIAS_CANDIDATES_WITHOUT_UNIQUE_PIT_HISTORY"
+
+
+def _log_model_identity_gap(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    canonical_name: str,
+    normalized_aliases: tuple[str, ...],
+    eligible_candidate_ids: tuple[int, ...],
+) -> None:
+    """Explain a fail-closed live-to-history bridge miss without changing identity."""
+    rows = conn.execute(
+        """
+        SELECT DISTINCT pa.player_id, p.canonical_name
+        FROM player_aliases pa
+        JOIN players p ON p.player_id = pa.player_id
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> 'API_TENNIS'
+          )
+        ORDER BY pa.player_id
+        """,
+        (list(normalized_aliases), player_id),
+    ).fetchall()
+    alias_candidates = tuple((int(row[0]), str(row[1])) for row in rows)
+    reason = _identity_gap_reason(
+        alias_candidate_count=len(alias_candidates),
+        eligible_candidate_count=len(eligible_candidate_ids),
+    )
+    candidate_text = ",".join(
+        f"{candidate_id}:{_safe_log_text(candidate_name).replace(chr(44), chr(32))}"
+        for candidate_id, candidate_name in alias_candidates[:3]
+    ) or "-"
+    alias_text = "|".join(_safe_log_text(alias) for alias in normalized_aliases[:6]) or "-"
+    eligible_text = ",".join(str(candidate_id) for candidate_id in eligible_candidate_ids[:5]) or "-"
+    print(
+        "MODEL_IDENTITY_GAP "
+        f"live_player_id={player_id} "
+        f"name=\"{_safe_log_text(canonical_name).replace(chr(34), chr(39))}\" "
+        f"reason={reason} aliases=\"{alias_text}\" "
+        f"alias_candidate_count={len(alias_candidates)} "
+        f"eligible_candidate_count={len(eligible_candidate_ids)} "
+        f"eligible_candidate_ids={eligible_text} "
+        f"alias_candidates=\"{candidate_text}\"",
+        flush=True,
+    )
+
+
 def _resolve_model_player_id(
     conn: psycopg.Connection,
     *,
@@ -60,11 +121,12 @@ def _resolve_model_player_id(
     ).fetchone()
     if row is None:
         return player_id
+    canonical_name = str(row[0])
 
     normalized_aliases = sorted(
         {
             normalize_person_lookup(alias)
-            for alias in tennis_data_aliases(row[0])
+            for alias in tennis_data_aliases(canonical_name)
             if alias and normalize_person_lookup(alias)
         }
     )
@@ -102,6 +164,13 @@ def _resolve_model_player_id(
     ).fetchall()
 
     if len(candidates) != 1:
+        _log_model_identity_gap(
+            conn,
+            player_id=player_id,
+            canonical_name=canonical_name,
+            normalized_aliases=tuple(normalized_aliases),
+            eligible_candidate_ids=tuple(int(candidate[0]) for candidate in candidates),
+        )
         return player_id
     return int(candidates[0][0])
 
