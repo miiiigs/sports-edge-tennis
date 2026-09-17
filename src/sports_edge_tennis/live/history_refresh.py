@@ -3,11 +3,14 @@
 This module is intentionally separate from the hourly live slate runner. It fetches a
 bounded date window with no retries or polling, reuses the canonical API-Tennis fixture
 adapter, and appends terminal result truth only when the provider outcome has changed.
+It also persists reproducible match-period serve/return statistics that API-Tennis
+already returns inline so Agent 2 can accumulate live-history coverage.
 
 Point-in-time contract:
 * ``source_observed_at`` and ``as_of`` are the local receive time, never backdated.
 * match occurrence time stays on ``match_versions.match_start_at``.
 * Agent 3 separately uses match occurrence time for decay once the result is PIT-visible.
+* Agent 2 statistics become visible only when this refresh actually receives them.
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
     normalize_api_tennis_fixture_rounds,
     normalize_api_tennis_upcoming_status,
 )
+from sports_edge_tennis.live.api_tennis_match_stats import persist_api_tennis_match_stats
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.transport import (
     API_TENNIS_BASE_URL,
@@ -346,14 +350,15 @@ def _persist_terminal_results(
     return len(parsed) + len(rejected), inserted, unchanged, len(rejected)
 
 
-def _invalidate_agent3_checkpoint(conn: psycopg.Connection) -> None:
+def _invalidate_model_checkpoint(conn: psycopg.Connection, checkpoint_key: str) -> None:
     table_exists = conn.execute(
         "SELECT to_regclass('public.live_model_state_checkpoints')"
     ).fetchone()[0]
     if table_exists is None:
         return
     conn.execute(
-        "DELETE FROM live_model_state_checkpoints WHERE checkpoint_key = 'AGENT_3_INTRANSITIVITY'"
+        "DELETE FROM live_model_state_checkpoints WHERE checkpoint_key = %s",
+        (checkpoint_key,),
     )
 
 
@@ -387,11 +392,27 @@ def refresh_history_chunk(
         ingested_matches=fixture_outcome.matches,
         received_at=received_at,
     )
+    stat_outcome = persist_api_tennis_match_stats(
+        conn,
+        fixtures=normalized,
+        ingested_matches=fixture_outcome.matches,
+        received_at=received_at,
+    )
+    print(
+        "API_TENNIS_MATCH_STATS "
+        f"eligible_matches={stat_outcome.eligible_matches} "
+        f"inserted_rows={stat_outcome.inserted_rows} "
+        f"existing_rows={stat_outcome.existing_rows} "
+        f"skipped_matches={stat_outcome.skipped_matches}",
+        flush=True,
+    )
 
     if result_inserted:
-        # This is a derived, rebuildable cache. Removing only Agent 3's checkpoint
-        # guarantees the next live run rebuilds from newly visible canonical truth.
-        _invalidate_agent3_checkpoint(conn)
+        # Agent 3's graph depends on terminal result truth.
+        _invalidate_model_checkpoint(conn, "AGENT_3_INTRANSITIVITY")
+    if stat_outcome.inserted_rows:
+        # Agent 2's serve/return snapshot depends on raw match statistics.
+        _invalidate_model_checkpoint(conn, "AGENT_2_HIERARCHICAL_MARKOV")
 
     return HistoryRefreshChunkOutcome(
         start_date=start_date,
