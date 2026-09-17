@@ -144,3 +144,42 @@ def test_history_refresh_semantically_dedupes_same_api_tennis_stats(db: psycopg.
     assert db.execute(
         "SELECT count(*) FROM match_stat_observations WHERE source_system = 'API_TENNIS'"
     ).fetchone()[0] == 2
+
+
+def test_history_refresh_logs_no_match_period_stats_reason(
+    db: psycopg.Connection,
+    capsys,
+):
+    refresh_history_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 9, 16),
+        end_date=date(2026, 9, 16),
+        fetch_window=_fetch([_fixture(statistics=[])]),
+    )
+
+    output = capsys.readouterr().out
+    assert "API_TENNIS_MATCH_STATS_DETAIL" in output
+    assert "eligible_matches=0" in output
+    assert "skipped_matches=1" in output
+    assert "skip_reasons=NO_MATCH_PERIOD_STATS:1" in output
+
+
+def test_history_refresh_logs_asymmetric_incomplete_stats_reason(
+    db: psycopg.Connection,
+    capsys,
+):
+    incomplete = _complete_stats()[:-1]
+    refresh_history_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 9, 16),
+        end_date=date(2026, 9, 16),
+        fetch_window=_fetch([_fixture(statistics=incomplete)]),
+    )
+
+    output = capsys.readouterr().out
+    assert "API_TENNIS_MATCH_STATS_DETAIL" in output
+    assert "eligible_matches=0" in output
+    assert "skipped_matches=1" in output
+    assert "skip_reasons=SECOND_PLAYER_INCOMPLETE:1" in output
