@@ -125,6 +125,60 @@ def fetch_api_tennis_draw(
     return received_at, result
 
 
+def fetch_api_tennis_h2h(
+    api_key: str,
+    first_player_key: str,
+    second_player_key: str,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    base_url: str = API_TENNIS_BASE_URL,
+    clock: callable | None = None,
+) -> tuple[datetime, dict[str, Any]]:
+    """Fetch API-Tennis direct H2H and recent-form rows for one player pair.
+
+    This is a single bounded provider request. The caller decides whether to use
+    the returned evidence; this transport performs no persistence or model work.
+    """
+    first_key = str(first_player_key).strip()
+    second_key = str(second_player_key).strip()
+    if not first_key or not second_key:
+        raise ValueError("API-Tennis H2H player keys must be non-empty")
+    if first_key == second_key:
+        raise ValueError("API-Tennis H2H player keys must be different")
+
+    clock = clock or _utc_now
+    params = {
+        "method": "get_H2H",
+        "APIkey": api_key,
+        "first_player_key": first_key,
+        "second_player_key": second_key,
+    }
+    try:
+        resp = requests.get(base_url, params=params, timeout=timeout)
+    except requests.exceptions.Timeout as exc:
+        raise TransportError("TIMEOUT", "api-tennis H2H request timed out") from exc
+    except requests.exceptions.RequestException as exc:
+        raise TransportError("NETWORK", "api-tennis H2H request failed") from exc
+
+    received_at = clock()
+    if resp.status_code != 200:
+        raise TransportError(f"HTTP_{resp.status_code}", "api-tennis H2H non-200 response")
+
+    try:
+        data = resp.json()
+    except ValueError as exc:
+        raise TransportError("PARSE", "api-tennis H2H response was not valid JSON") from exc
+
+    if not isinstance(data, dict) or data.get("success") != 1:
+        raise TransportError("PROVIDER_ERROR", "api-tennis H2H provider reported failure")
+
+    result = data.get("result")
+    if not isinstance(result, dict):
+        raise TransportError("PARSE", "api-tennis H2H response missing result object")
+
+    return received_at, result
+
+
 def fetch_api_tennis_odds(
     api_key: str,
     start_date: date,
