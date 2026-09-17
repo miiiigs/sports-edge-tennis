@@ -13,7 +13,7 @@ from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, save_ch
 
 
 INGESTED_AT = datetime(2026, 9, 10, 0, 0, tzinfo=UTC)
-BACKFILL_AT = datetime(2026, 9, 17, 16, 30, tzinfo=UTC)
+BACKFILL_AT = datetime(2026, 9, 17, 16, 0, tzinfo=UTC)
 
 
 def _stat(player_key: str, name: str, *, value=None, won=None, total=None):
