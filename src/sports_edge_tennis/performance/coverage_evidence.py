@@ -1,8 +1,9 @@
 """Read-only point-in-time coverage diagnostics for predictive agents.
 
 The purpose is to measure where each agent can actually participate before changing data
-providers or Manager rules.  Match metadata is resolved as it was visible at the first
-prediction timestamp, avoiding today's corrected metadata leaking into historical coverage.
+providers or Manager rules. Match metadata is resolved as it was visible at the first
+production-live prediction timestamp, avoiding today's corrected metadata leaking into
+historical coverage.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ def _ratio(numerator: int, denominator: int) -> float | None:
 
 
 def load_agent_coverage_slices(conn: psycopg.Connection) -> tuple[CoverageSlice, ...]:
-    """Return first-prediction coverage sliced by point-in-time fixture metadata."""
+    """Return production-live first-prediction coverage by point-in-time fixture metadata."""
     rows = conn.execute(
         """
         WITH first_prediction AS (
@@ -42,6 +43,8 @@ def load_agent_coverage_slices(conn: psycopg.Connection) -> tuple[CoverageSlice,
             WHERE pr.prediction_contract_version = 'predictive_agent_result_v1'
               AND pr.run_status = 'COMPLETED'
               AND pr.prediction_finalized_at IS NOT NULL
+              AND pr.experiment_id IS NULL
+              AND p.experiment_id IS NULL
             ORDER BY p.match_id, p.agent_code, p.as_of, p.prediction_id
         ),
         enriched AS (
