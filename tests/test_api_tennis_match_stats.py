@@ -6,7 +6,7 @@ import psycopg
 
 from sports_edge_tennis.live.api_tennis_match_stats import parse_api_tennis_match_point_stats
 from sports_edge_tennis.live.history_refresh import refresh_history_chunk
-from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, ensure_checkpoint_table
+from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, save_checkpoint
 
 
 def _received() -> datetime:
@@ -82,23 +82,14 @@ def test_parse_api_tennis_match_stats_fails_closed_on_partial_point_totals():
 
 
 def test_history_refresh_persists_api_tennis_stats_for_agent2(db: psycopg.Connection):
-    ensure_checkpoint_table(db)
-    db.execute(
-        """
-        INSERT INTO live_model_state_checkpoints (
-            checkpoint_key, schema_version, model_version, feature_version,
-            checkpoint_cutoff, observation_count, payload
-        ) VALUES (%s, 'live_model_state_v1', 'test-model', 'test-feature',
-                  %s, 1, '{}'::jsonb)
-        ON CONFLICT (checkpoint_key) DO UPDATE
-        SET schema_version = EXCLUDED.schema_version,
-            model_version = EXCLUDED.model_version,
-            feature_version = EXCLUDED.feature_version,
-            checkpoint_cutoff = EXCLUDED.checkpoint_cutoff,
-            observation_count = EXCLUDED.observation_count,
-            payload = EXCLUDED.payload
-        """,
-        (AGENT2_CACHE_KEY, _received()),
+    save_checkpoint(
+        db,
+        checkpoint_key=AGENT2_CACHE_KEY,
+        model_version="test-model",
+        feature_version="test-feature",
+        checkpoint_cutoff=_received(),
+        observation_count=1,
+        payload=b"{}",
     )
 
     outcome = refresh_history_chunk(
