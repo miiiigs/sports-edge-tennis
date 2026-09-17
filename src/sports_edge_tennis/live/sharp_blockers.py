@@ -30,14 +30,16 @@ class SharpReferenceBlocker:
     sharp_quotes_at_decision: int
     sharp_player_1_quotes_at_decision: int
     sharp_player_2_quotes_at_decision: int
+    sharp_complete_pairs_at_decision: int
     sharp_quotes_total: int
     sharp_player_1_quotes_total: int
     sharp_player_2_quotes_total: int
+    sharp_complete_pairs_total: int
     latest_sharp_observed_at: datetime | None
 
     @property
     def classification(self) -> str:
-        """Classify the missing-sharp blocker without changing live policy."""
+        """Classify the missing-sharp blocker using evaluator-equivalent pair semantics."""
         if self.pinnapi_mapping_count == 0:
             if self.sharp_quotes_total > 0:
                 return "UNMAPPED_WITH_SHARP_QUOTES"
@@ -45,24 +47,32 @@ class SharpReferenceBlocker:
 
         p1_at_decision = self.sharp_player_1_quotes_at_decision > 0
         p2_at_decision = self.sharp_player_2_quotes_at_decision > 0
+        complete_at_decision = self.sharp_complete_pairs_at_decision > 0
         p1_total = self.sharp_player_1_quotes_total > 0
         p2_total = self.sharp_player_2_quotes_total > 0
+        complete_total = self.sharp_complete_pairs_total > 0
 
-        if p1_at_decision and p2_at_decision:
-            # Market still rejected the decision despite a persisted two-way pair.
-            # That points away from identity reconciliation and toward freshness /
-            # decision-boundary selection logic, so surface it explicitly.
+        if complete_at_decision:
+            # The evaluator groups sharp rows by (source_snapshot_id,
+            # source_observed_at). A complete pair already visible at d.as_of should
+            # not normally produce MISSING_SHARP_REFERENCE, so flag the anomaly.
             return "COMPLETE_PAIR_PRESENT_AT_DECISION"
 
         if not p1_at_decision and not p2_at_decision:
-            if p1_total and p2_total:
+            if complete_total:
                 return "LATE_COMPLETE_PAIR"
             if p1_total or p2_total:
                 return "LATE_PARTIAL_SHARP"
             return "MAPPED_NO_SHARP_QUOTES"
 
+        if p1_at_decision and p2_at_decision:
+            # Both sides existed, but not in one evaluator-valid snapshot pair.
+            if complete_total:
+                return "UNPAIRED_AT_DECISION_COMPLETE_LATER"
+            return "UNPAIRED_SHARP_AT_DECISION"
+
         # Exactly one side existed at the decision boundary.
-        if p1_total and p2_total:
+        if complete_total:
             return "PARTIAL_AT_DECISION_COMPLETE_LATER"
         return "PARTIAL_SHARP_AT_DECISION"
 
@@ -72,11 +82,14 @@ def load_missing_sharp_reference_blockers(
     *,
     prediction_run_id: int,
 ) -> tuple[SharpReferenceBlocker, ...]:
-    """Return only canonical consensus decisions blocked by missing Pinnacle truth.
+    """Return canonical consensus decisions blocked by missing Pinnacle truth.
 
-    Decision-boundary side counts are kept separate from later observations. This
-    distinguishes a reconciliation miss from a mapped event with no odds, a one-sided
-    market, or a complete Pinnacle pair that arrived only after the decision.
+    Quote counts include only rows eligible for the evaluator's sharp pool
+    (`source_snapshot_id IS NOT NULL`). Complete-pair counts mirror the evaluator by
+    requiring PLAYER_1 and PLAYER_2 inside the same `(source_snapshot_id,
+    source_observed_at)` group. Decision-boundary evidence is kept separate from later
+    observations so reconciliation misses, one-sided markets, unpaired sides, and late
+    complete markets remain distinguishable.
     """
     rows = conn.execute(
         """
@@ -113,6 +126,7 @@ def load_missing_sharp_reference_blockers(
                   AND os.source_system = 'SHARP'
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
+                  AND os.source_snapshot_id IS NOT NULL
                   AND os.source_observed_at <= d.as_of
                   AND os.as_of <= d.as_of
             ) AS sharp_quotes_at_decision,
@@ -124,6 +138,7 @@ def load_missing_sharp_reference_blockers(
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
                   AND os.selection_type = 'PLAYER_1'
+                  AND os.source_snapshot_id IS NOT NULL
                   AND os.source_observed_at <= d.as_of
                   AND os.as_of <= d.as_of
             ) AS sharp_player_1_quotes_at_decision,
@@ -135,9 +150,27 @@ def load_missing_sharp_reference_blockers(
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
                   AND os.selection_type = 'PLAYER_2'
+                  AND os.source_snapshot_id IS NOT NULL
                   AND os.source_observed_at <= d.as_of
                   AND os.as_of <= d.as_of
             ) AS sharp_player_2_quotes_at_decision,
+            (
+                SELECT count(*)
+                FROM (
+                    SELECT os.source_snapshot_id, os.source_observed_at
+                    FROM odds_snapshots os
+                    WHERE os.match_id = d.match_id
+                      AND os.source_system = 'SHARP'
+                      AND os.bookmaker_code = 'PINNACLE'
+                      AND os.market_type = 'MATCH_WINNER'
+                      AND os.source_snapshot_id IS NOT NULL
+                      AND os.source_observed_at <= d.as_of
+                      AND os.as_of <= d.as_of
+                    GROUP BY os.source_snapshot_id, os.source_observed_at
+                    HAVING bool_or(os.selection_type = 'PLAYER_1')
+                       AND bool_or(os.selection_type = 'PLAYER_2')
+                ) complete_pair
+            ) AS sharp_complete_pairs_at_decision,
             (
                 SELECT count(*)
                 FROM odds_snapshots os
@@ -145,6 +178,7 @@ def load_missing_sharp_reference_blockers(
                   AND os.source_system = 'SHARP'
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
+                  AND os.source_snapshot_id IS NOT NULL
             ) AS sharp_quotes_total,
             (
                 SELECT count(*)
@@ -154,6 +188,7 @@ def load_missing_sharp_reference_blockers(
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
                   AND os.selection_type = 'PLAYER_1'
+                  AND os.source_snapshot_id IS NOT NULL
             ) AS sharp_player_1_quotes_total,
             (
                 SELECT count(*)
@@ -163,7 +198,23 @@ def load_missing_sharp_reference_blockers(
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
                   AND os.selection_type = 'PLAYER_2'
+                  AND os.source_snapshot_id IS NOT NULL
             ) AS sharp_player_2_quotes_total,
+            (
+                SELECT count(*)
+                FROM (
+                    SELECT os.source_snapshot_id, os.source_observed_at
+                    FROM odds_snapshots os
+                    WHERE os.match_id = d.match_id
+                      AND os.source_system = 'SHARP'
+                      AND os.bookmaker_code = 'PINNACLE'
+                      AND os.market_type = 'MATCH_WINNER'
+                      AND os.source_snapshot_id IS NOT NULL
+                    GROUP BY os.source_snapshot_id, os.source_observed_at
+                    HAVING bool_or(os.selection_type = 'PLAYER_1')
+                       AND bool_or(os.selection_type = 'PLAYER_2')
+                ) complete_pair
+            ) AS sharp_complete_pairs_total,
             (
                 SELECT max(os.source_observed_at)
                 FROM odds_snapshots os
@@ -171,6 +222,7 @@ def load_missing_sharp_reference_blockers(
                   AND os.source_system = 'SHARP'
                   AND os.bookmaker_code = 'PINNACLE'
                   AND os.market_type = 'MATCH_WINNER'
+                  AND os.source_snapshot_id IS NOT NULL
             ) AS latest_sharp_observed_at
         FROM decisions d
         JOIN manager_consensus_results mcr
@@ -223,10 +275,12 @@ def load_missing_sharp_reference_blockers(
             sharp_quotes_at_decision=int(row[11]),
             sharp_player_1_quotes_at_decision=int(row[12]),
             sharp_player_2_quotes_at_decision=int(row[13]),
-            sharp_quotes_total=int(row[14]),
-            sharp_player_1_quotes_total=int(row[15]),
-            sharp_player_2_quotes_total=int(row[16]),
-            latest_sharp_observed_at=row[17],
+            sharp_complete_pairs_at_decision=int(row[14]),
+            sharp_quotes_total=int(row[15]),
+            sharp_player_1_quotes_total=int(row[16]),
+            sharp_player_2_quotes_total=int(row[17]),
+            sharp_complete_pairs_total=int(row[18]),
+            latest_sharp_observed_at=row[19],
         )
         for row in rows
     )
@@ -259,9 +313,11 @@ def format_sharp_blocker(blocker: SharpReferenceBlocker) -> str:
         f"sharp_quotes_at_decision={blocker.sharp_quotes_at_decision} "
         f"sharp_p1_at_decision={blocker.sharp_player_1_quotes_at_decision} "
         f"sharp_p2_at_decision={blocker.sharp_player_2_quotes_at_decision} "
+        f"sharp_complete_pairs_at_decision={blocker.sharp_complete_pairs_at_decision} "
         f"sharp_quotes_total={blocker.sharp_quotes_total} "
         f"sharp_p1_total={blocker.sharp_player_1_quotes_total} "
         f"sharp_p2_total={blocker.sharp_player_2_quotes_total} "
+        f"sharp_complete_pairs_total={blocker.sharp_complete_pairs_total} "
         f"latest_sharp_at={latest_sharp_at}"
     )
 
