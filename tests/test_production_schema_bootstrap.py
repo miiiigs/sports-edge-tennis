@@ -6,6 +6,7 @@ import pytest
 
 from sports_edge_tennis.live.production_batch import (
     _STAKING_CONSTRAINTS,
+    _a1_evidence_cycle,
     _ensure_quarter_kelly_schema,
 )
 
@@ -74,3 +75,17 @@ def test_partial_schema_fails_closed_without_running_migration(tmp_path: Path):
         _ensure_quarter_kelly_schema(conn, migration_path=tmp_path / "0010.sql")
 
     assert conn.migration_execs == 0
+
+
+def test_a1_evidence_cycle_is_fail_isolated(monkeypatch, capsys):
+    def fail_connect(*args, **kwargs):
+        raise RuntimeError("diagnostic unavailable")
+
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        fail_connect,
+    )
+
+    _a1_evidence_cycle("postgresql://example")
+
+    assert "A1_LIVE_EVIDENCE_FAILED error_type=RuntimeError" in capsys.readouterr().out
