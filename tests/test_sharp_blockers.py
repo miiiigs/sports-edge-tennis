@@ -32,9 +32,11 @@ def _blocker(**overrides) -> SharpReferenceBlocker:
         "sharp_quotes_at_decision": 0,
         "sharp_player_1_quotes_at_decision": 0,
         "sharp_player_2_quotes_at_decision": 0,
+        "sharp_complete_pairs_at_decision": 0,
         "sharp_quotes_total": 0,
         "sharp_player_1_quotes_total": 0,
         "sharp_player_2_quotes_total": 0,
+        "sharp_complete_pairs_total": 0,
         "latest_sharp_observed_at": None,
     }
     values.update(overrides)
@@ -67,6 +69,7 @@ def _blocker(**overrides) -> SharpReferenceBlocker:
                 "sharp_quotes_total": 2,
                 "sharp_player_1_quotes_total": 1,
                 "sharp_player_2_quotes_total": 1,
+                "sharp_complete_pairs_total": 1,
             },
             "LATE_COMPLETE_PAIR",
         ),
@@ -99,6 +102,7 @@ def _blocker(**overrides) -> SharpReferenceBlocker:
                 "sharp_quotes_total": 2,
                 "sharp_player_1_quotes_total": 1,
                 "sharp_player_2_quotes_total": 1,
+                "sharp_complete_pairs_total": 1,
             },
             "PARTIAL_AT_DECISION_COMPLETE_LATER",
         ),
@@ -112,6 +116,35 @@ def _blocker(**overrides) -> SharpReferenceBlocker:
                 "sharp_quotes_total": 2,
                 "sharp_player_1_quotes_total": 1,
                 "sharp_player_2_quotes_total": 1,
+            },
+            "UNPAIRED_SHARP_AT_DECISION",
+        ),
+        (
+            {
+                "pinnapi_mapping_count": 1,
+                "pinnapi_provider_event_id": "evt-1",
+                "sharp_quotes_at_decision": 2,
+                "sharp_player_1_quotes_at_decision": 1,
+                "sharp_player_2_quotes_at_decision": 1,
+                "sharp_quotes_total": 4,
+                "sharp_player_1_quotes_total": 2,
+                "sharp_player_2_quotes_total": 2,
+                "sharp_complete_pairs_total": 1,
+            },
+            "UNPAIRED_AT_DECISION_COMPLETE_LATER",
+        ),
+        (
+            {
+                "pinnapi_mapping_count": 1,
+                "pinnapi_provider_event_id": "evt-1",
+                "sharp_quotes_at_decision": 2,
+                "sharp_player_1_quotes_at_decision": 1,
+                "sharp_player_2_quotes_at_decision": 1,
+                "sharp_complete_pairs_at_decision": 1,
+                "sharp_quotes_total": 2,
+                "sharp_player_1_quotes_total": 1,
+                "sharp_player_2_quotes_total": 1,
+                "sharp_complete_pairs_total": 1,
             },
             "COMPLETE_PAIR_PRESENT_AT_DECISION",
         ),
@@ -136,7 +169,9 @@ def test_sharp_blocker_log_is_bounded_and_explicit():
     assert "sharp_quotes_at_decision=0" in line
     assert "sharp_p1_at_decision=0" in line
     assert "sharp_p2_at_decision=0" in line
+    assert "sharp_complete_pairs_at_decision=0" in line
     assert "sharp_quotes_total=0" in line
     assert "sharp_p1_total=0" in line
     assert "sharp_p2_total=0" in line
+    assert "sharp_complete_pairs_total=0" in line
     assert "latest_sharp_at=-" in line
