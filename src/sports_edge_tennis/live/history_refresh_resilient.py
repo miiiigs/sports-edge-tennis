@@ -312,7 +312,7 @@ def _attempt_chunk(
             delay = backoff_seconds * (2 ** (attempt - 1))
             print(
                 "HISTORY_REFRESH_RETRY "
-                f"start={start_date.isoformat()} end={effective_end_date.isoformat()} "
+                f"start={start_date.isoformat()} end={end_date.isoformat()} "
                 f"attempt={attempt + 1}/{max_attempts} kind={exc.kind} "
                 f"sleep_seconds={delay:g}",
                 flush=True,
@@ -341,7 +341,7 @@ def _process_resilient_chunk(
             right_start = split_end + timedelta(days=1)
             print(
                 "HISTORY_REFRESH_SPLIT "
-                f"start={start_date.isoformat()} end={effective_end_date.isoformat()} kind={exc.kind} "
+                f"start={start_date.isoformat()} end={end_date.isoformat()} kind={exc.kind} "
                 f"left={start_date.isoformat()}..{split_end.isoformat()} "
                 f"right={right_start.isoformat()}..{end_date.isoformat()}",
                 flush=True,
@@ -363,7 +363,7 @@ def _process_resilient_chunk(
         print(
             "HISTORY_REFRESH_FAILED "
             f"kind={exc.kind} failed_start={start_date.isoformat()} "
-            f"failed_end={effective_end_date.isoformat()} checkpoint_key={checkpoint_key}",
+            f"failed_end={end_date.isoformat()} checkpoint_key={checkpoint_key}",
             flush=True,
         )
         raise
@@ -420,7 +420,7 @@ def run_resilient_history_refresh(
         print(
             "HISTORY_REFRESH_RESUME "
             f"checkpoint_key={checkpoint_key} resume_from={resume_from.isoformat()} "
-            f"requested_start={start_date.isoformat()} requested_end={effective_end_date.isoformat()} "
+            f"requested_start={start_date.isoformat()} requested_end={end_date.isoformat()} "
             f"completed_chunks={checkpoint.completed_chunks}",
             flush=True,
         )
