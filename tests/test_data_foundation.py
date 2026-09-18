@@ -275,6 +275,7 @@ def test_publication_control_v1_migration_manifest_and_snapshot():
         "\n".join(
             _read_text(REPO_ROOT / Path(entry["up"]))
             for entry in manifest["migrations"]
+            if entry["version"] <= "0012"
         )
     )
     assert expected_full_schema_0012 == _normalized_sql(
