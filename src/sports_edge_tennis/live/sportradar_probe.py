@@ -32,10 +32,16 @@ from sports_edge_tennis.live.credentials import load_secret
 from sports_edge_tennis.live.sportradar_benchmark import (
     benchmark_challenger_a2_stats,
     link_gap_target,
+    load_gap_target_for_match,
     load_latest_gap_targets,
     provider_name_identity_evidence,
 )
-from sports_edge_tennis.live.sportradar_identity_bridge_apply import run_optional_identity_bridge
+from sports_edge_tennis.live.sportradar_identity_bridge_apply import (
+    ENABLED_ENV as IDENTITY_BRIDGE_ENABLED_ENV,
+    EVENT_ID_ENV as IDENTITY_BRIDGE_EVENT_ID_ENV,
+    MATCH_ID_ENV as IDENTITY_BRIDGE_MATCH_ID_ENV,
+    run_optional_identity_bridge,
+)
 from sports_edge_tennis.live.sportradar_surface_apply import run_optional_surface_fill
 from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
@@ -69,6 +75,94 @@ GAP_SURFACE_ENABLED_ENV = "SPORTRADAR_GAP_SURFACE_PROBE_ENABLED"
 GAP_SURFACE_MAX_COMPETITIONS_ENV = "SPORTRADAR_GAP_SURFACE_MAX_COMPETITIONS"
 GAP_SURFACE_DEFAULT_COMPETITIONS = 8
 GAP_SURFACE_MAX_COMPETITIONS = 12
+
+
+def _augment_identity_bridge_exact_links(
+    *,
+    dsn: str | None,
+    daily: Mapping[str, Any],
+    exact_links: Sequence[tuple[Any, Any]],
+    env: Mapping[str, str] | None = None,
+    connect: Callable[..., Any] = psycopg.connect,
+    target_loader: Callable[..., Any] = load_gap_target_for_match,
+    linker: Callable[..., Any] = link_gap_target,
+) -> tuple[tuple[Any, Any], ...]:
+    """Read-only fallback for an authorized match that aged out of latest-batch gaps."""
+    values = os.environ if env is None else env
+    current_links = tuple(exact_links)
+    if not _flag_enabled(values.get(IDENTITY_BRIDGE_ENABLED_ENV)):
+        return current_links
+
+    raw_match_id = _text(values.get(IDENTITY_BRIDGE_MATCH_ID_ENV))
+    requested_event_id = _text(values.get(IDENTITY_BRIDGE_EVENT_ID_ENV))
+    try:
+        requested_match_id = int(raw_match_id)
+    except ValueError:
+        return current_links
+    if requested_match_id <= 0 or not requested_event_id:
+        return current_links
+
+    for target, candidate in current_links:
+        if (
+            target.match_id == requested_match_id
+            and candidate.event_id == requested_event_id
+        ):
+            print(
+                "SPORTRADAR_IDENTITY_BRIDGE_REVALIDATION "
+                f"status=CURRENT_BATCH match_id={requested_match_id} "
+                f"event_id={requested_event_id} writes=0",
+                flush=True,
+            )
+            return current_links
+
+    if not dsn:
+        print(
+            "SPORTRADAR_IDENTITY_BRIDGE_REVALIDATION "
+            f"status=NO_DATABASE match_id={requested_match_id} writes=0",
+            flush=True,
+        )
+        return current_links
+
+    with connect(dsn, autocommit=False) as conn:
+        target = target_loader(conn, match_id=requested_match_id)
+        if target is None:
+            conn.rollback()
+            print(
+                "SPORTRADAR_IDENTITY_BRIDGE_REVALIDATION "
+                f"status=NO_PREMATCH_TARGET match_id={requested_match_id} writes=0",
+                flush=True,
+            )
+            return current_links
+
+        result = linker(target, daily)
+        candidate = result.candidates[0] if len(result.candidates) == 1 else None
+        conn.rollback()
+
+    if (
+        result.status != "EXACT"
+        or candidate is None
+        or candidate.event_id != requested_event_id
+    ):
+        print(
+            "SPORTRADAR_IDENTITY_BRIDGE_REVALIDATION "
+            f"status={result.status} match_id={requested_match_id} "
+            f"requested_event_id={requested_event_id} "
+            f"candidate_event_id={candidate.event_id if candidate else '-'} "
+            f"candidate_count={len(result.candidates)} writes=0",
+            flush=True,
+        )
+        return current_links
+
+    print(
+        "SPORTRADAR_IDENTITY_BRIDGE_REVALIDATION "
+        f"status=EXACT match_id={requested_match_id} "
+        f"event_id={candidate.event_id} "
+        f"prediction_as_of={target.prediction_as_of.isoformat()} "
+        f"start_delta_min={candidate.start_delta_minutes if candidate.start_delta_minutes is not None else '-'} "
+        "writes=0",
+        flush=True,
+    )
+    return current_links + ((target, candidate),)
 
 
 class RequestPacer:
@@ -772,10 +866,16 @@ def run_probe(
         )
         return 2
 
+    identity_bridge_links = _augment_identity_bridge_exact_links(
+        dsn=dsn,
+        daily=daily,
+        exact_links=tuple(exact_gap_links),
+    )
+
     try:
         run_optional_identity_bridge(
             dsn=dsn,
-            exact_links=tuple(exact_gap_links),
+            exact_links=identity_bridge_links,
         )
     except (ValueError, RuntimeError, OSError, psycopg.Error) as exc:
         print(
