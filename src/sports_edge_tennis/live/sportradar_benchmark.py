@@ -76,6 +76,7 @@ class CanonicalGapTarget:
 @dataclass(frozen=True)
 class SportradarLinkCandidate:
     event_id: str
+    competition_id: str
     competition_name: str
     start_at: datetime | None
     start_delta_minutes: int | None
@@ -328,9 +329,11 @@ def _candidate_for_summary(
         if start_at is None
         else int(abs((target.match_start_at.astimezone(timezone.utc) - start_at).total_seconds()) // 60)
     )
+    competition = _competition(summary)
     return SportradarLinkCandidate(
         event_id=event_id,
-        competition_name=_text(_competition(summary).get("name")),
+        competition_id=_text(competition.get("id")),
+        competition_name=_text(competition.get("name")),
         start_at=start_at,
         start_delta_minutes=start_delta_minutes,
         player_1_sportradar_id=_text(player_1.get("id")),
