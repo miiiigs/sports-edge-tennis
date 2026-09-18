@@ -12,6 +12,7 @@ sent only in the `x-api-key` header, never in a URL or log message.
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from collections.abc import Mapping
 from typing import Any, Callable
 from urllib.parse import quote
 
@@ -68,6 +69,7 @@ def _request_json(
     base_url: str = SPORTRADAR_TENNIS_BASE_URL,
     clock: Callable[[], datetime] | None = None,
     http_get: Callable[..., Any] = requests.get,
+    query_params: Mapping[str, Any] | None = None,
 ) -> tuple[datetime, dict[str, Any]]:
     key = str(api_key or "").strip()
     if not key:
@@ -86,8 +88,11 @@ def _request_json(
         "accept": "application/json",
         "x-api-key": key,
     }
+    request_kwargs: dict[str, Any] = {"headers": headers, "timeout": timeout}
+    if query_params:
+        request_kwargs["params"] = dict(query_params)
     try:
-        response = http_get(url, headers=headers, timeout=timeout)
+        response = http_get(url, **request_kwargs)
     except requests.exceptions.Timeout as exc:
         raise SportradarTransportError(
             "TIMEOUT", "sportradar tennis request timed out"
@@ -166,6 +171,25 @@ def fetch_daily_summaries(
     )
 
 
+def fetch_season_summaries(
+    api_key: str,
+    season_id: str,
+    *,
+    start: int = 0,
+    **kwargs: Any,
+) -> tuple[datetime, dict[str, Any]]:
+    if start < 0:
+        raise ValueError("Sportradar season summaries start must be non-negative")
+    season = _validated_segment(season_id, name="season_id")
+    query_params = {"start": start} if start else None
+    return _request_json(
+        api_key,
+        f"seasons/{season}/summaries",
+        query_params=query_params,
+        **kwargs,
+    )
+
+
 def fetch_sport_event_summary(
     api_key: str,
     sport_event_id: str,
@@ -193,6 +217,7 @@ __all__ = [
     "fetch_competition_seasons",
     "fetch_season_info",
     "fetch_daily_summaries",
+    "fetch_season_summaries",
     "fetch_sport_event_summary",
     "fetch_sport_event_timeline",
 ]

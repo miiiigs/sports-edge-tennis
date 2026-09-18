@@ -9,6 +9,7 @@ from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
     fetch_competition_seasons,
     fetch_competitions,
+    fetch_season_summaries,
 )
 
 
@@ -95,3 +96,34 @@ def test_timeout_is_classified():
         )
 
     assert exc.value.kind == "TIMEOUT"
+
+
+def test_season_summaries_uses_start_query_param_without_putting_key_in_url():
+    captured = {}
+
+    def fake_get(url, *, headers, timeout, params):
+        captured["url"] = url
+        captured["headers"] = headers
+        captured["params"] = params
+        return FakeResponse(200, {"summaries": []})
+
+    _, payload = fetch_season_summaries(
+        "secret-key",
+        "sr:season:1234",
+        start=200,
+        base_url="https://example.test/tennis",
+        http_get=fake_get,
+    )
+
+    assert payload == {"summaries": []}
+    assert captured["url"].endswith(
+        "/trial/v3/en/seasons/sr:season:1234/summaries.json"
+    )
+    assert "secret-key" not in captured["url"]
+    assert captured["params"] == {"start": 200}
+    assert captured["headers"]["x-api-key"] == "secret-key"
+
+
+def test_season_summaries_rejects_negative_start():
+    with pytest.raises(ValueError, match="non-negative"):
+        fetch_season_summaries("secret-key", "sr:season:1234", start=-1)
