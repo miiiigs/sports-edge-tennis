@@ -37,7 +37,8 @@ from sports_edge_tennis.live.sportradar import (
 DEFAULT_COMPETITION_QUERIES = ("Rennes",)
 DEFAULT_PLAYER_QUERIES = ("Nakashima", "Blanch")
 MAX_QUERY_MATCHES = 5
-TRIAL_MIN_REQUEST_INTERVAL_SECONDS = 1.1
+TRIAL_MIN_REQUEST_INTERVAL_SECONDS = 2.0
+TRIAL_429_RETRY_SECONDS = 3.0
 
 
 class RequestPacer:
@@ -65,6 +66,61 @@ class RequestPacer:
                 self._sleep(remaining)
                 now = self._monotonic()
         self._last_started_at = now
+
+    def sleep_for(self, seconds: float) -> None:
+        if seconds > 0:
+            self._sleep(seconds)
+
+
+def _paced_fetch(
+    *,
+    endpoint: str,
+    fetcher: Callable[..., tuple[datetime, dict[str, Any]]],
+    args: tuple[Any, ...],
+    transport: Mapping[str, str],
+    pacer: RequestPacer,
+    access_level: str,
+    retry_429_seconds: float,
+) -> tuple[datetime, dict[str, Any]]:
+    """Execute one named request with bounded trial pacing and one 429 retry."""
+    pacer.wait()
+    try:
+        result = fetcher(*args, **transport)
+        print(
+            f"SPORTRADAR_REQUEST endpoint={endpoint} status=OK retry=0",
+            flush=True,
+        )
+        return result
+    except SportradarTransportError as exc:
+        print(
+            "SPORTRADAR_REQUEST "
+            f"endpoint={endpoint} status=ERROR kind={exc.kind} retry=0",
+            flush=True,
+        )
+        if exc.kind != "HTTP_429" or access_level != "trial":
+            raise
+
+    print(
+        "SPORTRADAR_RATE_LIMIT "
+        f"endpoint={endpoint} retry=1 wait={retry_429_seconds:.1f}s",
+        flush=True,
+    )
+    pacer.sleep_for(retry_429_seconds)
+    pacer.wait()
+    try:
+        result = fetcher(*args, **transport)
+        print(
+            f"SPORTRADAR_REQUEST endpoint={endpoint} status=OK retry=1",
+            flush=True,
+        )
+        return result
+    except SportradarTransportError as exc:
+        print(
+            "SPORTRADAR_REQUEST "
+            f"endpoint={endpoint} status=ERROR kind={exc.kind} retry=1",
+            flush=True,
+        )
+        raise
 
 
 def _utc_date() -> date:
@@ -220,23 +276,42 @@ def run_probe(
         TRIAL_MIN_REQUEST_INTERVAL_SECONDS if access_level == "trial" else 0.0
     )
     pacer = RequestPacer(min_interval)
+    retry_429_seconds = (
+        TRIAL_429_RETRY_SECONDS if access_level == "trial" else 0.0
+    )
 
-    def paced(fetcher: Callable[..., Any], *args: Any) -> tuple[datetime, dict[str, Any]]:
-        pacer.wait()
-        return fetcher(*args, **transport)
+    def paced(
+        endpoint: str,
+        fetcher: Callable[..., tuple[datetime, dict[str, Any]]],
+        *args: Any,
+    ) -> tuple[datetime, dict[str, Any]]:
+        return _paced_fetch(
+            endpoint=endpoint,
+            fetcher=fetcher,
+            args=args,
+            transport=transport,
+            pacer=pacer,
+            access_level=access_level,
+            retry_429_seconds=retry_429_seconds,
+        )
 
     print(
         "SPORTRADAR_PROBE_START "
         f"date={target_date.isoformat()} access={access_level} language={language} "
-        f"min_request_interval={min_interval:.1f}s writes=0",
+        f"min_request_interval={min_interval:.1f}s "
+        f"retry_429_wait={retry_429_seconds:.1f}s writes=0",
         flush=True,
     )
 
     try:
-        _, competitions = paced(fetch_competitions, api_key)
-        _, rankings = paced(fetch_rankings, api_key)
-        _, daily = paced(fetch_daily_summaries, api_key, target_date)
-        _, merges = paced(fetch_competitor_merge_mappings, api_key)
+        _, competitions = paced("competitions", fetch_competitions, api_key)
+        _, rankings = paced("rankings", fetch_rankings, api_key)
+        _, daily = paced("daily_summaries", fetch_daily_summaries, api_key, target_date)
+        _, merges = paced(
+            "competitor_merge_mappings",
+            fetch_competitor_merge_mappings,
+            api_key,
+        )
     except SportradarTransportError as exc:
         print(f"SPORTRADAR_PROBE_UNAVAILABLE kind={exc.kind} writes=0", flush=True)
         return 0
@@ -272,7 +347,10 @@ def run_probe(
                 continue
             try:
                 _, seasons = paced(
-                    fetch_competition_seasons, api_key, competition_id
+                    "competition_seasons",
+                    fetch_competition_seasons,
+                    api_key,
+                    competition_id,
                 )
                 selected = select_season(seasons, target_date=target_date)
                 if selected is None:
@@ -284,7 +362,12 @@ def run_probe(
                     )
                     continue
                 season_id = _text(selected.get("id"))
-                _, info = paced(fetch_season_info, api_key, season_id)
+                _, info = paced(
+                    "season_info",
+                    fetch_season_info,
+                    api_key,
+                    season_id,
+                )
                 season = info.get("season")
                 season_info = (
                     season.get("info")
