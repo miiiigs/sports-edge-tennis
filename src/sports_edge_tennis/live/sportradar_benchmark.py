@@ -41,6 +41,7 @@ A2_DETAIL_STAT_FIELDS = (
     "second_serve_successful",
 )
 DEFAULT_LINK_MAX_START_DELTA_MINUTES = 180
+LATEST_BATCH_WINDOW_MINUTES = 15
 
 
 @dataclass(frozen=True)
@@ -376,6 +377,15 @@ def load_latest_gap_targets(
     *,
     target_date: date,
 ) -> tuple[int | None, datetime | None, tuple[CanonicalGapTarget, ...]]:
+    """Load unresolved targets from the latest completed hourly production batch.
+
+    One live batch may create more than one prediction run because each slate date is
+    scored separately. Treating only the numerically latest run as "latest" silently
+    drops the earlier slates. We therefore anchor on the latest completed run and
+    include completed non-experiment runs from the preceding bounded batch window.
+    Each match is deduplicated to its newest run and keeps that run's own as-of time
+    for point-in-time identity and surface resolution.
+    """
     run_row = conn.execute(
         """
         SELECT prediction_run_id, as_of
@@ -395,8 +405,30 @@ def load_latest_gap_targets(
     run_as_of = run_row[1]
     rows = conn.execute(
         """
+        WITH batch_runs AS (
+            SELECT prediction_run_id, as_of
+            FROM prediction_runs
+            WHERE run_status = 'COMPLETED'
+              AND experiment_id IS NULL
+              AND as_of >= %s - make_interval(mins => %s)
+              AND as_of <= %s
+        ),
+        latest_targets AS (
+            SELECT DISTINCT ON (prt.match_id)
+                prt.match_id,
+                br.prediction_run_id,
+                br.as_of AS prediction_as_of
+            FROM prediction_run_targets prt
+            JOIN batch_runs br
+              ON br.prediction_run_id = prt.prediction_run_id
+            ORDER BY
+                prt.match_id,
+                br.as_of DESC,
+                br.prediction_run_id DESC
+        )
         SELECT
-            prt.match_id,
+            lt.match_id,
+            lt.prediction_as_of,
             mv.player_1_id,
             p1.canonical_name,
             mv.player_2_id,
@@ -409,13 +441,13 @@ def load_latest_gap_targets(
             t.tournament_id,
             t.canonical_name,
             te.season_year
-        FROM prediction_run_targets prt
+        FROM latest_targets lt
         JOIN LATERAL (
             SELECT mv_inner.*
             FROM match_versions mv_inner
-            WHERE mv_inner.match_id = prt.match_id
-              AND mv_inner.source_observed_at <= %s
-              AND mv_inner.as_of <= %s
+            WHERE mv_inner.match_id = lt.match_id
+              AND mv_inner.source_observed_at <= lt.prediction_as_of
+              AND mv_inner.as_of <= lt.prediction_as_of
             ORDER BY
                 mv_inner.as_of DESC,
                 mv_inner.source_observed_at DESC,
@@ -424,20 +456,20 @@ def load_latest_gap_targets(
         ) mv ON TRUE
         JOIN players p1 ON p1.player_id = mv.player_1_id
         JOIN players p2 ON p2.player_id = mv.player_2_id
-        JOIN matches m ON m.match_id = prt.match_id
+        JOIN matches m ON m.match_id = lt.match_id
         JOIN tournament_editions te
           ON te.tournament_edition_id = m.tournament_edition_id
         JOIN tournaments t ON t.tournament_id = te.tournament_id
-        WHERE prt.prediction_run_id = %s
-        ORDER BY prt.match_id
+        ORDER BY lt.match_id
         """,
-        (run_as_of, run_as_of, prediction_run_id),
+        (run_as_of, LATEST_BATCH_WINDOW_MINUTES, run_as_of),
     ).fetchall()
 
     gaps: list[CanonicalGapTarget] = []
     for row in rows:
         (
             match_id,
+            target_as_of,
             player_1_id,
             player_1_name,
             player_2_id,
@@ -455,12 +487,12 @@ def load_latest_gap_targets(
         model_player_1_id = _resolve_model_player_id(
             conn,
             player_id=int(player_1_id),
-            as_of=run_as_of,
+            as_of=target_as_of,
         )
         model_player_2_id = _resolve_model_player_id(
             conn,
             player_id=int(player_2_id),
-            as_of=run_as_of,
+            as_of=target_as_of,
         )
         player_1_status = _model_identity_status(
             conn,
@@ -480,7 +512,7 @@ def load_latest_gap_targets(
             season_year=int(season_year),
             live_surface=live_surface,
             edition_surface=edition_surface,
-            as_of=run_as_of,
+            as_of=target_as_of,
         )
         if (
             player_1_status != "LIVE_UNRESOLVED"

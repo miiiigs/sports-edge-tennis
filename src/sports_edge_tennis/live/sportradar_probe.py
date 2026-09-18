@@ -513,7 +513,8 @@ def run_probe(
                 else:
                     print(
                         "SPORTRADAR_GAP_BENCHMARK_START "
-                        f"prediction_run_id={prediction_run_id} "
+                        f"latest_prediction_run_id={prediction_run_id} "
+                        "batch_window_minutes=15 "
                         f"as_of={run_as_of.isoformat()} gaps={len(gap_targets)} writes=0",
                         flush=True,
                     )
@@ -542,7 +543,8 @@ def run_probe(
                     ) or "none=0"
                     print(
                         "SPORTRADAR_GAP_BENCHMARK_SUMMARY "
-                        f"prediction_run_id={prediction_run_id} gaps={len(gap_targets)} "
+                        f"latest_prediction_run_id={prediction_run_id} "
+                        f"batch_window_minutes=15 gaps={len(gap_targets)} "
                         f"{counts_text} writes=0",
                         flush=True,
                     )
