@@ -1,13 +1,11 @@
 """Read-only Sportradar coverage comparator for Agent 3 raw evidence.
 
-This probe evaluates current production A3 abstentions without persisting any
-Sportradar data. It links canonical player names to a daily Sportradar event,
-then measures the same raw support gates used by the API-Tennis comparator:
+The target cohort intentionally mirrors the existing API-Tennis A3 comparator:
+latest completed non-experiment A3 abstentions, known surface, both players with
+existing API-Tennis identities, and match start inside the same forward horizon.
 
-* direct H2H support: at least 2 completed in-scope matches;
-* shared-opponent support: at least 5 unique recent shared opponents.
-
-No prediction or canonical state is changed.
+Sportradar is used only to answer the provider-coverage question for those exact
+canonical matches. No returned provider data is persisted.
 """
 
 from __future__ import annotations
@@ -16,7 +14,7 @@ import argparse
 import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -40,8 +38,10 @@ from sports_edge_tennis.live.sportradar_probe import (
 AGENT_CODE = "AGENT_3_INTRANSITIVITY"
 DIRECT_SUPPORT_THRESHOLD = 2
 SHARED_SUPPORT_THRESHOLD = 5
-DEFAULT_MAX_PAIRS = 3
-MAX_PAIRS = 5
+DEFAULT_MAX_PAIRS = 10
+MAX_PAIRS = 10
+DEFAULT_HORIZON_DAYS = 3
+MAX_HORIZON_DAYS = 7
 MAX_START_DELTA_MINUTES = 180
 
 
@@ -118,6 +118,7 @@ def _in_scope_singles(summary: Mapping[str, Any]) -> bool:
     competition = _competition(summary)
     if _text(competition.get("type")).casefold() != "singles":
         return False
+
     level = _text(competition.get("level")).casefold()
     name = _text(competition.get("name")).casefold()
     event = summary.get("sport_event")
@@ -128,6 +129,7 @@ def _in_scope_singles(summary: Mapping[str, Any]) -> bool:
             category = context.get("category")
             if isinstance(category, Mapping):
                 category_name = _text(category.get("name")).casefold()
+
     return (
         "challenger" in level
         or "challenger" in name
@@ -166,6 +168,7 @@ def link_target(
         competitors = _event_competitors(summary)
         if len(competitors) != 2:
             continue
+
         first, second = competitors
         direct = _name_match(target.first_name, _text(first.get("name"))) and _name_match(
             target.second_name, _text(second.get("name"))
@@ -175,6 +178,7 @@ def link_target(
         )
         if direct == reverse:
             continue
+
         event = summary.get("sport_event")
         if not isinstance(event, Mapping):
             continue
@@ -182,7 +186,15 @@ def link_target(
         start_at = _parse_time(event.get("start_time"))
         if not event_id or start_at is None:
             continue
-        delta = int(abs((target.match_start_at.astimezone(UTC) - start_at).total_seconds()) // 60)
+
+        delta = int(
+            abs(
+                (
+                    target.match_start_at.astimezone(UTC) - start_at
+                ).total_seconds()
+            )
+            // 60
+        )
         p1 = first if direct else second
         p2 = second if direct else first
         first_id = _text(p1.get("id"))
@@ -191,7 +203,11 @@ def link_target(
             continue
         candidates.append(LinkedPair(event_id, first_id, second_id, delta))
 
-    in_window = tuple(c for c in candidates if c.start_delta_minutes <= MAX_START_DELTA_MINUTES)
+    in_window = tuple(
+        candidate
+        for candidate in candidates
+        if candidate.start_delta_minutes <= MAX_START_DELTA_MINUTES
+    )
     if len(in_window) == 1:
         return "EXACT", in_window
     if len(in_window) > 1:
@@ -235,6 +251,7 @@ def summarize_evidence(
     second_recent = _eligible_summaries(second_payload)
     first_opponents = _opponent_ids(first_payload, first_id) - {second_id}
     second_opponents = _opponent_ids(second_payload, second_id) - {first_id}
+
     return A3SportradarEvidence(
         direct_matches=len(direct),
         first_recent_matches=len(first_recent),
@@ -246,11 +263,19 @@ def summarize_evidence(
 def load_targets(
     conn: psycopg.Connection,
     *,
-    target_date: date,
-    limit: int,
+    as_of: datetime,
+    horizon_days: int = DEFAULT_HORIZON_DAYS,
+    limit: int = DEFAULT_MAX_PAIRS,
 ) -> tuple[A3SportradarTarget, ...]:
+    """Mirror the API-Tennis A3 probe target-selection contract exactly."""
+    if as_of.tzinfo is None:
+        raise ValueError("as_of must be timezone-aware")
+    if not 1 <= horizon_days <= MAX_HORIZON_DAYS:
+        raise ValueError(f"horizon_days must be between 1 and {MAX_HORIZON_DAYS}")
     if not 1 <= limit <= MAX_PAIRS:
         raise ValueError(f"limit must be between 1 and {MAX_PAIRS}")
+
+    horizon_end = as_of + timedelta(days=horizon_days)
     rows = conn.execute(
         """
         WITH latest_a3 AS (
@@ -267,12 +292,15 @@ def load_targets(
               AND pr.experiment_id IS NULL
               AND p.experiment_id IS NULL
               AND p.agent_code = %s
-            ORDER BY p.match_id, pr.prediction_finalized_at DESC, p.prediction_id DESC
+            ORDER BY
+                p.match_id,
+                pr.prediction_finalized_at DESC,
+                p.prediction_id DESC
         )
         SELECT
             latest_a3.match_id,
-            p1.canonical_name,
-            p2.canonical_name,
+            cp1.canonical_name,
+            cp2.canonical_name,
             mv.match_start_at,
             mv.surface::text
         FROM latest_a3
@@ -285,16 +313,24 @@ def load_targets(
             ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
             LIMIT 1
         ) mv ON TRUE
-        JOIN players p1 ON p1.player_id = mv.player_1_id
-        JOIN players p2 ON p2.player_id = mv.player_2_id
+        JOIN player_source_ids api_p1
+          ON api_p1.player_id = mv.player_1_id
+         AND api_p1.source_system = 'API_TENNIS'
+        JOIN player_source_ids api_p2
+          ON api_p2.player_id = mv.player_2_id
+         AND api_p2.source_system = 'API_TENNIS'
+        JOIN players cp1 ON cp1.player_id = mv.player_1_id
+        JOIN players cp2 ON cp2.player_id = mv.player_2_id
         WHERE latest_a3.prediction_status = 'ABSTAINED'
           AND mv.surface IS NOT NULL
-          AND (mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+          AND mv.match_start_at >= %s
+          AND mv.match_start_at < %s
         ORDER BY mv.match_start_at, latest_a3.match_id
         LIMIT %s
         """,
-        (AGENT_CODE, target_date, limit),
+        (AGENT_CODE, as_of, horizon_end, limit),
     ).fetchall()
+
     return tuple(
         A3SportradarTarget(
             match_id=int(row[0]),
@@ -311,41 +347,65 @@ def run_probe(
     conn: psycopg.Connection,
     *,
     api_key: str,
-    target_date: date,
-    max_pairs: int,
+    as_of: datetime,
+    max_pairs: int = DEFAULT_MAX_PAIRS,
+    horizon_days: int = DEFAULT_HORIZON_DAYS,
     access_level: str,
     language: str,
 ) -> int:
-    targets = load_targets(conn, target_date=target_date, limit=max_pairs)
-    min_interval = TRIAL_MIN_REQUEST_INTERVAL_SECONDS if access_level == "trial" else 0.0
-    retry_429_seconds = TRIAL_429_RETRY_SECONDS if access_level == "trial" else 0.0
+    targets = load_targets(
+        conn,
+        as_of=as_of,
+        horizon_days=horizon_days,
+        limit=max_pairs,
+    )
+    min_interval = (
+        TRIAL_MIN_REQUEST_INTERVAL_SECONDS if access_level == "trial" else 0.0
+    )
+    retry_429_seconds = (
+        TRIAL_429_RETRY_SECONDS if access_level == "trial" else 0.0
+    )
     pacer = RequestPacer(min_interval)
     transport = {"access_level": access_level, "language": language}
+    daily_cache: dict[date, dict[str, Any]] = {}
 
     print(
         "SPORTRADAR_A3_START "
-        f"date={target_date.isoformat()} targets={len(targets)} max_pairs={max_pairs} writes=0",
+        f"as_of={as_of.isoformat()} targets={len(targets)} "
+        f"max_pairs={max_pairs} horizon_days={horizon_days} writes=0",
         flush=True,
     )
-    try:
-        _, daily = _paced_fetch(
-            endpoint="daily_summaries",
-            fetcher=fetch_daily_summaries,
-            args=(api_key, target_date),
-            transport=transport,
-            pacer=pacer,
-            access_level=access_level,
-            retry_429_seconds=retry_429_seconds,
-        )
-    except SportradarTransportError as exc:
-        print(f"SPORTRADAR_A3_UNAVAILABLE stage=daily kind={exc.kind} writes=0", flush=True)
-        return 0
 
     exact = 0
     successes = 0
     direct_met = 0
     shared_met = 0
+    unavailable = 0
+
     for target in targets:
+        target_date = target.match_start_at.astimezone(UTC).date()
+        daily = daily_cache.get(target_date)
+        if daily is None:
+            try:
+                _, daily = _paced_fetch(
+                    endpoint=f"daily_summaries_{target_date.isoformat()}",
+                    fetcher=fetch_daily_summaries,
+                    args=(api_key, target_date),
+                    transport=transport,
+                    pacer=pacer,
+                    access_level=access_level,
+                    retry_429_seconds=retry_429_seconds,
+                )
+            except SportradarTransportError as exc:
+                unavailable += 1
+                print(
+                    "SPORTRADAR_A3_UNAVAILABLE "
+                    f"stage=daily date={target_date.isoformat()} kind={exc.kind} writes=0",
+                    flush=True,
+                )
+                continue
+            daily_cache[target_date] = daily
+
         link_status, candidates = link_target(target, daily)
         if link_status != "EXACT":
             print(
@@ -355,6 +415,7 @@ def run_probe(
                 flush=True,
             )
             continue
+
         exact += 1
         pair = candidates[0]
         try:
@@ -386,8 +447,10 @@ def run_probe(
                 retry_429_seconds=retry_429_seconds,
             )
         except SportradarTransportError as exc:
+            unavailable += 1
             print(
-                f"SPORTRADAR_A3_UNAVAILABLE match_id={target.match_id} kind={exc.kind} writes=0",
+                "SPORTRADAR_A3_UNAVAILABLE "
+                f"match_id={target.match_id} kind={exc.kind} writes=0",
                 flush=True,
             )
             continue
@@ -417,6 +480,7 @@ def run_probe(
     print(
         "SPORTRADAR_A3_SUMMARY "
         f"targets={len(targets)} exact_links={exact} successes={successes} "
+        f"unavailable={unavailable} daily_dates={len(daily_cache)} "
         f"direct_raw_threshold_met={direct_met} "
         f"shared_raw_threshold_met={shared_met} writes=0",
         flush=True,
@@ -425,23 +489,41 @@ def run_probe(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Read-only Sportradar Agent 3 evidence comparator")
-    parser.add_argument("--dsn", default=os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL"))
-    parser.add_argument("--date", type=date.fromisoformat, default=datetime.now(UTC).date())
+    parser = argparse.ArgumentParser(
+        description="Read-only Sportradar Agent 3 evidence comparator"
+    )
+    parser.add_argument(
+        "--dsn",
+        default=os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL"),
+    )
     parser.add_argument("--max-pairs", type=int, default=DEFAULT_MAX_PAIRS)
+    parser.add_argument("--horizon-days", type=int, default=DEFAULT_HORIZON_DAYS)
     args = parser.parse_args(argv)
 
     if not args.dsn:
         print("SPORTRADAR_A3_BLOCKED reason=NO_DATABASE writes=0", flush=True)
         return 2
     if not 1 <= args.max_pairs <= MAX_PAIRS:
-        print(f"SPORTRADAR_A3_BLOCKED reason=MAX_PAIRS_RANGE_1_{MAX_PAIRS} writes=0", flush=True)
+        print(
+            f"SPORTRADAR_A3_BLOCKED reason=MAX_PAIRS_RANGE_1_{MAX_PAIRS} writes=0",
+            flush=True,
+        )
         return 2
+    if not 1 <= args.horizon_days <= MAX_HORIZON_DAYS:
+        print(
+            f"SPORTRADAR_A3_BLOCKED reason=HORIZON_DAYS_RANGE_1_{MAX_HORIZON_DAYS} writes=0",
+            flush=True,
+        )
+        return 2
+
     api_key = load_secret("SPORTRADAR_TENNIS_API_KEY")
     if not api_key:
         print("SPORTRADAR_A3_BLOCKED reason=NO_API_KEY writes=0", flush=True)
         return 2
-    access_level = os.environ.get("SPORTRADAR_TENNIS_ACCESS_LEVEL", "trial").strip() or "trial"
+
+    access_level = (
+        os.environ.get("SPORTRADAR_TENNIS_ACCESS_LEVEL", "trial").strip() or "trial"
+    )
     language = os.environ.get("SPORTRADAR_TENNIS_LANGUAGE", "en").strip() or "en"
 
     try:
@@ -449,13 +531,17 @@ def main(argv: list[str] | None = None) -> int:
             return run_probe(
                 conn,
                 api_key=api_key,
-                target_date=args.date,
+                as_of=datetime.now(UTC),
                 max_pairs=args.max_pairs,
+                horizon_days=args.horizon_days,
                 access_level=access_level,
                 language=language,
             )
     except (ValueError, psycopg.Error) as exc:
-        print(f"SPORTRADAR_A3_BLOCKED reason={type(exc).__name__} writes=0", flush=True)
+        print(
+            f"SPORTRADAR_A3_BLOCKED reason={type(exc).__name__} writes=0",
+            flush=True,
+        )
         return 2
 
 
