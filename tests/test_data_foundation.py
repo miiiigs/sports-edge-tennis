@@ -203,6 +203,7 @@ def test_quarter_kelly_stake_v1_migration_manifest_and_snapshot():
         "\n".join(
             _read_text(REPO_ROOT / Path(entry["up"]))
             for entry in manifest["migrations"]
+            if entry["version"] <= "0010"
         )
     )
     assert expected_full_schema_0010 == _normalized_sql(_read_text(SCHEMA_SNAPSHOT_PATH_0010))
