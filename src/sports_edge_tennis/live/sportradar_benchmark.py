@@ -113,13 +113,7 @@ def provider_name_identity_evidence(
     TENNIS_DATA alias and PIT-visible completed-history conditions as the production
     live-to-history bridge. It never mutates canonical identity.
     """
-    normalized_aliases = sorted(
-        {
-            normalize_person_lookup(alias)
-            for alias in tennis_data_aliases(provider_name)
-            if alias and normalize_person_lookup(alias)
-        }
-    )
+    normalized_aliases = sorted(deterministic_name_keys(provider_name))
     if not normalized_aliases:
         return ProviderNameIdentityEvidence("NO_NORMALIZED_ALIAS", (), ())
 
