@@ -22,7 +22,8 @@ import argparse
 import os
 import time
 from dataclasses import dataclass
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 import psycopg
@@ -43,9 +44,25 @@ from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY
 
 DEFAULT_CHUNK_DAYS = 7
 MAX_CHUNK_DAYS = 31
+APPLY_MAX_WINDOW_DAYS = 31
+APPLY_REQUIRED_CHUNK_DAYS = 1
+REGIME_SOURCE_SYSTEM = "API_TENNIS"
+_REGIME_MIGRATION = Path("db/migrations/0011_a2_history_data_regime_v1.up.sql")
+_REGIME_TRIGGER = "trg_a2_history_data_regimes_append_only_mutation"
 _TERMINAL_STATUSES = {"finished", "completed", "retired", "walkover"}
 
 FetchWindow = Callable[[str, date, date], tuple[Any, list[dict[str, Any]]]]
+
+
+@dataclass(frozen=True)
+class A2HistoryDataRegime:
+    regime_code: str
+    source_system: str
+    window_start: date
+    window_end: date
+    chunk_days: int
+    activated_at: datetime
+    activation_note: str | None
 
 
 @dataclass(frozen=True)
@@ -92,6 +109,140 @@ class StatsBackfillTotals:
         self.inserted_stat_rows += outcome.inserted_stat_rows
         self.existing_stat_rows += outcome.existing_stat_rows
         self.skipped_stat_matches += outcome.skipped_stat_matches
+
+
+def _aware(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        raise ValueError("activated_at must be timezone-aware")
+    return value.astimezone(UTC)
+
+
+def _regime_schema_state(conn: psycopg.Connection) -> tuple[bool, bool]:
+    table_row = conn.execute(
+        "SELECT to_regclass('public.a2_history_data_regimes')"
+    ).fetchone()
+    table_present = bool(table_row and table_row[0] is not None)
+    if not table_present:
+        return False, False
+    trigger_row = conn.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM pg_trigger
+            WHERE tgrelid = 'public.a2_history_data_regimes'::regclass
+              AND tgname = %s
+              AND NOT tgisinternal
+        )
+        """,
+        (_REGIME_TRIGGER,),
+    ).fetchone()
+    return True, bool(trigger_row and trigger_row[0])
+
+
+def _ensure_a2_history_regime_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _REGIME_MIGRATION,
+) -> str:
+    table_present, trigger_present = _regime_schema_state(conn)
+    if table_present and trigger_present:
+        return "EXISTING"
+    if table_present or trigger_present:
+        raise RuntimeError("A2 history regime schema is partially applied")
+
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    table_present, trigger_present = _regime_schema_state(conn)
+    if not table_present or not trigger_present:
+        raise RuntimeError("A2 history regime migration did not verify")
+    return "APPLIED"
+
+
+def activate_a2_history_regime(
+    conn: psycopg.Connection,
+    *,
+    regime_code: str,
+    window_start: date,
+    window_end: date,
+    chunk_days: int,
+    activated_at: datetime,
+    activation_note: str | None = None,
+) -> A2HistoryDataRegime:
+    code = regime_code.strip()
+    if not code:
+        raise ValueError("regime_code must not be blank")
+    if window_end < window_start:
+        raise ValueError("window_end must be >= window_start")
+    if not 1 <= chunk_days <= MAX_CHUNK_DAYS:
+        raise ValueError(f"chunk_days must be between 1 and {MAX_CHUNK_DAYS}")
+    activated = _aware(activated_at)
+    note = activation_note.strip() if activation_note and activation_note.strip() else None
+
+    conn.execute(
+        """
+        INSERT INTO a2_history_data_regimes (
+            regime_code,
+            source_system,
+            window_start,
+            window_end,
+            chunk_days,
+            activated_at,
+            activation_note
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (regime_code) DO NOTHING
+        """,
+        (
+            code,
+            REGIME_SOURCE_SYSTEM,
+            window_start,
+            window_end,
+            chunk_days,
+            activated,
+            note,
+        ),
+    )
+    row = conn.execute(
+        """
+        SELECT
+            regime_code,
+            source_system,
+            window_start,
+            window_end,
+            chunk_days,
+            activated_at,
+            activation_note
+        FROM a2_history_data_regimes
+        WHERE regime_code = %s
+        """,
+        (code,),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("A2 history regime activation row was not persisted")
+
+    regime = A2HistoryDataRegime(
+        regime_code=str(row[0]),
+        source_system=str(row[1]),
+        window_start=row[2],
+        window_end=row[3],
+        chunk_days=int(row[4]),
+        activated_at=row[5],
+        activation_note=row[6],
+    )
+    expected = (
+        REGIME_SOURCE_SYSTEM,
+        window_start,
+        window_end,
+        chunk_days,
+    )
+    observed = (
+        regime.source_system,
+        regime.window_start,
+        regime.window_end,
+        regime.chunk_days,
+    )
+    if observed != expected:
+        raise ValueError("regime_code already exists with different activation scope")
+    return regime
 
 
 def _text(value: Any) -> str:
@@ -468,8 +619,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--end-date", type=date.fromisoformat, required=True)
     parser.add_argument("--chunk-days", type=int, default=DEFAULT_CHUNK_DAYS)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--regime-code")
+    parser.add_argument("--activation-note")
     parser.add_argument("--dsn", default=_db_dsn())
     args = parser.parse_args(argv)
+
+    if args.dry_run and args.apply:
+        print("A2_STATS_BACKFILL_BLOCKED reason=CONFLICTING_MODE", flush=True)
+        return 2
+    if not args.dry_run and not args.apply:
+        print("A2_STATS_BACKFILL_BLOCKED reason=EXPLICIT_MODE_REQUIRED", flush=True)
+        return 2
+
+    window_days = (args.end_date - args.start_date).days + 1
+    if args.apply:
+        if not (args.regime_code or "").strip():
+            print("A2_STATS_BACKFILL_BLOCKED reason=REGIME_CODE_REQUIRED", flush=True)
+            return 2
+        if args.chunk_days != APPLY_REQUIRED_CHUNK_DAYS:
+            print(
+                f"A2_STATS_BACKFILL_BLOCKED reason=APPLY_REQUIRES_CHUNK_DAYS_{APPLY_REQUIRED_CHUNK_DAYS}",
+                flush=True,
+            )
+            return 2
+        if window_days > APPLY_MAX_WINDOW_DAYS:
+            print(
+                f"A2_STATS_BACKFILL_BLOCKED reason=APPLY_WINDOW_DAYS_MAX_{APPLY_MAX_WINDOW_DAYS}",
+                flush=True,
+            )
+            return 2
 
     if not args.dsn:
         print("A2_STATS_BACKFILL_BLOCKED reason=NO_DATABASE", flush=True)
@@ -484,6 +663,31 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         with psycopg.connect(args.dsn, autocommit=True) as conn:
+            if args.apply:
+                schema_status = _ensure_a2_history_regime_schema(conn)
+                print(
+                    f"A2_STATS_BACKFILL_SCHEMA status={schema_status} migration=0011",
+                    flush=True,
+                )
+                regime = activate_a2_history_regime(
+                    conn,
+                    regime_code=args.regime_code,
+                    window_start=args.start_date,
+                    window_end=args.end_date,
+                    chunk_days=args.chunk_days,
+                    activated_at=datetime.now(UTC),
+                    activation_note=args.activation_note,
+                )
+                print(
+                    "A2_STATS_BACKFILL_ACTIVATION "
+                    f"regime={regime.regime_code} "
+                    f"activated_at={regime.activated_at.isoformat()} "
+                    f"start={regime.window_start.isoformat()} "
+                    f"end={regime.window_end.isoformat()} "
+                    f"chunk_days={regime.chunk_days}",
+                    flush=True,
+                )
+
             backfill_stats_range(
                 conn,
                 api_key=api_key,
@@ -492,7 +696,7 @@ def main(argv: list[str] | None = None) -> int:
                 chunk_days=args.chunk_days,
                 dry_run=args.dry_run,
             )
-    except (ValueError, psycopg.Error) as exc:
+    except (ValueError, RuntimeError, OSError, psycopg.Error) as exc:
         print(f"A2_STATS_BACKFILL_BLOCKED reason={type(exc).__name__}", flush=True)
         return 2
     return 0
