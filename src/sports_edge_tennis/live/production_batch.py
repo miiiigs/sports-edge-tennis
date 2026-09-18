@@ -15,6 +15,10 @@ from pathlib import Path
 import psycopg
 
 from sports_edge_tennis.live.batch import main as live_batch_main
+from sports_edge_tennis.live.operational_health import (
+    evaluate_live_operational_health,
+    persist_live_operational_health,
+)
 from sports_edge_tennis.market import SharpReferenceSpec
 from sports_edge_tennis.settlement import (
     SettlementEvidenceConflict,
@@ -102,6 +106,37 @@ def _live_batch_gap_cycle(
         "LIVE_BATCH_GAP_OK "
         f"previous_prediction_run_id={prediction_run_id} "
         f"age_minutes={age_minutes} threshold_minutes={threshold_minutes}"
+    )
+
+
+def _live_operational_health_cycle(
+    dsn: str,
+    *,
+    cycle_started_at: datetime,
+    live_status: int,
+) -> None:
+    checked_at = datetime.now(timezone.utc)
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            health = evaluate_live_operational_health(
+                conn,
+                cycle_started_at=cycle_started_at,
+                live_status=live_status,
+            )
+            persist_live_operational_health(
+                conn,
+                health=health,
+                checked_at=checked_at,
+            )
+    except Exception as exc:
+        _log(f"LIVE_OPERATIONAL_HEALTH_WRITE_FAILED error_type={type(exc).__name__}")
+        return
+
+    _log(
+        "LIVE_OPERATIONAL_HEALTH "
+        f"status={health.status} freshness={health.freshness_state} "
+        f"completed_runs={health.completed_runs} targets={health.target_count} "
+        f"errors={health.error_count} notes={health.notes.replace(' ', '_')}"
     )
 
 
@@ -339,6 +374,11 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     live_status = live_batch_main(argv)
+    _live_operational_health_cycle(
+        dsn,
+        cycle_started_at=shadow_cycle_started_at,
+        live_status=live_status,
+    )
     if live_status != 0:
         _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")
         return live_status
