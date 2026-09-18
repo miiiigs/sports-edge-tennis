@@ -8,12 +8,14 @@ from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
     A2_REGIME_AUDIT_CODE_ENV,
     A2_REGIME_AUDIT_ENABLED_ENV,
+    MARKET_STALE_SELFTEST_ENABLED_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
     A2_STATS_DRY_RUN_END_DATE_ENV,
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
     _run_optional_a2_regime_audit,
+    _run_optional_stale_market_selftest,
     _run_optional_a2_stats_dry_run,
     run_resilient_history_refresh,
 )
@@ -382,3 +384,21 @@ def test_optional_a2_regime_audit_reports_expected_accounting(capsys):
     assert "pre_activation_rows=48" in out
     assert "distinct_matches=1471" in out
     assert "complete_two_player_matches=1471" in out
+
+
+def test_optional_stale_market_selftest_is_disabled_by_default(capsys):
+    _run_optional_stale_market_selftest(env={})
+    assert capsys.readouterr().out == ""
+
+
+def test_optional_stale_market_selftest_passes_fail_closed_invariant(capsys):
+    _run_optional_stale_market_selftest(
+        env={MARKET_STALE_SELFTEST_ENABLED_ENV: "true"}
+    )
+
+    out = capsys.readouterr().out
+    assert "MARKET_STALE_SELFTEST status=PASS" in out
+    assert "decision=NO_BET" in out
+    assert "reason=STALE_MARKET" in out
+    assert "stake=-" in out
+    assert "writes=0" in out
