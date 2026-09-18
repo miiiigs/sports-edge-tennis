@@ -32,6 +32,7 @@ from sports_edge_tennis.live.sportradar_benchmark import (
     benchmark_challenger_a2_stats,
     link_gap_target,
     load_latest_gap_targets,
+    provider_name_identity_evidence,
 )
 from sports_edge_tennis.live.sportradar_surface_apply import run_optional_surface_fill
 from sports_edge_tennis.live.sportradar import (
@@ -685,6 +686,25 @@ def run_probe(
                             and target.surface_status == "UNRESOLVED"
                         ):
                             exact_surface_links.append((target, candidate))
+
+                        p1_identity = None
+                        p2_identity = None
+                        if result.status == "EXACT" and candidate is not None:
+                            if target.player_1_identity_status == "LIVE_UNRESOLVED":
+                                p1_identity = provider_name_identity_evidence(
+                                    conn,
+                                    live_player_id=target.player_1_id,
+                                    provider_name=candidate.player_1_sportradar_name,
+                                    as_of=target.prediction_as_of,
+                                )
+                            if target.player_2_identity_status == "LIVE_UNRESOLVED":
+                                p2_identity = provider_name_identity_evidence(
+                                    conn,
+                                    live_player_id=target.player_2_id,
+                                    provider_name=candidate.player_2_sportradar_name,
+                                    as_of=target.prediction_as_of,
+                                )
+
                         print(
                             "SPORTRADAR_GAP_LINK "
                             f"match_id={target.match_id} status={result.status} "
@@ -696,6 +716,10 @@ def run_probe(
                             f"competition_id={candidate.competition_id if candidate else '-'} "
                             f"p1_sr={candidate.player_1_sportradar_id if candidate else '-'} "
                             f"p2_sr={candidate.player_2_sportradar_id if candidate else '-'} "
+                            f"p1_provider_identity={p1_identity.status if p1_identity else '-'} "
+                            f"p1_provider_pit_ids={','.join(str(value) for value in p1_identity.pit_candidates[:3]) if p1_identity and p1_identity.pit_candidates else '-'} "
+                            f"p2_provider_identity={p2_identity.status if p2_identity else '-'} "
+                            f"p2_provider_pit_ids={','.join(str(value) for value in p2_identity.pit_candidates[:3]) if p2_identity and p2_identity.pit_candidates else '-'} "
                             f"start_delta_min={candidate.start_delta_minutes if candidate and candidate.start_delta_minutes is not None else '-'} "
                             "mapping_changed=0",
                             flush=True,
