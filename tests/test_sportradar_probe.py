@@ -4,11 +4,14 @@ from datetime import UTC, date, datetime
 
 from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
+    A3_EVIDENCE_ENABLED_ENV,
+    A3_EVIDENCE_MAX_PAIRS_ENV,
     HISTORY_DEPTH_ENABLED_ENV,
     HISTORY_DEPTH_MAX_COMPETITIONS_ENV,
     HISTORY_DEPTH_MAX_PAGES_ENV,
     RequestPacer,
     _paced_fetch,
+    _run_optional_a3_evidence,
     _run_optional_history_depth,
     find_competitions,
     find_player_candidates,
@@ -274,5 +277,87 @@ def test_optional_history_depth_rejects_non_integer_bounds():
                 HISTORY_DEPTH_MAX_COMPETITIONS_ENV: "nope",
             },
             runner=lambda **kwargs: 0,
+            sleep=lambda seconds: None,
+        )
+
+
+def test_optional_a3_evidence_is_disabled_by_default():
+    calls = []
+    sleeps = []
+
+    def runner(conn, **kwargs):
+        calls.append((conn, kwargs))
+        return 0
+
+    status = _run_optional_a3_evidence(
+        object(),
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        access_level="trial",
+        language="en",
+        env={},
+        runner=runner,
+        sleep=sleeps.append,
+    )
+
+    assert status == 0
+    assert calls == []
+    assert sleeps == []
+
+
+def test_optional_a3_evidence_dispatches_bounded_probe_when_enabled(capsys):
+    calls = []
+    sleeps = []
+    conn = object()
+
+    def runner(received_conn, **kwargs):
+        calls.append((received_conn, kwargs))
+        return 0
+
+    status = _run_optional_a3_evidence(
+        conn,
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        access_level="trial",
+        language="en",
+        env={
+            A3_EVIDENCE_ENABLED_ENV: "true",
+            A3_EVIDENCE_MAX_PAIRS_ENV: "2",
+        },
+        runner=runner,
+        sleep=sleeps.append,
+    )
+
+    assert status == 0
+    assert sleeps == [2.0]
+    assert calls == [
+        (
+            conn,
+            {
+                "api_key": "secret",
+                "target_date": date(2026, 9, 18),
+                "max_pairs": 2,
+                "access_level": "trial",
+                "language": "en",
+            },
+        )
+    ]
+    output = capsys.readouterr().out
+    assert "SPORTRADAR_A3_DISPATCH date=2026-09-18 max_pairs=2 writes=0" in output
+
+
+def test_optional_a3_evidence_rejects_out_of_range_pairs():
+    with pytest.raises(ValueError, match="between 1 and 5"):
+        _run_optional_a3_evidence(
+            object(),
+            api_key="secret",
+            target_date=date(2026, 9, 18),
+            access_level="trial",
+            language="en",
+            env={
+                A3_EVIDENCE_ENABLED_ENV: "1",
+                A3_EVIDENCE_MAX_PAIRS_ENV: "6",
+            },
+            runner=lambda conn, **kwargs: 0,
             sleep=lambda seconds: None,
         )
