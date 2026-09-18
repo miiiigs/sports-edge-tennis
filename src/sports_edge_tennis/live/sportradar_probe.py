@@ -34,6 +34,7 @@ from sports_edge_tennis.live.sportradar_benchmark import (
     load_latest_gap_targets,
     provider_name_identity_evidence,
 )
+from sports_edge_tennis.live.sportradar_identity_bridge_apply import run_optional_identity_bridge
 from sports_edge_tennis.live.sportradar_surface_apply import run_optional_surface_fill
 from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
@@ -646,6 +647,7 @@ def run_probe(
         flush=True,
     )
 
+    exact_gap_links: list[tuple[Any, Any]] = []
     exact_surface_links: list[tuple[Any, Any]] = []
 
     dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
@@ -680,12 +682,10 @@ def run_probe(
                         result = link_gap_target(target, daily)
                         link_counts[result.status] += 1
                         candidate = result.candidates[0] if len(result.candidates) == 1 else None
-                        if (
-                            result.status == "EXACT"
-                            and candidate is not None
-                            and target.surface_status == "UNRESOLVED"
-                        ):
-                            exact_surface_links.append((target, candidate))
+                        if result.status == "EXACT" and candidate is not None:
+                            exact_gap_links.append((target, candidate))
+                            if target.surface_status == "UNRESOLVED":
+                                exact_surface_links.append((target, candidate))
 
                         p1_identity = None
                         p2_identity = None
@@ -759,6 +759,19 @@ def run_probe(
     except (ValueError, RuntimeError, psycopg.Error, SportradarTransportError) as exc:
         print(
             "SPORTRADAR_SURFACE_APPLY_BLOCKED "
+            f"reason={type(exc).__name__} writes=0",
+            flush=True,
+        )
+        return 2
+
+    try:
+        run_optional_identity_bridge(
+            dsn=dsn,
+            exact_links=tuple(exact_gap_links),
+        )
+    except (ValueError, RuntimeError, psycopg.Error) as exc:
+        print(
+            "SPORTRADAR_IDENTITY_BRIDGE_APPLY_BLOCKED "
             f"reason={type(exc).__name__} writes=0",
             flush=True,
         )
