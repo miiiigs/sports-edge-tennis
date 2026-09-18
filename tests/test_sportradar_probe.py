@@ -212,7 +212,7 @@ def test_optional_history_depth_is_disabled_by_default():
 
     status = _run_optional_history_depth(
         api_key="secret",
-        as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
+        target_date=date(2026, 9, 18),
         access_level="trial",
         language="en",
         env={},
@@ -235,7 +235,7 @@ def test_optional_history_depth_dispatches_bounded_probe_when_enabled(capsys):
 
     status = _run_optional_history_depth(
         api_key="secret",
-        as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
+        target_date=date(2026, 9, 18),
         access_level="trial",
         language="en",
         env={
@@ -270,7 +270,7 @@ def test_optional_history_depth_rejects_non_integer_bounds():
     with pytest.raises(ValueError, match="bounds must be integers"):
         _run_optional_history_depth(
             api_key="secret",
-            as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
+            target_date=date(2026, 9, 18),
             access_level="trial",
             language="en",
             env={
