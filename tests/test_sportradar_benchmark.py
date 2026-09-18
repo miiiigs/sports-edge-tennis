@@ -18,17 +18,20 @@ def _event(
     *,
     stats=None,
     status="closed",
+    category_name="Challenger",
+    competition_name="ATP Challenger Rennes Men Singles",
+    competition_level="challenger",
 ):
     row = {
         "sport_event": {
             "id": event_id,
             "start_time": start_time,
             "sport_event_context": {
-                "category": {"name": "Challenger"},
+                "category": {"name": category_name},
                 "competition": {
                     "id": "sr:competition:1",
-                    "name": "ATP Challenger Rennes Men Singles",
-                    "level": "challenger",
+                    "name": competition_name,
+                    "level": competition_level,
                 },
             },
             "competitors": [
@@ -122,6 +125,30 @@ def test_gap_link_resolves_unique_participant_pair_inside_time_window():
     assert candidate.start_delta_minutes == 80
     assert candidate.player_1_sportradar_id == "sr:competitor:873695"
     assert candidate.player_2_sportradar_id == "sr:competitor:294300"
+
+
+def test_gap_link_resolves_atp_main_event_without_challenger_filter():
+    payload = {
+        "summaries": [
+            _event(
+                "sr:sport_event:12",
+                "2026-09-18T12:40:00+00:00",
+                "sr:competitor:873695",
+                "Blanch, Darwin",
+                "sr:competitor:294300",
+                "Nakashima, Brandon",
+                category_name="Davis Cup",
+                competition_name="Davis Cup World Group I",
+                competition_level="atp",
+            )
+        ]
+    }
+
+    result = link_gap_target(_target(), payload)
+
+    assert result.status == "EXACT"
+    assert result.candidates[0].event_id == "sr:sport_event:12"
+    assert result.candidates[0].competition_name == "Davis Cup World Group I"
 
 
 def test_gap_link_fails_closed_when_multiple_events_fit():
