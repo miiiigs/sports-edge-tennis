@@ -8,6 +8,7 @@ import pytest
 from sports_edge_tennis.live.production_batch import (
     _STAKING_CONSTRAINTS,
     _a1_evidence_cycle,
+    _ensure_publication_control_schema,
     _ensure_quarter_kelly_schema,
     _live_batch_gap_cycle,
     _live_operational_health_cycle,
@@ -189,3 +190,63 @@ def test_live_operational_health_cycle_is_fail_isolated(monkeypatch, capsys):
         "LIVE_OPERATIONAL_HEALTH_WRITE_FAILED error_type=RuntimeError"
         in capsys.readouterr().out
     )
+
+
+
+class _PublicationSchemaConn:
+    def __init__(self, *, table_present: bool, trigger_present: bool):
+        self.table_present = table_present
+        self.trigger_present = trigger_present
+        self.migration_execs = 0
+
+    def execute(self, sql, params=()):
+        rendered = str(sql)
+        if "to_regclass('public.publication_control_events')" in rendered:
+            return _Cursor(row=(self.table_present,))
+        if "FROM pg_trigger" in rendered:
+            return _Cursor(row=(self.trigger_present,))
+        if "CREATE TABLE publication_control_events" in rendered:
+            self.migration_execs += 1
+            self.table_present = True
+            self.trigger_present = True
+            return _Cursor()
+        raise AssertionError(f"unexpected publication schema SQL: {rendered[:100]}")
+
+
+def test_publication_control_schema_existing_is_idempotent(tmp_path: Path):
+    conn = _PublicationSchemaConn(table_present=True, trigger_present=True)
+
+    status = _ensure_publication_control_schema(
+        conn,
+        migration_path=tmp_path / "must-not-be-read.sql",
+    )
+
+    assert status == "EXISTING"
+    assert conn.migration_execs == 0
+
+
+def test_publication_control_schema_missing_applies_then_verifies(tmp_path: Path):
+    migration = tmp_path / "0012.sql"
+    migration.write_text(
+        "BEGIN;\nCREATE TABLE publication_control_events (id BIGINT);\nCOMMIT;\n"
+    )
+    conn = _PublicationSchemaConn(table_present=False, trigger_present=False)
+
+    status = _ensure_publication_control_schema(conn, migration_path=migration)
+
+    assert status == "APPLIED"
+    assert conn.migration_execs == 1
+    assert conn.table_present is True
+    assert conn.trigger_present is True
+
+
+def test_publication_control_partial_schema_fails_closed(tmp_path: Path):
+    conn = _PublicationSchemaConn(table_present=True, trigger_present=False)
+
+    with pytest.raises(RuntimeError, match="partially applied"):
+        _ensure_publication_control_schema(
+            conn,
+            migration_path=tmp_path / "0012.sql",
+        )
+
+    assert conn.migration_execs == 0

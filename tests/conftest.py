@@ -57,6 +57,7 @@ def _reset_db(conn: psycopg.Connection) -> None:
     conn.execute(
         """
         TRUNCATE TABLE
+            publication_control_events,
             data_health_checks,
             decision_clv,
             decision_settlements,

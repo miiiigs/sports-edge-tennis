@@ -24,6 +24,7 @@ from sports_edge_tennis.market.persistence import (
     load_match_winner_odds,
 )
 from sports_edge_tennis.publication import PublicationError
+from sports_edge_tennis.publication_control import enable_publication, halt_publication
 
 
 A1 = "AGENT_1_SURFACE_ELO"
@@ -391,3 +392,67 @@ def test_price_drop_below_minimum_before_publication_fails_closed(
         "SELECT count(*) FROM decisions WHERE prediction_run_id = %s",
         (run_id,),
     ).fetchone()[0] == 0
+
+
+
+def test_publication_halt_blocks_new_bet_until_manual_enable(
+    db: psycopg.Connection,
+):
+    run_id, match_id = _setup_consensus(db)
+    _seed_value_market(db, match_id)
+
+    halt_publication(
+        db,
+        source="SYSTEM",
+        reason="controlled stop drill",
+        created_at=_utc(10, 44),
+    )
+
+    with pytest.raises(PublicationError, match="publication halted by control state"):
+        _run_market(db, run_id, execution_at=_utc(10, 46))
+
+    assert db.execute(
+        "SELECT count(*) FROM decisions WHERE prediction_run_id = %s",
+        (run_id,),
+    ).fetchone()[0] == 0
+
+    enable_publication(
+        db,
+        actor="qa-operator",
+        reason="controlled stop drill complete",
+        created_at=_utc(10, 47),
+    )
+
+    result = _run_market(db, run_id, execution_at=_utc(10, 48))
+
+    assert result.qualified_bet_count == 1
+    assert db.execute(
+        "SELECT published_at FROM decisions WHERE prediction_run_id = %s",
+        (run_id,),
+    ).fetchone()[0] == _utc(10, 48)
+
+
+
+def test_later_publication_halt_does_not_rewrite_already_published_bet(
+    db: psycopg.Connection,
+):
+    run_id, match_id = _setup_consensus(db)
+    _seed_value_market(db, match_id)
+
+    first = _run_market(db, run_id, execution_at=_utc(10, 46))
+    assert first.qualified_bet_count == 1
+
+    halt_publication(
+        db,
+        source="SYSTEM",
+        reason="later operational stop",
+        created_at=_utc(10, 50),
+    )
+
+    retry = _run_market(db, run_id, execution_at=_utc(10, 55))
+
+    assert retry.status == "IDEMPOTENT_SUCCESS"
+    assert db.execute(
+        "SELECT published_at FROM decisions WHERE prediction_run_id = %s",
+        (run_id,),
+    ).fetchone()[0] == _utc(10, 46)
