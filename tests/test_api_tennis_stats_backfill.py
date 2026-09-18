@@ -3,11 +3,15 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 
 import psycopg
+import pytest
 
 from sports_edge_tennis.data.sources.api_tennis_live import ingest_api_tennis_source_a_fixtures
 from sports_edge_tennis.live.api_tennis_stats_backfill import (
+    _ensure_a2_history_regime_schema,
+    activate_a2_history_regime,
     backfill_stats_chunk,
     backfill_stats_range,
+    main as backfill_main,
 )
 from sports_edge_tennis.runner.live_model_cache import AGENT2_CACHE_KEY, save_checkpoint
 
@@ -265,3 +269,144 @@ def test_dry_run_logs_stage_boundaries(db: psycopg.Connection, capsys):
     assert "stage=LINK_DONE terminal=1 matched=1" in output
     assert "stage=PREVIEW_START" in output
     assert "stage=PREVIEW_DONE eligible=1 skipped=0" in output
+
+
+def test_a2_history_regime_schema_exists_from_migration(db: psycopg.Connection):
+    assert _ensure_a2_history_regime_schema(db) == "EXISTING"
+
+
+def test_a2_history_regime_activation_is_idempotent_and_scope_immutable(
+    db: psycopg.Connection,
+):
+    first = activate_a2_history_regime(
+        db,
+        regime_code="API_TENNIS_A2_HISTORY_2026_08_18_09_17_V1",
+        window_start=date(2026, 8, 18),
+        window_end=date(2026, 9, 17),
+        chunk_days=1,
+        activated_at=BACKFILL_AT,
+        activation_note="31-day dry-run validated",
+    )
+    second = activate_a2_history_regime(
+        db,
+        regime_code=first.regime_code,
+        window_start=first.window_start,
+        window_end=first.window_end,
+        chunk_days=1,
+        activated_at=datetime(2026, 9, 18, 0, 0, tzinfo=UTC),
+        activation_note="rerun",
+    )
+
+    assert second.activated_at == BACKFILL_AT
+    assert db.execute(
+        "SELECT count(*) FROM a2_history_data_regimes WHERE regime_code = %s",
+        (first.regime_code,),
+    ).fetchone()[0] == 1
+
+    with pytest.raises(ValueError, match="different activation scope"):
+        activate_a2_history_regime(
+            db,
+            regime_code=first.regime_code,
+            window_start=date(2026, 8, 19),
+            window_end=first.window_end,
+            chunk_days=1,
+            activated_at=BACKFILL_AT,
+        )
+
+
+def test_a2_history_regime_is_append_only(db: psycopg.Connection):
+    regime = activate_a2_history_regime(
+        db,
+        regime_code="APPEND_ONLY_TEST",
+        window_start=date(2026, 9, 1),
+        window_end=date(2026, 9, 7),
+        chunk_days=1,
+        activated_at=BACKFILL_AT,
+    )
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            "UPDATE a2_history_data_regimes SET window_end = %s WHERE regime_code = %s",
+            (date(2026, 9, 8), regime.regime_code),
+        )
+    db.rollback()
+
+
+def test_cli_requires_explicit_mode_before_any_write(capsys):
+    rc = backfill_main(
+        [
+            "--start-date",
+            "2026-08-18",
+            "--end-date",
+            "2026-09-17",
+        ]
+    )
+    assert rc == 2
+    assert "reason=EXPLICIT_MODE_REQUIRED" in capsys.readouterr().out
+
+
+def test_cli_rejects_conflicting_modes(capsys):
+    rc = backfill_main(
+        [
+            "--start-date",
+            "2026-08-18",
+            "--end-date",
+            "2026-09-17",
+            "--dry-run",
+            "--apply",
+        ]
+    )
+    assert rc == 2
+    assert "reason=CONFLICTING_MODE" in capsys.readouterr().out
+
+
+def test_cli_apply_requires_regime_code(capsys):
+    rc = backfill_main(
+        [
+            "--start-date",
+            "2026-08-18",
+            "--end-date",
+            "2026-09-17",
+            "--chunk-days",
+            "1",
+            "--apply",
+        ]
+    )
+    assert rc == 2
+    assert "reason=REGIME_CODE_REQUIRED" in capsys.readouterr().out
+
+
+def test_cli_apply_requires_one_day_chunks(capsys):
+    rc = backfill_main(
+        [
+            "--start-date",
+            "2026-08-18",
+            "--end-date",
+            "2026-09-17",
+            "--chunk-days",
+            "7",
+            "--apply",
+            "--regime-code",
+            "TEST_REGIME",
+        ]
+    )
+    assert rc == 2
+    assert "reason=APPLY_REQUIRES_CHUNK_DAYS_1" in capsys.readouterr().out
+
+
+def test_cli_apply_rejects_window_over_31_days(capsys):
+    rc = backfill_main(
+        [
+            "--start-date",
+            "2026-08-17",
+            "--end-date",
+            "2026-09-17",
+            "--chunk-days",
+            "1",
+            "--apply",
+            "--regime-code",
+            "TEST_REGIME",
+        ]
+    )
+    assert rc == 2
+    assert "reason=APPLY_WINDOW_DAYS_MAX_31" in capsys.readouterr().out
