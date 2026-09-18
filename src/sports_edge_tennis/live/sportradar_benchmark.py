@@ -458,6 +458,139 @@ def link_gap_target(
     return GapLinkResult("UNRESOLVED", ())
 
 
+def load_gap_target_for_match(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+) -> CanonicalGapTarget | None:
+    """Load the latest completed pre-match production target for one match.
+
+    This is a narrow read-only fallback for operator-authorized bridge revalidation
+    after a match has aged out of the latest live batch. It preserves the original
+    prediction as-of time for all PIT identity/surface checks and never selects an
+    experiment or post-start prediction.
+    """
+    row = conn.execute(
+        """
+        SELECT
+            prt.match_id,
+            pr.as_of AS prediction_as_of,
+            mv.player_1_id,
+            p1.canonical_name,
+            mv.player_2_id,
+            p2.canonical_name,
+            mv.match_start_at,
+            mv.surface::text,
+            te.surface::text,
+            mv.tour_scope::text,
+            mv.competition_tier::text,
+            t.tournament_id,
+            t.canonical_name,
+            te.season_year
+        FROM prediction_run_targets prt
+        JOIN prediction_runs pr
+          ON pr.prediction_run_id = prt.prediction_run_id
+        JOIN LATERAL (
+            SELECT mv_inner.*
+            FROM match_versions mv_inner
+            WHERE mv_inner.match_id = prt.match_id
+              AND mv_inner.source_observed_at <= pr.as_of
+              AND mv_inner.as_of <= pr.as_of
+            ORDER BY
+                mv_inner.as_of DESC,
+                mv_inner.source_observed_at DESC,
+                mv_inner.match_version_id DESC
+            LIMIT 1
+        ) mv ON TRUE
+        JOIN players p1 ON p1.player_id = mv.player_1_id
+        JOIN players p2 ON p2.player_id = mv.player_2_id
+        JOIN matches m ON m.match_id = prt.match_id
+        JOIN tournament_editions te
+          ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        WHERE prt.match_id = %s
+          AND pr.run_status = 'COMPLETED'
+          AND pr.experiment_id IS NULL
+          AND pr.as_of < mv.match_start_at
+        ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    if row is None:
+        return None
+
+    (
+        selected_match_id,
+        target_as_of,
+        player_1_id,
+        player_1_name,
+        player_2_id,
+        player_2_name,
+        match_start_at,
+        live_surface,
+        edition_surface,
+        tour_scope,
+        _competition_tier,
+        tournament_id,
+        tournament_name,
+        season_year,
+    ) = row
+
+    model_player_1_id = _resolve_model_player_id(
+        conn,
+        player_id=int(player_1_id),
+        as_of=target_as_of,
+    )
+    model_player_2_id = _resolve_model_player_id(
+        conn,
+        player_id=int(player_2_id),
+        as_of=target_as_of,
+    )
+    player_1_status = _model_identity_status(
+        conn,
+        live_player_id=int(player_1_id),
+        model_player_id=model_player_1_id,
+    )
+    player_2_status = _model_identity_status(
+        conn,
+        live_player_id=int(player_2_id),
+        model_player_id=model_player_2_id,
+    )
+    model_surface, surface_status = _resolve_model_surface(
+        conn,
+        tournament_id=int(tournament_id),
+        canonical_name=str(tournament_name),
+        tour_scope=str(tour_scope),
+        season_year=int(season_year),
+        live_surface=live_surface,
+        edition_surface=edition_surface,
+        as_of=target_as_of,
+    )
+    if (
+        player_1_status != "LIVE_UNRESOLVED"
+        and player_2_status != "LIVE_UNRESOLVED"
+        and model_surface is not None
+    ):
+        return None
+
+    return CanonicalGapTarget(
+        match_id=int(selected_match_id),
+        prediction_as_of=target_as_of,
+        player_1_id=int(player_1_id),
+        player_1_name=str(player_1_name),
+        player_2_id=int(player_2_id),
+        player_2_name=str(player_2_name),
+        match_start_at=match_start_at,
+        tournament_id=int(tournament_id),
+        tournament_name=str(tournament_name),
+        season_year=int(season_year),
+        player_1_identity_status=player_1_status,
+        player_2_identity_status=player_2_status,
+        surface_status=surface_status,
+    )
+
+
 def load_latest_gap_targets(
     conn: psycopg.Connection,
     *,
@@ -638,6 +771,7 @@ __all__ = [
     "benchmark_challenger_a2_stats",
     "deterministic_name_keys",
     "link_gap_target",
+    "load_gap_target_for_match",
     "load_latest_gap_targets",
     "summary_is_challenger",
 ]
