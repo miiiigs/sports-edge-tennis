@@ -4,8 +4,12 @@ from datetime import UTC, date, datetime
 
 from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
+    HISTORY_DEPTH_ENABLED_ENV,
+    HISTORY_DEPTH_MAX_COMPETITIONS_ENV,
+    HISTORY_DEPTH_MAX_PAGES_ENV,
     RequestPacer,
     _paced_fetch,
+    _run_optional_history_depth,
     find_competitions,
     find_player_candidates,
     select_season,
@@ -192,3 +196,83 @@ def test_paced_fetch_does_not_retry_non_429():
         )
 
     assert exc.value.kind == "HTTP_403"
+
+
+def test_optional_history_depth_is_disabled_by_default():
+    calls = []
+    sleeps = []
+
+    def runner(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    status = _run_optional_history_depth(
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        access_level="trial",
+        language="en",
+        env={},
+        runner=runner,
+        sleep=sleeps.append,
+    )
+
+    assert status == 0
+    assert calls == []
+    assert sleeps == []
+
+
+def test_optional_history_depth_dispatches_bounded_probe_when_enabled(capsys):
+    calls = []
+    sleeps = []
+
+    def runner(**kwargs):
+        calls.append(kwargs)
+        return 0
+
+    status = _run_optional_history_depth(
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        access_level="trial",
+        language="en",
+        env={
+            HISTORY_DEPTH_ENABLED_ENV: "true",
+            HISTORY_DEPTH_MAX_COMPETITIONS_ENV: "2",
+            HISTORY_DEPTH_MAX_PAGES_ENV: "1",
+        },
+        runner=runner,
+        sleep=sleeps.append,
+    )
+
+    assert status == 0
+    assert sleeps == [2.0]
+    assert calls == [
+        {
+            "api_key": "secret",
+            "target_date": date(2026, 9, 18),
+            "access_level": "trial",
+            "language": "en",
+            "max_competitions": 2,
+            "max_pages": 1,
+        }
+    ]
+    output = capsys.readouterr().out
+    assert (
+        "SPORTRADAR_HISTORY_DEPTH_DISPATCH date=2026-09-18 "
+        "max_competitions=2 max_pages=1 writes=0"
+    ) in output
+
+
+def test_optional_history_depth_rejects_non_integer_bounds():
+    with pytest.raises(ValueError, match="bounds must be integers"):
+        _run_optional_history_depth(
+            api_key="secret",
+            target_date=date(2026, 9, 18),
+            access_level="trial",
+            language="en",
+            env={
+                HISTORY_DEPTH_ENABLED_ENV: "1",
+                HISTORY_DEPTH_MAX_COMPETITIONS_ENV: "nope",
+            },
+            runner=lambda **kwargs: 0,
+            sleep=lambda seconds: None,
+        )
