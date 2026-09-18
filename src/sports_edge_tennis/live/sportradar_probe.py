@@ -18,11 +18,19 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime, timezone
 from typing import Any
 
+import psycopg
+
 from sports_edge_tennis.live.credentials import load_secret
+from sports_edge_tennis.live.sportradar_benchmark import (
+    benchmark_challenger_a2_stats,
+    link_gap_target,
+    load_latest_gap_targets,
+)
 from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
     fetch_competition_seasons,
@@ -333,6 +341,86 @@ def run_probe(
         f"merge_mappings={len(merge_rows)}",
         flush=True,
     )
+
+    a2_coverage = benchmark_challenger_a2_stats(daily)
+    missing_text = ",".join(
+        f"{reason}:{count}" for reason, count in a2_coverage.missing_reasons
+    ) or "-"
+    print(
+        "SPORTRADAR_A2_COMPLETENESS "
+        f"challenger_total={a2_coverage.challenger_total} "
+        f"closed_total={a2_coverage.closed_total} "
+        f"with_statistics={a2_coverage.summaries_with_statistics} "
+        f"two_sided_statistics={a2_coverage.two_sided_statistics} "
+        f"a2_core_ready={a2_coverage.a2_core_ready} "
+        f"serve_detail_ready={a2_coverage.serve_detail_ready} "
+        f"closed_with_statistics={a2_coverage.closed_with_statistics} "
+        f"closed_a2_core_ready={a2_coverage.closed_a2_core_ready} "
+        f"missing={missing_text} writes=0",
+        flush=True,
+    )
+
+    dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    if not dsn:
+        print(
+            "SPORTRADAR_GAP_BENCHMARK_BLOCKED reason=NO_DATABASE writes=0",
+            flush=True,
+        )
+    else:
+        try:
+            with psycopg.connect(dsn, autocommit=False) as conn:
+                prediction_run_id, run_as_of, gap_targets = load_latest_gap_targets(
+                    conn,
+                    target_date=target_date,
+                )
+                if prediction_run_id is None or run_as_of is None:
+                    print(
+                        "SPORTRADAR_GAP_BENCHMARK_BLOCKED "
+                        f"reason=NO_COMPLETED_RUN date={target_date.isoformat()} writes=0",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        "SPORTRADAR_GAP_BENCHMARK_START "
+                        f"prediction_run_id={prediction_run_id} "
+                        f"as_of={run_as_of.isoformat()} gaps={len(gap_targets)} writes=0",
+                        flush=True,
+                    )
+                    link_counts: Counter[str] = Counter()
+                    for target in gap_targets:
+                        result = link_gap_target(target, daily)
+                        link_counts[result.status] += 1
+                        candidate = result.candidates[0] if len(result.candidates) == 1 else None
+                        print(
+                            "SPORTRADAR_GAP_LINK "
+                            f"match_id={target.match_id} status={result.status} "
+                            f"p1_status={target.player_1_identity_status} "
+                            f"p2_status={target.player_2_identity_status} "
+                            f"surface_status={target.surface_status} "
+                            f"candidate_count={len(result.candidates)} "
+                            f"event_id={candidate.event_id if candidate else '-'} "
+                            f"p1_sr={candidate.player_1_sportradar_id if candidate else '-'} "
+                            f"p2_sr={candidate.player_2_sportradar_id if candidate else '-'} "
+                            f"start_delta_min={candidate.start_delta_minutes if candidate and candidate.start_delta_minutes is not None else '-'} "
+                            "mapping_changed=0",
+                            flush=True,
+                        )
+                    counts_text = " ".join(
+                        f"{status.lower()}={count}"
+                        for status, count in sorted(link_counts.items())
+                    ) or "none=0"
+                    print(
+                        "SPORTRADAR_GAP_BENCHMARK_SUMMARY "
+                        f"prediction_run_id={prediction_run_id} gaps={len(gap_targets)} "
+                        f"{counts_text} writes=0",
+                        flush=True,
+                    )
+                conn.rollback()
+        except psycopg.Error:
+            print(
+                "SPORTRADAR_GAP_BENCHMARK_UNAVAILABLE kind=DATABASE writes=0",
+                flush=True,
+            )
 
     for query in competition_queries:
         matches = find_competitions(competitions, query)
