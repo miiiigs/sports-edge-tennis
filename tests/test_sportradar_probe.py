@@ -1,6 +1,9 @@
+import pytest
+
 from datetime import date
 
 from sports_edge_tennis.live.sportradar_probe import (
+    RequestPacer,
     find_competitions,
     find_player_candidates,
     select_season,
@@ -107,3 +110,26 @@ def test_summary_statistics_requires_non_empty_mapping():
     assert summary_has_statistics({"statistics": {"totals": {}}})
     assert not summary_has_statistics({"statistics": {}})
     assert not summary_has_statistics({})
+
+
+
+def test_request_pacer_enforces_minimum_interval():
+    clock = {"now": 10.0}
+    sleeps = []
+
+    def monotonic():
+        return clock["now"]
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock["now"] += seconds
+
+    pacer = RequestPacer(1.1, monotonic=monotonic, sleep=sleep)
+
+    pacer.wait()
+    clock["now"] += 0.4
+    pacer.wait()
+
+    assert len(sleeps) == 1
+    assert sleeps[0] == pytest.approx(0.7)
+    assert clock["now"] == pytest.approx(11.1)
