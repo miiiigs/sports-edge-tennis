@@ -1,16 +1,25 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
+from types import SimpleNamespace
 
 import pytest
 
 from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
+    A2_STATS_APPLY_AUTHORIZATION,
+    A2_STATS_APPLY_AUTH_ENV,
+    A2_STATS_APPLY_ENABLED_ENV,
+    A2_STATS_APPLY_END_DATE_ENV,
+    A2_STATS_APPLY_NOTE_ENV,
+    A2_STATS_APPLY_REGIME_CODE_ENV,
+    A2_STATS_APPLY_START_DATE_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
     A2_STATS_DRY_RUN_END_DATE_ENV,
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
+    _run_optional_a2_stats_apply,
     _run_optional_a2_stats_dry_run,
     run_resilient_history_refresh,
 )
@@ -304,5 +313,156 @@ def test_optional_a2_stats_dry_run_rejects_invalid_end_override(db):
                 A2_STATS_DRY_RUN_ENABLED_ENV: "1",
                 A2_STATS_DRY_RUN_END_DATE_ENV: "not-a-date",
             },
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_apply_is_disabled_by_default(db):
+    calls = []
+
+    _run_optional_a2_stats_apply(
+        db,
+        api_key="test-key",
+        validation_end_date=date(2026, 9, 17),
+        env={},
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert calls == []
+
+
+def test_optional_a2_stats_apply_requires_authorization_token(db):
+    with pytest.raises(ValueError, match="authorization token mismatch"):
+        _run_optional_a2_stats_apply(
+            db,
+            api_key="test-key",
+            validation_end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_APPLY_ENABLED_ENV: "true",
+                A2_STATS_APPLY_AUTH_ENV: "wrong",
+                A2_STATS_APPLY_START_DATE_ENV: "2026-08-18",
+                A2_STATS_APPLY_END_DATE_ENV: "2026-09-17",
+                A2_STATS_APPLY_REGIME_CODE_ENV: "A2_TEST",
+            },
+            schema_ensurer=lambda conn: "EXISTING",
+            activator=lambda *args, **kwargs: None,
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_apply_rejects_dry_run_conflict(db):
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        _run_optional_a2_stats_apply(
+            db,
+            api_key="test-key",
+            validation_end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_APPLY_ENABLED_ENV: "true",
+                A2_STATS_DRY_RUN_ENABLED_ENV: "true",
+            },
+            schema_ensurer=lambda conn: "EXISTING",
+            activator=lambda *args, **kwargs: None,
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_apply_dispatches_guarded_regime(db, capsys):
+    calls = []
+    fixed_activation = datetime(2026, 9, 18, 13, 45, tzinfo=UTC)
+
+    def activator(conn, **kwargs):
+        calls.append(("activate", conn, kwargs))
+        return SimpleNamespace(
+            regime_code=kwargs["regime_code"],
+            activated_at=kwargs["activated_at"],
+            window_start=kwargs["window_start"],
+            window_end=kwargs["window_end"],
+            chunk_days=kwargs["chunk_days"],
+        )
+
+    def runner(conn, **kwargs):
+        calls.append(("run", conn, kwargs))
+        return object()
+
+    _run_optional_a2_stats_apply(
+        db,
+        api_key="test-key",
+        validation_end_date=date(2026, 9, 17),
+        env={
+            A2_STATS_APPLY_ENABLED_ENV: "true",
+            A2_STATS_APPLY_AUTH_ENV: A2_STATS_APPLY_AUTHORIZATION,
+            A2_STATS_APPLY_START_DATE_ENV: "2026-08-18",
+            A2_STATS_APPLY_END_DATE_ENV: "2026-09-17",
+            A2_STATS_APPLY_REGIME_CODE_ENV: "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+            A2_STATS_APPLY_NOTE_ENV: "verified 31-day dry run",
+        },
+        schema_ensurer=lambda conn: "EXISTING",
+        activator=activator,
+        runner=runner,
+        activated_at=fixed_activation,
+    )
+
+    assert calls[0][0] == "activate"
+    assert calls[0][2] == {
+        "regime_code": "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+        "window_start": date(2026, 8, 18),
+        "window_end": date(2026, 9, 17),
+        "chunk_days": 1,
+        "activated_at": fixed_activation,
+        "activation_note": "verified 31-day dry run",
+    }
+    assert calls[1][0] == "run"
+    assert calls[1][2] == {
+        "api_key": "test-key",
+        "start_date": date(2026, 8, 18),
+        "end_date": date(2026, 9, 17),
+        "chunk_days": 1,
+        "dry_run": False,
+    }
+
+    out = capsys.readouterr().out
+    assert "A2_STATS_BACKFILL_SCHEMA status=EXISTING migration=0011" in out
+    assert (
+        "A2_STATS_BACKFILL_ACTIVATION "
+        "regime=A2_API_TENNIS_HISTORY_20260818_20260917_V1"
+    ) in out
+    assert "A2_STATS_BACKFILL_APPLY_DISPATCH" in out
+    assert "days=31 chunk_days=1 writes=1" in out
+
+
+def test_optional_a2_stats_apply_rejects_window_over_31_days(db):
+    with pytest.raises(ValueError, match="may not exceed 31 days"):
+        _run_optional_a2_stats_apply(
+            db,
+            api_key="test-key",
+            validation_end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_APPLY_ENABLED_ENV: "true",
+                A2_STATS_APPLY_AUTH_ENV: A2_STATS_APPLY_AUTHORIZATION,
+                A2_STATS_APPLY_START_DATE_ENV: "2026-08-17",
+                A2_STATS_APPLY_END_DATE_ENV: "2026-09-17",
+                A2_STATS_APPLY_REGIME_CODE_ENV: "A2_TEST",
+            },
+            schema_ensurer=lambda conn: "EXISTING",
+            activator=lambda *args, **kwargs: None,
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_apply_rejects_end_after_validation_boundary(db):
+    with pytest.raises(ValueError, match="may not exceed validation end date"):
+        _run_optional_a2_stats_apply(
+            db,
+            api_key="test-key",
+            validation_end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_APPLY_ENABLED_ENV: "true",
+                A2_STATS_APPLY_AUTH_ENV: A2_STATS_APPLY_AUTHORIZATION,
+                A2_STATS_APPLY_START_DATE_ENV: "2026-09-01",
+                A2_STATS_APPLY_END_DATE_ENV: "2026-09-18",
+                A2_STATS_APPLY_REGIME_CODE_ENV: "A2_TEST",
+            },
+            schema_ensurer=lambda conn: "EXISTING",
+            activator=lambda *args, **kwargs: None,
             runner=lambda *args, **kwargs: None,
         )
