@@ -54,8 +54,11 @@ HISTORY_DEPTH_DEFAULT_COMPETITIONS = 3
 HISTORY_DEPTH_DEFAULT_PAGES = 2
 A3_EVIDENCE_ENABLED_ENV = "SPORTRADAR_A3_EVIDENCE_PROBE_ENABLED"
 A3_EVIDENCE_MAX_PAIRS_ENV = "SPORTRADAR_A3_EVIDENCE_MAX_PAIRS"
-A3_EVIDENCE_DEFAULT_PAIRS = 3
-A3_EVIDENCE_MAX_PAIRS = 5
+A3_EVIDENCE_DEFAULT_PAIRS = 10
+A3_EVIDENCE_MAX_PAIRS = 10
+A3_EVIDENCE_HORIZON_DAYS_ENV = "SPORTRADAR_A3_EVIDENCE_HORIZON_DAYS"
+A3_EVIDENCE_DEFAULT_HORIZON_DAYS = 3
+A3_EVIDENCE_MAX_HORIZON_DAYS = 7
 
 
 class RequestPacer:
@@ -218,7 +221,7 @@ def _run_optional_a3_evidence(
     conn: psycopg.Connection,
     *,
     api_key: str,
-    target_date: date,
+    as_of: datetime,
     access_level: str,
     language: str,
     env: Mapping[str, str] | None = None,
@@ -234,11 +237,20 @@ def _run_optional_a3_evidence(
             _text(values.get(A3_EVIDENCE_MAX_PAIRS_ENV))
             or str(A3_EVIDENCE_DEFAULT_PAIRS)
         )
+        horizon_days = int(
+            _text(values.get(A3_EVIDENCE_HORIZON_DAYS_ENV))
+            or str(A3_EVIDENCE_DEFAULT_HORIZON_DAYS)
+        )
     except ValueError as exc:
-        raise ValueError("Sportradar A3 max pairs must be an integer") from exc
+        raise ValueError("Sportradar A3 bounds must be integers") from exc
     if not 1 <= max_pairs <= A3_EVIDENCE_MAX_PAIRS:
         raise ValueError(
             f"Sportradar A3 max pairs must be between 1 and {A3_EVIDENCE_MAX_PAIRS}"
+        )
+    if not 1 <= horizon_days <= A3_EVIDENCE_MAX_HORIZON_DAYS:
+        raise ValueError(
+            "Sportradar A3 horizon days must be between "
+            f"1 and {A3_EVIDENCE_MAX_HORIZON_DAYS}"
         )
 
     if access_level == "trial":
@@ -253,14 +265,16 @@ def _run_optional_a3_evidence(
 
     print(
         "SPORTRADAR_A3_DISPATCH "
-        f"date={target_date.isoformat()} max_pairs={max_pairs} writes=0",
+        f"as_of={as_of.isoformat()} max_pairs={max_pairs} "
+        f"horizon_days={horizon_days} writes=0",
         flush=True,
     )
     return runner(
         conn,
         api_key=api_key,
-        target_date=target_date,
+        as_of=as_of,
         max_pairs=max_pairs,
+        horizon_days=horizon_days,
         access_level=access_level,
         language=language,
     )
@@ -672,7 +686,7 @@ def main(argv: list[str] | None = None) -> int:
                 a3_status = _run_optional_a3_evidence(
                     conn,
                     api_key=api_key,
-                    target_date=args.date,
+                    as_of=datetime.now(timezone.utc),
                     access_level=access_level,
                     language=language,
                 )

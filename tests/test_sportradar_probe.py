@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime
 from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
     A3_EVIDENCE_ENABLED_ENV,
+    A3_EVIDENCE_HORIZON_DAYS_ENV,
     A3_EVIDENCE_MAX_PAIRS_ENV,
     HISTORY_DEPTH_ENABLED_ENV,
     HISTORY_DEPTH_MAX_COMPETITIONS_ENV,
@@ -292,7 +293,7 @@ def test_optional_a3_evidence_is_disabled_by_default():
     status = _run_optional_a3_evidence(
         object(),
         api_key="secret",
-        target_date=date(2026, 9, 18),
+        as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
         access_level="trial",
         language="en",
         env={},
@@ -317,12 +318,13 @@ def test_optional_a3_evidence_dispatches_bounded_probe_when_enabled(capsys):
     status = _run_optional_a3_evidence(
         conn,
         api_key="secret",
-        target_date=date(2026, 9, 18),
+        as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
         access_level="trial",
         language="en",
         env={
             A3_EVIDENCE_ENABLED_ENV: "true",
             A3_EVIDENCE_MAX_PAIRS_ENV: "2",
+            A3_EVIDENCE_HORIZON_DAYS_ENV: "3",
         },
         runner=runner,
         sleep=sleeps.append,
@@ -335,28 +337,49 @@ def test_optional_a3_evidence_dispatches_bounded_probe_when_enabled(capsys):
             conn,
             {
                 "api_key": "secret",
-                "target_date": date(2026, 9, 18),
+                "as_of": datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
                 "max_pairs": 2,
+                "horizon_days": 3,
                 "access_level": "trial",
                 "language": "en",
             },
         )
     ]
     output = capsys.readouterr().out
-    assert "SPORTRADAR_A3_DISPATCH date=2026-09-18 max_pairs=2 writes=0" in output
+    assert (
+        "SPORTRADAR_A3_DISPATCH as_of=2026-09-18T12:00:00+00:00 "
+        "max_pairs=2 horizon_days=3 writes=0"
+    ) in output
 
 
 def test_optional_a3_evidence_rejects_out_of_range_pairs():
-    with pytest.raises(ValueError, match="between 1 and 5"):
+    with pytest.raises(ValueError, match="between 1 and 10"):
         _run_optional_a3_evidence(
             object(),
             api_key="secret",
-            target_date=date(2026, 9, 18),
+            as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
             access_level="trial",
             language="en",
             env={
                 A3_EVIDENCE_ENABLED_ENV: "1",
-                A3_EVIDENCE_MAX_PAIRS_ENV: "6",
+                A3_EVIDENCE_MAX_PAIRS_ENV: "11",
+            },
+            runner=lambda conn, **kwargs: 0,
+            sleep=lambda seconds: None,
+        )
+
+
+def test_optional_a3_evidence_rejects_out_of_range_horizon():
+    with pytest.raises(ValueError, match="horizon days must be between 1 and 7"):
+        _run_optional_a3_evidence(
+            object(),
+            api_key="secret",
+            as_of=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
+            access_level="trial",
+            language="en",
+            env={
+                A3_EVIDENCE_ENABLED_ENV: "1",
+                A3_EVIDENCE_HORIZON_DAYS_ENV: "8",
             },
             runner=lambda conn, **kwargs: 0,
             sleep=lambda seconds: None,

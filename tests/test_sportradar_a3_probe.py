@@ -1,8 +1,10 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sports_edge_tennis.live.sportradar_a3_probe import (
+    AGENT_CODE,
     A3SportradarTarget,
     link_target,
+    load_targets,
     summarize_evidence,
 )
 
@@ -168,3 +170,53 @@ def test_summarize_evidence_ignores_open_and_doubles_rows():
 
     assert evidence.direct_matches == 0
     assert evidence.direct_support_met is False
+
+
+class _FakeRows:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _FakeConn:
+    def __init__(self, rows):
+        self.rows = rows
+        self.sql = None
+        self.params = None
+
+    def execute(self, sql, params):
+        self.sql = sql
+        self.params = params
+        return _FakeRows(self.rows)
+
+
+def test_load_targets_mirrors_api_tennis_forward_horizon_contract():
+    as_of = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    start_at = datetime(2026, 9, 19, 9, 0, tzinfo=UTC)
+    conn = _FakeConn(
+        [(101, "Player One", "Player Two", start_at, "HARD")]
+    )
+
+    targets = load_targets(conn, as_of=as_of, horizon_days=3, limit=10)
+
+    assert targets == (
+        A3SportradarTarget(
+            match_id=101,
+            first_name="Player One",
+            second_name="Player Two",
+            match_start_at=start_at,
+            surface="HARD",
+        ),
+    )
+    assert conn.params == (
+        AGENT_CODE,
+        as_of,
+        as_of + timedelta(days=3),
+        10,
+    )
+    assert "api_p1.source_system = 'API_TENNIS'" in conn.sql
+    assert "api_p2.source_system = 'API_TENNIS'" in conn.sql
+    assert "mv.match_start_at >= %s" in conn.sql
+    assert "mv.match_start_at < %s" in conn.sql
