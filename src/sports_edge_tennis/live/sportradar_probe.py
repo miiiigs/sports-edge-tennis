@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import argparse
 import os
-from collections.abc import Mapping, Sequence
+import time
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -36,6 +37,34 @@ from sports_edge_tennis.live.sportradar import (
 DEFAULT_COMPETITION_QUERIES = ("Rennes",)
 DEFAULT_PLAYER_QUERIES = ("Nakashima", "Blanch")
 MAX_QUERY_MATCHES = 5
+TRIAL_MIN_REQUEST_INTERVAL_SECONDS = 1.1
+
+
+class RequestPacer:
+    """Process-local request pacer for Sportradar trial QPS limits."""
+
+    def __init__(
+        self,
+        min_interval_seconds: float,
+        *,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
+        if min_interval_seconds < 0:
+            raise ValueError("min_interval_seconds must be non-negative")
+        self.min_interval_seconds = float(min_interval_seconds)
+        self._monotonic = monotonic
+        self._sleep = sleep
+        self._last_started_at: float | None = None
+
+    def wait(self) -> None:
+        now = self._monotonic()
+        if self._last_started_at is not None:
+            remaining = self.min_interval_seconds - (now - self._last_started_at)
+            if remaining > 0:
+                self._sleep(remaining)
+                now = self._monotonic()
+        self._last_started_at = now
 
 
 def _utc_date() -> date:
@@ -187,17 +216,27 @@ def run_probe(
     player_queries: Sequence[str],
 ) -> int:
     transport = {"access_level": access_level, "language": language}
+    min_interval = (
+        TRIAL_MIN_REQUEST_INTERVAL_SECONDS if access_level == "trial" else 0.0
+    )
+    pacer = RequestPacer(min_interval)
+
+    def paced(fetcher: Callable[..., Any], *args: Any) -> tuple[datetime, dict[str, Any]]:
+        pacer.wait()
+        return fetcher(*args, **transport)
+
     print(
         "SPORTRADAR_PROBE_START "
-        f"date={target_date.isoformat()} access={access_level} language={language} writes=0",
+        f"date={target_date.isoformat()} access={access_level} language={language} "
+        f"min_request_interval={min_interval:.1f}s writes=0",
         flush=True,
     )
 
     try:
-        _, competitions = fetch_competitions(api_key, **transport)
-        _, rankings = fetch_rankings(api_key, **transport)
-        _, daily = fetch_daily_summaries(api_key, target_date, **transport)
-        _, merges = fetch_competitor_merge_mappings(api_key, **transport)
+        _, competitions = paced(fetch_competitions, api_key)
+        _, rankings = paced(fetch_rankings, api_key)
+        _, daily = paced(fetch_daily_summaries, api_key, target_date)
+        _, merges = paced(fetch_competitor_merge_mappings, api_key)
     except SportradarTransportError as exc:
         print(f"SPORTRADAR_PROBE_UNAVAILABLE kind={exc.kind} writes=0", flush=True)
         return 0
@@ -232,8 +271,8 @@ def run_probe(
             if not competition_id:
                 continue
             try:
-                _, seasons = fetch_competition_seasons(
-                    api_key, competition_id, **transport
+                _, seasons = paced(
+                    fetch_competition_seasons, api_key, competition_id
                 )
                 selected = select_season(seasons, target_date=target_date)
                 if selected is None:
@@ -245,7 +284,7 @@ def run_probe(
                     )
                     continue
                 season_id = _text(selected.get("id"))
-                _, info = fetch_season_info(api_key, season_id, **transport)
+                _, info = paced(fetch_season_info, api_key, season_id)
                 season = info.get("season")
                 season_info = (
                     season.get("info")
