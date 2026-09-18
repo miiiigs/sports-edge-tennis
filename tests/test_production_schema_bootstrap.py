@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ from sports_edge_tennis.live.production_batch import (
     _STAKING_CONSTRAINTS,
     _a1_evidence_cycle,
     _ensure_quarter_kelly_schema,
+    _live_batch_gap_cycle,
 )
 
 
@@ -89,3 +91,79 @@ def test_a1_evidence_cycle_is_fail_isolated(monkeypatch, capsys):
     _a1_evidence_cycle("postgresql://example")
 
     assert "A1_LIVE_EVIDENCE_FAILED error_type=RuntimeError" in capsys.readouterr().out
+
+
+class _GapConn:
+    def __init__(self, row):
+        self.row = row
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def execute(self, sql, params=()):
+        assert "FROM prediction_runs" in sql
+        assert params
+        return _Cursor(row=self.row)
+
+
+def test_live_batch_gap_cycle_alerts_when_previous_completed_run_is_too_old(
+    monkeypatch,
+    capsys,
+):
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    previous = now - timedelta(minutes=117)
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        lambda *args, **kwargs: _GapConn((299, previous)),
+    )
+
+    _live_batch_gap_cycle(
+        "postgresql://example",
+        cycle_started_at=now,
+        threshold_minutes=90,
+    )
+
+    out = capsys.readouterr().out
+    assert "LIVE_BATCH_GAP_ALERT" in out
+    assert "previous_prediction_run_id=299" in out
+    assert "age_minutes=117" in out
+
+
+def test_live_batch_gap_cycle_reports_ok_inside_hourly_window(monkeypatch, capsys):
+    now = datetime(2026, 9, 18, 12, 0, tzinfo=UTC)
+    previous = now - timedelta(minutes=58)
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        lambda *args, **kwargs: _GapConn((300, previous)),
+    )
+
+    _live_batch_gap_cycle(
+        "postgresql://example",
+        cycle_started_at=now,
+        threshold_minutes=90,
+    )
+
+    out = capsys.readouterr().out
+    assert "LIVE_BATCH_GAP_OK" in out
+    assert "previous_prediction_run_id=300" in out
+    assert "age_minutes=58" in out
+
+
+def test_live_batch_gap_cycle_is_fail_isolated(monkeypatch, capsys):
+    def fail_connect(*args, **kwargs):
+        raise RuntimeError("gap check unavailable")
+
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        fail_connect,
+    )
+
+    _live_batch_gap_cycle(
+        "postgresql://example",
+        cycle_started_at=datetime(2026, 9, 18, 12, 0, tzinfo=UTC),
+    )
+
+    assert "LIVE_BATCH_GAP_CHECK_FAILED error_type=RuntimeError" in capsys.readouterr().out
