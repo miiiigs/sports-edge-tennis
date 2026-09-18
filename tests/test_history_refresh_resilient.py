@@ -6,6 +6,7 @@ import pytest
 
 from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
+    A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
@@ -199,6 +200,7 @@ def test_optional_a2_stats_dry_run_dispatches_recent_bounded_window(db, capsys):
         env={
             A2_STATS_DRY_RUN_ENABLED_ENV: "true",
             A2_STATS_DRY_RUN_DAYS_ENV: "7",
+            A2_STATS_DRY_RUN_CHUNK_DAYS_ENV: "1",
         },
         runner=runner,
     )
@@ -210,13 +212,13 @@ def test_optional_a2_stats_dry_run_dispatches_recent_bounded_window(db, capsys):
         "api_key": "test-key",
         "start_date": date(2026, 9, 11),
         "end_date": date(2026, 9, 17),
-        "chunk_days": 7,
+        "chunk_days": 1,
         "dry_run": True,
     }
     output = capsys.readouterr().out
     assert (
         "A2_STATS_BACKFILL_DRY_RUN_DISPATCH "
-        "start=2026-09-11 end=2026-09-17 days=7 writes=0"
+        "start=2026-09-11 end=2026-09-17 days=7 chunk_days=1 writes=0"
     ) in output
 
 
@@ -229,6 +231,21 @@ def test_optional_a2_stats_dry_run_rejects_large_window(db):
             env={
                 A2_STATS_DRY_RUN_ENABLED_ENV: "1",
                 A2_STATS_DRY_RUN_DAYS_ENV: "32",
+            },
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_dry_run_rejects_large_chunk(db):
+    with pytest.raises(ValueError, match="chunk days must be between 1 and 7"):
+        _run_optional_a2_stats_dry_run(
+            db,
+            api_key="test-key",
+            end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_DRY_RUN_ENABLED_ENV: "1",
+                A2_STATS_DRY_RUN_DAYS_ENV: "7",
+                A2_STATS_DRY_RUN_CHUNK_DAYS_ENV: "8",
             },
             runner=lambda *args, **kwargs: None,
         )
