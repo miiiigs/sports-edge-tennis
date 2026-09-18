@@ -14,6 +14,7 @@ from pathlib import Path
 
 import psycopg
 
+from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
 from sports_edge_tennis.live.batch import main as live_batch_main
 from sports_edge_tennis.live.operational_health import (
     evaluate_live_operational_health,
@@ -401,6 +402,7 @@ def main(argv: list[str] | None = None) -> int:
         with psycopg.connect(dsn, autocommit=True) as conn:
             schema_status = _ensure_quarter_kelly_schema(conn)
             publication_control_status = _ensure_publication_control_schema(conn)
+            model_identity_bridge_status = ensure_model_identity_bridge_schema(conn)
     except (psycopg.Error, OSError, RuntimeError) as exc:
         _log(f"SCHEMA_BOOTSTRAP_FAILED error_type={type(exc).__name__}")
         return 2
@@ -409,6 +411,10 @@ def main(argv: list[str] | None = None) -> int:
     _log(
         "SCHEMA_PUBLICATION_CONTROL "
         f"status={publication_control_status} migration=0012"
+    )
+    _log(
+        "SCHEMA_MODEL_IDENTITY_BRIDGE "
+        f"status={model_identity_bridge_status} migration=0013"
     )
 
     _live_batch_gap_cycle(
