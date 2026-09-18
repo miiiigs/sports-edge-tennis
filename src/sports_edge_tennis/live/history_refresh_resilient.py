@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Callable
@@ -115,7 +116,7 @@ def _run_optional_a2_stats_dry_run(
     *,
     api_key: str,
     end_date: date,
-    env: dict[str, str] | os._Environ[str] | None = None,
+    env: Mapping[str, str] | None = None,
     runner: Callable[..., object] | None = None,
 ) -> None:
     values = os.environ if env is None else env
