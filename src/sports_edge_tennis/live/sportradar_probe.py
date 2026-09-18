@@ -1,6 +1,8 @@
-"""Read-only Sportradar Tennis coverage benchmark.
+"""Sportradar Tennis coverage benchmark with an explicit guarded surface-fill gate.
 
-The probe deliberately performs no database writes and does not feed A1/A2/A3.
+The benchmark path is read-only and does not feed A1/A2/A3. A separate
+OFF-by-default, operator-authorized gate may fill one verified NULL tournament
+edition surface after re-verifying the exact provider season evidence.
 It answers the first integration questions needed before Sportradar can be
 considered as a production data source:
 
@@ -10,7 +12,7 @@ considered as a production data source:
 * do known ambiguous player-name cases expose stable Sportradar IDs?
 * are match statistics present on the benchmark day's summaries?
 
-No returned provider payload is persisted.
+No other returned provider payload is persisted.
 """
 
 from __future__ import annotations
