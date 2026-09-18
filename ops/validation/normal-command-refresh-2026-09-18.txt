@@ -1,0 +1,1 @@
+Validation-only source refresh after temporary read-only A2 regime audit command. Forces Railway to snapshot the current normal validation start command. No model, canonical data, Manager, Market, Veto, staking, or live-runner behavior change.
