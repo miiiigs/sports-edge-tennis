@@ -238,6 +238,59 @@ def test_observed_pinnacle_initial_format_resolves_without_fuzzy_matching(db: ps
     assert result.match.away_canonical_player_id == candidate["player_2_id"]
 
 
+def test_repeated_initials_resolve_positionally_without_fuzzy_matching(db: psycopg.Connection):
+    candidate = _insert_candidate(
+        db,
+        player_1_name="J.J. Wolf",
+        player_2_name="S. Gorzny",
+        tournament_name="ATP Challenger Tiburon",
+        match_start_at=_utc(21, 14, 30),
+    )
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(
+            home_name="Jeffrey John Wolf",
+            away_name="Sebastian Gorzny",
+            league_name="ATP Challenger Tiburon",
+            scheduled_start=_utc(21, 14, 30),
+        ),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "RESOLVED"
+    assert result.match is not None
+    assert result.match.home_canonical_player_id == candidate["player_1_id"]
+    assert result.match.away_canonical_player_id == candidate["player_2_id"]
+
+
+def test_missing_given_name_token_still_fails_closed(db: psycopg.Connection):
+    candidate = _insert_candidate(
+        db,
+        player_1_name="J. P. Varillas",
+        player_2_name="D. Vallejo",
+        tournament_name="ATP Challenger Antofagasta",
+        match_start_at=_utc(21, 14, 30),
+    )
+
+    result = reconcile_pinnapi_event(
+        db,
+        evidence=_evidence(
+            home_name="Juan Pablo Varillas",
+            away_name="Adolfo Daniel Vallejo",
+            league_name="ATP Challenger Antofagasta",
+            scheduled_start=_utc(21, 14, 30),
+        ),
+        candidate_match_ids=[candidate["match_id"]],
+        as_of=_utc(20, 11),
+    )
+
+    assert result.status == "UNMATCHED"
+    assert result.reason == "participant_mismatch"
+    assert _count_pinnapi_mappings(db) == 0
+
+
 def test_ambiguous_observed_initial_format_fails_closed(db: psycopg.Connection):
     first = _insert_candidate(
         db,
