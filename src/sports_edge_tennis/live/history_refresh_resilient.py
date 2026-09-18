@@ -42,6 +42,15 @@ A2_STATS_DRY_RUN_DEFAULT_DAYS = 7
 A2_STATS_DRY_RUN_MAX_DAYS = 31
 A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS = 7
 A2_STATS_DRY_RUN_MAX_CHUNK_DAYS = 7
+A2_STATS_APPLY_ENABLED_ENV = "A2_STATS_BACKFILL_APPLY_ENABLED"
+A2_STATS_APPLY_AUTH_ENV = "A2_STATS_BACKFILL_APPLY_AUTHORIZATION"
+A2_STATS_APPLY_AUTHORIZATION = "A2_HISTORY_BACKFILL_AUTHORIZED_V1"
+A2_STATS_APPLY_START_DATE_ENV = "A2_STATS_BACKFILL_APPLY_START_DATE"
+A2_STATS_APPLY_END_DATE_ENV = "A2_STATS_BACKFILL_APPLY_END_DATE"
+A2_STATS_APPLY_REGIME_CODE_ENV = "A2_STATS_BACKFILL_APPLY_REGIME_CODE"
+A2_STATS_APPLY_NOTE_ENV = "A2_STATS_BACKFILL_APPLY_NOTE"
+A2_STATS_APPLY_MAX_DAYS = 31
+A2_STATS_APPLY_CHUNK_DAYS = 1
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -180,6 +189,103 @@ def _run_optional_a2_stats_dry_run(
         end_date=effective_end_date,
         chunk_days=min(chunk_days, days),
         dry_run=True,
+    )
+
+
+def _run_optional_a2_stats_apply(
+    conn: psycopg.Connection,
+    *,
+    api_key: str,
+    validation_end_date: date,
+    env: Mapping[str, str] | None = None,
+    schema_ensurer: Callable[..., str] | None = None,
+    activator: Callable[..., object] | None = None,
+    runner: Callable[..., object] | None = None,
+    activated_at: datetime | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(A2_STATS_APPLY_ENABLED_ENV)):
+        return
+
+    if _flag_enabled(values.get(A2_STATS_DRY_RUN_ENABLED_ENV)):
+        raise ValueError("A2 stats dry-run and apply gates are mutually exclusive")
+
+    authorization = str(values.get(A2_STATS_APPLY_AUTH_ENV) or "").strip()
+    if authorization != A2_STATS_APPLY_AUTHORIZATION:
+        raise ValueError("A2 stats apply authorization token mismatch")
+
+    start_raw = str(values.get(A2_STATS_APPLY_START_DATE_ENV) or "").strip()
+    end_raw = str(values.get(A2_STATS_APPLY_END_DATE_ENV) or "").strip()
+    regime_code = str(values.get(A2_STATS_APPLY_REGIME_CODE_ENV) or "").strip()
+    activation_note = str(values.get(A2_STATS_APPLY_NOTE_ENV) or "").strip() or None
+    if not start_raw or not end_raw:
+        raise ValueError("A2 stats apply start/end dates are required")
+    if not regime_code:
+        raise ValueError("A2 stats apply regime code is required")
+
+    try:
+        start_date = date.fromisoformat(start_raw)
+        end_date = date.fromisoformat(end_raw)
+    except ValueError as exc:
+        raise ValueError("A2 stats apply dates must be ISO YYYY-MM-DD") from exc
+
+    if end_date < start_date:
+        raise ValueError("A2 stats apply end date must be >= start date")
+    if end_date > validation_end_date:
+        raise ValueError("A2 stats apply end date may not exceed validation end date")
+    window_days = (end_date - start_date).days + 1
+    if window_days > A2_STATS_APPLY_MAX_DAYS:
+        raise ValueError(
+            f"A2 stats apply window may not exceed {A2_STATS_APPLY_MAX_DAYS} days"
+        )
+
+    if schema_ensurer is None or activator is None or runner is None:
+        from sports_edge_tennis.live.api_tennis_stats_backfill import (
+            _ensure_a2_history_regime_schema as default_schema_ensurer,
+            activate_a2_history_regime as default_activator,
+            backfill_stats_range as default_runner,
+        )
+        schema_ensurer = schema_ensurer or default_schema_ensurer
+        activator = activator or default_activator
+        runner = runner or default_runner
+
+    schema_status = schema_ensurer(conn)
+    print(
+        f"A2_STATS_BACKFILL_SCHEMA status={schema_status} migration=0011",
+        flush=True,
+    )
+    regime = activator(
+        conn,
+        regime_code=regime_code,
+        window_start=start_date,
+        window_end=end_date,
+        chunk_days=A2_STATS_APPLY_CHUNK_DAYS,
+        activated_at=activated_at or datetime.now(UTC),
+        activation_note=activation_note,
+    )
+    print(
+        "A2_STATS_BACKFILL_ACTIVATION "
+        f"regime={regime.regime_code} "
+        f"activated_at={regime.activated_at.isoformat()} "
+        f"start={regime.window_start.isoformat()} "
+        f"end={regime.window_end.isoformat()} "
+        f"chunk_days={regime.chunk_days}",
+        flush=True,
+    )
+    print(
+        "A2_STATS_BACKFILL_APPLY_DISPATCH "
+        f"regime={regime.regime_code} "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"days={window_days} chunk_days={A2_STATS_APPLY_CHUNK_DAYS} writes=1",
+        flush=True,
+    )
+    runner(
+        conn,
+        api_key=api_key,
+        start_date=start_date,
+        end_date=end_date,
+        chunk_days=A2_STATS_APPLY_CHUNK_DAYS,
+        dry_run=False,
     )
 
 
@@ -504,9 +610,14 @@ def main(argv: list[str] | None = None) -> int:
                 api_key=api_key,
                 end_date=args.end_date,
             )
+            _run_optional_a2_stats_apply(
+                conn,
+                api_key=api_key,
+                validation_end_date=args.end_date,
+            )
     except TransportError:
         return 2
-    except (ValueError, RuntimeError) as exc:
+    except (ValueError, RuntimeError, OSError, psycopg.Error) as exc:
         print(f"HISTORY_REFRESH_BLOCKED reason={str(exc).upper()}", flush=True)
         return 2
 
