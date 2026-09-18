@@ -275,6 +275,87 @@ def _run_optional_a2_regime_audit(
         flush=True,
     )
 
+    expected_rows = int(counts[3]) * 2
+    if int(counts[0]) == expected_rows and int(counts[4]) == int(counts[3]):
+        return
+
+    anomaly_rows = conn.execute(
+        """
+        WITH scoped AS (
+            SELECT
+                mso.match_stat_observation_id,
+                mso.match_id,
+                mso.player_id,
+                p.canonical_name,
+                mso.source_record_id,
+                mso.source_record_hash,
+                mso.source_observed_at,
+                mso.as_of,
+                mso.ingested_at
+            FROM match_stat_observations mso
+            JOIN players p ON p.player_id = mso.player_id
+            JOIN LATERAL (
+                SELECT mv.match_start_at
+                FROM match_versions mv
+                WHERE mv.match_id = mso.match_id
+                  AND mv.as_of <= mso.as_of
+                  AND mv.source_observed_at <= mso.as_of
+                ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
+            WHERE mso.source_system = %s
+              AND (mv.match_start_at AT TIME ZONE 'UTC')::date BETWEEN %s AND %s
+        ),
+        bad AS (
+            SELECT
+                match_id,
+                count(*) AS row_count,
+                count(DISTINCT player_id) AS player_count
+            FROM scoped
+            GROUP BY match_id
+            HAVING count(*) <> 2 OR count(DISTINCT player_id) <> 2
+        )
+        SELECT
+            s.match_stat_observation_id,
+            s.match_id,
+            s.player_id,
+            s.canonical_name,
+            s.source_record_id,
+            s.source_record_hash,
+            s.source_observed_at,
+            s.as_of,
+            s.ingested_at,
+            b.row_count,
+            b.player_count
+        FROM scoped s
+        JOIN bad b USING (match_id)
+        ORDER BY s.match_id, s.source_observed_at, s.match_stat_observation_id
+        """,
+        (regime[1], regime[2], regime[3]),
+    ).fetchall()
+
+    if not anomaly_rows:
+        print(
+            "A2_HISTORY_REGIME_ANOMALY status=COUNT_MISMATCH_WITHOUT_ROWS "
+            f"regime={regime[0]}",
+            flush=True,
+        )
+        return
+
+    for row in anomaly_rows:
+        print(
+            "A2_HISTORY_REGIME_ANOMALY "
+            f"regime={regime[0]} observation_id={int(row[0])} "
+            f"match_id={int(row[1])} player_id={int(row[2])} "
+            f"player={str(row[3]).replace(' ', '_')} "
+            f"source_record_id={row[4] or '-'} source_record_hash={row[5] or '-'} "
+            f"source_observed_at={row[6].isoformat()} as_of={row[7].isoformat()} "
+            f"ingested_at={row[8].isoformat()} row_count={int(row[9])} "
+            f"player_count={int(row[10])} "
+            f"post_activation={int(row[6] >= regime[5])}",
+            flush=True,
+        )
+
 
 def ensure_checkpoint_table(conn: psycopg.Connection) -> None:
     conn.execute(_CHECKPOINT_DDL)
