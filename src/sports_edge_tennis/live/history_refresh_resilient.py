@@ -36,8 +36,12 @@ DEFAULT_BACKOFF_SECONDS = 2.0
 DEFAULT_MIN_CHUNK_DAYS = 1
 A2_STATS_DRY_RUN_ENABLED_ENV = "A2_STATS_BACKFILL_DRY_RUN_ENABLED"
 A2_STATS_DRY_RUN_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_DAYS"
+A2_STATS_DRY_RUN_CHUNK_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_CHUNK_DAYS"
+A2_STATS_DRY_RUN_END_DATE_ENV = "A2_STATS_BACKFILL_DRY_RUN_END_DATE"
 A2_STATS_DRY_RUN_DEFAULT_DAYS = 7
 A2_STATS_DRY_RUN_MAX_DAYS = 31
+A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS = 7
+A2_STATS_DRY_RUN_MAX_CHUNK_DAYS = 7
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -127,14 +131,35 @@ def _run_optional_a2_stats_dry_run(
         days = int(
             str(values.get(A2_STATS_DRY_RUN_DAYS_ENV) or A2_STATS_DRY_RUN_DEFAULT_DAYS).strip()
         )
+        chunk_days = int(
+            str(
+                values.get(A2_STATS_DRY_RUN_CHUNK_DAYS_ENV)
+                or A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS
+            ).strip()
+        )
     except ValueError as exc:
-        raise ValueError("A2 stats dry-run days must be an integer") from exc
+        raise ValueError("A2 stats dry-run bounds must be integers") from exc
     if not 1 <= days <= A2_STATS_DRY_RUN_MAX_DAYS:
         raise ValueError(
             f"A2 stats dry-run days must be between 1 and {A2_STATS_DRY_RUN_MAX_DAYS}"
         )
+    if not 1 <= chunk_days <= A2_STATS_DRY_RUN_MAX_CHUNK_DAYS:
+        raise ValueError(
+            "A2 stats dry-run chunk days must be between 1 and "
+            f"{A2_STATS_DRY_RUN_MAX_CHUNK_DAYS}"
+        )
 
-    start_date = end_date - timedelta(days=days - 1)
+    effective_end_date = end_date
+    end_override = str(values.get(A2_STATS_DRY_RUN_END_DATE_ENV) or "").strip()
+    if end_override:
+        try:
+            effective_end_date = date.fromisoformat(end_override)
+        except ValueError as exc:
+            raise ValueError("A2 stats dry-run end date must be ISO YYYY-MM-DD") from exc
+        if effective_end_date > end_date:
+            raise ValueError("A2 stats dry-run end date may not exceed validation end date")
+
+    start_date = effective_end_date - timedelta(days=days - 1)
     if runner is None:
         from sports_edge_tennis.live.api_tennis_stats_backfill import (
             backfill_stats_range as dry_run_runner,
@@ -144,16 +169,16 @@ def _run_optional_a2_stats_dry_run(
 
     print(
         "A2_STATS_BACKFILL_DRY_RUN_DISPATCH "
-        f"start={start_date.isoformat()} end={end_date.isoformat()} "
-        f"days={days} writes=0",
+        f"start={start_date.isoformat()} end={effective_end_date.isoformat()} "
+        f"days={days} chunk_days={min(chunk_days, days)} writes=0",
         flush=True,
     )
     runner(
         conn,
         api_key=api_key,
         start_date=start_date,
-        end_date=end_date,
-        chunk_days=min(DEFAULT_CHUNK_DAYS, days),
+        end_date=effective_end_date,
+        chunk_days=min(chunk_days, days),
         dry_run=True,
     )
 
