@@ -3,6 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m sports_edge_tennis.live.batch --days 3"
-cronSchedule = "0 * * * *"
+startCommand = "bash ops/run_a2_backfill_once.sh"
 restartPolicyType = "NEVER"
