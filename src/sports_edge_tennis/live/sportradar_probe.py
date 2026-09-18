@@ -31,6 +31,7 @@ from sports_edge_tennis.live.sportradar_benchmark import (
     link_gap_target,
     load_latest_gap_targets,
 )
+from sports_edge_tennis.live.sportradar_surface_apply import run_optional_surface_fill
 from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
     fetch_competition_seasons,
@@ -721,6 +722,20 @@ def run_probe(
         target_date=target_date,
         paced=paced,
     )
+
+    try:
+        run_optional_surface_fill(
+            dsn=dsn,
+            api_key=api_key,
+            access_level=access_level,
+            language=language,
+        )
+    except (ValueError, RuntimeError, psycopg.Error, SportradarTransportError) as exc:
+        print(
+            "SPORTRADAR_SURFACE_APPLY_BLOCKED "
+            f"reason={type(exc).__name__} writes=0",
+            flush=True,
+        )
 
     for query in competition_queries:
         matches = find_competitions(competitions, query)
