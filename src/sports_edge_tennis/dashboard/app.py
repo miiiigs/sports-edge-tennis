@@ -17,9 +17,11 @@ from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.demo import build_demo_state
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
 from sports_edge_tennis.dashboard.read_model import (
+    LiveHealthView,
     RunState,
     get_history,
     get_latest_activity,
+    get_latest_live_operational_health,
     get_run_for_date,
 )
 from sports_edge_tennis.dashboard.upcoming import get_upcoming_matches
@@ -143,6 +145,18 @@ def _latest_activity():
         conn.close()
 
 
+def _load_live_health() -> LiveHealthView | None:
+    if DEMO_MODE:
+        return None
+    conn = _connect()
+    if conn is None:
+        return None
+    try:
+        return get_latest_live_operational_health(conn)
+    finally:
+        conn.close()
+
+
 def _load_upcoming():
     if DEMO_MODE:
         return []
@@ -200,6 +214,7 @@ def today(request: Request, date: str | None = Query(default=None)):
             "pres": pres,
             "selected_date": requested_date,
             "latest_activity": _latest_activity(),
+            "operational_health": _load_live_health(),
             "upcoming": _load_upcoming(),
             "market_by_match": market_by_match,
             "demo_mode": DEMO_MODE,
@@ -253,8 +268,24 @@ def api_today(date: str | None = Query(default=None)):
     state = _load_state(requested_date)
     market_by_match = _load_market_overlay(state.prediction_run_id)
     upcoming = _load_upcoming()
+    operational_health = _load_live_health()
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
+        "operational_health": (
+            {
+                "status": operational_health.status,
+                "freshness_state": operational_health.freshness_state,
+                "checked_at": operational_health.checked_at.isoformat(),
+                "latest_observation_at": (
+                    operational_health.latest_observation_at.isoformat()
+                    if operational_health.latest_observation_at
+                    else None
+                ),
+                "error_count": operational_health.error_count,
+            }
+            if operational_health
+            else None
+        ),
         "kind": state.kind,
         "run_status": state.run_status,
         "as_of": state.as_of.isoformat() if state.as_of else None,

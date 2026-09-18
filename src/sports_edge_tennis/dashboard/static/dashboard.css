@@ -124,6 +124,31 @@ a:hover { text-decoration: underline; }
 .date-label { display: block; font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
 .date-value { font-size: 18px; font-weight: 700; }
 
+/* ---------- Live operational health ---------- */
+.ops-health {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -10px 0 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  font-size: 13px;
+}
+.ops-health-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ops-health-main div { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.ops-health-main span { color: var(--text-muted); }
+.ops-health-dot { width: 9px; height: 9px; border-radius: 999px; flex: 0 0 auto; }
+.ops-health-time { color: var(--text-muted); white-space: nowrap; }
+.ops-health-healthy { border-color: var(--green-dim); }
+.ops-health-healthy .ops-health-dot { background: var(--green); }
+.ops-health-warning { border-color: #6b5424; }
+.ops-health-warning .ops-health-dot { background: var(--amber); }
+.ops-health-error { border-color: #6d2c2a; }
+.ops-health-error .ops-health-dot { background: var(--red); }
+
 /* ---------- KPI cards ---------- */
 .kpi-grid {
   display: grid;
@@ -280,6 +305,7 @@ a:hover { text-decoration: underline; }
   .header-meta { width: 100%; margin-left: 0; }
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .date-nav { flex-direction: column; }
+  .ops-health { align-items: flex-start; flex-direction: column; }
   .history-table { font-size: 12px; }
   .history-table th, .history-table td { padding: 8px 6px; }
 }
