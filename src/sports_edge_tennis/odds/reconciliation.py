@@ -19,6 +19,8 @@ MAX_UNIQUE_PARTICIPANT_START_DELTA = timedelta(hours=12)
 PINNAPI_TOKEN_ALIASES = {
     "dar": "darwin",
 }
+# Production live-runner watch paths include odds/** because this module is part
+# of sharp-reference eligibility and must deploy with reconciliation changes.
 
 ReconciliationStatus = Literal["RESOLVED", "UNMATCHED", "IDENTITY_CONFLICT"]
 CanonicalSide = Literal["PLAYER_1", "PLAYER_2"]
