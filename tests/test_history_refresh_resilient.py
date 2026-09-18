@@ -8,6 +8,7 @@ from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
+    A2_STATS_DRY_RUN_END_DATE_ENV,
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
     _run_optional_a2_stats_dry_run,
@@ -246,6 +247,62 @@ def test_optional_a2_stats_dry_run_rejects_large_chunk(db):
                 A2_STATS_DRY_RUN_ENABLED_ENV: "1",
                 A2_STATS_DRY_RUN_DAYS_ENV: "7",
                 A2_STATS_DRY_RUN_CHUNK_DAYS_ENV: "8",
+            },
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_dry_run_supports_exact_past_end_date(db):
+    calls = []
+
+    def runner(conn, **kwargs):
+        calls.append((conn, kwargs))
+        return object()
+
+    _run_optional_a2_stats_dry_run(
+        db,
+        api_key="test-key",
+        end_date=date(2026, 9, 17),
+        env={
+            A2_STATS_DRY_RUN_ENABLED_ENV: "true",
+            A2_STATS_DRY_RUN_DAYS_ENV: "7",
+            A2_STATS_DRY_RUN_CHUNK_DAYS_ENV: "1",
+            A2_STATS_DRY_RUN_END_DATE_ENV: "2026-09-07",
+        },
+        runner=runner,
+    )
+
+    assert len(calls) == 1
+    _, kwargs = calls[0]
+    assert kwargs["start_date"] == date(2026, 9, 1)
+    assert kwargs["end_date"] == date(2026, 9, 7)
+    assert kwargs["chunk_days"] == 1
+    assert kwargs["dry_run"] is True
+
+
+def test_optional_a2_stats_dry_run_rejects_future_end_override(db):
+    with pytest.raises(ValueError, match="may not exceed validation end date"):
+        _run_optional_a2_stats_dry_run(
+            db,
+            api_key="test-key",
+            end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_DRY_RUN_ENABLED_ENV: "1",
+                A2_STATS_DRY_RUN_END_DATE_ENV: "2026-09-18",
+            },
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_a2_stats_dry_run_rejects_invalid_end_override(db):
+    with pytest.raises(ValueError, match="ISO YYYY-MM-DD"):
+        _run_optional_a2_stats_dry_run(
+            db,
+            api_key="test-key",
+            end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_DRY_RUN_ENABLED_ENV: "1",
+                A2_STATS_DRY_RUN_END_DATE_ENV: "not-a-date",
             },
             runner=lambda *args, **kwargs: None,
         )
