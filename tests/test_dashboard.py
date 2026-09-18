@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 import sports_edge_tennis.dashboard.app as dashboard_app
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.read_model import (
+    LiveHealthView,
     get_history,
+    get_latest_live_operational_health,
     get_run_for_date,
 )
 from sports_edge_tennis.live.orchestrator import ensure_agent_config_versions_v1
@@ -139,6 +141,40 @@ def _seed_manager(conn, run_id, match_id, status, side, prob, reason, active, ab
     """, (run_id, match_id, status, side, Decimal(prob) if prob else None, active, abstaining, Decimal(spread), reason, as_of))
 
 
+def _seed_live_health(conn, *, status="HEALTHY", checked_at=None, freshness_state="FRESH", error_count=0):
+    checked_at = checked_at or datetime(2026, 9, 18, 16, 3, 0, tzinfo=timezone.utc)
+    conn.execute(
+        """
+        INSERT INTO data_health_checks (
+            source_system,
+            dataset_name,
+            checked_at,
+            latest_observation_at,
+            freshness_state,
+            coverage_ratio,
+            unmatched_count,
+            error_count,
+            status,
+            notes
+        )
+        VALUES (
+            'SPORTS_EDGE_TENNIS',
+            'LIVE_BATCH_RUNTIME',
+            %s,
+            %s,
+            %s,
+            NULL,
+            0,
+            %s,
+            %s,
+            'dashboard health test'
+        )
+        """,
+        (checked_at, checked_at, freshness_state, error_count, status),
+    )
+    return checked_at
+
+
 def _seed_sharp(conn, match_id):
     ts = datetime(2026, 9, 6, 13, 0, 0, tzinfo=timezone.utc)
     for sel, price in (("PLAYER_1", "1.57"), ("PLAYER_2", "2.40")):
@@ -146,6 +182,21 @@ def _seed_sharp(conn, match_id):
             INSERT INTO odds_snapshots (match_id, source_system, bookmaker_code, market_type, selection_type, decimal_price, market_status, source_snapshot_id, source_record_hash, source_observed_at, as_of, odds_origin)
             VALUES (%s, 'SHARP', 'PINNACLE', 'MATCH_WINNER', %s, %s, 'OPEN', %s, %s, %s, %s, 'HISTORICAL')
         """, (match_id, sel, price, f"snap-{sel}", f"hash-{sel}", ts, ts))
+
+
+def test_get_latest_live_operational_health_returns_newest_snapshot(db: psycopg.Connection):
+    older = datetime(2026, 9, 18, 15, 0, 0, tzinfo=timezone.utc)
+    newer = datetime(2026, 9, 18, 16, 0, 0, tzinfo=timezone.utc)
+    _seed_live_health(db, status="WARNING", checked_at=older)
+    _seed_live_health(db, status="HEALTHY", checked_at=newer)
+
+    health = get_latest_live_operational_health(db)
+
+    assert health is not None
+    assert health.status == "HEALTHY"
+    assert health.freshness_state == "FRESH"
+    assert health.checked_at == newer
+    assert health.error_count == 0
 
 
 def test_get_run_for_date_populated_consensus(db: psycopg.Connection):
@@ -231,6 +282,29 @@ def test_today_demo_populated(client, monkeypatch):
     assert "Awaiting Bookmaker Price" in resp.text
 
 
+def test_today_renders_operational_warning(client, monkeypatch):
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    monkeypatch.setattr(
+        dashboard_app,
+        "_load_live_health",
+        lambda: LiveHealthView(
+            status="WARNING",
+            freshness_state="FRESH",
+            checked_at=datetime(2026, 9, 18, 16, 3, 0, tzinfo=timezone.utc),
+            latest_observation_at=datetime(2026, 9, 18, 16, 2, 0, tzinfo=timezone.utc),
+            error_count=0,
+            notes="completed_runs=2 target_count=0 zero_volume=1",
+        ),
+    )
+
+    resp = client.get("/today")
+
+    assert resp.status_code == 200
+    assert "Live system needs attention" in resp.text
+    assert "16:03 UTC" in resp.text
+    assert "zero_volume" not in resp.text
+
+
 def test_today_db_error_safe(client, monkeypatch):
     monkeypatch.setattr(dashboard_app, "DEMO_MODE", False)
     monkeypatch.setattr(dashboard_app, "_connect", lambda: None)
@@ -251,6 +325,31 @@ def test_history_no_runs(client, monkeypatch):
 def test_invalid_date(client):
     resp = client.get("/today?date=not-a-date")
     assert resp.status_code == 400
+
+
+def test_api_today_includes_structured_operational_health(client, monkeypatch):
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    monkeypatch.setattr(
+        dashboard_app,
+        "_load_live_health",
+        lambda: LiveHealthView(
+            status="ERROR",
+            freshness_state="UNKNOWN",
+            checked_at=datetime(2026, 9, 18, 16, 3, 0, tzinfo=timezone.utc),
+            latest_observation_at=None,
+            error_count=1,
+            notes="live_batch_status=2",
+        ),
+    )
+
+    resp = client.get("/api/dashboard/today")
+
+    assert resp.status_code == 200
+    health = resp.json()["operational_health"]
+    assert health["status"] == "ERROR"
+    assert health["freshness_state"] == "UNKNOWN"
+    assert health["error_count"] == 1
+    assert health["latest_observation_at"] is None
 
 
 def test_api_today_readonly_json(client, monkeypatch):
