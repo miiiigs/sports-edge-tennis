@@ -26,6 +26,8 @@ UP_MIGRATION_PATH_0011 = DB_ROOT / "migrations" / "0011_a2_history_data_regime_v
 DOWN_MIGRATION_PATH_0011 = DB_ROOT / "migrations" / "0011_a2_history_data_regime_v1.down.sql"
 UP_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.up.sql"
 DOWN_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.down.sql"
+UP_MIGRATION_PATH_0013 = DB_ROOT / "migrations" / "0013_model_identity_bridge_v1.up.sql"
+DOWN_MIGRATION_PATH_0013 = DB_ROOT / "migrations" / "0013_model_identity_bridge_v1.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
 SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
@@ -36,6 +38,7 @@ SCHEMA_SNAPSHOT_PATH_0009 = DB_ROOT / "schema" / "0009_live_odds_ingestion_v1.sq
 SCHEMA_SNAPSHOT_PATH_0010 = DB_ROOT / "schema" / "0010_quarter_kelly_stake_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0011 = DB_ROOT / "schema" / "0011_a2_history_data_regime_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0012 = DB_ROOT / "schema" / "0012_publication_control_v1.sql"
+SCHEMA_SNAPSHOT_PATH_0013 = DB_ROOT / "schema" / "0013_model_identity_bridge_v1.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -104,6 +107,10 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert DOWN_MIGRATION_PATH_0010.exists()
     assert UP_MIGRATION_PATH_0011.exists()
     assert DOWN_MIGRATION_PATH_0011.exists()
+    assert UP_MIGRATION_PATH_0012.exists()
+    assert DOWN_MIGRATION_PATH_0012.exists()
+    assert UP_MIGRATION_PATH_0013.exists()
+    assert DOWN_MIGRATION_PATH_0013.exists()
     assert SCHEMA_SNAPSHOT_PATH.exists()
     assert SCHEMA_SNAPSHOT_PATH_0002.exists()
     assert SCHEMA_SNAPSHOT_PATH_0003.exists()
@@ -113,6 +120,8 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert SCHEMA_SNAPSHOT_PATH_0009.exists()
     assert SCHEMA_SNAPSHOT_PATH_0010.exists()
     assert SCHEMA_SNAPSHOT_PATH_0011.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0012.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0013.exists()
 
 
 def test_schema_snapshot_matches_bootstrap_migration():
@@ -180,6 +189,7 @@ def test_live_odds_v1_migration_manifest_and_snapshot():
         "\n".join(
             _read_text(REPO_ROOT / Path(entry["up"]))
             for entry in manifest["migrations"]
+            if entry["version"] <= "0012"
             if entry["version"] <= "0009"
         )
     )
@@ -254,7 +264,7 @@ def test_a2_history_data_regime_v1_migration_manifest_and_snapshot():
 
 def test_publication_control_v1_migration_manifest_and_snapshot():
     manifest = json.loads(_read_text(MANIFEST_PATH))
-    assert manifest["migrations"][-1] == {
+    assert manifest["migrations"][-2] == {
         "version": "0012",
         "name": "publication_control_v1",
         "up": "db/migrations/0012_publication_control_v1.up.sql",
@@ -276,6 +286,34 @@ def test_publication_control_v1_migration_manifest_and_snapshot():
     assert "create type publication_control_action" in sql
     assert "create type publication_control_source" in sql
     assert "trg_publication_control_events_append_only_mutation" in sql
+    assert "execute function raise_append_only_mutation()" in sql
+
+
+def test_model_identity_bridge_v1_migration_manifest_and_snapshot():
+    manifest = json.loads(_read_text(MANIFEST_PATH))
+    assert manifest["migrations"][-1] == {
+        "version": "0013",
+        "name": "model_identity_bridge_v1",
+        "up": "db/migrations/0013_model_identity_bridge_v1.up.sql",
+        "down": "db/migrations/0013_model_identity_bridge_v1.down.sql",
+        "schema_snapshot": "db/schema/0013_model_identity_bridge_v1.sql",
+    }
+    expected_full_schema_0013 = _normalized_sql(
+        "\n".join(
+            _read_text(REPO_ROOT / Path(entry["up"]))
+            for entry in manifest["migrations"]
+        )
+    )
+    assert expected_full_schema_0013 == _normalized_sql(
+        _read_text(SCHEMA_SNAPSHOT_PATH_0013)
+    )
+
+    sql = _read_text(UP_MIGRATION_PATH_0013).lower()
+    assert "create table model_identity_bridge_events" in sql
+    assert "action in ('bridge', 'disable')" in sql
+    assert "evidence_status = 'unique_pit_candidate'" in sql
+    assert "activated_at timestamptz not null" in sql
+    assert "trg_model_identity_bridge_events_append_only_mutation" in sql
     assert "execute function raise_append_only_mutation()" in sql
 
 
