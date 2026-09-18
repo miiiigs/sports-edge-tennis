@@ -10,6 +10,7 @@ from sports_edge_tennis.live.production_batch import (
     _a1_evidence_cycle,
     _ensure_quarter_kelly_schema,
     _live_batch_gap_cycle,
+    _live_operational_health_cycle,
 )
 
 
@@ -167,3 +168,24 @@ def test_live_batch_gap_cycle_is_fail_isolated(monkeypatch, capsys):
     )
 
     assert "LIVE_BATCH_GAP_CHECK_FAILED error_type=RuntimeError" in capsys.readouterr().out
+
+
+def test_live_operational_health_cycle_is_fail_isolated(monkeypatch, capsys):
+    def fail_connect(*args, **kwargs):
+        raise RuntimeError("health store unavailable")
+
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        fail_connect,
+    )
+
+    _live_operational_health_cycle(
+        "postgresql://example",
+        cycle_started_at=datetime(2026, 9, 18, 16, 0, tzinfo=UTC),
+        live_status=0,
+    )
+
+    assert (
+        "LIVE_OPERATIONAL_HEALTH_WRITE_FAILED error_type=RuntimeError"
+        in capsys.readouterr().out
+    )
