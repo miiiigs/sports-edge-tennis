@@ -52,6 +52,10 @@ HISTORY_DEPTH_MAX_COMPETITIONS_ENV = "SPORTRADAR_HISTORY_DEPTH_MAX_COMPETITIONS"
 HISTORY_DEPTH_MAX_PAGES_ENV = "SPORTRADAR_HISTORY_DEPTH_MAX_PAGES"
 HISTORY_DEPTH_DEFAULT_COMPETITIONS = 3
 HISTORY_DEPTH_DEFAULT_PAGES = 2
+A3_EVIDENCE_ENABLED_ENV = "SPORTRADAR_A3_EVIDENCE_PROBE_ENABLED"
+A3_EVIDENCE_MAX_PAIRS_ENV = "SPORTRADAR_A3_EVIDENCE_MAX_PAIRS"
+A3_EVIDENCE_DEFAULT_PAIRS = 3
+A3_EVIDENCE_MAX_PAIRS = 5
 
 
 class RequestPacer:
@@ -207,6 +211,58 @@ def _run_optional_history_depth(
         language=language,
         max_competitions=max_competitions,
         max_pages=max_pages,
+    )
+
+
+def _run_optional_a3_evidence(
+    conn: psycopg.Connection,
+    *,
+    api_key: str,
+    target_date: date,
+    access_level: str,
+    language: str,
+    env: Mapping[str, str] | None = None,
+    runner: Callable[..., int] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(A3_EVIDENCE_ENABLED_ENV)):
+        return 0
+
+    try:
+        max_pairs = int(
+            _text(values.get(A3_EVIDENCE_MAX_PAIRS_ENV))
+            or str(A3_EVIDENCE_DEFAULT_PAIRS)
+        )
+    except ValueError as exc:
+        raise ValueError("Sportradar A3 max pairs must be an integer") from exc
+    if not 1 <= max_pairs <= A3_EVIDENCE_MAX_PAIRS:
+        raise ValueError(
+            f"Sportradar A3 max pairs must be between 1 and {A3_EVIDENCE_MAX_PAIRS}"
+        )
+
+    if access_level == "trial":
+        sleep(TRIAL_MIN_REQUEST_INTERVAL_SECONDS)
+
+    if runner is None:
+        from sports_edge_tennis.live.sportradar_a3_probe import (
+            run_probe as a3_runner,
+        )
+
+        runner = a3_runner
+
+    print(
+        "SPORTRADAR_A3_DISPATCH "
+        f"date={target_date.isoformat()} max_pairs={max_pairs} writes=0",
+        flush=True,
+    )
+    return runner(
+        conn,
+        api_key=api_key,
+        target_date=target_date,
+        max_pairs=max_pairs,
+        access_level=access_level,
+        language=language,
     )
 
 
@@ -606,6 +662,23 @@ def main(argv: list[str] | None = None) -> int:
         )
         if status != 0:
             return status
+
+        if _flag_enabled(os.environ.get(A3_EVIDENCE_ENABLED_ENV)):
+            dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
+            if not dsn:
+                print("SPORTRADAR_A3_BLOCKED reason=NO_DATABASE writes=0", flush=True)
+                return 2
+            with psycopg.connect(dsn, autocommit=True) as conn:
+                a3_status = _run_optional_a3_evidence(
+                    conn,
+                    api_key=api_key,
+                    target_date=args.date,
+                    access_level=access_level,
+                    language=language,
+                )
+            if a3_status != 0:
+                return a3_status
+
         return _run_optional_history_depth(
             api_key=api_key,
             target_date=args.date,
