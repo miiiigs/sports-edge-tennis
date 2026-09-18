@@ -59,6 +59,10 @@ A3_EVIDENCE_MAX_PAIRS = 10
 A3_EVIDENCE_HORIZON_DAYS_ENV = "SPORTRADAR_A3_EVIDENCE_HORIZON_DAYS"
 A3_EVIDENCE_DEFAULT_HORIZON_DAYS = 3
 A3_EVIDENCE_MAX_HORIZON_DAYS = 7
+GAP_SURFACE_ENABLED_ENV = "SPORTRADAR_GAP_SURFACE_PROBE_ENABLED"
+GAP_SURFACE_MAX_COMPETITIONS_ENV = "SPORTRADAR_GAP_SURFACE_MAX_COMPETITIONS"
+GAP_SURFACE_DEFAULT_COMPETITIONS = 8
+GAP_SURFACE_MAX_COMPETITIONS = 12
 
 
 class RequestPacer:
@@ -370,6 +374,153 @@ def select_season(
     return ranked[0]
 
 
+def normalize_sportradar_surface(value: Any) -> str | None:
+    raw = _text(value).casefold()
+    if not raw:
+        return None
+    if "hard" in raw:
+        return "HARD"
+    if "clay" in raw:
+        return "CLAY"
+    if "grass" in raw:
+        return "GRASS"
+    if "carpet" in raw:
+        return "CARPET"
+    return None
+
+
+def _season_surface(payload: Mapping[str, Any]) -> tuple[str, str | None]:
+    season = payload.get("season")
+    season_info = season.get("info") if isinstance(season, Mapping) else None
+    raw = _text(season_info.get("surface")) if isinstance(season_info, Mapping) else ""
+    return raw, normalize_sportradar_surface(raw)
+
+
+def _run_optional_gap_surface_probe(
+    *,
+    exact_links: Sequence[tuple[Any, Any]],
+    api_key: str,
+    target_date: date,
+    paced: Callable[..., tuple[datetime, dict[str, Any]]],
+    env: Mapping[str, str] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(GAP_SURFACE_ENABLED_ENV)):
+        return
+
+    try:
+        max_competitions = int(
+            _text(values.get(GAP_SURFACE_MAX_COMPETITIONS_ENV))
+            or str(GAP_SURFACE_DEFAULT_COMPETITIONS)
+        )
+    except ValueError as exc:
+        raise ValueError("Sportradar gap surface max competitions must be an integer") from exc
+    if not 1 <= max_competitions <= GAP_SURFACE_MAX_COMPETITIONS:
+        raise ValueError(
+            f"Sportradar gap surface max competitions must be between 1 and {GAP_SURFACE_MAX_COMPETITIONS}"
+        )
+
+    grouped: dict[str, list[tuple[Any, Any]]] = {}
+    missing_competition_id = 0
+    for target, candidate in exact_links:
+        if getattr(target, "surface_status", None) != "UNRESOLVED":
+            continue
+        competition_id = _text(getattr(candidate, "competition_id", ""))
+        if not competition_id:
+            missing_competition_id += 1
+            continue
+        grouped.setdefault(competition_id, []).append((target, candidate))
+
+    selected_groups = list(grouped.items())[:max_competitions]
+    resolved_matches = 0
+    unresolved_matches = missing_competition_id
+    requests_planned = len(selected_groups) * 2
+    print(
+        "SPORTRADAR_GAP_SURFACE_START "
+        f"exact_links={len(exact_links)} unique_competitions={len(grouped)} "
+        f"probed_competitions={len(selected_groups)} max_competitions={max_competitions} "
+        f"requests_planned_max={requests_planned} writes=0",
+        flush=True,
+    )
+
+    for competition_id, rows in selected_groups:
+        try:
+            _, seasons = paced(
+                "gap_competition_seasons",
+                fetch_competition_seasons,
+                api_key,
+                competition_id,
+            )
+            selected = select_season(seasons, target_date=target_date)
+            if selected is None:
+                for target, candidate in rows:
+                    unresolved_matches += 1
+                    print(
+                        "SPORTRADAR_GAP_SURFACE_CANDIDATE "
+                        f"match_id={target.match_id} status=NO_SEASON "
+                        f"competition_id={competition_id} "
+                        f"competition={candidate.competition_name!r} "
+                        "season_id=- raw_surface=- canonical_surface=- mapping_changed=0",
+                        flush=True,
+                    )
+                continue
+
+            season_id = _text(selected.get("id"))
+            if not season_id:
+                for target, candidate in rows:
+                    unresolved_matches += 1
+                    print(
+                        "SPORTRADAR_GAP_SURFACE_CANDIDATE "
+                        f"match_id={target.match_id} status=NO_SEASON_ID "
+                        f"competition_id={competition_id} "
+                        f"competition={candidate.competition_name!r} "
+                        "season_id=- raw_surface=- canonical_surface=- mapping_changed=0",
+                        flush=True,
+                    )
+                continue
+
+            _, info = paced(
+                "gap_season_info",
+                fetch_season_info,
+                api_key,
+                season_id,
+            )
+            raw_surface, canonical_surface = _season_surface(info)
+            status = "EXACT_SURFACE" if canonical_surface is not None else "UNSUPPORTED_SURFACE"
+            for target, candidate in rows:
+                if canonical_surface is None:
+                    unresolved_matches += 1
+                else:
+                    resolved_matches += 1
+                print(
+                    "SPORTRADAR_GAP_SURFACE_CANDIDATE "
+                    f"match_id={target.match_id} status={status} "
+                    f"competition_id={competition_id} "
+                    f"competition={candidate.competition_name!r} "
+                    f"season_id={season_id} raw_surface={raw_surface or '-'} "
+                    f"canonical_surface={canonical_surface or '-'} mapping_changed=0",
+                    flush=True,
+                )
+        except SportradarTransportError as exc:
+            unresolved_matches += len(rows)
+            print(
+                "SPORTRADAR_GAP_SURFACE_UNAVAILABLE "
+                f"competition_id={competition_id} kind={exc.kind} "
+                f"affected_matches={len(rows)} writes=0",
+                flush=True,
+            )
+
+    deferred = sum(len(rows) for _, rows in list(grouped.items())[max_competitions:])
+    unresolved_matches += deferred
+    print(
+        "SPORTRADAR_GAP_SURFACE_SUMMARY "
+        f"exact_links={len(exact_links)} resolved_matches={resolved_matches} "
+        f"unresolved_matches={unresolved_matches} deferred_matches={deferred} "
+        f"probed_competitions={len(selected_groups)} writes=0",
+        flush=True,
+    )
+
+
 def summary_has_statistics(summary: Mapping[str, Any]) -> bool:
     value = summary.get("statistics")
     return isinstance(value, Mapping) and bool(value)
@@ -491,6 +642,8 @@ def run_probe(
         flush=True,
     )
 
+    exact_surface_links: list[tuple[Any, Any]] = []
+
     dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if not dsn:
         print(
@@ -523,6 +676,12 @@ def run_probe(
                         result = link_gap_target(target, daily)
                         link_counts[result.status] += 1
                         candidate = result.candidates[0] if len(result.candidates) == 1 else None
+                        if (
+                            result.status == "EXACT"
+                            and candidate is not None
+                            and target.surface_status == "UNRESOLVED"
+                        ):
+                            exact_surface_links.append((target, candidate))
                         print(
                             "SPORTRADAR_GAP_LINK "
                             f"match_id={target.match_id} status={result.status} "
@@ -531,6 +690,7 @@ def run_probe(
                             f"surface_status={target.surface_status} "
                             f"candidate_count={len(result.candidates)} "
                             f"event_id={candidate.event_id if candidate else '-'} "
+                            f"competition_id={candidate.competition_id if candidate else '-'} "
                             f"p1_sr={candidate.player_1_sportradar_id if candidate else '-'} "
                             f"p2_sr={candidate.player_2_sportradar_id if candidate else '-'} "
                             f"start_delta_min={candidate.start_delta_minutes if candidate and candidate.start_delta_minutes is not None else '-'} "
@@ -554,6 +714,13 @@ def run_probe(
                 "SPORTRADAR_GAP_BENCHMARK_UNAVAILABLE kind=DATABASE writes=0",
                 flush=True,
             )
+
+    _run_optional_gap_surface_probe(
+        exact_links=tuple(exact_surface_links),
+        api_key=api_key,
+        target_date=target_date,
+        paced=paced,
+    )
 
     for query in competition_queries:
         matches = find_competitions(competitions, query)
