@@ -15,6 +15,7 @@ import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Callable
 
 import psycopg
@@ -27,6 +28,13 @@ from sports_edge_tennis.live.history_refresh import (
     refresh_history_chunk,
 )
 from sports_edge_tennis.live.transport import TransportError
+from sports_edge_tennis.market.contracts import (
+    MarketPolicyV1,
+    OddsSnapshotV1,
+    PersistedManagerConsensusRow,
+    SharpReferenceSpec,
+)
+from sports_edge_tennis.market.evaluator import evaluate_market_match
 
 CHECKPOINT_SCHEMA_VERSION = "history_refresh_checkpoint_v1"
 DEFAULT_CHECKPOINT_KEY = "API_TENNIS_RECENT_HISTORY_V1"
@@ -44,6 +52,7 @@ A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS = 7
 A2_STATS_DRY_RUN_MAX_CHUNK_DAYS = 7
 A2_REGIME_AUDIT_ENABLED_ENV = "A2_HISTORY_REGIME_AUDIT_ENABLED"
 A2_REGIME_AUDIT_CODE_ENV = "A2_HISTORY_REGIME_AUDIT_CODE"
+MARKET_STALE_SELFTEST_ENABLED_ENV = "MARKET_STALE_SELFTEST_ENABLED"
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -272,6 +281,104 @@ def _run_optional_a2_regime_audit(
         f"complete_two_player_matches={int(counts[4])} "
         f"first_observed_at={counts[5].isoformat() if counts[5] else '-'} "
         f"last_observed_at={counts[6].isoformat() if counts[6] else '-'}",
+        flush=True,
+    )
+
+
+def _run_optional_stale_market_selftest(
+    *,
+    env: Mapping[str, str] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(MARKET_STALE_SELFTEST_ENABLED_ENV)):
+        return
+
+    decision_as_of = datetime(2026, 9, 18, 16, 0, tzinfo=UTC)
+    stale_observed_at = decision_as_of - timedelta(minutes=16)
+    policy = MarketPolicyV1(
+        market_policy_version_id=1,
+        policy_key="SELFTEST_MARKET",
+        policy_version="STALE_SELFTEST_V1",
+        atp_main_min_edge_pct=Decimal("0.05"),
+        challenger_min_edge_pct=Decimal("0.05"),
+        long_price_threshold=Decimal("4.00"),
+        long_price_min_edge_pct=Decimal("0.10"),
+        default_devig_method="POWER",
+        sharp_reference_policy_code="PINNACLE_SHARP",
+        odds_max_staleness_minutes=15,
+        type_b_enabled=False,
+    )
+    manager = PersistedManagerConsensusRow(
+        manager_consensus_result_id=1,
+        prediction_run_id=1,
+        match_id=1,
+        manager_policy_version_id=1,
+        manager_status="CONSENSUS",
+        selected_side=1,
+        consensus_probability=Decimal("0.60"),
+        active_agent_count=3,
+        abstaining_agent_count=0,
+        probability_spread=Decimal("0.01"),
+        reason_code="CONSENSUS",
+        as_of=decision_as_of,
+    )
+    sharp = SharpReferenceSpec(
+        source_system="SHARP",
+        bookmaker_code="PINNACLE",
+    )
+    snapshots = [
+        OddsSnapshotV1(
+            odds_snapshot_id=1,
+            match_id=1,
+            source_system="SHARP",
+            bookmaker_code="PINNACLE",
+            market_type="MATCH_WINNER",
+            selection_type="PLAYER_1",
+            decimal_price=Decimal("2.00"),
+            market_status="OPEN",
+            booksum=None,
+            source_snapshot_id="stale-selftest",
+            source_observed_at=stale_observed_at,
+            as_of=stale_observed_at,
+        ),
+        OddsSnapshotV1(
+            odds_snapshot_id=2,
+            match_id=1,
+            source_system="SHARP",
+            bookmaker_code="PINNACLE",
+            market_type="MATCH_WINNER",
+            selection_type="PLAYER_2",
+            decimal_price=Decimal("2.00"),
+            market_status="OPEN",
+            booksum=None,
+            source_snapshot_id="stale-selftest",
+            source_observed_at=stale_observed_at,
+            as_of=stale_observed_at,
+        ),
+    ]
+
+    decision = evaluate_market_match(
+        manager_row=manager,
+        policy=policy,
+        competition_tier="ATP_250",
+        sharp_reference=sharp,
+        odds_snapshots=snapshots,
+        decision_as_of=decision_as_of,
+    )
+    if (
+        decision.decision_status != "NO_BET"
+        or decision.reason_code != "STALE_MARKET"
+        or decision.suggested_stake_fraction is not None
+    ):
+        raise RuntimeError(
+            "stale market self-test failed closed-safety invariant "
+            f"status={decision.decision_status} reason={decision.reason_code} "
+            f"stake={decision.suggested_stake_fraction}"
+        )
+
+    print(
+        "MARKET_STALE_SELFTEST status=PASS "
+        "decision=NO_BET reason=STALE_MARKET stake=- writes=0",
         flush=True,
     )
 
@@ -598,6 +705,7 @@ def main(argv: list[str] | None = None) -> int:
                 end_date=args.end_date,
             )
             _run_optional_a2_regime_audit(conn)
+            _run_optional_stale_market_selftest()
     except TransportError:
         return 2
     except (ValueError, RuntimeError) as exc:
