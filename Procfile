@@ -1,1 +1,1 @@
-web: uvicorn sports_edge_tennis.dashboard.app:app --host 0.0.0.0 --port ${PORT:-8000}
+web: sh -lc 'python -m pip install . && PYTHONPATH=/app/src python -m sports_edge_tennis.live.api_tennis_stats_backfill --start-date 2026-08-18 --end-date 2026-09-17 --chunk-days 1 --apply --regime-code A2_API_TENNIS_HISTORY_20260818_20260917_V1'
