@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 import sports_edge_tennis.live.sportradar_benchmark as benchmark_module
 from sports_edge_tennis.live.sportradar_benchmark import (
