@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import time
 from dataclasses import dataclass
 from datetime import UTC, date, timedelta
 from typing import Any, Callable, Iterable, Mapping
@@ -313,7 +314,27 @@ def backfill_stats_chunk(
     if (end_date - start_date).days + 1 > MAX_CHUNK_DAYS:
         raise ValueError(f"chunk may not exceed {MAX_CHUNK_DAYS} days")
 
+    stage_started = time.monotonic()
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} stage=FETCH_START",
+        flush=True,
+    )
     received_at, fixtures = fetch_window(api_key, start_date, end_date)
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"stage=FETCH_DONE fixtures={len(fixtures)} "
+        f"elapsed_ms={int((time.monotonic() - stage_started) * 1000)}",
+        flush=True,
+    )
+
+    stage_started = time.monotonic()
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} stage=LINK_START",
+        flush=True,
+    )
     (
         existing_matches,
         terminal_fixtures,
@@ -321,7 +342,21 @@ def backfill_stats_chunk(
         missing_player_identity,
         identity_mismatch,
     ) = _load_existing_ingested_matches(conn, fixtures)
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"stage=LINK_DONE terminal={terminal_fixtures} matched={len(existing_matches)} "
+        f"elapsed_ms={int((time.monotonic() - stage_started) * 1000)}",
+        flush=True,
+    )
 
+    stage_started = time.monotonic()
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"stage={'PREVIEW_START' if dry_run else 'PERSIST_START'}",
+        flush=True,
+    )
     if dry_run:
         stat_outcome = _preview_stat_outcome(fixtures, existing_matches)
     else:
@@ -333,6 +368,15 @@ def backfill_stats_chunk(
         )
         if stat_outcome.inserted_rows:
             _invalidate_agent2_cache(conn)
+
+    print(
+        "A2_STATS_BACKFILL_STAGE "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"stage={'PREVIEW_DONE' if dry_run else 'PERSIST_DONE'} "
+        f"eligible={stat_outcome.eligible_matches} skipped={stat_outcome.skipped_matches} "
+        f"elapsed_ms={int((time.monotonic() - stage_started) * 1000)}",
+        flush=True,
+    )
 
     outcome = StatsBackfillChunkOutcome(
         start_date=start_date,
