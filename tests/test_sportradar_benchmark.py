@@ -416,6 +416,7 @@ def test_provider_name_identity_evidence_requires_unique_pit_history():
     assert result.status == "UNIQUE_PIT_CANDIDATE"
     assert result.alias_candidates == (77,)
     assert result.pit_candidates == (77,)
+    assert "player example" in conn.calls[0][1][0]
     assert conn.calls[0][1][1] == 4644
     assert conn.calls[1][1][-2:] == (as_of, as_of)
 
