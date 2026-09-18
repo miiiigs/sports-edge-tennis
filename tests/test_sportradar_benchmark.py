@@ -125,6 +125,7 @@ def test_gap_link_resolves_unique_participant_pair_inside_time_window():
     assert len(result.candidates) == 1
     candidate = result.candidates[0]
     assert candidate.start_delta_minutes == 80
+    assert candidate.competition_id == "sr:competition:1"
     assert candidate.player_1_sportradar_id == "sr:competitor:873695"
     assert candidate.player_2_sportradar_id == "sr:competitor:294300"
 

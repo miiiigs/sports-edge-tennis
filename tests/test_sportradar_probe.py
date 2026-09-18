@@ -1,6 +1,7 @@
 import pytest
 
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 
 from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
@@ -10,12 +11,16 @@ from sports_edge_tennis.live.sportradar_probe import (
     HISTORY_DEPTH_ENABLED_ENV,
     HISTORY_DEPTH_MAX_COMPETITIONS_ENV,
     HISTORY_DEPTH_MAX_PAGES_ENV,
+    GAP_SURFACE_ENABLED_ENV,
+    GAP_SURFACE_MAX_COMPETITIONS_ENV,
     RequestPacer,
     _paced_fetch,
     _run_optional_a3_evidence,
     _run_optional_history_depth,
+    _run_optional_gap_surface_probe,
     find_competitions,
     find_player_candidates,
+    normalize_sportradar_surface,
     select_season,
     summary_has_statistics,
 )
@@ -383,4 +388,105 @@ def test_optional_a3_evidence_rejects_out_of_range_horizon():
             },
             runner=lambda conn, **kwargs: 0,
             sleep=lambda seconds: None,
+        )
+
+
+
+def test_normalize_sportradar_surface_handles_known_variants():
+    assert normalize_sportradar_surface("hardcourt_indoor") == "HARD"
+    assert normalize_sportradar_surface("Hardcourt Outdoor") == "HARD"
+    assert normalize_sportradar_surface("clay") == "CLAY"
+    assert normalize_sportradar_surface("grass") == "GRASS"
+    assert normalize_sportradar_surface("carpet_indoor") == "CARPET"
+    assert normalize_sportradar_surface("synthetic") is None
+
+
+def test_optional_gap_surface_probe_is_disabled_by_default():
+    calls = []
+
+    def paced(*args):
+        calls.append(args)
+        raise AssertionError("should not be called")
+
+    _run_optional_gap_surface_probe(
+        exact_links=(),
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        paced=paced,
+        env={},
+    )
+
+    assert calls == []
+
+
+def test_optional_gap_surface_probe_dedupes_competitions_and_reports_candidates(capsys):
+    calls = []
+
+    def paced(endpoint, fetcher, api_key, provider_id):
+        calls.append((endpoint, provider_id))
+        if endpoint == "gap_competition_seasons":
+            return (
+                datetime(2026, 9, 18, tzinfo=UTC),
+                {
+                    "seasons": [
+                        {
+                            "id": "sr:season:2026",
+                            "year": "2026",
+                            "start_date": "2026-09-10",
+                            "end_date": "2026-09-20",
+                        }
+                    ]
+                },
+            )
+        if endpoint == "gap_season_info":
+            return (
+                datetime(2026, 9, 18, tzinfo=UTC),
+                {"season": {"info": {"surface": "hardcourt_indoor"}}},
+            )
+        raise AssertionError(endpoint)
+
+    target_a = SimpleNamespace(match_id=1, surface_status="UNRESOLVED")
+    target_b = SimpleNamespace(match_id=2, surface_status="UNRESOLVED")
+    candidate_a = SimpleNamespace(
+        competition_id="sr:competition:10",
+        competition_name="Davis Cup World Group I",
+    )
+    candidate_b = SimpleNamespace(
+        competition_id="sr:competition:10",
+        competition_name="Davis Cup World Group I",
+    )
+
+    _run_optional_gap_surface_probe(
+        exact_links=((target_a, candidate_a), (target_b, candidate_b)),
+        api_key="secret",
+        target_date=date(2026, 9, 18),
+        paced=paced,
+        env={
+            GAP_SURFACE_ENABLED_ENV: "true",
+            GAP_SURFACE_MAX_COMPETITIONS_ENV: "4",
+        },
+    )
+
+    assert calls == [
+        ("gap_competition_seasons", "sr:competition:10"),
+        ("gap_season_info", "sr:season:2026"),
+    ]
+    out = capsys.readouterr().out
+    assert out.count("SPORTRADAR_GAP_SURFACE_CANDIDATE ") == 2
+    assert "canonical_surface=HARD" in out
+    assert "resolved_matches=2" in out
+    assert "writes=0" in out
+
+
+def test_optional_gap_surface_probe_rejects_unbounded_request_count():
+    with pytest.raises(ValueError, match="between 1 and 12"):
+        _run_optional_gap_surface_probe(
+            exact_links=(),
+            api_key="secret",
+            target_date=date(2026, 9, 18),
+            paced=lambda *args: None,
+            env={
+                GAP_SURFACE_ENABLED_ENV: "true",
+                GAP_SURFACE_MAX_COMPETITIONS_ENV: "13",
+            },
         )
