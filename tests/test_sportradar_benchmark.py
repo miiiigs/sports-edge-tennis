@@ -6,6 +6,7 @@ from sports_edge_tennis.live.sportradar_benchmark import (
     benchmark_challenger_a2_stats,
     deterministic_name_keys,
     link_gap_target,
+    load_gap_target_for_match,
     load_latest_gap_targets,
     provider_name_identity_evidence,
 )
@@ -385,6 +386,78 @@ def test_gap_loader_unions_latest_multi_slate_batch(monkeypatch):
     assert "make_interval(mins => %s)" in batch_sql
     assert "WHERE prt.prediction_run_id = %s" not in batch_sql
     assert batch_params == (latest_as_of, 15, latest_as_of)
+
+
+class _SpecificGapConn:
+    def __init__(self, row):
+        self.row = row
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if "WHERE prt.match_id = %s" in sql:
+            return _RowsCursor(one=self.row)
+        raise AssertionError(f"unexpected query: {sql}")
+
+
+def test_specific_gap_loader_uses_latest_completed_pre_match_target(monkeypatch):
+    as_of = datetime(2026, 9, 18, 18, 32, tzinfo=UTC)
+    conn = _SpecificGapConn(
+        (
+            130469,
+            as_of,
+            4644,
+            "Live Player",
+            88,
+            "Other Player",
+            datetime(2026, 9, 18, 19, 0, tzinfo=UTC),
+            None,
+            None,
+            "ATP_MAIN",
+            "ATP_MAIN",
+            659,
+            "ATP Davis Cup - World Group I",
+            2026,
+        )
+    )
+
+    monkeypatch.setattr(
+        benchmark_module,
+        "_resolve_model_player_id",
+        lambda conn_arg, *, player_id, as_of: player_id,
+    )
+    monkeypatch.setattr(
+        benchmark_module,
+        "_model_identity_status",
+        lambda conn_arg, *, live_player_id, model_player_id: (
+            "LIVE_UNRESOLVED" if live_player_id == 4644 else "BRIDGED"
+        ),
+    )
+    monkeypatch.setattr(
+        benchmark_module,
+        "_resolve_model_surface",
+        lambda conn_arg, **kwargs: (None, "UNRESOLVED"),
+    )
+
+    target = load_gap_target_for_match(conn, match_id=130469)
+
+    assert target is not None
+    assert target.match_id == 130469
+    assert target.prediction_as_of == as_of
+    assert target.player_1_id == 4644
+    assert target.player_1_identity_status == "LIVE_UNRESOLVED"
+    sql, params = conn.calls[0]
+    assert "pr.run_status = 'COMPLETED'" in sql
+    assert "pr.experiment_id IS NULL" in sql
+    assert "pr.as_of < mv.match_start_at" in sql
+    assert "ORDER BY pr.as_of DESC, pr.prediction_run_id DESC" in sql
+    assert params == (130469,)
+
+
+def test_specific_gap_loader_returns_none_without_pre_match_target():
+    conn = _SpecificGapConn(None)
+
+    assert load_gap_target_for_match(conn, match_id=130469) is None
 
 
 class _IdentityEvidenceConn:
