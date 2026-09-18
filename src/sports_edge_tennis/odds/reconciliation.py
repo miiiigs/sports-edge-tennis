@@ -286,6 +286,7 @@ def _participant_name_compatible(left: str, right: str) -> bool:
 
     if len(left_tokens) == len(right_tokens):
         unmatched = list(right_tokens)
+        multiset_resolved = True
         for left_token in left_tokens:
             exact_index = next(
                 (index for index, right_token in enumerate(unmatched) if left_token == right_token),
@@ -300,9 +301,36 @@ def _participant_name_compatible(left: str, right: str) -> bool:
                 if _token_compatible(left_token, right_token)
             ]
             if len(compatible_indexes) != 1:
-                return False
+                multiset_resolved = False
+                break
             unmatched.pop(compatible_indexes[0])
-        return not unmatched
+        if multiset_resolved and not unmatched:
+            return True
+
+        # Repeated initials can make the order-insensitive multiset matcher look
+        # ambiguous even when the provider and canonical names are deterministically
+        # compatible in their observed token order. Example:
+        #   "Jeffrey John Wolf" <-> "J.J. Wolf"
+        # Keep this path narrow: same token count, every aligned token compatible,
+        # at least one real initial expansion, and at least one exact multi-character
+        # anchor (normally the surname). No edit distance or missing-token guess.
+        aligned_pairs = tuple(zip(left_tokens, right_tokens))
+        if all(_token_compatible(left_token, right_token) for left_token, right_token in aligned_pairs):
+            exact_multi_character_anchor = any(
+                left_token == right_token and len(left_token) > 1
+                for left_token, right_token in aligned_pairs
+            )
+            used_initial_expansion = any(
+                left_token != right_token
+                and (
+                    (len(left_token) == 1 and len(right_token) > 1)
+                    or (len(right_token) == 1 and len(left_token) > 1)
+                )
+                for left_token, right_token in aligned_pairs
+            )
+            if exact_multi_character_anchor and used_initial_expansion:
+                return True
+        return False
 
     if abs(len(left_tokens) - len(right_tokens)) != 1:
         return False
