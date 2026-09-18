@@ -82,6 +82,16 @@ class RunSummary:
     sharp_count: int
 
 
+@dataclass(frozen=True)
+class LiveHealthView:
+    status: str
+    freshness_state: str
+    checked_at: datetime
+    latest_observation_at: datetime | None
+    error_count: int
+    notes: str | None
+
+
 def _connect(dsn: str) -> psycopg.Connection:
     return psycopg.connect(dsn, autocommit=True)
 
@@ -96,6 +106,37 @@ def get_latest_activity(conn: psycopg.Connection) -> datetime | None:
     ).fetchone()[0]
     candidates = [t for t in (run_row, ingest_row) if t is not None]
     return max(candidates) if candidates else None
+
+
+def get_latest_live_operational_health(
+    conn: psycopg.Connection,
+) -> LiveHealthView | None:
+    row = conn.execute(
+        """
+        SELECT
+            status::text,
+            freshness_state::text,
+            checked_at,
+            latest_observation_at,
+            error_count,
+            notes
+        FROM data_health_checks
+        WHERE source_system = 'SPORTS_EDGE_TENNIS'
+          AND dataset_name = 'LIVE_BATCH_RUNTIME'
+        ORDER BY checked_at DESC, data_health_check_id DESC
+        LIMIT 1
+        """
+    ).fetchone()
+    if row is None:
+        return None
+    return LiveHealthView(
+        status=str(row[0]),
+        freshness_state=str(row[1]),
+        checked_at=row[2],
+        latest_observation_at=row[3],
+        error_count=int(row[4]),
+        notes=row[5],
+    )
 
 
 def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
