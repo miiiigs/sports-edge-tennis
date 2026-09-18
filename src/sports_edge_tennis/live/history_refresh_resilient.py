@@ -42,6 +42,8 @@ A2_STATS_DRY_RUN_DEFAULT_DAYS = 7
 A2_STATS_DRY_RUN_MAX_DAYS = 31
 A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS = 7
 A2_STATS_DRY_RUN_MAX_CHUNK_DAYS = 7
+A2_REGIME_AUDIT_ENABLED_ENV = "A2_HISTORY_REGIME_AUDIT_ENABLED"
+A2_REGIME_AUDIT_CODE_ENV = "A2_HISTORY_REGIME_AUDIT_CODE"
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -180,6 +182,97 @@ def _run_optional_a2_stats_dry_run(
         end_date=effective_end_date,
         chunk_days=min(chunk_days, days),
         dry_run=True,
+    )
+
+
+def _run_optional_a2_regime_audit(
+    conn: psycopg.Connection,
+    *,
+    env: Mapping[str, str] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(A2_REGIME_AUDIT_ENABLED_ENV)):
+        return
+
+    regime_code = str(values.get(A2_REGIME_AUDIT_CODE_ENV) or "").strip()
+    if not regime_code:
+        raise ValueError("A2 history regime audit code is required")
+
+    regime = conn.execute(
+        """
+        SELECT regime_code, source_system, window_start, window_end,
+               chunk_days, activated_at, activation_note
+        FROM a2_history_data_regimes
+        WHERE regime_code = %s
+        """,
+        (regime_code,),
+    ).fetchone()
+    if regime is None:
+        print(
+            f"A2_HISTORY_REGIME_AUDIT status=NOT_FOUND regime={regime_code}",
+            flush=True,
+        )
+        return
+
+    counts = conn.execute(
+        """
+        WITH scoped AS (
+            SELECT
+                mso.match_id,
+                mso.player_id,
+                mso.source_observed_at,
+                mso.as_of
+            FROM match_stat_observations mso
+            JOIN LATERAL (
+                SELECT mv.match_start_at
+                FROM match_versions mv
+                WHERE mv.match_id = mso.match_id
+                  AND mv.as_of <= mso.as_of
+                  AND mv.source_observed_at <= mso.as_of
+                ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
+            WHERE mso.source_system = %s
+              AND (mv.match_start_at AT TIME ZONE 'UTC')::date BETWEEN %s AND %s
+        ),
+        per_match AS (
+            SELECT
+                match_id,
+                count(*) AS row_count,
+                count(DISTINCT player_id) AS player_count
+            FROM scoped
+            GROUP BY match_id
+        )
+        SELECT
+            (SELECT count(*) FROM scoped),
+            (SELECT count(*) FROM scoped WHERE source_observed_at >= %s),
+            (SELECT count(*) FROM scoped WHERE source_observed_at < %s),
+            (SELECT count(DISTINCT match_id) FROM scoped),
+            (SELECT count(*) FROM per_match WHERE row_count = 2 AND player_count = 2),
+            (SELECT min(source_observed_at) FROM scoped),
+            (SELECT max(source_observed_at) FROM scoped)
+        """,
+        (
+            regime[1],
+            regime[2],
+            regime[3],
+            regime[5],
+            regime[5],
+        ),
+    ).fetchone()
+    assert counts is not None
+
+    print(
+        "A2_HISTORY_REGIME_AUDIT "
+        f"status=FOUND regime={regime[0]} source={regime[1]} "
+        f"start={regime[2].isoformat()} end={regime[3].isoformat()} "
+        f"chunk_days={int(regime[4])} activated_at={regime[5].isoformat()} "
+        f"total_rows={int(counts[0])} post_activation_rows={int(counts[1])} "
+        f"pre_activation_rows={int(counts[2])} distinct_matches={int(counts[3])} "
+        f"complete_two_player_matches={int(counts[4])} "
+        f"first_observed_at={counts[5].isoformat() if counts[5] else '-'} "
+        f"last_observed_at={counts[6].isoformat() if counts[6] else '-'}",
+        flush=True,
     )
 
 
@@ -504,6 +597,7 @@ def main(argv: list[str] | None = None) -> int:
                 api_key=api_key,
                 end_date=args.end_date,
             )
+            _run_optional_a2_regime_audit(conn)
     except TransportError:
         return 2
     except (ValueError, RuntimeError) as exc:
