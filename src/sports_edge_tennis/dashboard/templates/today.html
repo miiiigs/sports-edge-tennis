@@ -12,6 +12,27 @@
   <a class="date-btn" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
 </section>
 
+{% if operational_health %}
+<section class="ops-health ops-health-{{ operational_health.status | lower }}"{% if operational_health.status in ['ERROR', 'WARNING'] %} role="alert"{% else %} role="status"{% endif %} aria-label="Live system health">
+  <div class="ops-health-main">
+    <span class="ops-health-dot" aria-hidden="true"></span>
+    <div>
+      {% if operational_health.status == 'HEALTHY' %}
+      <strong>Live system healthy</strong>
+      <span>Latest production cycle completed normally.</span>
+      {% elif operational_health.status == 'WARNING' %}
+      <strong>Live system needs attention</strong>
+      <span>The latest cycle completed, but monitoring detected an operational warning.</span>
+      {% else %}
+      <strong>Live system issue detected</strong>
+      <span>The latest production cycle reported an operational error. New publication remains fail-closed.</span>
+      {% endif %}
+    </div>
+  </div>
+  <span class="ops-health-time">Checked {{ operational_health.checked_at.strftime('%H:%M UTC') }}</span>
+</section>
+{% endif %}
+
 <section class="concept-strip" aria-label="How to read Sports Edge Tennis">
   <div class="concept-card">
     <strong>1 · Model Pick</strong>
