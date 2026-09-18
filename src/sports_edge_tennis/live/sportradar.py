@@ -190,6 +190,30 @@ def fetch_season_summaries(
     )
 
 
+def fetch_competitor_summaries(
+    api_key: str,
+    competitor_id: str,
+    **kwargs: Any,
+) -> tuple[datetime, dict[str, Any]]:
+    competitor = _validated_segment(competitor_id, name="competitor_id")
+    return _request_json(api_key, f"competitors/{competitor}/summaries", **kwargs)
+
+
+def fetch_competitor_vs_competitor(
+    api_key: str,
+    competitor_id: str,
+    competitor2_id: str,
+    **kwargs: Any,
+) -> tuple[datetime, dict[str, Any]]:
+    first = _validated_segment(competitor_id, name="competitor_id")
+    second = _validated_segment(competitor2_id, name="competitor2_id")
+    return _request_json(
+        api_key,
+        f"competitors/{first}/versus/{second}/summaries",
+        **kwargs,
+    )
+
+
 def fetch_sport_event_summary(
     api_key: str,
     sport_event_id: str,
@@ -218,6 +242,8 @@ __all__ = [
     "fetch_season_info",
     "fetch_daily_summaries",
     "fetch_season_summaries",
+    "fetch_competitor_summaries",
+    "fetch_competitor_vs_competitor",
     "fetch_sport_event_summary",
     "fetch_sport_event_timeline",
 ]

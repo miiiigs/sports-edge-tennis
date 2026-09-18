@@ -8,6 +8,8 @@ import requests
 from sports_edge_tennis.live.sportradar import (
     SportradarTransportError,
     fetch_competition_seasons,
+    fetch_competitor_summaries,
+    fetch_competitor_vs_competitor,
     fetch_competitions,
     fetch_season_summaries,
 )
@@ -127,3 +129,34 @@ def test_season_summaries_uses_start_query_param_without_putting_key_in_url():
 def test_season_summaries_rejects_negative_start():
     with pytest.raises(ValueError, match="non-negative"):
         fetch_season_summaries("secret-key", "sr:season:1234", start=-1)
+
+
+def test_competitor_evidence_endpoints_use_v3_paths_and_header_key():
+    captured = []
+
+    def fake_get(url, *, headers, timeout):
+        captured.append((url, headers))
+        return FakeResponse(200, {"summaries": []})
+
+    fetch_competitor_summaries(
+        "secret-key",
+        "sr:competitor:294300",
+        base_url="https://example.test/tennis",
+        http_get=fake_get,
+    )
+    fetch_competitor_vs_competitor(
+        "secret-key",
+        "sr:competitor:294300",
+        "sr:competitor:861975",
+        base_url="https://example.test/tennis",
+        http_get=fake_get,
+    )
+
+    assert captured[0][0].endswith(
+        "/trial/v3/en/competitors/sr:competitor:294300/summaries.json"
+    )
+    assert captured[1][0].endswith(
+        "/trial/v3/en/competitors/sr:competitor:294300/versus/sr:competitor:861975/summaries.json"
+    )
+    assert all("secret-key" not in url for url, _ in captured)
+    assert all(headers["x-api-key"] == "secret-key" for _, headers in captured)
