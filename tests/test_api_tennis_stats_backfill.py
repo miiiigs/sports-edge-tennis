@@ -242,3 +242,26 @@ def test_backfill_range_is_bounded(db: psycopg.Connection):
         assert "window may not exceed" in str(exc)
     else:
         raise AssertionError("expected bounded-window ValueError")
+
+
+def test_dry_run_logs_stage_boundaries(db: psycopg.Connection, capsys):
+    _seed_existing_match(db)
+
+    outcome = backfill_stats_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 9, 9),
+        end_date=date(2026, 9, 9),
+        dry_run=True,
+        fetch_window=_fetch([_fixture()]),
+    )
+
+    assert outcome.eligible_stat_matches == 1
+    assert outcome.inserted_stat_rows == 0
+    output = capsys.readouterr().out
+    assert "stage=FETCH_START" in output
+    assert "stage=FETCH_DONE fixtures=1" in output
+    assert "stage=LINK_START" in output
+    assert "stage=LINK_DONE terminal=1 matched=1" in output
+    assert "stage=PREVIEW_START" in output
+    assert "stage=PREVIEW_DONE eligible=1 skipped=0" in output
