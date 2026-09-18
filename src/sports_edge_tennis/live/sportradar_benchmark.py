@@ -475,7 +475,7 @@ def load_latest_gap_targets(
             live_player_id=int(player_2_id),
             model_player_id=model_player_2_id,
         )
-        _, surface_status = _resolve_model_surface(
+        model_surface, surface_status = _resolve_model_surface(
             conn,
             tournament_id=int(tournament_id),
             canonical_name=str(tournament_name),
@@ -488,7 +488,7 @@ def load_latest_gap_targets(
         if (
             player_1_status != "LIVE_UNRESOLVED"
             and player_2_status != "LIVE_UNRESOLVED"
-            and surface_status != "UNRESOLVED"
+            and model_surface is not None
         ):
             continue
 
