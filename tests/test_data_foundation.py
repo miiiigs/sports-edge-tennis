@@ -24,6 +24,8 @@ UP_MIGRATION_PATH_0010 = DB_ROOT / "migrations" / "0010_quarter_kelly_stake_v1.u
 DOWN_MIGRATION_PATH_0010 = DB_ROOT / "migrations" / "0010_quarter_kelly_stake_v1.down.sql"
 UP_MIGRATION_PATH_0011 = DB_ROOT / "migrations" / "0011_a2_history_data_regime_v1.up.sql"
 DOWN_MIGRATION_PATH_0011 = DB_ROOT / "migrations" / "0011_a2_history_data_regime_v1.down.sql"
+UP_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.up.sql"
+DOWN_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
 SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
@@ -33,6 +35,7 @@ SCHEMA_SNAPSHOT_PATH_0006 = DB_ROOT / "schema" / "0006_common_predictive_interfa
 SCHEMA_SNAPSHOT_PATH_0009 = DB_ROOT / "schema" / "0009_live_odds_ingestion_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0010 = DB_ROOT / "schema" / "0010_quarter_kelly_stake_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0011 = DB_ROOT / "schema" / "0011_a2_history_data_regime_v1.sql"
+SCHEMA_SNAPSHOT_PATH_0012 = DB_ROOT / "schema" / "0012_publication_control_v1.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -217,7 +220,10 @@ def test_quarter_kelly_stake_v1_migration_manifest_and_snapshot():
 
 def test_a2_history_data_regime_v1_migration_manifest_and_snapshot():
     manifest = json.loads(_read_text(MANIFEST_PATH))
-    assert manifest["migrations"][-1] == {
+    entry_0011 = next(
+        entry for entry in manifest["migrations"] if entry["version"] == "0011"
+    )
+    assert entry_0011 == {
         "version": "0011",
         "name": "a2_history_data_regime_v1",
         "up": "db/migrations/0011_a2_history_data_regime_v1.up.sql",
@@ -228,6 +234,7 @@ def test_a2_history_data_regime_v1_migration_manifest_and_snapshot():
         "\n".join(
             _read_text(REPO_ROOT / Path(entry["up"]))
             for entry in manifest["migrations"]
+            if entry["version"] <= "0011"
         )
     )
     assert expected_full_schema_0011 == _normalized_sql(
@@ -242,6 +249,33 @@ def test_a2_history_data_regime_v1_migration_manifest_and_snapshot():
     assert "window_end date not null" in sql
     assert "chunk_days smallint not null" in sql
     assert "trg_a2_history_data_regimes_append_only_mutation" in sql
+    assert "execute function raise_append_only_mutation()" in sql
+
+
+def test_publication_control_v1_migration_manifest_and_snapshot():
+    manifest = json.loads(_read_text(MANIFEST_PATH))
+    assert manifest["migrations"][-1] == {
+        "version": "0012",
+        "name": "publication_control_v1",
+        "up": "db/migrations/0012_publication_control_v1.up.sql",
+        "down": "db/migrations/0012_publication_control_v1.down.sql",
+        "schema_snapshot": "db/schema/0012_publication_control_v1.sql",
+    }
+    expected_full_schema_0012 = _normalized_sql(
+        "\n".join(
+            _read_text(REPO_ROOT / Path(entry["up"]))
+            for entry in manifest["migrations"]
+        )
+    )
+    assert expected_full_schema_0012 == _normalized_sql(
+        _read_text(SCHEMA_SNAPSHOT_PATH_0012)
+    )
+
+    sql = _read_text(UP_MIGRATION_PATH_0012).lower()
+    assert "create table publication_control_events" in sql
+    assert "create type publication_control_action" in sql
+    assert "create type publication_control_source" in sql
+    assert "trg_publication_control_events_append_only_mutation" in sql
     assert "execute function raise_append_only_mutation()" in sql
 
 

@@ -4,6 +4,8 @@ from datetime import datetime
 
 import psycopg
 
+from sports_edge_tennis.publication_control import load_publication_control_state
+
 
 class PublicationError(RuntimeError):
     """Raised when a decision cannot cross the client publication boundary safely."""
@@ -71,6 +73,15 @@ def publish_new_bet_decision(
         # Safe no-op. The row already crossed the one-way publication boundary;
         # later market movement must not rewrite historical publication truth.
         return existing_published_at
+
+    control = load_publication_control_state(conn)
+    if not control.enabled:
+        raise PublicationError(
+            "publication halted by control state "
+            f"source={control.source or 'UNKNOWN'} "
+            f"since={control.created_at.isoformat() if control.created_at else '-'}"
+        )
+
     if decision_as_of > published_at:
         raise PublicationError("published_at cannot precede decision as_of")
     if (

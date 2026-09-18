@@ -78,6 +78,13 @@
       "up": "db/migrations/0011_a2_history_data_regime_v1.up.sql",
       "down": "db/migrations/0011_a2_history_data_regime_v1.down.sql",
       "schema_snapshot": "db/schema/0011_a2_history_data_regime_v1.sql"
+    },
+    {
+      "version": "0012",
+      "name": "publication_control_v1",
+      "up": "db/migrations/0012_publication_control_v1.up.sql",
+      "down": "db/migrations/0012_publication_control_v1.down.sql",
+      "schema_snapshot": "db/schema/0012_publication_control_v1.sql"
     }
   ]
 }
