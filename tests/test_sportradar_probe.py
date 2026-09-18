@@ -2,8 +2,10 @@ import pytest
 
 from datetime import date
 
+from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
     RequestPacer,
+    _paced_fetch,
     find_competitions,
     find_player_candidates,
     select_season,
@@ -133,3 +135,63 @@ def test_request_pacer_enforces_minimum_interval():
     assert len(sleeps) == 1
     assert sleeps[0] == pytest.approx(0.7)
     assert clock["now"] == pytest.approx(11.1)
+
+
+
+def test_paced_fetch_retries_one_trial_429_then_succeeds(capsys):
+    clock = {"now": 0.0}
+    sleeps = []
+    calls = {"count": 0}
+
+    def monotonic():
+        return clock["now"]
+
+    def sleep(seconds):
+        sleeps.append(seconds)
+        clock["now"] += seconds
+
+    def fetcher(api_key, **transport):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise SportradarTransportError("HTTP_429", "rate limited")
+        return (
+            __import__("datetime").datetime(2026, 9, 18, tzinfo=__import__("datetime").timezone.utc),
+            {"ok": True},
+        )
+
+    pacer = RequestPacer(2.0, monotonic=monotonic, sleep=sleep)
+    received_at, payload = _paced_fetch(
+        endpoint="competitions",
+        fetcher=fetcher,
+        args=("secret",),
+        transport={"access_level": "trial", "language": "en"},
+        pacer=pacer,
+        access_level="trial",
+        retry_429_seconds=3.0,
+    )
+
+    assert payload == {"ok": True}
+    assert calls["count"] == 2
+    assert sleeps == [3.0]
+    output = capsys.readouterr().out
+    assert "SPORTRADAR_RATE_LIMIT endpoint=competitions retry=1" in output
+    assert "SPORTRADAR_REQUEST endpoint=competitions status=OK retry=1" in output
+
+
+def test_paced_fetch_does_not_retry_non_429():
+    def fetcher(api_key, **transport):
+        raise SportradarTransportError("HTTP_403", "forbidden")
+
+    pacer = RequestPacer(0.0)
+    with pytest.raises(SportradarTransportError) as exc:
+        _paced_fetch(
+            endpoint="competitions",
+            fetcher=fetcher,
+            args=("secret",),
+            transport={"access_level": "trial", "language": "en"},
+            pacer=pacer,
+            access_level="trial",
+            retry_429_seconds=3.0,
+        )
+
+    assert exc.value.kind == "HTTP_403"
