@@ -1,0 +1,1 @@
+Trigger a fresh tennis-validation-runner build after wiring the read-only Sportradar Tennis probe. No model or canonical-data behavior change.\n
