@@ -27,6 +27,7 @@ from typing import Any
 
 import psycopg
 
+from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
 from sports_edge_tennis.live.credentials import load_secret
 from sports_edge_tennis.live.sportradar_benchmark import (
     benchmark_challenger_a2_stats,
@@ -658,6 +659,13 @@ def run_probe(
         )
     else:
         try:
+            with psycopg.connect(dsn, autocommit=True) as schema_conn:
+                bridge_schema_status = ensure_model_identity_bridge_schema(schema_conn)
+            print(
+                "SPORTRADAR_MODEL_IDENTITY_BRIDGE_SCHEMA "
+                f"status={bridge_schema_status} migration=0013",
+                flush=True,
+            )
             with psycopg.connect(dsn, autocommit=False) as conn:
                 prediction_run_id, run_as_of, gap_targets = load_latest_gap_targets(
                     conn,
