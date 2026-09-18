@@ -312,25 +312,32 @@ def test_optional_a2_stats_dry_run_rejects_invalid_end_override(db):
 
 
 class _AuditCursor:
-    def __init__(self, row):
+    def __init__(self, row=None, rows=None):
         self._row = row
+        self._rows = [] if rows is None else rows
 
     def fetchone(self):
         return self._row
 
+    def fetchall(self):
+        return self._rows
+
 
 class _AuditConn:
-    def __init__(self, regime_row=None, counts_row=None):
+    def __init__(self, regime_row=None, counts_row=None, anomaly_rows=None):
         self.regime_row = regime_row
         self.counts_row = counts_row
+        self.anomaly_rows = [] if anomaly_rows is None else anomaly_rows
         self.calls = []
 
     def execute(self, sql, params=()):
         self.calls.append((sql, params))
         if "FROM a2_history_data_regimes" in sql:
-            return _AuditCursor(self.regime_row)
-        if "WITH scoped AS" in sql:
-            return _AuditCursor(self.counts_row)
+            return _AuditCursor(row=self.regime_row)
+        if "WITH scoped AS" in sql and "COUNT_MISMATCH_WITHOUT_ROWS" not in sql:
+            if "SELECT\n            s.match_stat_observation_id" in sql:
+                return _AuditCursor(rows=self.anomaly_rows)
+            return _AuditCursor(row=self.counts_row)
         raise AssertionError("unexpected audit query")
 
 
@@ -382,3 +389,44 @@ def test_optional_a2_regime_audit_reports_expected_accounting(capsys):
     assert "pre_activation_rows=48" in out
     assert "distinct_matches=1471" in out
     assert "complete_two_player_matches=1471" in out
+
+
+def test_optional_a2_regime_audit_reports_anomaly_rows(capsys):
+    activated = datetime(2026, 9, 18, 13, 54, 37, 439596, tzinfo=UTC)
+    pre = datetime(2026, 9, 18, 0, 10, 44, tzinfo=UTC)
+    post = datetime(2026, 9, 18, 13, 55, 0, tzinfo=UTC)
+    conn = _AuditConn(
+        regime_row=(
+            "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+            "API_TENNIS",
+            date(2026, 8, 18),
+            date(2026, 9, 17),
+            1,
+            activated,
+            "verified dry run",
+        ),
+        counts_row=(2944, 2894, 50, 1471, 1470, pre, post),
+        anomaly_rows=[
+            (1001, 555, 11, "Player One", "src:1", "hash1", pre, pre, pre, 4, 2),
+            (1002, 555, 22, "Player Two", "src:2", "hash2", pre, pre, pre, 4, 2),
+            (1003, 555, 11, "Player One", "src:3", "hash3", post, post, post, 4, 2),
+            (1004, 555, 22, "Player Two", "src:4", "hash4", post, post, post, 4, 2),
+        ],
+    )
+
+    _run_optional_a2_regime_audit(
+        conn,
+        env={
+            A2_REGIME_AUDIT_ENABLED_ENV: "true",
+            A2_REGIME_AUDIT_CODE_ENV: "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+        },
+    )
+
+    out = capsys.readouterr().out
+    assert "A2_HISTORY_REGIME_AUDIT status=FOUND" in out
+    assert "total_rows=2944" in out
+    assert out.count("A2_HISTORY_REGIME_ANOMALY ") == 4
+    assert "match_id=555" in out
+    assert "row_count=4 player_count=2" in out
+    assert "post_activation=0" in out
+    assert "post_activation=1" in out
