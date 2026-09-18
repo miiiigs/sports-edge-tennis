@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import os
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from typing import Callable
@@ -33,6 +34,10 @@ DEFAULT_CHUNK_DAYS = 7
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_BACKOFF_SECONDS = 2.0
 DEFAULT_MIN_CHUNK_DAYS = 1
+A2_STATS_DRY_RUN_ENABLED_ENV = "A2_STATS_BACKFILL_DRY_RUN_ENABLED"
+A2_STATS_DRY_RUN_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_DAYS"
+A2_STATS_DRY_RUN_DEFAULT_DAYS = 7
+A2_STATS_DRY_RUN_MAX_DAYS = 31
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -100,6 +105,57 @@ def _db_dsn() -> str | None:
 
 def _default_end_date() -> date:
     return datetime.now(UTC).date() - timedelta(days=1)
+
+
+def _flag_enabled(value: str | None) -> bool:
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def _run_optional_a2_stats_dry_run(
+    conn: psycopg.Connection,
+    *,
+    api_key: str,
+    end_date: date,
+    env: Mapping[str, str] | None = None,
+    runner: Callable[..., object] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(A2_STATS_DRY_RUN_ENABLED_ENV)):
+        return
+
+    try:
+        days = int(
+            str(values.get(A2_STATS_DRY_RUN_DAYS_ENV) or A2_STATS_DRY_RUN_DEFAULT_DAYS).strip()
+        )
+    except ValueError as exc:
+        raise ValueError("A2 stats dry-run days must be an integer") from exc
+    if not 1 <= days <= A2_STATS_DRY_RUN_MAX_DAYS:
+        raise ValueError(
+            f"A2 stats dry-run days must be between 1 and {A2_STATS_DRY_RUN_MAX_DAYS}"
+        )
+
+    start_date = end_date - timedelta(days=days - 1)
+    if runner is None:
+        from sports_edge_tennis.live.api_tennis_stats_backfill import (
+            backfill_stats_range as dry_run_runner,
+        )
+
+        runner = dry_run_runner
+
+    print(
+        "A2_STATS_BACKFILL_DRY_RUN_DISPATCH "
+        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"days={days} writes=0",
+        flush=True,
+    )
+    runner(
+        conn,
+        api_key=api_key,
+        start_date=start_date,
+        end_date=end_date,
+        chunk_days=min(DEFAULT_CHUNK_DAYS, days),
+        dry_run=True,
+    )
 
 
 def ensure_checkpoint_table(conn: psycopg.Connection) -> None:
@@ -417,6 +473,11 @@ def main(argv: list[str] | None = None) -> int:
                 chunk_days=args.chunk_days, checkpoint_key=args.checkpoint_key,
                 max_attempts=args.max_attempts, backoff_seconds=args.backoff_seconds,
                 min_chunk_days=args.min_chunk_days, restart_window=args.restart_window,
+            )
+            _run_optional_a2_stats_dry_run(
+                conn,
+                api_key=api_key,
+                end_date=args.end_date,
             )
     except TransportError:
         return 2

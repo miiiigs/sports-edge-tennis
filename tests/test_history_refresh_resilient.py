@@ -6,7 +6,10 @@ import pytest
 
 from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
+    A2_STATS_DRY_RUN_DAYS_ENV,
+    A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
+    _run_optional_a2_stats_dry_run,
     run_resilient_history_refresh,
 )
 from sports_edge_tennis.live.transport import TransportError
@@ -166,3 +169,66 @@ def test_persistent_timeout_adaptively_splits_to_minimum_chunk(db):
     assert checkpoint is not None
     assert checkpoint.next_start_date == date(2026, 1, 5)
     assert checkpoint.completed_chunks == 4
+
+
+def test_optional_a2_stats_dry_run_is_disabled_by_default(db):
+    calls = []
+
+    _run_optional_a2_stats_dry_run(
+        db,
+        api_key="test-key",
+        end_date=date(2026, 9, 17),
+        env={},
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert calls == []
+
+
+def test_optional_a2_stats_dry_run_dispatches_recent_bounded_window(db, capsys):
+    calls = []
+
+    def runner(conn, **kwargs):
+        calls.append((conn, kwargs))
+        return object()
+
+    _run_optional_a2_stats_dry_run(
+        db,
+        api_key="test-key",
+        end_date=date(2026, 9, 17),
+        env={
+            A2_STATS_DRY_RUN_ENABLED_ENV: "true",
+            A2_STATS_DRY_RUN_DAYS_ENV: "7",
+        },
+        runner=runner,
+    )
+
+    assert len(calls) == 1
+    conn, kwargs = calls[0]
+    assert conn is db
+    assert kwargs == {
+        "api_key": "test-key",
+        "start_date": date(2026, 9, 11),
+        "end_date": date(2026, 9, 17),
+        "chunk_days": 7,
+        "dry_run": True,
+    }
+    output = capsys.readouterr().out
+    assert (
+        "A2_STATS_BACKFILL_DRY_RUN_DISPATCH "
+        "start=2026-09-11 end=2026-09-17 days=7 writes=0"
+    ) in output
+
+
+def test_optional_a2_stats_dry_run_rejects_large_window(db):
+    with pytest.raises(ValueError, match="between 1 and 31"):
+        _run_optional_a2_stats_dry_run(
+            db,
+            api_key="test-key",
+            end_date=date(2026, 9, 17),
+            env={
+                A2_STATS_DRY_RUN_ENABLED_ENV: "1",
+                A2_STATS_DRY_RUN_DAYS_ENV: "32",
+            },
+            runner=lambda *args, **kwargs: None,
+        )
