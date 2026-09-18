@@ -4,6 +4,11 @@ from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 from sports_edge_tennis.live.sportradar import SportradarTransportError
+from sports_edge_tennis.live.sportradar_identity_bridge_apply import (
+    ENABLED_ENV as IDENTITY_BRIDGE_ENABLED_ENV,
+    EVENT_ID_ENV as IDENTITY_BRIDGE_EVENT_ID_ENV,
+    MATCH_ID_ENV as IDENTITY_BRIDGE_MATCH_ID_ENV,
+)
 from sports_edge_tennis.live.sportradar_probe import (
     A3_EVIDENCE_ENABLED_ENV,
     A3_EVIDENCE_HORIZON_DAYS_ENV,
@@ -14,6 +19,7 @@ from sports_edge_tennis.live.sportradar_probe import (
     GAP_SURFACE_ENABLED_ENV,
     GAP_SURFACE_MAX_COMPETITIONS_ENV,
     RequestPacer,
+    _augment_identity_bridge_exact_links,
     _paced_fetch,
     _run_optional_a3_evidence,
     _run_optional_history_depth,
@@ -24,6 +30,126 @@ from sports_edge_tennis.live.sportradar_probe import (
     select_season,
     summary_has_statistics,
 )
+
+
+class _BridgeReadConn:
+    def __init__(self):
+        self.rollbacks = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def rollback(self):
+        self.rollbacks += 1
+
+
+def _bridge_env():
+    return {
+        IDENTITY_BRIDGE_ENABLED_ENV: "true",
+        IDENTITY_BRIDGE_MATCH_ID_ENV: "130469",
+        IDENTITY_BRIDGE_EVENT_ID_ENV: "sr:sport_event:74801010",
+    }
+
+
+def test_identity_bridge_revalidation_is_disabled_by_default():
+    assert (
+        _augment_identity_bridge_exact_links(
+            dsn="postgresql://example",
+            daily={},
+            exact_links=(),
+            env={},
+            connect=lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("no connection")
+            ),
+        )
+        == ()
+    )
+
+
+def test_identity_bridge_revalidation_uses_current_batch_link(capsys):
+    target = SimpleNamespace(match_id=130469)
+    candidate = SimpleNamespace(event_id="sr:sport_event:74801010")
+
+    links = _augment_identity_bridge_exact_links(
+        dsn="postgresql://example",
+        daily={},
+        exact_links=((target, candidate),),
+        env=_bridge_env(),
+        connect=lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("no fallback connection")
+        ),
+    )
+
+    assert links == ((target, candidate),)
+    assert "status=CURRENT_BATCH" in capsys.readouterr().out
+
+
+def test_identity_bridge_revalidation_loads_aged_pre_match_target(capsys):
+    conn = _BridgeReadConn()
+    target = SimpleNamespace(
+        match_id=130469,
+        prediction_as_of=datetime(2026, 9, 18, 18, 32, tzinfo=UTC),
+    )
+    candidate = SimpleNamespace(
+        event_id="sr:sport_event:74801010",
+        start_delta_minutes=20,
+    )
+    result = SimpleNamespace(status="EXACT", candidates=(candidate,))
+    loaded = []
+
+    links = _augment_identity_bridge_exact_links(
+        dsn="postgresql://example",
+        daily={"summaries": []},
+        exact_links=(),
+        env=_bridge_env(),
+        connect=lambda *args, **kwargs: conn,
+        target_loader=lambda received_conn, *, match_id: (
+            loaded.append((received_conn, match_id)) or target
+        ),
+        linker=lambda received_target, daily: result,
+    )
+
+    assert loaded == [(conn, 130469)]
+    assert conn.rollbacks == 1
+    assert links == ((target, candidate),)
+    output = capsys.readouterr().out
+    assert "status=EXACT" in output
+    assert "prediction_as_of=2026-09-18T18:32:00+00:00" in output
+    assert "writes=0" in output
+
+
+def test_identity_bridge_revalidation_refuses_requested_event_mismatch(capsys):
+    conn = _BridgeReadConn()
+    target = SimpleNamespace(
+        match_id=130469,
+        prediction_as_of=datetime(2026, 9, 18, 18, 32, tzinfo=UTC),
+    )
+    candidate = SimpleNamespace(
+        event_id="sr:sport_event:other",
+        start_delta_minutes=20,
+    )
+
+    links = _augment_identity_bridge_exact_links(
+        dsn="postgresql://example",
+        daily={},
+        exact_links=(),
+        env=_bridge_env(),
+        connect=lambda *args, **kwargs: conn,
+        target_loader=lambda *args, **kwargs: target,
+        linker=lambda *args, **kwargs: SimpleNamespace(
+            status="EXACT",
+            candidates=(candidate,),
+        ),
+    )
+
+    assert links == ()
+    assert conn.rollbacks == 1
+    output = capsys.readouterr().out
+    assert "candidate_event_id=sr:sport_event:other" in output
+    assert "writes=0" in output
 
 
 def test_find_competitions_is_case_insensitive_and_bounded():
