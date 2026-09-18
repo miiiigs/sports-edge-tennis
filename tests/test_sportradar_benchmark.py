@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
 
+import sports_edge_tennis.live.sportradar_benchmark as benchmark_module
 from sports_edge_tennis.live.sportradar_benchmark import (
     CanonicalGapTarget,
     benchmark_challenger_a2_stats,
     deterministic_name_keys,
     link_gap_target,
+    load_latest_gap_targets,
 )
 
 
@@ -270,3 +272,113 @@ def test_a2_core_rejects_incoherent_service_point_totals():
     result = benchmark_challenger_a2_stats({"summaries": [bad]})
 
     assert result.a2_core_ready == 0
+
+
+
+class _RowsCursor:
+    def __init__(self, *, one=None, many=None):
+        self._one = one
+        self._many = many or []
+
+    def fetchone(self):
+        return self._one
+
+    def fetchall(self):
+        return self._many
+
+
+class _GapBatchConn:
+    def __init__(self, latest_row, target_rows):
+        self.latest_row = latest_row
+        self.target_rows = target_rows
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if "ORDER BY as_of DESC, prediction_run_id DESC" in sql and "LIMIT 1" in sql:
+            return _RowsCursor(one=self.latest_row)
+        if "WITH batch_runs AS" in sql:
+            return _RowsCursor(many=self.target_rows)
+        raise AssertionError(f"unexpected query: {sql}")
+
+
+def test_gap_loader_unions_latest_multi_slate_batch(monkeypatch):
+    latest_as_of = datetime(2026, 9, 18, 15, 3, 52, tzinfo=UTC)
+    first_as_of = datetime(2026, 9, 18, 15, 3, 40, tzinfo=UTC)
+    conn = _GapBatchConn(
+        latest_row=(312, latest_as_of),
+        target_rows=[
+            (
+                130431,
+                first_as_of,
+                10,
+                "Player One",
+                11,
+                "Player Two",
+                datetime(2026, 9, 18, 18, 0, tzinfo=UTC),
+                None,
+                None,
+                "ATP_MAIN",
+                "ATP_MAIN",
+                659,
+                "ATP Davis Cup - World Group I",
+                2026,
+            ),
+            (
+                130500,
+                latest_as_of,
+                12,
+                "Player Three",
+                13,
+                "Player Four",
+                datetime(2026, 9, 19, 12, 0, tzinfo=UTC),
+                None,
+                None,
+                "ATP_MAIN",
+                "ATP_MAIN",
+                659,
+                "ATP Davis Cup - World Group I",
+                2026,
+            ),
+        ],
+    )
+    resolved_as_of = []
+
+    def fake_resolve_player(conn_arg, *, player_id, as_of):
+        assert conn_arg is conn
+        resolved_as_of.append((player_id, as_of))
+        return player_id
+
+    monkeypatch.setattr(benchmark_module, "_resolve_model_player_id", fake_resolve_player)
+    monkeypatch.setattr(
+        benchmark_module,
+        "_model_identity_status",
+        lambda conn_arg, **kwargs: "BRIDGED",
+    )
+    monkeypatch.setattr(
+        benchmark_module,
+        "_resolve_model_surface",
+        lambda conn_arg, **kwargs: (None, "UNRESOLVED"),
+    )
+
+    latest_id, batch_as_of, gaps = load_latest_gap_targets(
+        conn,
+        target_date=date(2026, 9, 18),
+    )
+
+    assert latest_id == 312
+    assert batch_as_of == latest_as_of
+    assert [gap.match_id for gap in gaps] == [130431, 130500]
+    assert resolved_as_of == [
+        (10, first_as_of),
+        (11, first_as_of),
+        (12, latest_as_of),
+        (13, latest_as_of),
+    ]
+
+    batch_sql, batch_params = conn.calls[1]
+    assert "WITH batch_runs AS" in batch_sql
+    assert "DISTINCT ON (prt.match_id)" in batch_sql
+    assert "make_interval(mins => %s)" in batch_sql
+    assert "WHERE prt.prediction_run_id = %s" not in batch_sql
+    assert batch_params == (latest_as_of, 15, latest_as_of)
