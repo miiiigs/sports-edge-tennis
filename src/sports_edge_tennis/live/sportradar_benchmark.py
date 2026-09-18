@@ -5,9 +5,9 @@ statistics, surfaces, or canonical mappings. The validation probe uses it to:
 
 * measure whether Challenger daily summaries contain the exact statistics the
   current Agent 2 history accumulator can consume; and
-* compare current unresolved production targets with Sportradar sport-event and
-  competitor IDs using deterministic participant aliases plus a bounded start
-  time window.
+* compare current unresolved ATP/Challenger production targets with Sportradar
+  sport-event and competitor IDs using deterministic participant aliases plus a
+  bounded start time window.
 
 Any proposed canonical/provider mapping remains a later reviewed change.
 """
@@ -293,8 +293,9 @@ def _candidate_for_summary(
     target: CanonicalGapTarget,
     summary: Mapping[str, Any],
 ) -> SportradarLinkCandidate | None:
-    if not summary_is_challenger(summary):
-        return None
+    # Gap targets already come from the accepted production target set. Do not
+    # re-filter Sportradar candidates to Challenger only here, otherwise ATP-main
+    # gaps (for example Davis Cup) can never be benchmarked.
     competitors = _event_competitors(summary)
     if len(competitors) != 2:
         return None
@@ -428,10 +429,6 @@ def load_latest_gap_targets(
           ON te.tournament_edition_id = m.tournament_edition_id
         JOIN tournaments t ON t.tournament_id = te.tournament_id
         WHERE prt.prediction_run_id = %s
-          AND (
-              mv.tour_scope::text = 'CHALLENGER'
-              OR mv.competition_tier::text = 'CHALLENGER'
-          )
         ORDER BY prt.match_id
         """,
         (run_as_of, run_as_of, prediction_run_id),
