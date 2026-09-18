@@ -34,6 +34,75 @@ _STAKING_CONSTRAINTS = frozenset(
 )
 _SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
 SHADOW_STRATEGY_CODE = "A1_A2_AGREE_A3_ABSTAIN_V1"
+LIVE_BATCH_GAP_ALERT_MINUTES = 90
+
+
+def _previous_completed_production_run(
+    conn: psycopg.Connection,
+    *,
+    before: datetime,
+) -> tuple[int, datetime] | None:
+    row = conn.execute(
+        """
+        SELECT prediction_run_id, prediction_finalized_at
+        FROM prediction_runs
+        WHERE run_status = 'COMPLETED'
+          AND experiment_id IS NULL
+          AND prediction_finalized_at IS NOT NULL
+          AND prediction_finalized_at < %s
+        ORDER BY prediction_finalized_at DESC, prediction_run_id DESC
+        LIMIT 1
+        """,
+        (before,),
+    ).fetchone()
+    if row is None:
+        return None
+    return int(row[0]), row[1]
+
+
+def _live_batch_gap_cycle(
+    dsn: str,
+    *,
+    cycle_started_at: datetime,
+    threshold_minutes: int = LIVE_BATCH_GAP_ALERT_MINUTES,
+) -> None:
+    """Emit a fail-isolated operational alert when an hourly production cycle was missed."""
+    if threshold_minutes <= 0:
+        raise ValueError("threshold_minutes must be positive")
+
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            previous = _previous_completed_production_run(
+                conn,
+                before=cycle_started_at,
+            )
+    except Exception as exc:
+        _log(f"LIVE_BATCH_GAP_CHECK_FAILED error_type={type(exc).__name__}")
+        return
+
+    if previous is None:
+        _log("LIVE_BATCH_GAP_CHECK status=NO_PREVIOUS_COMPLETED_RUN")
+        return
+
+    prediction_run_id, finalized_at = previous
+    age_minutes = max(
+        0,
+        int((cycle_started_at - finalized_at).total_seconds() // 60),
+    )
+    if age_minutes > threshold_minutes:
+        _log(
+            "LIVE_BATCH_GAP_ALERT "
+            f"previous_prediction_run_id={prediction_run_id} "
+            f"previous_finalized_at={finalized_at.isoformat()} "
+            f"age_minutes={age_minutes} threshold_minutes={threshold_minutes}"
+        )
+        return
+
+    _log(
+        "LIVE_BATCH_GAP_OK "
+        f"previous_prediction_run_id={prediction_run_id} "
+        f"age_minutes={age_minutes} threshold_minutes={threshold_minutes}"
+    )
 
 
 def _db_dsn() -> str | None:
@@ -245,6 +314,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     _log(f"SCHEMA_QUARTER_KELLY status={schema_status} migration=0010")
+
+    _live_batch_gap_cycle(
+        dsn,
+        cycle_started_at=shadow_cycle_started_at,
+    )
 
     try:
         from sports_edge_tennis.performance.shadow_strategy import activate_shadow_strategy
