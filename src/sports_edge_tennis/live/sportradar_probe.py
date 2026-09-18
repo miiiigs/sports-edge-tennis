@@ -769,7 +769,7 @@ def run_probe(
             dsn=dsn,
             exact_links=tuple(exact_gap_links),
         )
-    except (ValueError, RuntimeError, psycopg.Error) as exc:
+    except (ValueError, RuntimeError, OSError, psycopg.Error) as exc:
         print(
             "SPORTRADAR_IDENTITY_BRIDGE_APPLY_BLOCKED "
             f"reason={type(exc).__name__} writes=0",
