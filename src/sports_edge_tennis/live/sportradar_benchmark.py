@@ -60,6 +60,7 @@ class ChallengerA2Coverage:
 @dataclass(frozen=True)
 class CanonicalGapTarget:
     match_id: int
+    prediction_as_of: datetime
     player_1_id: int
     player_1_name: str
     player_2_id: int
@@ -90,6 +91,94 @@ class SportradarLinkCandidate:
 class GapLinkResult:
     status: str
     candidates: tuple[SportradarLinkCandidate, ...]
+
+
+@dataclass(frozen=True)
+class ProviderNameIdentityEvidence:
+    status: str
+    alias_candidates: tuple[int, ...]
+    pit_candidates: tuple[int, ...]
+
+
+def provider_name_identity_evidence(
+    conn: psycopg.Connection,
+    *,
+    live_player_id: int,
+    provider_name: str,
+    as_of: datetime,
+) -> ProviderNameIdentityEvidence:
+    """Read-only historical identity evidence from one exact provider participant name.
+
+    This is intentionally stricter than name matching alone. It uses the same
+    TENNIS_DATA alias and PIT-visible completed-history conditions as the production
+    live-to-history bridge. It never mutates canonical identity.
+    """
+    normalized_aliases = sorted(
+        {
+            normalize_person_lookup(alias)
+            for alias in tennis_data_aliases(provider_name)
+            if alias and normalize_person_lookup(alias)
+        }
+    )
+    if not normalized_aliases:
+        return ProviderNameIdentityEvidence("NO_NORMALIZED_ALIAS", (), ())
+
+    alias_rows = conn.execute(
+        """
+        SELECT DISTINCT pa.player_id
+        FROM player_aliases pa
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> 'API_TENNIS'
+          )
+        ORDER BY pa.player_id
+        """,
+        (normalized_aliases, live_player_id),
+    ).fetchall()
+    alias_ids = tuple(int(row[0]) for row in alias_rows)
+    if not alias_ids:
+        return ProviderNameIdentityEvidence("NO_HISTORICAL_ALIAS", (), ())
+
+    pit_rows = conn.execute(
+        """
+        SELECT DISTINCT pa.player_id
+        FROM player_aliases pa
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> 'API_TENNIS'
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM match_result_observations hist_mro
+              JOIN match_versions hist_mv
+                ON hist_mv.match_id = hist_mro.match_id
+               AND hist_mv.source_observed_at <= hist_mro.source_observed_at
+               AND hist_mv.as_of <= hist_mro.as_of
+              WHERE (hist_mv.player_1_id = pa.player_id OR hist_mv.player_2_id = pa.player_id)
+                AND hist_mro.outcome_status = 'COMPLETED'
+                AND hist_mro.source_observed_at <= %s
+                AND hist_mro.as_of <= %s
+          )
+        ORDER BY pa.player_id
+        """,
+        (normalized_aliases, live_player_id, as_of, as_of),
+    ).fetchall()
+    pit_ids = tuple(int(row[0]) for row in pit_rows)
+    if not pit_ids:
+        return ProviderNameIdentityEvidence("ALIAS_WITHOUT_PIT_HISTORY", alias_ids, ())
+    if len(pit_ids) == 1:
+        return ProviderNameIdentityEvidence("UNIQUE_PIT_CANDIDATE", alias_ids, pit_ids)
+    return ProviderNameIdentityEvidence("AMBIGUOUS_PIT_CANDIDATES", alias_ids, pit_ids)
 
 
 def _list(value: Any) -> list[Mapping[str, Any]]:
@@ -527,6 +616,7 @@ def load_latest_gap_targets(
         gaps.append(
             CanonicalGapTarget(
                 match_id=int(match_id),
+                prediction_as_of=target_as_of,
                 player_1_id=int(player_1_id),
                 player_1_name=str(player_1_name),
                 player_2_id=int(player_2_id),
