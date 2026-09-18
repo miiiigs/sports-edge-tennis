@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
 from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
+    A2_REGIME_AUDIT_CODE_ENV,
+    A2_REGIME_AUDIT_ENABLED_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
     A2_STATS_DRY_RUN_END_DATE_ENV,
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
+    _run_optional_a2_regime_audit,
     _run_optional_a2_stats_dry_run,
     run_resilient_history_refresh,
 )
@@ -306,3 +309,76 @@ def test_optional_a2_stats_dry_run_rejects_invalid_end_override(db):
             },
             runner=lambda *args, **kwargs: None,
         )
+
+
+class _AuditCursor:
+    def __init__(self, row):
+        self._row = row
+
+    def fetchone(self):
+        return self._row
+
+
+class _AuditConn:
+    def __init__(self, regime_row=None, counts_row=None):
+        self.regime_row = regime_row
+        self.counts_row = counts_row
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if "FROM a2_history_data_regimes" in sql:
+            return _AuditCursor(self.regime_row)
+        if "WITH scoped AS" in sql:
+            return _AuditCursor(self.counts_row)
+        raise AssertionError("unexpected audit query")
+
+
+def test_optional_a2_regime_audit_is_disabled_by_default():
+    conn = _AuditConn()
+
+    _run_optional_a2_regime_audit(conn, env={})
+
+    assert conn.calls == []
+
+
+def test_optional_a2_regime_audit_requires_regime_code():
+    with pytest.raises(ValueError, match="audit code is required"):
+        _run_optional_a2_regime_audit(
+            _AuditConn(),
+            env={A2_REGIME_AUDIT_ENABLED_ENV: "true"},
+        )
+
+
+def test_optional_a2_regime_audit_reports_expected_accounting(capsys):
+    activated = datetime(2026, 9, 18, 13, 54, 37, 439596, tzinfo=UTC)
+    first_seen = datetime(2026, 9, 18, 13, 54, 38, tzinfo=UTC)
+    last_seen = datetime(2026, 9, 18, 13, 57, 10, tzinfo=UTC)
+    conn = _AuditConn(
+        regime_row=(
+            "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+            "API_TENNIS",
+            date(2026, 8, 18),
+            date(2026, 9, 17),
+            1,
+            activated,
+            "verified dry run",
+        ),
+        counts_row=(2942, 2894, 48, 1471, 1471, first_seen, last_seen),
+    )
+
+    _run_optional_a2_regime_audit(
+        conn,
+        env={
+            A2_REGIME_AUDIT_ENABLED_ENV: "true",
+            A2_REGIME_AUDIT_CODE_ENV: "A2_API_TENNIS_HISTORY_20260818_20260917_V1",
+        },
+    )
+
+    out = capsys.readouterr().out
+    assert "A2_HISTORY_REGIME_AUDIT status=FOUND" in out
+    assert "total_rows=2942" in out
+    assert "post_activation_rows=2894" in out
+    assert "pre_activation_rows=48" in out
+    assert "distinct_matches=1471" in out
+    assert "complete_two_player_matches=1471" in out
