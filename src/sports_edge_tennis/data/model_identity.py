@@ -10,6 +10,7 @@ from datetime import datetime
 
 import psycopg
 
+from sports_edge_tennis.data.model_identity_bridge import resolve_active_bridge
 from sports_edge_tennis.data.normalize import normalize_person_lookup, tennis_data_aliases
 
 
@@ -42,6 +43,14 @@ def resolve_model_player_id(
     """
     if has_non_api_source_identity(conn, player_id):
         return player_id
+
+    persisted_bridge = resolve_active_bridge(
+        conn,
+        live_player_id=player_id,
+        as_of=as_of,
+    )
+    if persisted_bridge is not None:
+        return persisted_bridge
 
     row = conn.execute(
         "SELECT canonical_name FROM players WHERE player_id = %s",

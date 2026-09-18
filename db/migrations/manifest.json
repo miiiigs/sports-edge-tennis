@@ -85,6 +85,13 @@
       "up": "db/migrations/0012_publication_control_v1.up.sql",
       "down": "db/migrations/0012_publication_control_v1.down.sql",
       "schema_snapshot": "db/schema/0012_publication_control_v1.sql"
+    },
+    {
+      "version": "0013",
+      "name": "model_identity_bridge_v1",
+      "up": "db/migrations/0013_model_identity_bridge_v1.up.sql",
+      "down": "db/migrations/0013_model_identity_bridge_v1.down.sql",
+      "schema_snapshot": "db/schema/0013_model_identity_bridge_v1.sql"
     }
   ]
 }

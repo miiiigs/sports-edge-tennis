@@ -9,6 +9,7 @@ from sports_edge_tennis.live.production_batch import (
     _STAKING_CONSTRAINTS,
     _a1_evidence_cycle,
     _ensure_publication_control_schema,
+    ensure_model_identity_bridge_schema,
     _ensure_quarter_kelly_schema,
     _live_batch_gap_cycle,
     _live_operational_health_cycle,
@@ -247,6 +248,66 @@ def test_publication_control_partial_schema_fails_closed(tmp_path: Path):
         _ensure_publication_control_schema(
             conn,
             migration_path=tmp_path / "0012.sql",
+        )
+
+    assert conn.migration_execs == 0
+
+
+
+class _BridgeSchemaConn:
+    def __init__(self, *, table_present: bool, trigger_present: bool):
+        self.table_present = table_present
+        self.trigger_present = trigger_present
+        self.migration_execs = 0
+
+    def execute(self, sql, params=()):
+        rendered = str(sql)
+        if "to_regclass('public.model_identity_bridge_events')" in rendered:
+            return _Cursor(row=(self.table_present,))
+        if "FROM pg_trigger" in rendered:
+            return _Cursor(row=(self.trigger_present,))
+        if "CREATE TABLE model_identity_bridge_events" in rendered:
+            self.migration_execs += 1
+            self.table_present = True
+            self.trigger_present = True
+            return _Cursor()
+        raise AssertionError(f"unexpected model bridge schema SQL: {rendered[:100]}")
+
+
+def test_model_identity_bridge_schema_existing_is_idempotent(tmp_path: Path):
+    conn = _BridgeSchemaConn(table_present=True, trigger_present=True)
+
+    status = ensure_model_identity_bridge_schema(
+        conn,
+        migration_path=tmp_path / "must-not-be-read.sql",
+    )
+
+    assert status == "EXISTING"
+    assert conn.migration_execs == 0
+
+
+def test_model_identity_bridge_schema_missing_applies_then_verifies(tmp_path: Path):
+    migration = tmp_path / "0013.sql"
+    migration.write_text(
+        "BEGIN;\nCREATE TABLE model_identity_bridge_events (id BIGINT);\nCOMMIT;\n"
+    )
+    conn = _BridgeSchemaConn(table_present=False, trigger_present=False)
+
+    status = ensure_model_identity_bridge_schema(conn, migration_path=migration)
+
+    assert status == "APPLIED"
+    assert conn.migration_execs == 1
+    assert conn.table_present is True
+    assert conn.trigger_present is True
+
+
+def test_model_identity_bridge_partial_schema_fails_closed(tmp_path: Path):
+    conn = _BridgeSchemaConn(table_present=True, trigger_present=False)
+
+    with pytest.raises(RuntimeError, match="partially applied"):
+        ensure_model_identity_bridge_schema(
+            conn,
+            migration_path=tmp_path / "0013.sql",
         )
 
     assert conn.migration_execs == 0

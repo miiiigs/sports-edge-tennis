@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import psycopg
+import pytest
 
 from sports_edge_tennis.data.repository import HistoricalRepository
 from sports_edge_tennis.runner.targets import (
@@ -345,3 +346,149 @@ def test_resolve_target_uses_historical_ids_without_rewriting_live_match_identit
         (live_match_id,),
     ).fetchone()
     assert persisted == (live_1, live_2)
+
+
+
+def test_persisted_model_identity_bridge_is_pit_activated_and_disableable(
+    db: psycopg.Connection,
+):
+    historical_at = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    before_activation = datetime(2026, 9, 18, 18, 0, tzinfo=UTC)
+    activated_at = datetime(2026, 9, 18, 18, 35, tzinfo=UTC)
+    after_activation = datetime(2026, 9, 18, 18, 40, tzinfo=UTC)
+    disabled_at = datetime(2026, 9, 18, 19, 0, tzinfo=UTC)
+    after_disable = datetime(2026, 9, 18, 19, 5, tzinfo=UTC)
+
+    historical_id = _player(
+        db,
+        source_system="SACKMANN",
+        source_player_id="hist-provider-bridge",
+        name="Provider Historical Player",
+        observed_at=historical_at,
+    )
+    _seed_completed_history(
+        db,
+        player_id=historical_id,
+        observed_at=historical_at,
+        suffix="provider-bridge",
+    )
+    live_id = _player(
+        db,
+        source_system="API_TENNIS",
+        source_player_id="api-provider-bridge",
+        name="Live Name That Does Not Alias",
+        observed_at=before_activation - timedelta(minutes=1),
+    )
+    evidence_match = _match(
+        db,
+        player_1_id=live_id,
+        player_2_id=historical_id,
+        start_at=after_activation + timedelta(hours=2),
+        status="SCHEDULED",
+        observed_at=before_activation,
+        name="Provider Bridge Evidence",
+    )
+
+    assert _resolve_model_player_id(db, player_id=live_id, as_of=before_activation) == live_id
+
+    db.execute(
+        """
+        INSERT INTO model_identity_bridge_events (
+            live_player_id,
+            action,
+            historical_player_id,
+            evidence_source_system,
+            evidence_match_id,
+            evidence_provider_event_id,
+            evidence_provider_player_id,
+            evidence_provider_name,
+            evidence_status,
+            evidence_as_of,
+            activated_at,
+            actor,
+            reason
+        )
+        VALUES (
+            %s, 'BRIDGE', %s, 'SPORTRADAR', %s,
+            'sr:sport_event:test', 'sr:competitor:test',
+            'Provider Historical Player', 'UNIQUE_PIT_CANDIDATE',
+            %s, %s, 'test', 'verified exact provider bridge'
+        )
+        """,
+        (live_id, historical_id, evidence_match, before_activation, activated_at),
+    )
+
+    assert _resolve_model_player_id(db, player_id=live_id, as_of=before_activation) == live_id
+    assert _resolve_model_player_id(db, player_id=live_id, as_of=after_activation) == historical_id
+
+    db.execute(
+        """
+        INSERT INTO model_identity_bridge_events (
+            live_player_id,
+            action,
+            evidence_as_of,
+            activated_at,
+            actor,
+            reason
+        )
+        VALUES (%s, 'DISABLE', %s, %s, 'test', 'disable bridge for review')
+        """,
+        (live_id, activated_at, disabled_at),
+    )
+
+    assert _resolve_model_player_id(db, player_id=live_id, as_of=after_disable) == live_id
+
+
+def test_model_identity_bridge_events_are_append_only(db: psycopg.Connection):
+    observed_at = datetime(2026, 9, 18, 18, 0, tzinfo=UTC)
+    live_id = _player(
+        db,
+        source_system="API_TENNIS",
+        source_player_id="api-append-only",
+        name="Append Only Live",
+        observed_at=observed_at,
+    )
+    historical_id = _player(
+        db,
+        source_system="SACKMANN",
+        source_player_id="hist-append-only",
+        name="Append Only Historical",
+        observed_at=observed_at - timedelta(days=10),
+    )
+    match_id = _match(
+        db,
+        player_1_id=live_id,
+        player_2_id=historical_id,
+        start_at=observed_at + timedelta(hours=1),
+        status="SCHEDULED",
+        observed_at=observed_at,
+        name="Append Only Evidence",
+    )
+    event_id = db.execute(
+        """
+        INSERT INTO model_identity_bridge_events (
+            live_player_id, action, historical_player_id,
+            evidence_source_system, evidence_match_id,
+            evidence_provider_event_id, evidence_provider_player_id,
+            evidence_provider_name, evidence_status,
+            evidence_as_of, activated_at, actor, reason
+        )
+        VALUES (
+            %s, 'BRIDGE', %s, 'SPORTRADAR', %s,
+            'event', 'competitor', 'Historical',
+            'UNIQUE_PIT_CANDIDATE', %s, %s, 'test', 'reason'
+        )
+        RETURNING model_identity_bridge_event_id
+        """,
+        (live_id, historical_id, match_id, observed_at, observed_at),
+    ).fetchone()[0]
+
+    with pytest.raises(psycopg.Error):
+        db.execute(
+            """
+            UPDATE model_identity_bridge_events
+            SET reason = 'mutated'
+            WHERE model_identity_bridge_event_id = %s
+            """,
+            (event_id,),
+        )
