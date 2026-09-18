@@ -1,6 +1,6 @@
 import pytest
 
-from datetime import date
+from datetime import UTC, date, datetime
 
 from sports_edge_tennis.live.sportradar import SportradarTransportError
 from sports_edge_tennis.live.sportradar_probe import (
@@ -154,10 +154,7 @@ def test_paced_fetch_retries_one_trial_429_then_succeeds(capsys):
         calls["count"] += 1
         if calls["count"] == 1:
             raise SportradarTransportError("HTTP_429", "rate limited")
-        return (
-            __import__("datetime").datetime(2026, 9, 18, tzinfo=__import__("datetime").timezone.utc),
-            {"ok": True},
-        )
+        return (datetime(2026, 9, 18, tzinfo=UTC), {"ok": True})
 
     pacer = RequestPacer(2.0, monotonic=monotonic, sleep=sleep)
     received_at, payload = _paced_fetch(
