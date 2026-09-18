@@ -7,6 +7,7 @@ from sports_edge_tennis.live.sportradar_benchmark import (
     deterministic_name_keys,
     link_gap_target,
     load_latest_gap_targets,
+    provider_name_identity_evidence,
 )
 
 
@@ -81,6 +82,7 @@ def _core_stats(**extra):
 def _target():
     return CanonicalGapTarget(
         match_id=130490,
+        prediction_as_of=datetime(2026, 9, 18, 11, 55, tzinfo=UTC),
         player_1_id=1,
         player_1_name="Dar. Blanch",
         player_2_id=2,
@@ -383,3 +385,50 @@ def test_gap_loader_unions_latest_multi_slate_batch(monkeypatch):
     assert "make_interval(mins => %s)" in batch_sql
     assert "WHERE prt.prediction_run_id = %s" not in batch_sql
     assert batch_params == (latest_as_of, 15, latest_as_of)
+
+
+class _IdentityEvidenceConn:
+    def __init__(self, alias_ids, pit_ids):
+        self.alias_ids = alias_ids
+        self.pit_ids = pit_ids
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        if "match_result_observations" in sql:
+            return _RowsCursor(many=[(value,) for value in self.pit_ids])
+        if "FROM player_aliases pa" in sql:
+            return _RowsCursor(many=[(value,) for value in self.alias_ids])
+        raise AssertionError(f"unexpected query: {sql}")
+
+
+def test_provider_name_identity_evidence_requires_unique_pit_history():
+    conn = _IdentityEvidenceConn(alias_ids=[77], pit_ids=[77])
+    as_of = datetime(2026, 9, 18, 11, 55, tzinfo=UTC)
+
+    result = provider_name_identity_evidence(
+        conn,
+        live_player_id=4644,
+        provider_name="Example, Player",
+        as_of=as_of,
+    )
+
+    assert result.status == "UNIQUE_PIT_CANDIDATE"
+    assert result.alias_candidates == (77,)
+    assert result.pit_candidates == (77,)
+    assert conn.calls[0][1][1] == 4644
+    assert conn.calls[1][1][-2:] == (as_of, as_of)
+
+
+def test_provider_name_identity_evidence_fails_closed_on_ambiguous_pit_history():
+    conn = _IdentityEvidenceConn(alias_ids=[77, 88], pit_ids=[77, 88])
+
+    result = provider_name_identity_evidence(
+        conn,
+        live_player_id=4644,
+        provider_name="Example, Player",
+        as_of=datetime(2026, 9, 18, 11, 55, tzinfo=UTC),
+    )
+
+    assert result.status == "AMBIGUOUS_PIT_CANDIDATES"
+    assert result.pit_candidates == (77, 88)
