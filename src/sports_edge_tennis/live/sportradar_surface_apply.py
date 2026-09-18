@@ -238,7 +238,7 @@ def run_optional_surface_fill(
         )
 
     if access_level == "trial":
-        sleep(TRIAL_MIN_REQUEST_INTERVAL_SECONDS)
+        sleep(2.0)
     info_observed_at, info = fetch_info(api_key, season_id, **transport)
     raw_surface, canonical_surface = _season_surface(info)
     if canonical_surface != expected_surface:
