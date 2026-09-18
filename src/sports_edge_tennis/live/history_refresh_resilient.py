@@ -37,6 +37,7 @@ DEFAULT_MIN_CHUNK_DAYS = 1
 A2_STATS_DRY_RUN_ENABLED_ENV = "A2_STATS_BACKFILL_DRY_RUN_ENABLED"
 A2_STATS_DRY_RUN_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_DAYS"
 A2_STATS_DRY_RUN_CHUNK_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_CHUNK_DAYS"
+A2_STATS_DRY_RUN_END_DATE_ENV = "A2_STATS_BACKFILL_DRY_RUN_END_DATE"
 A2_STATS_DRY_RUN_DEFAULT_DAYS = 7
 A2_STATS_DRY_RUN_MAX_DAYS = 31
 A2_STATS_DRY_RUN_DEFAULT_CHUNK_DAYS = 7
@@ -148,7 +149,17 @@ def _run_optional_a2_stats_dry_run(
             f"{A2_STATS_DRY_RUN_MAX_CHUNK_DAYS}"
         )
 
-    start_date = end_date - timedelta(days=days - 1)
+    effective_end_date = end_date
+    end_override = str(values.get(A2_STATS_DRY_RUN_END_DATE_ENV) or "").strip()
+    if end_override:
+        try:
+            effective_end_date = date.fromisoformat(end_override)
+        except ValueError as exc:
+            raise ValueError("A2 stats dry-run end date must be ISO YYYY-MM-DD") from exc
+        if effective_end_date > end_date:
+            raise ValueError("A2 stats dry-run end date may not exceed validation end date")
+
+    start_date = effective_end_date - timedelta(days=days - 1)
     if runner is None:
         from sports_edge_tennis.live.api_tennis_stats_backfill import (
             backfill_stats_range as dry_run_runner,
@@ -158,7 +169,7 @@ def _run_optional_a2_stats_dry_run(
 
     print(
         "A2_STATS_BACKFILL_DRY_RUN_DISPATCH "
-        f"start={start_date.isoformat()} end={end_date.isoformat()} "
+        f"start={start_date.isoformat()} end={effective_end_date.isoformat()} "
         f"days={days} chunk_days={min(chunk_days, days)} writes=0",
         flush=True,
     )
@@ -166,7 +177,7 @@ def _run_optional_a2_stats_dry_run(
         conn,
         api_key=api_key,
         start_date=start_date,
-        end_date=end_date,
+        end_date=effective_end_date,
         chunk_days=min(chunk_days, days),
         dry_run=True,
     )
@@ -301,7 +312,7 @@ def _attempt_chunk(
             delay = backoff_seconds * (2 ** (attempt - 1))
             print(
                 "HISTORY_REFRESH_RETRY "
-                f"start={start_date.isoformat()} end={end_date.isoformat()} "
+                f"start={start_date.isoformat()} end={effective_end_date.isoformat()} "
                 f"attempt={attempt + 1}/{max_attempts} kind={exc.kind} "
                 f"sleep_seconds={delay:g}",
                 flush=True,
@@ -330,7 +341,7 @@ def _process_resilient_chunk(
             right_start = split_end + timedelta(days=1)
             print(
                 "HISTORY_REFRESH_SPLIT "
-                f"start={start_date.isoformat()} end={end_date.isoformat()} kind={exc.kind} "
+                f"start={start_date.isoformat()} end={effective_end_date.isoformat()} kind={exc.kind} "
                 f"left={start_date.isoformat()}..{split_end.isoformat()} "
                 f"right={right_start.isoformat()}..{end_date.isoformat()}",
                 flush=True,
@@ -352,7 +363,7 @@ def _process_resilient_chunk(
         print(
             "HISTORY_REFRESH_FAILED "
             f"kind={exc.kind} failed_start={start_date.isoformat()} "
-            f"failed_end={end_date.isoformat()} checkpoint_key={checkpoint_key}",
+            f"failed_end={effective_end_date.isoformat()} checkpoint_key={checkpoint_key}",
             flush=True,
         )
         raise
@@ -409,7 +420,7 @@ def run_resilient_history_refresh(
         print(
             "HISTORY_REFRESH_RESUME "
             f"checkpoint_key={checkpoint_key} resume_from={resume_from.isoformat()} "
-            f"requested_start={start_date.isoformat()} requested_end={end_date.isoformat()} "
+            f"requested_start={start_date.isoformat()} requested_end={effective_end_date.isoformat()} "
             f"completed_chunks={checkpoint.completed_chunks}",
             flush=True,
         )
