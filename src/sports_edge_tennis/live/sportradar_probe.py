@@ -738,6 +738,7 @@ def run_probe(
             f"reason={type(exc).__name__} writes=0",
             flush=True,
         )
+        return 2
 
     for query in competition_queries:
         matches = find_competitions(competitions, query)
