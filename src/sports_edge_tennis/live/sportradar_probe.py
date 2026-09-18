@@ -47,6 +47,11 @@ DEFAULT_PLAYER_QUERIES = ("Nakashima", "Blanch")
 MAX_QUERY_MATCHES = 5
 TRIAL_MIN_REQUEST_INTERVAL_SECONDS = 2.0
 TRIAL_429_RETRY_SECONDS = 3.0
+HISTORY_DEPTH_ENABLED_ENV = "SPORTRADAR_HISTORY_DEPTH_PROBE_ENABLED"
+HISTORY_DEPTH_MAX_COMPETITIONS_ENV = "SPORTRADAR_HISTORY_DEPTH_MAX_COMPETITIONS"
+HISTORY_DEPTH_MAX_PAGES_ENV = "SPORTRADAR_HISTORY_DEPTH_MAX_PAGES"
+HISTORY_DEPTH_DEFAULT_COMPETITIONS = 3
+HISTORY_DEPTH_DEFAULT_PAGES = 2
 
 
 class RequestPacer:
@@ -147,6 +152,62 @@ def _text(value: Any) -> str:
 
 def _contains(value: Any, query: str) -> bool:
     return query.casefold() in _text(value).casefold()
+
+
+def _flag_enabled(value: str | None) -> bool:
+    return _text(value).casefold() in {"1", "true", "yes", "on"}
+
+
+def _run_optional_history_depth(
+    *,
+    api_key: str,
+    target_date: date,
+    access_level: str,
+    language: str,
+    env: Mapping[str, str] | None = None,
+    runner: Callable[..., int] | None = None,
+    sleep: Callable[[float], None] = time.sleep,
+) -> int:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(HISTORY_DEPTH_ENABLED_ENV)):
+        return 0
+
+    try:
+        max_competitions = int(
+            _text(values.get(HISTORY_DEPTH_MAX_COMPETITIONS_ENV))
+            or str(HISTORY_DEPTH_DEFAULT_COMPETITIONS)
+        )
+        max_pages = int(
+            _text(values.get(HISTORY_DEPTH_MAX_PAGES_ENV))
+            or str(HISTORY_DEPTH_DEFAULT_PAGES)
+        )
+    except ValueError as exc:
+        raise ValueError("Sportradar history depth bounds must be integers") from exc
+
+    if access_level == "trial":
+        sleep(TRIAL_MIN_REQUEST_INTERVAL_SECONDS)
+
+    if runner is None:
+        from sports_edge_tennis.live.sportradar_history_probe import (
+            run_probe as history_runner,
+        )
+
+        runner = history_runner
+
+    print(
+        "SPORTRADAR_HISTORY_DEPTH_DISPATCH "
+        f"date={target_date.isoformat()} max_competitions={max_competitions} "
+        f"max_pages={max_pages} writes=0",
+        flush=True,
+    )
+    return runner(
+        api_key=api_key,
+        target_date=target_date,
+        access_level=access_level,
+        language=language,
+        max_competitions=max_competitions,
+        max_pages=max_pages,
+    )
 
 
 def find_competitions(
@@ -535,13 +596,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        return run_probe(
+        status = run_probe(
             api_key=api_key,
             target_date=args.date,
             access_level=access_level,
             language=language,
             competition_queries=tuple(args.competition_queries or DEFAULT_COMPETITION_QUERIES),
             player_queries=tuple(args.player_queries or DEFAULT_PLAYER_QUERIES),
+        )
+        if status != 0:
+            return status
+        return _run_optional_history_depth(
+            api_key=api_key,
+            target_date=args.date,
+            access_level=access_level,
+            language=language,
         )
     except ValueError as exc:
         print(
