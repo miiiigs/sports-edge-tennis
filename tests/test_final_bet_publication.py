@@ -430,3 +430,29 @@ def test_publication_halt_blocks_new_bet_until_manual_enable(
         "SELECT published_at FROM decisions WHERE prediction_run_id = %s",
         (run_id,),
     ).fetchone()[0] == _utc(10, 48)
+
+
+
+def test_later_publication_halt_does_not_rewrite_already_published_bet(
+    db: psycopg.Connection,
+):
+    run_id, match_id = _setup_consensus(db)
+    _seed_value_market(db, match_id)
+
+    first = _run_market(db, run_id, execution_at=_utc(10, 46))
+    assert first.qualified_bet_count == 1
+
+    halt_publication(
+        db,
+        source="SYSTEM",
+        reason="later operational stop",
+        created_at=_utc(10, 50),
+    )
+
+    retry = _run_market(db, run_id, execution_at=_utc(10, 55))
+
+    assert retry.status == "IDEMPOTENT_SUCCESS"
+    assert db.execute(
+        "SELECT published_at FROM decisions WHERE prediction_run_id = %s",
+        (run_id,),
+    ).fetchone()[0] == _utc(10, 46)
