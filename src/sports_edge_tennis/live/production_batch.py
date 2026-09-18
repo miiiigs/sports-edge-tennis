@@ -27,6 +27,8 @@ from sports_edge_tennis.settlement import (
 
 
 _QUARTER_KELLY_MIGRATION = Path("db/migrations/0010_quarter_kelly_stake_v1.up.sql")
+_PUBLICATION_CONTROL_MIGRATION = Path("db/migrations/0012_publication_control_v1.up.sql")
+_PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
         "chk_decisions_staking_probability",
@@ -203,6 +205,60 @@ def _ensure_quarter_kelly_schema(
     return "APPLIED"
 
 
+def _publication_control_schema_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, bool]:
+    table_present = bool(
+        conn.execute(
+            "SELECT to_regclass('public.publication_control_events') IS NOT NULL"
+        ).fetchone()[0]
+    )
+    if not table_present:
+        return False, False
+    trigger_present = bool(
+        conn.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_trigger
+                WHERE tgrelid = 'public.publication_control_events'::regclass
+                  AND tgname = %s
+                  AND NOT tgisinternal
+            )
+            """,
+            (_PUBLICATION_CONTROL_TRIGGER,),
+        ).fetchone()[0]
+    )
+    return True, trigger_present
+
+
+def _ensure_publication_control_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _PUBLICATION_CONTROL_MIGRATION,
+) -> str:
+    """Apply migration 0012 once, then verify the table + append-only trigger."""
+    table_present, trigger_present = _publication_control_schema_state(conn)
+    if table_present and trigger_present:
+        return "EXISTING"
+    if table_present or trigger_present:
+        raise RuntimeError(
+            "publication-control schema is partially applied "
+            f"table_present={table_present} trigger_present={trigger_present}"
+        )
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    table_present, trigger_present = _publication_control_schema_state(conn)
+    if not table_present or not trigger_present:
+        raise RuntimeError(
+            "publication-control schema verification failed "
+            f"table_present={table_present} trigger_present={trigger_present}"
+        )
+    return "APPLIED"
+
+
 def _shadow_cycle(
     dsn: str,
     *,
@@ -344,11 +400,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
             schema_status = _ensure_quarter_kelly_schema(conn)
+            publication_control_status = _ensure_publication_control_schema(conn)
     except (psycopg.Error, OSError, RuntimeError) as exc:
         _log(f"SCHEMA_BOOTSTRAP_FAILED error_type={type(exc).__name__}")
         return 2
 
     _log(f"SCHEMA_QUARTER_KELLY status={schema_status} migration=0010")
+    _log(
+        "SCHEMA_PUBLICATION_CONTROL "
+        f"status={publication_control_status} migration=0012"
+    )
 
     _live_batch_gap_cycle(
         dsn,
