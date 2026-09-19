@@ -186,79 +186,102 @@ def refresh_sportradar_history_day(
         repository = HistoricalRepository(conn, ingest_run_id)
         try:
             for fixture, ingested, result, stats in prepared:
-                current_result = _latest_result_semantic_key(
-                    conn, match_id=ingested.match_id
-                )
-                current_hashes = _latest_aligned_sportradar_stat_hashes(
-                    conn,
-                    match_id=ingested.match_id,
-                )
-                next_hashes = (
-                    tuple(sorted(item.record_hash for item in stats))
-                    if stats is not None
-                    else ()
-                )
-
-                same_result = current_result == result.semantic_key
-                same_stats = current_hashes == next_hashes
-                if same_result and same_stats:
-                    unchanged += 1
-                    if stats is not None:
-                        stat_unchanged += 2
-                    continue
-
-                # A new result observation is intentionally appended whenever
-                # new final-stat evidence becomes visible. Agent 2 joins final
-                # stats to result visibility at exactly the same timestamp.
-                repository.insert_match_result(
-                    match_id=ingested.match_id,
-                    outcome_status=result.outcome_status,
-                    winner_side=result.winner_side,
-                    retired_side=result.retired_side,
-                    sets_won_player_1=result.sets_won_player_1,
-                    sets_won_player_2=result.sets_won_player_2,
-                    games_won_player_1=result.games_won_player_1,
-                    games_won_player_2=result.games_won_player_2,
-                    scoreline_text=result.scoreline_text,
-                    source_observed_at=received_at,
-                    as_of=received_at,
-                )
-                inserted += 1
-
-                if stats is not None:
-                    canonical_players = _sportradar_player_map(
-                        conn,
-                        provider_ids=tuple(
-                            stat.provider_player_id for stat in stats
-                        ),
-                    )
-                    if len(canonical_players) != 2:
-                        raise ValueError(
-                            "sportradar_final_stats_player_bridge_incomplete"
+                try:
+                    with conn.transaction():
+                        current_result = _latest_result_semantic_key(
+                            conn, match_id=ingested.match_id
                         )
-                    for stat in stats:
-                        player_id = canonical_players.get(
-                            stat.provider_player_id
-                        )
-                        if player_id is None:
-                            raise ValueError(
-                                "sportradar_final_stats_player_bridge_incomplete"
-                            )
-                        did_insert = repository.insert_match_stat(
+                        current_hashes = _latest_aligned_sportradar_stat_hashes(
+                            conn,
                             match_id=ingested.match_id,
-                            player_id=player_id,
-                            source_system=SOURCE_SYSTEM,
-                            source_record_id=(
-                                f"{fixture.source_match_id}:"
-                                f"{stat.provider_player_id}:FINAL"
-                            ),
-                            source_record_hash=stat.record_hash,
-                            line=stat.line,
+                        )
+                        next_hashes = (
+                            tuple(sorted(item.record_hash for item in stats))
+                            if stats is not None
+                            else ()
+                        )
+
+                        same_result = current_result == result.semantic_key
+                        same_stats = current_hashes == next_hashes
+                        if same_result and same_stats:
+                            unchanged += 1
+                            if stats is not None:
+                                stat_unchanged += 2
+                            continue
+
+                        canonical_players: dict[str, int] | None = None
+                        if stats is not None:
+                            canonical_players = _sportradar_player_map(
+                                conn,
+                                provider_ids=tuple(
+                                    stat.provider_player_id for stat in stats
+                                ),
+                            )
+                            if len(canonical_players) != 2:
+                                raise ValueError(
+                                    "sportradar_final_stats_player_bridge_incomplete"
+                                )
+
+                        # A new result observation is intentionally appended
+                        # whenever new final-stat evidence becomes visible.
+                        # Agent 2 joins final stats to result visibility at
+                        # exactly the same timestamp.
+                        repository.insert_match_result(
+                            match_id=ingested.match_id,
+                            outcome_status=result.outcome_status,
+                            winner_side=result.winner_side,
+                            retired_side=result.retired_side,
+                            sets_won_player_1=result.sets_won_player_1,
+                            sets_won_player_2=result.sets_won_player_2,
+                            games_won_player_1=result.games_won_player_1,
+                            games_won_player_2=result.games_won_player_2,
+                            scoreline_text=result.scoreline_text,
                             source_observed_at=received_at,
                             as_of=received_at,
                         )
-                        stat_inserted += 1 if did_insert else 0
-                        stat_unchanged += 0 if did_insert else 1
+
+                        inserted_stats_this_event = 0
+                        unchanged_stats_this_event = 0
+                        if stats is not None:
+                            assert canonical_players is not None
+                            for stat in stats:
+                                player_id = canonical_players.get(
+                                    stat.provider_player_id
+                                )
+                                if player_id is None:
+                                    raise ValueError(
+                                        "sportradar_final_stats_player_bridge_incomplete"
+                                    )
+                                did_insert = repository.insert_match_stat(
+                                    match_id=ingested.match_id,
+                                    player_id=player_id,
+                                    source_system=SOURCE_SYSTEM,
+                                    source_record_id=(
+                                        f"{fixture.source_match_id}:"
+                                        f"{stat.provider_player_id}:FINAL"
+                                    ),
+                                    source_record_hash=stat.record_hash,
+                                    line=stat.line,
+                                    source_observed_at=received_at,
+                                    as_of=received_at,
+                                )
+                                inserted_stats_this_event += 1 if did_insert else 0
+                                unchanged_stats_this_event += 0 if did_insert else 1
+
+                    inserted += 1
+                    stat_inserted += inserted_stats_this_event
+                    stat_unchanged += unchanged_stats_this_event
+                except (ValueError, psycopg.Error) as exc:
+                    result_rejections += 1
+                    if stats is not None:
+                        stat_rejections += 1
+                    errors.append(
+                        {
+                            "event_id": fixture.source_match_id,
+                            "reason": str(exc) or type(exc).__name__,
+                        }
+                    )
+                    continue
 
             status = "COMPLETED" if not errors else (
                 "PARTIAL" if inserted or unchanged else "FAILED"
