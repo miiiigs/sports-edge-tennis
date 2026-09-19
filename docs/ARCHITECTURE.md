@@ -41,6 +41,25 @@ SLATE GENERATOR
         DECISION + CLV LOG
 ```
 
+## 2026-09-19 versioned Manager and provider authority
+
+The original Manager v1 contract remains historical replay truth. The current target production policy is a new immutable `tennis_manager_consensus/v2` policy:
+
+- v1 may accept the locked Agent-3-abstention configuration;
+- v2 requires all three predictive agents to be active;
+- v2 still requires unanimous direction, each active probability >= 0.50, and three-agent probability spread <= 0.08;
+- Manager versions are selected explicitly and historical v1 results are never rewritten as v2.
+
+The provider cutover is also explicit and paired:
+
+```text
+legacy: API_TENNIS + LEGACY_SPLIT
+target: SPORTRADAR_V3 + GOALSERVE_TENNIS
+```
+
+A mixed state is invalid. Target activation requires strict Manager v2, the target provider credentials, verified Goalserve SHARP/PINNACLE and OFFERED mappings, the canonical schema/history corpus, and an explicit cutover authorization. Until those gates pass, production remains on legacy authority.
+
+Cross-provider identity is never resolved by creating parallel canonical matches. Sportradar and Goalserve provider IDs are reconciled to the existing canonical player/match universe first. Ambiguous identity or multiple candidate matches fail closed. Stable provider IDs are appended only after exact reconciliation.
 ## T-ED0 contract lock
 
 - Sports Edge Tennis remains a dedicated repository, database, runtime, deployment, and

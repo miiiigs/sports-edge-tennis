@@ -8,6 +8,8 @@ from typing import Literal
 
 MANAGER_POLICY_KEY = "tennis_manager_consensus"
 MANAGER_POLICY_VERSION = "v1"
+MANAGER_POLICY_CURRENT_VERSION = "v2"
+SUPPORTED_MANAGER_POLICY_VERSIONS = frozenset({"v1", "v2"})
 
 MANAGER_PRECISION = 60
 MANAGER_QUANTIZER = Decimal("1E-50")
@@ -49,6 +51,7 @@ class ManagerPolicyV1:
     three_agent_max_probability_spread: Decimal
     agent3_abstention_max_probability_spread: Decimal
     min_active_agent_probability: Decimal
+    allow_agent3_abstention: bool = True
 
 
 @dataclass(frozen=True)

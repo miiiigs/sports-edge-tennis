@@ -25,14 +25,29 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
 )
 from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
+from sports_edge_tennis.live.goalserve import fetch_goalserve_tennis_json
+from sports_edge_tennis.live.goalserve_odds import ingest_goalserve_tennis_odds
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
     LiveMvpError,
     LivePilotApiTennisFailed,
+    LivePilotSportradarFailed,
     run_live_mvp,
 )
 from sports_edge_tennis.live.price_slate import load_price_scanner_candidate_match_ids
+from sports_edge_tennis.live.provider_authority import (
+    LEGACY_DATA_MODE,
+    LEGACY_ODDS_MODE,
+    TARGET_DATA_MODE,
+    TARGET_ODDS_MODE,
+    assert_cutover_ready,
+    load_provider_authority,
+)
 from sports_edge_tennis.live.sharp_slate import normalize_pinnapi_board_for_matches
+from sports_edge_tennis.live.target_fixtures import (
+    fetch_sportradar_fixture_rows,
+    ingest_sportradar_fixture_rows,
+)
 from sports_edge_tennis.live.transport import (
     TransportError,
     fetch_api_tennis_odds,
@@ -192,9 +207,17 @@ def main(
     parser.add_argument("--artifacts-dir", default="artifacts/live_mvp")
     args = parser.parse_args(argv)
 
+    try:
+        provider_authority = load_provider_authority(os.environ)
+    except ValueError as exc:
+        _log(f"BLOCKED_PROVIDER_AUTHORITY: {exc}")
+        return 2
+
     _log(
         "LIVE_BATCH_START "
         f"start_date={args.start_date.isoformat()} days={args.days} "
+        f"data_provider={provider_authority.data_mode} "
+        f"odds_provider={provider_authority.odds_mode} "
         f"pinnapi_configured={bool(load_secret('PINNAPI_KEY'))}"
     )
 
@@ -205,12 +228,36 @@ def main(
         _log("BLOCKED_NO_LIVE_MVP_DATABASE: no DSN configured")
         return 2
 
-    api_tennis_key = load_secret("API_TENNIS_API_KEY")
-    if not api_tennis_key:
-        _log("BLOCKED_MISSING_API_TENNIS_KEY")
+    if provider_authority.data_mode == LEGACY_DATA_MODE:
+        fixture_provider_key = load_secret("API_TENNIS_API_KEY")
+        if not fixture_provider_key:
+            _log("BLOCKED_MISSING_API_TENNIS_KEY")
+            return 2
+    elif provider_authority.data_mode == TARGET_DATA_MODE:
+        fixture_provider_key = load_secret("SPORTRADAR_TENNIS_API_KEY")
+        if not fixture_provider_key:
+            _log("BLOCKED_MISSING_SPORTRADAR_TENNIS_API_KEY")
+            return 2
+    else:  # defensive, load_provider_authority already validates this.
+        _log("BLOCKED_UNSUPPORTED_DATA_PROVIDER")
         return 2
 
-    pinnapi_key = load_secret("PINNAPI_KEY")
+    pinnapi_key = (
+        load_secret("PINNAPI_KEY")
+        if provider_authority.odds_mode == LEGACY_ODDS_MODE
+        else None
+    )
+    goalserve_feed_url = (
+        load_secret("GOALSERVE_TENNIS_FEED_URL")
+        if provider_authority.odds_mode == TARGET_ODDS_MODE
+        else None
+    )
+    if (
+        provider_authority.odds_mode == TARGET_ODDS_MODE
+        and not goalserve_feed_url
+    ):
+        _log("BLOCKED_MISSING_GOALSERVE_TENNIS_FEED_URL")
+        return 2
     totals = {
         "slates": 0,
         "failed_slates": 0,
@@ -221,6 +268,9 @@ def main(
         "pinnapi_requests": 0,
         "offered_requests": 0,
         "offered_quotes": 0,
+        "goalserve_events": 0,
+        "goalserve_exact": 0,
+        "goalserve_ambiguous": 0,
         "bets": 0,
         "type_b_value_signals": 0,
         "close_finalized": 0,
@@ -243,6 +293,9 @@ def main(
         _log("LIVE_BATCH_DB_CONNECT")
         with psycopg.connect(args.dsn, autocommit=True) as conn:
             _log("LIVE_BATCH_DB_CONNECTED")
+            # Enforce the same cutover gate even when live.batch is invoked
+            # directly instead of through production_batch.
+            assert_cutover_ready(conn, env=os.environ)
             if pinnapi_key:
                 ensure_pinnapi_bookmaker_mapping(conn)
                 _log("LIVE_BATCH_PINNAPI_MAPPING_READY")
@@ -258,17 +311,27 @@ def main(
                     f"pinnapi_allowed={bool(slate_pinnapi_key)}"
                 )
                 try:
-                    result = run_live_mvp(
-                        conn,
-                        slate_date=slate_date,
-                        api_tennis_key=api_tennis_key,
-                        pinnapi_key=slate_pinnapi_key,
-                        fetch_board=fetch_board_once,
-                        board_observation_id_factory=lambda: board_observation_id,
-                        ingest_fixtures=ingest_api_tennis_source_a_fixtures_with_upcoming_status,
-                        artifacts_dir=Path(args.artifacts_dir),
-                    )
-                except LivePilotApiTennisFailed as exc:
+                    live_kwargs: dict[str, Any] = {
+                        "conn": conn,
+                        "slate_date": slate_date,
+                        # run_live_mvp keeps this legacy parameter name, but the
+                        # injected fetch_fixtures contract is provider-neutral.
+                        "api_tennis_key": fixture_provider_key,
+                        "pinnapi_key": slate_pinnapi_key,
+                        "fetch_board": fetch_board_once,
+                        "board_observation_id_factory": lambda: board_observation_id,
+                        "artifacts_dir": Path(args.artifacts_dir),
+                    }
+                    if provider_authority.data_mode == TARGET_DATA_MODE:
+                        live_kwargs["fetch_fixtures"] = fetch_sportradar_fixture_rows
+                        live_kwargs["ingest_fixtures"] = ingest_sportradar_fixture_rows
+                        live_kwargs["fixture_provider_code"] = "SPORTRADAR_V3"
+                    else:
+                        live_kwargs["ingest_fixtures"] = (
+                            ingest_api_tennis_source_a_fixtures_with_upcoming_status
+                        )
+                    result = run_live_mvp(**live_kwargs)
+                except (LivePilotApiTennisFailed, LivePilotSportradarFailed) as exc:
                     totals["failed_slates"] += 1
                     _log(
                         "SLATE_UNAVAILABLE "
@@ -333,7 +396,11 @@ def main(
                 f"model_targets={totals['targets']}"
             )
 
-            if candidate_match_ids and pinnapi_key:
+            if (
+                candidate_match_ids
+                and pinnapi_key
+                and provider_authority.odds_mode == LEGACY_ODDS_MODE
+            ):
                 if not board_cache:
                     try:
                         fetch_board_once(pinnapi_key)
@@ -362,32 +429,72 @@ def main(
                     )
 
             if candidate_match_ids:
-                try:
-                    odds_received_at, odds_result = fetch_api_tennis_odds(
-                        api_tennis_key,
-                        args.start_date,
-                        args.start_date + timedelta(days=args.days - 1),
-                    )
-                    totals["offered_requests"] = 1
-                    offered_odds_result = dict(odds_result)
-                    offered = ingest_api_tennis_offered_odds(
-                        conn,
-                        odds_result=odds_result,
-                        received_at=odds_received_at,
-                        candidate_match_ids=candidate_match_ids,
-                    )
-                    totals["offered_quotes"] = offered.normalized_quotes
-                    market_as_of = max(market_as_of, odds_received_at)
-                    _log(
-                        "OFFERED_ODDS "
-                        f"candidates={offered.candidate_matches} "
-                        f"events={offered.events_with_odds} "
-                        f"quotes={offered.normalized_quotes} "
-                        f"missing={offered.missing_events} "
-                        f"bookmakers={offered.bookmaker_count}"
-                    )
-                except TransportError as exc:
-                    _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+                if provider_authority.odds_mode == LEGACY_ODDS_MODE:
+                    try:
+                        odds_received_at, odds_result = fetch_api_tennis_odds(
+                            fixture_provider_key,
+                            args.start_date,
+                            args.start_date + timedelta(days=args.days - 1),
+                        )
+                        totals["offered_requests"] = 1
+                        offered_odds_result = dict(odds_result)
+                        offered = ingest_api_tennis_offered_odds(
+                            conn,
+                            odds_result=odds_result,
+                            received_at=odds_received_at,
+                            candidate_match_ids=candidate_match_ids,
+                        )
+                        totals["offered_quotes"] = offered.normalized_quotes
+                        market_as_of = max(market_as_of, odds_received_at)
+                        _log(
+                            "OFFERED_ODDS "
+                            f"provider=API_TENNIS "
+                            f"candidates={offered.candidate_matches} "
+                            f"events={offered.events_with_odds} "
+                            f"quotes={offered.normalized_quotes} "
+                            f"missing={offered.missing_events} "
+                            f"bookmakers={offered.bookmaker_count}"
+                        )
+                    except TransportError as exc:
+                        _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+                elif provider_authority.odds_mode == TARGET_ODDS_MODE:
+                    try:
+                        goalserve_received_at, goalserve_payload = (
+                            fetch_goalserve_tennis_json(goalserve_feed_url)
+                        )
+                        totals["offered_requests"] = 1
+                        goalserve = ingest_goalserve_tennis_odds(
+                            conn,
+                            payload=goalserve_payload,
+                            received_at=goalserve_received_at,
+                            candidate_match_ids=candidate_match_ids,
+                        )
+                        totals["offered_quotes"] = goalserve.normalized_quotes
+                        totals["goalserve_events"] = goalserve.provider_events_seen
+                        totals["goalserve_exact"] = (
+                            goalserve.exact_events + goalserve.existing_events
+                        )
+                        totals["goalserve_ambiguous"] = goalserve.ambiguous_events
+                        market_as_of = max(
+                            market_as_of,
+                            goalserve_received_at,
+                        )
+                        _log(
+                            "OFFERED_ODDS "
+                            f"provider=GOALSERVE_TENNIS "
+                            f"candidates={goalserve.candidate_matches} "
+                            f"events={goalserve.provider_events_seen} "
+                            f"exact={goalserve.exact_events} "
+                            f"existing={goalserve.existing_events} "
+                            f"unmatched={goalserve.unmatched_events} "
+                            f"ambiguous={goalserve.ambiguous_events} "
+                            f"quotes={goalserve.normalized_quotes} "
+                            f"unknown_bookmaker={goalserve.unknown_bookmaker_groups} "
+                            f"unknown_participant={goalserve.unknown_participant_groups}"
+                        )
+                    except TransportError as exc:
+                        _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+
 
             policy = None
             if prediction_run_ids or candidate_match_ids:
@@ -424,7 +531,13 @@ def main(
                                 for signal, status, reason, count in market_reason_counts
                             )
                         )
-                    if any(reason == "MISSING_MARKET" for _signal, _status, reason, _count in market_reason_counts):
+                    if (
+                        provider_authority.odds_mode == LEGACY_ODDS_MODE
+                        and any(
+                            reason == "MISSING_MARKET"
+                            for _signal, _status, reason, _count in market_reason_counts
+                        )
+                    ):
                         for (
                             match_id,
                             selected_side,

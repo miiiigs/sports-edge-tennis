@@ -13,6 +13,7 @@ deterministic mocks without live network access.
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
@@ -38,7 +39,7 @@ from sports_edge_tennis.live.transport import (
     fetch_api_tennis_fixtures,
     fetch_pinnapi_board,
 )
-from sports_edge_tennis.manager.persistence import ensure_manager_policy_version_v1
+from sports_edge_tennis.manager.persistence import select_manager_policy_version
 from sports_edge_tennis.odds.contracts import ProviderObservation
 from sports_edge_tennis.odds.persistence import select_bookmaker_mapping
 from sports_edge_tennis.odds.providers.pinnapi import (
@@ -87,6 +88,10 @@ class BlockedPinnapiBookmakerMapping(LiveMvpError):
 
 class LivePilotApiTennisFailed(LiveMvpError):
     result_code = "LIVE_PILOT_API_TENNIS_FAILED"
+
+
+class LivePilotSportradarFailed(LiveMvpError):
+    result_code = "LIVE_PILOT_SPORTRADAR_FAILED"
 
 
 class LivePilotPinnapiFailed(LiveMvpError):
@@ -232,7 +237,10 @@ def _run_slate(
     as_of: datetime,
 ) -> FullSlateRunOutcomeV1:
     ensure_agent_config_versions_v1(conn)
-    policy = ensure_manager_policy_version_v1(conn)
+    policy = select_manager_policy_version(
+        conn,
+        policy_version=os.environ.get("TENNIS_MANAGER_POLICY_VERSION", "v1"),
+    )
     request = FullSlateRunRequestV1(
         match_ids=tuple(match_ids),
         as_of=as_of,
@@ -378,6 +386,7 @@ def run_live_mvp(
     board_observation_id_factory: Callable[[], str] = new_pinnapi_board_observation_id,
     clock: Callable[[], datetime] = _utc_now,
     artifacts_dir: Path = Path("artifacts/live_mvp"),
+    fixture_provider_code: str = "API_TENNIS",
 ) -> LiveMvpResult:
     preflight(conn)
 
@@ -387,6 +396,8 @@ def run_live_mvp(
     try:
         fixtures_received_at, fixtures = fetch_fixtures(api_tennis_key, slate_date)
     except TransportError as exc:
+        if fixture_provider_code == "SPORTRADAR_V3":
+            raise LivePilotSportradarFailed(exc.message) from exc
         raise LivePilotApiTennisFailed(exc.message) from exc
 
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)

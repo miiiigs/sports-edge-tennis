@@ -16,7 +16,10 @@ from sports_edge_tennis.agents.agent2_hierarchical_markov import (
 from sports_edge_tennis.agents.agent3_intransitivity import (
     DEFAULT_CONFIG as A3_CONFIG,
 )
-from sports_edge_tennis.manager.persistence import ensure_manager_policy_version_v1
+from sports_edge_tennis.manager.persistence import (
+    ensure_manager_policy_version_current,
+    ensure_manager_policy_version_v1,
+)
 from sports_edge_tennis.runner import (
     AgentConfigRefV1,
     FullSlateRunRequestV1,
@@ -401,7 +404,7 @@ def test_unsupported_manager_policy_version_rejected(db: psycopg.Connection):
             three_agent_max_probability_spread, agent3_abstention_max_probability_spread,
             min_active_agent_probability
         )
-        VALUES ('tennis_manager_consensus', 'v2', 'UNANIMOUS_ACTIVE_AGENTS', TRUE, 0.080000, 0.060000, 0.500000)
+        VALUES ('tennis_manager_consensus', 'v3', 'UNANIMOUS_ACTIVE_AGENTS', TRUE, 0.080000, 0.060000, 0.500000)
         RETURNING manager_policy_version_id
         """,
     )
@@ -697,3 +700,26 @@ def test_finalization_exception_after_commit_does_not_rewrite_failed(
         (outcome.prediction_run_id,),
     ).fetchone()[0] == 1
 
+
+
+
+def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    policy_id = ensure_manager_policy_version_current(
+        db
+    ).manager_policy_version_id
+
+    request = _request(db, match_ids=[target["match_id"]])
+    request = request.__class__(
+        match_ids=request.match_ids,
+        as_of=request.as_of,
+        agent_config_refs=request.agent_config_refs,
+        manager_policy_version_id=policy_id,
+        parent_prediction_run_id=request.parent_prediction_run_id,
+        parent_relation_type=request.parent_relation_type,
+    )
+    outcome = run_full_slate(db, request)
+    assert outcome.prediction_run_id > 0
+    assert outcome.target_count == 1
+    assert outcome.prediction_result_count == 3

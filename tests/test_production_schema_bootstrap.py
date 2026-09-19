@@ -10,6 +10,7 @@ from sports_edge_tennis.live.production_batch import (
     _STAKING_CONSTRAINTS,
     _a1_evidence_cycle,
     _ensure_publication_control_schema,
+    _ensure_strict_manager_v2_schema,
     ensure_model_identity_bridge_schema,
     _ensure_quarter_kelly_schema,
     _live_batch_gap_cycle,
@@ -359,3 +360,85 @@ def test_model_identity_bridge_partial_schema_fails_closed(tmp_path: Path):
         )
 
     assert conn.migration_execs == 0
+
+
+
+class _StrictManagerSchemaConn:
+    def __init__(self, *, row=None):
+        self.row = row
+        self.migration_execs = 0
+
+    def execute(self, sql, params=()):
+        rendered = str(sql)
+        if "SELECT" in rendered and "policy_version = 'v2'" in rendered:
+            return _Cursor(row=self.row)
+        if "INSERT INTO manager_policy_versions" in rendered:
+            self.migration_execs += 1
+            self.row = (False, "0.080000", "0.000000", "0.500000")
+            return _Cursor()
+        raise AssertionError(f"unexpected strict manager schema SQL: {rendered[:100]}")
+
+
+def test_strict_manager_v2_existing_is_idempotent(tmp_path: Path):
+    conn = _StrictManagerSchemaConn(
+        row=(False, "0.080000", "0.000000", "0.500000")
+    )
+    status = _ensure_strict_manager_v2_schema(
+        conn,
+        migration_path=tmp_path / "must-not-be-read.sql",
+    )
+    assert status == "EXISTING"
+    assert conn.migration_execs == 0
+
+
+def test_strict_manager_v2_missing_applies_then_verifies(tmp_path: Path):
+    migration = tmp_path / "0014.sql"
+    migration.write_text(
+        "BEGIN;\nINSERT INTO manager_policy_versions(policy_key) VALUES ('x');\nCOMMIT;\n"
+    )
+    conn = _StrictManagerSchemaConn(row=None)
+    status = _ensure_strict_manager_v2_schema(conn, migration_path=migration)
+    assert status == "APPLIED"
+    assert conn.migration_execs == 1
+
+
+def test_strict_manager_v2_wrong_existing_row_fails_closed(tmp_path: Path):
+    conn = _StrictManagerSchemaConn(
+        row=(True, "0.080000", "0.060000", "0.500000")
+    )
+    with pytest.raises(RuntimeError, match="unexpected values"):
+        _ensure_strict_manager_v2_schema(
+            conn,
+            migration_path=tmp_path / "0014.sql",
+        )
+    assert conn.migration_execs == 0
+
+
+def test_production_main_fails_closed_when_provider_authority_blocks(monkeypatch, capsys):
+    from sports_edge_tennis.live import production_batch
+
+    class _Ctx:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(production_batch, "_db_dsn", lambda: "postgresql://example")
+    monkeypatch.setattr(
+        production_batch.psycopg,
+        "connect",
+        lambda *args, **kwargs: _Ctx(),
+    )
+    monkeypatch.setattr(
+        production_batch,
+        "assert_cutover_ready",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("TENNIS_PROVIDER_CUTOVER_BLOCKED TARGET_RUNTIME_NOT_ACTIVATABLE")
+        ),
+    )
+
+    assert production_batch.main([]) == 2
+    out = capsys.readouterr().out
+    assert "PROVIDER_AUTHORITY_BLOCKED" in out
+    assert "TARGET_RUNTIME_NOT_ACTIVATABLE" in out

@@ -289,3 +289,49 @@ def test_evaluator_rejects_invalid_prediction_state():
     )
     with pytest.raises(ManagerConsensusError):
         _evaluate([bad_abstained, _pred(A2, prob="0.61"), _pred(A3, prob="0.62")])
+
+
+
+def test_strict_policy_rejects_agent3_abstention() -> None:
+    policy = ManagerPolicyV1(
+        manager_policy_version_id=2,
+        policy_key="tennis_manager_consensus",
+        policy_version="v2",
+        three_agent_max_probability_spread=Decimal("0.080000"),
+        agent3_abstention_max_probability_spread=Decimal("0.000000"),
+        min_active_agent_probability=Decimal("0.500000"),
+        allow_agent3_abstention=False,
+    )
+    result = evaluate_consensus(
+        [_pred(A1, prob="0.60"), _pred(A2, prob="0.61"), _pred(A3, status="ABSTAINED")],
+        match_id=1,
+        prediction_run_id=1,
+        policy=policy,
+        as_of=AS_OF,
+    )
+    assert result.manager_status == "NO_BET"
+    assert result.reason_code == "UNSUPPORTED_ABSTENTION_CONFIGURATION"
+    assert result.active_agent_count == 2
+    assert result.abstaining_agent_count == 1
+
+
+def test_strict_policy_still_accepts_valid_three_of_three() -> None:
+    policy = ManagerPolicyV1(
+        manager_policy_version_id=2,
+        policy_key="tennis_manager_consensus",
+        policy_version="v2",
+        three_agent_max_probability_spread=Decimal("0.080000"),
+        agent3_abstention_max_probability_spread=Decimal("0.000000"),
+        min_active_agent_probability=Decimal("0.500000"),
+        allow_agent3_abstention=False,
+    )
+    result = evaluate_consensus(
+        [_pred(A1, prob="0.60"), _pred(A2, prob="0.62"), _pred(A3, prob="0.61")],
+        match_id=1,
+        prediction_run_id=1,
+        policy=policy,
+        as_of=AS_OF,
+    )
+    assert result.manager_status == "CONSENSUS"
+    assert result.active_agent_count == 3
+    assert result.abstaining_agent_count == 0
