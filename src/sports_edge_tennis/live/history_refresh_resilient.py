@@ -636,23 +636,45 @@ def _run_offered_market_history_audit(
         cutoff = decision_as_of - timedelta(minutes=int(odds_ttl_minutes))
         selected_type = "PLAYER_1" if int(selected_side) == 1 else "PLAYER_2"
 
+        response = conn.execute(
+            """
+            SELECT provider_response_id, received_at
+            FROM raw_odds_observations
+            WHERE provider_code = 'API_TENNIS'
+              AND received_at <= %s
+              AND provider_response_id IS NOT NULL
+            ORDER BY received_at DESC, raw_odds_observation_id DESC
+            LIMIT 1
+            """,
+            (decision_as_of,),
+        ).fetchone()
+        latest_response_id = str(response[0]) if response is not None else None
+        latest_response_at = response[1] if response is not None else None
+        response_is_fresh = (
+            latest_response_at is not None
+            and latest_response_at >= cutoff
+            and latest_response_at <= decision_as_of
+        )
+
         raw_event_rows = 0
-        latest_raw_at = None
-        if source_match_id is not None:
+        if source_match_id is not None and latest_response_id is not None:
             raw = conn.execute(
                 """
-                SELECT count(*), max(received_at)
+                SELECT count(*)
                 FROM raw_odds_observations
                 WHERE provider_code = 'API_TENNIS'
+                  AND provider_response_id = %s
                   AND provider_event_id = %s
-                  AND received_at >= %s
                   AND received_at <= %s
                 """,
-                (str(source_match_id), cutoff, decision_as_of),
+                (
+                    latest_response_id,
+                    str(source_match_id),
+                    decision_as_of,
+                ),
             ).fetchone()
             if raw is not None:
                 raw_event_rows = int(raw[0])
-                latest_raw_at = raw[1]
 
         offered = conn.execute(
             """
@@ -692,6 +714,8 @@ def _run_offered_market_history_audit(
 
         if source_match_id is None:
             classification = "NO_API_TENNIS_EVENT_ID"
+        elif latest_response_id is None or not response_is_fresh:
+            classification = "NO_CURRENT_PROVIDER_RESPONSE"
         elif raw_event_rows == 0:
             classification = "PROVIDER_EVENT_ABSENT"
         elif total_offered_rows == 0:
@@ -711,8 +735,10 @@ def _run_offered_market_history_audit(
             f"decision_id={int(decision_id)} prediction_run_id={int(prediction_run_id)} "
             f"match_id={int(match_id)} as_of={decision_as_of.isoformat()} "
             f"selected_side={int(selected_side)} api_event_id={source_match_id or '-'} "
-            f"ttl_minutes={int(odds_ttl_minutes)} raw_event_rows={raw_event_rows} "
-            f"latest_raw_at={latest_raw_at.isoformat() if latest_raw_at else '-'} "
+            f"ttl_minutes={int(odds_ttl_minutes)} "
+            f"response_id={latest_response_id or '-'} "
+            f"response_at={latest_response_at.isoformat() if latest_response_at else '-'} "
+            f"response_fresh={int(response_is_fresh)} raw_event_rows={raw_event_rows} "
             f"total_offered_rows={total_offered_rows} "
             f"fresh_selected_rows={fresh_selected_rows} "
             f"latest_offered_at={latest_offered_at.isoformat() if latest_offered_at else '-'} "
