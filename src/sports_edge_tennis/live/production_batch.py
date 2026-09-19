@@ -117,6 +117,7 @@ def _live_operational_health_cycle(
     *,
     cycle_started_at: datetime,
     live_status: int,
+    expected_runs: int | None = None,
 ) -> None:
     checked_at = datetime.now(timezone.utc)
     try:
@@ -125,6 +126,7 @@ def _live_operational_health_cycle(
                 conn,
                 cycle_started_at=cycle_started_at,
                 live_status=live_status,
+                expected_runs=expected_runs,
             )
             persist_live_operational_health(
                 conn,
@@ -141,6 +143,23 @@ def _live_operational_health_cycle(
         f"completed_runs={health.completed_runs} targets={health.target_count} "
         f"errors={health.error_count} notes={health.notes.replace(' ', '_')}"
     )
+
+
+def _requested_live_horizon_days(argv: list[str] | None) -> int:
+    if argv is None:
+        return 3
+    for index, value in enumerate(argv):
+        if value == "--days" and index + 1 < len(argv):
+            try:
+                return int(argv[index + 1])
+            except ValueError:
+                return 3
+        if value.startswith("--days="):
+            try:
+                return int(value.split("=", 1)[1])
+            except ValueError:
+                return 3
+    return 3
 
 
 def _db_dsn() -> str | None:
@@ -440,11 +459,13 @@ def main(argv: list[str] | None = None) -> int:
             f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
         )
 
+    expected_runs = _requested_live_horizon_days(argv)
     live_status = live_batch_main(argv)
     _live_operational_health_cycle(
         dsn,
         cycle_started_at=shadow_cycle_started_at,
         live_status=live_status,
+        expected_runs=expected_runs,
     )
     if live_status != 0:
         _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")
