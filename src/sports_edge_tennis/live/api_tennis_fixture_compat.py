@@ -51,6 +51,14 @@ _ROUND_SUFFIX_MAP = {
 }
 _TRUE_VALUES = {"1", "true", "t", "yes", "y"}
 _FALSE_VALUES = {"0", "false", "f", "no", "n"}
+_TEAM_EVENT_SURFACE_FALLBACK_MARKERS = (
+    "davis cup",
+    "billie jean king cup",
+    "bjk cup",
+    "fed cup",
+    "united cup",
+    "atp cup",
+)
 FetchDraw = Callable[[str, str, int], tuple[datetime, dict[str, Any]]]
 
 
@@ -185,6 +193,23 @@ def _fixture_season(fixture: Mapping[str, Any]) -> int | None:
         return None
 
 
+def _allows_prior_season_surface_fallback(
+    fixture: Mapping[str, Any],
+) -> bool:
+    """Return False for team competitions whose host tie can change surface.
+
+    This is a conservative safety gate only. It never infers a surface from the
+    tournament name; it merely prevents historical tournament-level metadata from
+    being promoted into a new team tie.
+    """
+    values = (
+        _text(fixture.get("tournament_name")),
+        _text(fixture.get("event_type_type")),
+    )
+    normalized = " ".join(values).casefold()
+    return not any(marker in normalized for marker in _TEAM_EVENT_SURFACE_FALLBACK_MARKERS)
+
+
 def _stored_api_tennis_surface(
     conn: psycopg.Connection,
     *,
@@ -295,21 +320,28 @@ def enrich_api_tennis_fixture_surfaces(
                     if draw_surface is not None:
                         cache[cache_key] = (draw_surface, "DRAW")
                     else:
-                        prior = _stored_api_tennis_prior_surface(
-                            conn,
-                            tournament_key=tournament_key,
-                            season_year=season_year,
-                        )
+                        prior = None
+                        if _allows_prior_season_surface_fallback(row):
+                            prior = _stored_api_tennis_prior_surface(
+                                conn,
+                                tournament_key=tournament_key,
+                                season_year=season_year,
+                            )
                         if prior is not None:
                             cache[cache_key] = (prior, "DB_PRIOR_SEASON")
                         else:
+                            kind = (
+                                "DRAW_NO_SURFACE"
+                                if _allows_prior_season_surface_fallback(row)
+                                else "DRAW_NO_SURFACE_TEAM_EVENT"
+                            )
                             print(
                                 "API_TENNIS_SURFACE_UNAVAILABLE "
                                 f"tournament_key={tournament_key} season={season_year} "
-                                "kind=DRAW_NO_SURFACE",
+                                f"kind={kind}",
                                 flush=True,
                             )
-                            cache[cache_key] = (None, "DRAW_NO_SURFACE")
+                            cache[cache_key] = (None, kind)
                 except TransportError as exc:
                     print(
                         "API_TENNIS_SURFACE_UNAVAILABLE "
@@ -318,15 +350,22 @@ def enrich_api_tennis_fixture_surfaces(
                     )
                     cache[cache_key] = (None, "DRAW_FAILED")
             else:
-                prior = _stored_api_tennis_prior_surface(
-                    conn,
-                    tournament_key=tournament_key,
-                    season_year=season_year,
-                )
+                prior = None
+                if _allows_prior_season_surface_fallback(row):
+                    prior = _stored_api_tennis_prior_surface(
+                        conn,
+                        tournament_key=tournament_key,
+                        season_year=season_year,
+                    )
                 if prior is not None:
                     cache[cache_key] = (prior, "DB_PRIOR_SEASON")
                 else:
-                    cache[cache_key] = (None, "NO_API_KEY")
+                    cache[cache_key] = (
+                        None,
+                        "NO_API_KEY"
+                        if _allows_prior_season_surface_fallback(row)
+                        else "NO_API_KEY_TEAM_EVENT",
+                    )
 
             surface, source = cache[cache_key]
             if surface is not None:
