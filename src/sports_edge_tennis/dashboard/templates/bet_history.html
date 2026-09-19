@@ -5,21 +5,21 @@
 {% block content %}
 <section class="page-heading">
   <h1>Results</h1>
-  <p>This page answers the simple question: are the live Sports Edge Tennis recommendations actually winning and making money at the prices recorded when they were published?</p>
+  <p>This page tracks qualified value bets that were actually publishable to the client. It is intentionally separate from Model Pick accuracy, which includes model winners even when the market price was not good enough to bet.</p>
 </section>
 
 <section class="concept-strip" aria-label="How to read Results">
   <div class="concept-card">
-    <strong>Wins & Losses</strong>
-    <p>How the published value bets settled. Pending matches stay separate and never count as wins or losses early.</p>
+    <strong>Qualified Bet Results</strong>
+    <p>One published value bet per sporting match. Hourly reruns never create extra wins or losses.</p>
   </div>
   <div class="concept-card">
     <strong>ROI</strong>
     <p>Profit relative to stake on settled recommendations. It is different from model accuracy and should be read with sample size.</p>
   </div>
   <div class="concept-card">
-    <strong>Forward Evidence</strong>
-    <p>These rows use persisted live decisions and their recorded prices. We do not invent historical prices after the fact.</p>
+    <strong>Model Pick vs Bet</strong>
+    <p>A winning Model Pick is not counted here unless it also passed the market/value gate and became a publishable Bet.</p>
   </div>
 </section>
 
@@ -37,7 +37,7 @@
 
 <section class="page-heading" style="margin-top: 28px;">
   <h2>Live performance overview</h2>
-  <p>One-unit forward performance through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled recommendations only; pending matches do not affect P/L yet.</p>
+  <p>One-unit forward performance by scheduled match day through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled published bets only; pending matches do not affect P/L yet.</p>
 </section>
 
 <section class="kpi-grid" aria-label="Rolling bet performance">
@@ -94,7 +94,7 @@
 {% if selected_summary %}
 <section class="page-heading" style="margin-top: 28px;">
   <h2>{{ selected_date.strftime('%a %d %b %Y') }}</h2>
-  <p>Every qualifying value-bet recommendation recorded on this UTC decision day.</p>
+  <p>Every first published value bet scheduled for this UTC match day.</p>
 </section>
 
 <section class="kpi-grid" aria-label="Daily bet performance">
@@ -142,7 +142,7 @@
 
 <section class="page-heading" style="margin-top: 40px;">
   <h2>Daily results</h2>
-  <p>Select a day to inspect every published value bet that contributed to that day's result.</p>
+  <p>Select a scheduled match day to inspect every published value bet that contributed to that day's result.</p>
 </section>
 <section class="history-list" aria-label="Daily performance history">
   <table class="history-table">
