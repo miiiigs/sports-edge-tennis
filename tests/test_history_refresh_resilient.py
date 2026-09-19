@@ -4,10 +4,13 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from sports_edge_tennis.live import history_refresh_resilient as resilient_module
 from sports_edge_tennis.live.history_refresh import HistoryRefreshChunkOutcome
 from sports_edge_tennis.live.history_refresh_resilient import (
     A2_REGIME_AUDIT_CODE_ENV,
     A2_REGIME_AUDIT_ENABLED_ENV,
+    LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV,
+    LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV,
     MARKET_STALE_SELFTEST_ENABLED_ENV,
     PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV,
     PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV,
@@ -17,6 +20,7 @@ from sports_edge_tennis.live.history_refresh_resilient import (
     A2_STATS_DRY_RUN_ENABLED_ENV,
     _load_checkpoint,
     _run_optional_a2_regime_audit,
+    _run_optional_live_tennis_surface_probe,
     _run_optional_stale_market_selftest,
     _run_optional_pinnacle_schedule_audit,
     _run_optional_a2_stats_dry_run,
@@ -503,4 +507,81 @@ def test_optional_pinnacle_schedule_audit_prints_version_and_source_history(caps
     assert "match_id=130521 match_version_id=9001" in out
     assert "player1=A._Moro_Canas player2=J._Clarke" in out
     assert "source_system=API_TENNIS source_match_id=fixture:130521" in out
+    assert "writes=0" in out
+
+
+def test_optional_live_tennis_surface_probe_is_disabled_by_default(db):
+    calls = []
+
+    _run_optional_live_tennis_surface_probe(
+        db,
+        target_date=date(2026, 9, 19),
+        env={},
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert calls == []
+
+
+def test_optional_live_tennis_surface_probe_requires_key(db, monkeypatch):
+    monkeypatch.setattr(resilient_module, "load_secret", lambda name: None)
+
+    with pytest.raises(ValueError, match="LIVE_TENNIS_API_KEY"):
+        _run_optional_live_tennis_surface_probe(
+            db,
+            target_date=date(2026, 9, 19),
+            env={LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV: "true"},
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_live_tennis_surface_probe_rejects_large_page_bound(db):
+    with pytest.raises(ValueError, match="between 1 and 5"):
+        _run_optional_live_tennis_surface_probe(
+            db,
+            target_date=date(2026, 9, 19),
+            env={
+                LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV: "true",
+                LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV: "6",
+            },
+            runner=lambda *args, **kwargs: None,
+        )
+
+
+def test_optional_live_tennis_surface_probe_dispatches_read_only(
+    db,
+    monkeypatch,
+    capsys,
+):
+    calls = []
+    monkeypatch.setattr(
+        resilient_module,
+        "load_secret",
+        lambda name: "live-tennis-key" if name == "LIVE_TENNIS_API_KEY" else None,
+    )
+
+    def runner(conn, **kwargs):
+        calls.append((conn, kwargs))
+        return 0
+
+    _run_optional_live_tennis_surface_probe(
+        db,
+        target_date=date(2026, 9, 19),
+        env={
+            LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV: "true",
+            LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV: "3",
+        },
+        runner=runner,
+    )
+
+    assert len(calls) == 1
+    assert calls[0][0] is db
+    assert calls[0][1] == {
+        "api_key": "live-tennis-key",
+        "target_date": date(2026, 9, 19),
+        "max_pages": 3,
+    }
+    out = capsys.readouterr().out
+    assert "LIVE_TENNIS_SURFACE_PROBE_DISPATCH" in out
+    assert "max_pages=3" in out
     assert "writes=0" in out
