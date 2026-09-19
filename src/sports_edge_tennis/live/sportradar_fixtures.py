@@ -54,6 +54,7 @@ class SportradarFixtureCandidate:
     best_of_sets: int
     qualifying_flag: bool
     received_at: datetime
+    raw_summary: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -223,6 +224,7 @@ def parse_summary(
         best_of_sets=best_of_sets,
         qualifying_flag=qualifying_flag,
         received_at=received_at.astimezone(UTC),
+        raw_summary=dict(summary),
     )
 
 
