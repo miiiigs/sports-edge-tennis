@@ -218,3 +218,25 @@ def test_final_stats_reject_wrong_competitor_pair() -> None:
 
     with pytest.raises(ValueError, match="identity_mismatch"):
         _parse_final_stats(summary, fixture=fixture)
+
+
+def test_retirement_prefers_provider_set_tally_over_unfinished_period_score() -> None:
+    summary = _summary(
+        winner_id="sr:p1",
+        winning_reason="retirement",
+        period_scores=[
+            {"type": "regular_period", "home_score": 6, "away_score": 4},
+            {"type": "regular_period", "home_score": 2, "away_score": 4},
+        ],
+    )
+    summary["sport_event_status"]["home_score"] = 1
+    summary["sport_event_status"]["away_score"] = 0
+    fixture = parse_summary(summary, received_at=RECEIVED)
+
+    result = _parse_terminal_result(summary, fixture=fixture)
+
+    assert result.outcome_status == "RETIRED"
+    assert result.sets_won_player_1 == 1
+    assert result.sets_won_player_2 == 0
+    assert result.games_won_player_1 == 8
+    assert result.games_won_player_2 == 8
