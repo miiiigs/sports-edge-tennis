@@ -26,7 +26,7 @@ def evaluate_live_operational_health(
     *,
     cycle_started_at: datetime,
     live_status: int,
-    expected_runs: int | None = None,
+    failed_slates: int = 0,
 ) -> LiveOperationalHealth:
     if live_status != 0:
         return LiveOperationalHealth(
@@ -76,19 +76,18 @@ def evaluate_live_operational_health(
             notes="live_batch_status=0 but no completed production run was found in cycle",
         )
 
-    if expected_runs is not None and completed_runs < expected_runs:
-        failed_runs = expected_runs - completed_runs
+    if failed_slates > 0:
         return LiveOperationalHealth(
             status="WARNING",
             freshness_state="FRESH",
             completed_runs=completed_runs,
             target_count=target_count,
             latest_finalized_at=latest_finalized_at,
-            error_count=failed_runs,
+            error_count=failed_slates,
             notes=(
-                f"expected_runs={expected_runs} completed_runs={completed_runs} "
-                f"failed_runs={failed_runs} partial_slate_failure=1 "
-                f"target_count={target_count} zero_volume={int(target_count == 0)}"
+                f"completed_runs={completed_runs} failed_slates={failed_slates} "
+                f"partial_slate_failure=1 target_count={target_count} "
+                f"zero_volume={int(target_count == 0)}"
             ),
         )
 
