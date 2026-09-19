@@ -22,6 +22,7 @@ from sports_edge_tennis.manager.persistence import (
     ensure_manager_policy_version_v1,
     evaluate_and_persist_manager_consensus,
     load_manager_policy_version,
+    select_manager_policy_version,
 )
 
 __all__ = [
@@ -45,5 +46,6 @@ __all__ = [
     "evaluate_and_persist_manager_consensus",
     "exact_spread",
     "load_manager_policy_version",
+    "select_manager_policy_version",
     "ManagerSlateOutcome",
 ]
