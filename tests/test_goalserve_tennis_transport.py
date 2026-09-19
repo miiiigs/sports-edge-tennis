@@ -7,6 +7,7 @@ import pytest
 import sports_edge_tennis.live.goalserve as goalserve
 from sports_edge_tennis.live.goalserve import (
     fetch_goalserve_tennis_json,
+    iter_goalserve_tennis_envelopes,
     iter_goalserve_tennis_matches,
 )
 from sports_edge_tennis.live.transport import TransportError
@@ -53,10 +54,52 @@ def test_goalserve_match_iterator_handles_singletons_lists_and_dedupes() -> None
     payload = {
         "scores": {
             "category": [
-                {"match": {"id": "1", "player": []}},
-                {"match": [{"id": "2", "player": []}, {"id": "1", "player": []}]},
+                {
+                    "id": "100",
+                    "name": "Atp - Singles: Test, Hard",
+                    "match": {
+                        "id": "1",
+                        "date": "19.09.2026",
+                        "time": "12:00",
+                        "player": [
+                            {"id": "p1", "name": "A. Player"},
+                            {"id": "p2", "name": "B. Player"},
+                        ],
+                    },
+                },
+                {
+                    "id": "200",
+                    "name": "Atp - Singles: Other, Clay",
+                    "match": [
+                        {
+                            "id": "2",
+                            "date": "19.09.2026",
+                            "time": "13:00",
+                            "player": [
+                                {"id": "p3", "name": "C. Player"},
+                                {"id": "p4", "name": "D. Player"},
+                            ],
+                        },
+                        {
+                            "id": "1",
+                            "date": "19.09.2026",
+                            "time": "12:00",
+                            "player": [
+                                {"id": "p1", "name": "A. Player"},
+                                {"id": "p2", "name": "B. Player"},
+                            ],
+                        },
+                    ],
+                },
             ]
         }
     }
     matches = iter_goalserve_tennis_matches(payload)
     assert [match["id"] for match in matches] == ["1", "2"]
+
+    envelopes = iter_goalserve_tennis_envelopes(payload)
+    assert [row.provider_event_id for row in envelopes] == ["1", "2"]
+    assert envelopes[0].category_id == "100"
+    assert envelopes[0].match_start_at == datetime(2026, 9, 19, 12, 0, tzinfo=UTC)
+    assert envelopes[0].player_1_id == "p1"
+    assert envelopes[0].player_2_id == "p2"
