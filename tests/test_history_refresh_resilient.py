@@ -9,6 +9,8 @@ from sports_edge_tennis.live.history_refresh_resilient import (
     A2_REGIME_AUDIT_CODE_ENV,
     A2_REGIME_AUDIT_ENABLED_ENV,
     MARKET_STALE_SELFTEST_ENABLED_ENV,
+    PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV,
+    PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
     A2_STATS_DRY_RUN_DAYS_ENV,
     A2_STATS_DRY_RUN_END_DATE_ENV,
@@ -16,6 +18,7 @@ from sports_edge_tennis.live.history_refresh_resilient import (
     _load_checkpoint,
     _run_optional_a2_regime_audit,
     _run_optional_stale_market_selftest,
+    _run_optional_pinnacle_schedule_audit,
     _run_optional_a2_stats_dry_run,
     run_resilient_history_refresh,
 )
@@ -401,4 +404,103 @@ def test_optional_stale_market_selftest_passes_fail_closed_invariant(capsys):
     assert "decision=NO_BET" in out
     assert "reason=STALE_MARKET" in out
     assert "stake=-" in out
+    assert "writes=0" in out
+
+
+class _ScheduleAuditCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _ScheduleAuditConn:
+    def __init__(self, version_rows=(), source_rows=()):
+        self.version_rows = list(version_rows)
+        self.source_rows = list(source_rows)
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((str(sql), params))
+        rendered = str(sql)
+        if "FROM match_versions mv" in rendered:
+            return _ScheduleAuditCursor(self.version_rows)
+        if "FROM match_source_ids" in rendered:
+            return _ScheduleAuditCursor(self.source_rows)
+        raise AssertionError("unexpected schedule audit query")
+
+
+def test_optional_pinnacle_schedule_audit_is_disabled_by_default():
+    conn = _ScheduleAuditConn()
+
+    _run_optional_pinnacle_schedule_audit(conn, env={})
+
+    assert conn.calls == []
+
+
+def test_optional_pinnacle_schedule_audit_requires_valid_match_ids():
+    conn = _ScheduleAuditConn()
+
+    with pytest.raises(ValueError, match="match IDs are required"):
+        _run_optional_pinnacle_schedule_audit(
+            conn,
+            env={PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV: "true"},
+        )
+
+    with pytest.raises(ValueError, match="must be integers"):
+        _run_optional_pinnacle_schedule_audit(
+            conn,
+            env={
+                PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV: "true",
+                PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV: "130521,abc",
+            },
+        )
+
+
+def test_optional_pinnacle_schedule_audit_prints_version_and_source_history(capsys):
+    observed = datetime(2026, 9, 19, 1, 0, tzinfo=UTC)
+    source_observed = datetime(2026, 9, 19, 0, 55, tzinfo=UTC)
+    conn = _ScheduleAuditConn(
+        version_rows=[
+            (
+                9001,
+                130521,
+                "A. Moro Canas",
+                "J. Clarke",
+                "Biella",
+                datetime(2026, 9, 19, 13, 0, tzinfo=UTC),
+                "SCHEDULED",
+                observed,
+                observed,
+                "API_TENNIS",
+                "fixture:130521",
+                source_observed,
+                observed,
+            )
+        ],
+        source_rows=[
+            (
+                130521,
+                "API_TENNIS",
+                "fixture:130521",
+                9001,
+                observed,
+            )
+        ],
+    )
+
+    _run_optional_pinnacle_schedule_audit(
+        conn,
+        env={
+            PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV: "true",
+            PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV: "130521,130522,130521",
+        },
+    )
+
+    out = capsys.readouterr().out
+    assert "PINNACLE_SCHEDULE_AUDIT_START matches=130521,130522" in out
+    assert "match_id=130521 match_version_id=9001" in out
+    assert "player1=A._Moro_Canas player2=J._Clarke" in out
+    assert "source_system=API_TENNIS source_match_id=fixture:130521" in out
     assert "writes=0" in out

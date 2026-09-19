@@ -53,6 +53,9 @@ A2_STATS_DRY_RUN_MAX_CHUNK_DAYS = 7
 A2_REGIME_AUDIT_ENABLED_ENV = "A2_HISTORY_REGIME_AUDIT_ENABLED"
 A2_REGIME_AUDIT_CODE_ENV = "A2_HISTORY_REGIME_AUDIT_CODE"
 MARKET_STALE_SELFTEST_ENABLED_ENV = "MARKET_STALE_SELFTEST_ENABLED"
+PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV = "PINNACLE_SCHEDULE_AUDIT_ENABLED"
+PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV = "PINNACLE_SCHEDULE_AUDIT_MATCH_IDS"
+PINNACLE_SCHEDULE_AUDIT_MAX_MATCHES = 10
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -383,6 +386,132 @@ def _run_optional_stale_market_selftest(
     )
 
 
+def _run_optional_pinnacle_schedule_audit(
+    conn: psycopg.Connection,
+    *,
+    env: Mapping[str, str] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV)):
+        return
+
+    raw_ids = str(values.get(PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV) or "").strip()
+    if not raw_ids:
+        raise ValueError("Pinnacle schedule audit match IDs are required")
+
+    match_ids: list[int] = []
+    for token in raw_ids.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            match_id = int(token)
+        except ValueError as exc:
+            raise ValueError("Pinnacle schedule audit match IDs must be integers") from exc
+        if match_id <= 0:
+            raise ValueError("Pinnacle schedule audit match IDs must be positive")
+        if match_id not in match_ids:
+            match_ids.append(match_id)
+
+    if not match_ids:
+        raise ValueError("Pinnacle schedule audit match IDs are required")
+    if len(match_ids) > PINNACLE_SCHEDULE_AUDIT_MAX_MATCHES:
+        raise ValueError(
+            "Pinnacle schedule audit match count exceeds "
+            f"{PINNACLE_SCHEDULE_AUDIT_MAX_MATCHES}"
+        )
+
+    version_rows = conn.execute(
+        """
+        SELECT
+            mv.match_version_id,
+            mv.match_id,
+            p1.canonical_name,
+            p2.canonical_name,
+            t.canonical_name,
+            mv.match_start_at,
+            mv.match_status::text,
+            mv.source_observed_at,
+            mv.as_of,
+            mvs.source_system,
+            mvs.source_match_id,
+            mvs.source_observed_at,
+            mvs.as_of
+        FROM match_versions mv
+        JOIN matches m ON m.match_id = mv.match_id
+        JOIN tournament_editions te
+          ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN players p1 ON p1.player_id = mv.player_1_id
+        JOIN players p2 ON p2.player_id = mv.player_2_id
+        LEFT JOIN match_version_sources mvs
+          ON mvs.match_version_id = mv.match_version_id
+        WHERE mv.match_id = ANY(%s)
+        ORDER BY
+            mv.match_id,
+            mv.source_observed_at,
+            mv.as_of,
+            mv.match_version_id,
+            mvs.match_version_source_id
+        """,
+        (match_ids,),
+    ).fetchall()
+
+    source_rows = conn.execute(
+        """
+        SELECT
+            match_id,
+            source_system,
+            source_match_id,
+            match_version_id,
+            created_at
+        FROM match_source_ids
+        WHERE match_id = ANY(%s)
+        ORDER BY match_id, source_system, source_match_id, match_source_id
+        """,
+        (match_ids,),
+    ).fetchall()
+
+    print(
+        "PINNACLE_SCHEDULE_AUDIT_START "
+        f"matches={','.join(str(match_id) for match_id in match_ids)} "
+        f"version_rows={len(version_rows)} source_rows={len(source_rows)} writes=0",
+        flush=True,
+    )
+
+    for row in version_rows:
+        print(
+            "PINNACLE_SCHEDULE_AUDIT_VERSION "
+            f"match_id={int(row[1])} match_version_id={int(row[0])} "
+            f"player1={str(row[2]).replace(' ', '_')} "
+            f"player2={str(row[3]).replace(' ', '_')} "
+            f"tournament={str(row[4]).replace(' ', '_')} "
+            f"match_start_at={row[5].isoformat()} status={row[6]} "
+            f"version_observed_at={row[7].isoformat()} version_as_of={row[8].isoformat()} "
+            f"source_system={row[9] or '-'} source_match_id={row[10] or '-'} "
+            f"source_observed_at={row[11].isoformat() if row[11] else '-'} "
+            f"source_as_of={row[12].isoformat() if row[12] else '-'} writes=0",
+            flush=True,
+        )
+
+    for row in source_rows:
+        print(
+            "PINNACLE_SCHEDULE_AUDIT_SOURCE "
+            f"match_id={int(row[0])} source_system={row[1]} "
+            f"source_match_id={row[2] or '-'} "
+            f"match_version_id={row[3] if row[3] is not None else '-'} "
+            f"created_at={row[4].isoformat()} writes=0",
+            flush=True,
+        )
+
+    if not version_rows:
+        print(
+            "PINNACLE_SCHEDULE_AUDIT_EMPTY "
+            f"matches={','.join(str(match_id) for match_id in match_ids)} writes=0",
+            flush=True,
+        )
+
+
 def ensure_checkpoint_table(conn: psycopg.Connection) -> None:
     conn.execute(_CHECKPOINT_DDL)
 
@@ -706,6 +835,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             _run_optional_a2_regime_audit(conn)
             _run_optional_stale_market_selftest()
+            _run_optional_pinnacle_schedule_audit(conn)
     except TransportError:
         return 2
     except (ValueError, RuntimeError) as exc:
