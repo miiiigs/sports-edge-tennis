@@ -1,8 +1,8 @@
 """Prospective paper-bankroll evidence for Sports Edge Tennis.
 
 This module never places a wager and never mutates production data.  It replays
-persisted live BET decisions using the stake fraction and price captured on the
-original decision row.  Only the first published BET for a match is included so
+client-publishable live BET decisions using the stake fraction and price captured on the
+original decision row. Only the first published BET for a match is included so
 hourly refreshes cannot manufacture duplicate paper positions.
 """
 
@@ -73,21 +73,32 @@ def load_paper_bets(conn: psycopg.Connection) -> tuple[PaperBet, ...]:
     """Load first-published live bets with reproducible quarter-Kelly evidence."""
     rows = conn.execute(
         """
-        WITH first_bet AS (
+        WITH publication_boundary AS (
+            SELECT min(published_at) AS first_published_at
+            FROM decisions
+            WHERE published_at IS NOT NULL
+        ),
+        first_bet AS (
             SELECT DISTINCT ON (d.match_id)
                 d.decision_id,
                 d.match_id,
-                d.as_of,
+                COALESCE(d.published_at, d.as_of) AS as_of,
                 d.selection_side,
                 d.market_decimal_price,
                 d.price_bookmaker_code,
                 d.staking_rule_version,
                 d.suggested_stake_fraction
             FROM decisions d
+            CROSS JOIN publication_boundary pb
             WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
               AND d.decision_status = 'BET'
               AND d.market_type = 'MATCH_WINNER'
-            ORDER BY d.match_id, d.as_of, d.decision_id
+              AND (
+                  d.published_at IS NOT NULL
+                  OR pb.first_published_at IS NULL
+                  OR d.as_of < pb.first_published_at
+              )
+            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
         )
         SELECT
             fb.decision_id,
@@ -153,16 +164,27 @@ def count_legacy_bets_without_staking_evidence(conn: psycopg.Connection) -> int:
     """Count first-published bets that predate reproducible staking evidence."""
     row = conn.execute(
         """
-        WITH first_bet AS (
-            SELECT DISTINCT ON (match_id)
-                match_id,
-                staking_rule_version,
-                suggested_stake_fraction
+        WITH publication_boundary AS (
+            SELECT min(published_at) AS first_published_at
             FROM decisions
-            WHERE signal_type = 'TYPE_A_MODEL_EDGE'
-              AND decision_status = 'BET'
-              AND market_type = 'MATCH_WINNER'
-            ORDER BY match_id, as_of, decision_id
+            WHERE published_at IS NOT NULL
+        ),
+        first_bet AS (
+            SELECT DISTINCT ON (d.match_id)
+                d.match_id,
+                d.staking_rule_version,
+                d.suggested_stake_fraction
+            FROM decisions d
+            CROSS JOIN publication_boundary pb
+            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
+              AND d.decision_status = 'BET'
+              AND d.market_type = 'MATCH_WINNER'
+              AND (
+                  d.published_at IS NOT NULL
+                  OR pb.first_published_at IS NULL
+                  OR d.as_of < pb.first_published_at
+              )
+            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
         )
         SELECT count(*)
         FROM first_bet
