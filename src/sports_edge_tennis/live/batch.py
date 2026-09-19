@@ -103,6 +103,77 @@ def _load_market_reason_counts(
     return tuple((row[0], row[1], row[2], int(row[3])) for row in rows)
 
 
+def _load_missing_market_diagnostics(
+    conn: psycopg.Connection,
+    prediction_run_id: int,
+    *,
+    decision_as_of: datetime,
+    odds_ttl_minutes: int,
+    odds_result: dict[str, Any] | None,
+) -> tuple[tuple[int, int, str | None, bool, int, int, datetime | None], ...]:
+    """Explain only persisted MISSING_MARKET consensuses without changing decisions."""
+    cutoff = decision_as_of - timedelta(minutes=odds_ttl_minutes)
+    rows = conn.execute(
+        """
+        SELECT
+            d.match_id,
+            mcr.selected_side,
+            src.source_match_id,
+            count(os.odds_snapshot_id) FILTER (
+                WHERE os.source_system = 'OFFERED'
+            ) AS offered_rows,
+            count(os.odds_snapshot_id) FILTER (
+                WHERE os.source_system = 'OFFERED'
+                  AND os.selection_type = CASE
+                      WHEN mcr.selected_side = 1 THEN 'PLAYER_1'::selection_type
+                      ELSE 'PLAYER_2'::selection_type
+                  END
+                  AND os.market_status = 'OPEN'
+                  AND os.decimal_price > 1
+                  AND os.source_observed_at >= %s
+                  AND os.source_observed_at <= %s
+            ) AS fresh_selected_rows,
+            max(os.source_observed_at) FILTER (
+                WHERE os.source_system = 'OFFERED'
+            ) AS latest_offered_at
+        FROM decisions d
+        JOIN manager_consensus_results mcr
+          ON mcr.manager_consensus_result_id = d.manager_consensus_result_id
+        LEFT JOIN LATERAL (
+            SELECT source_match_id
+            FROM match_source_ids
+            WHERE match_id = d.match_id
+              AND source_system = 'API_TENNIS'
+            ORDER BY match_source_id DESC
+            LIMIT 1
+        ) src ON TRUE
+        LEFT JOIN odds_snapshots os
+          ON os.match_id = d.match_id
+        WHERE d.prediction_run_id = %s
+          AND d.market_policy_version_id IS NOT NULL
+          AND d.reason_code = 'MISSING_MARKET'
+          AND mcr.manager_status = 'CONSENSUS'
+        GROUP BY d.match_id, mcr.selected_side, src.source_match_id
+        ORDER BY d.match_id
+        """,
+        (cutoff, decision_as_of, prediction_run_id),
+    ).fetchall()
+
+    payload = odds_result or {}
+    return tuple(
+        (
+            int(row[0]),
+            int(row[1]),
+            str(row[2]) if row[2] is not None else None,
+            str(row[2]) in payload if row[2] is not None else False,
+            int(row[3]),
+            int(row[4]),
+            row[5],
+        )
+        for row in rows
+    )
+
+
 def _format_fixture_rejection_reasons(reasons: tuple[tuple[str, int], ...]) -> str:
     if not reasons:
         return "none"
@@ -156,6 +227,7 @@ def main(
         "clv_calculated": 0,
     }
     prediction_run_ids: list[int] = []
+    offered_odds_result: dict[str, Any] | None = None
 
     board_observation_id = new_pinnapi_board_observation_id()
     board_cache: dict[str, Any] = {}
@@ -297,6 +369,7 @@ def main(
                         args.start_date + timedelta(days=args.days - 1),
                     )
                     totals["offered_requests"] = 1
+                    offered_odds_result = dict(odds_result)
                     offered = ingest_api_tennis_offered_odds(
                         conn,
                         odds_result=odds_result,
@@ -351,6 +424,32 @@ def main(
                                 for signal, status, reason, count in market_reason_counts
                             )
                         )
+                    if any(reason == "MISSING_MARKET" for _signal, _status, reason, _count in market_reason_counts):
+                        for (
+                            match_id,
+                            selected_side,
+                            api_event_id,
+                            provider_event_present,
+                            offered_rows,
+                            fresh_selected_rows,
+                            latest_offered_at,
+                        ) in _load_missing_market_diagnostics(
+                            conn,
+                            prediction_run_id,
+                            decision_as_of=market_as_of,
+                            odds_ttl_minutes=policy.odds_max_staleness_minutes,
+                            odds_result=offered_odds_result,
+                        ):
+                            _log(
+                                "OFFERED_MARKET_GAP "
+                                f"prediction_run_id={prediction_run_id} "
+                                f"match_id={match_id} selected_side={selected_side} "
+                                f"api_event_id={api_event_id or '-'} "
+                                f"provider_event_present={int(provider_event_present)} "
+                                f"offered_rows={offered_rows} "
+                                f"fresh_selected_rows={fresh_selected_rows} "
+                                f"latest_offered_at={latest_offered_at.isoformat() if latest_offered_at else '-'}"
+                            )
 
             if candidate_match_ids and policy is not None:
                 type_b_signals = scan_type_b_value_signals(
