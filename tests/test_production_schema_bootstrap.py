@@ -412,3 +412,33 @@ def test_strict_manager_v2_wrong_existing_row_fails_closed(tmp_path: Path):
             migration_path=tmp_path / "0014.sql",
         )
     assert conn.migration_execs == 0
+
+
+def test_production_main_fails_closed_when_provider_authority_blocks(monkeypatch, capsys):
+    from sports_edge_tennis.live import production_batch
+
+    class _Ctx:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(production_batch, "_db_dsn", lambda: "postgresql://example")
+    monkeypatch.setattr(
+        production_batch.psycopg,
+        "connect",
+        lambda *args, **kwargs: _Ctx(),
+    )
+    monkeypatch.setattr(
+        production_batch,
+        "assert_cutover_ready",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("TENNIS_PROVIDER_CUTOVER_BLOCKED TARGET_RUNTIME_NOT_ACTIVATABLE")
+        ),
+    )
+
+    assert production_batch.main([]) == 2
+    out = capsys.readouterr().out
+    assert "PROVIDER_AUTHORITY_BLOCKED" in out
+    assert "TARGET_RUNTIME_NOT_ACTIVATABLE" in out
