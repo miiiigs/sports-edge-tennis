@@ -98,8 +98,11 @@ def evaluate_cutover_readiness(
     if not _historical_corpus_present(conn):
         blockers.append("HISTORICAL_CORPUS_EMPTY")
 
-    if not _goalserve_mapping_present(conn):
-        blockers.append("GOALSERVE_BOOKMAKER_MAPPING_NOT_VERIFIED")
+    sharp_mapping, offered_mapping = _goalserve_mapping_state(conn)
+    if not sharp_mapping:
+        blockers.append("GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED")
+    if not offered_mapping:
+        blockers.append("GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED")
 
     # The adapters and schema can be prepared before the account payload exists,
     # but production authority must remain locked until the actual Goalserve
@@ -180,16 +183,26 @@ def _historical_corpus_present(conn: psycopg.Connection) -> bool:
     return bool(row and int(row[0]) > 0 and int(row[1]) > 0)
 
 
-def _goalserve_mapping_present(conn: psycopg.Connection) -> bool:
+def _goalserve_mapping_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, bool]:
     row = conn.execute(
         """
-        SELECT count(*)
+        SELECT
+            bool_or(
+                normalization_class = 'SHARP'
+                AND bookmaker_code = 'PINNACLE'
+            ) AS sharp_pinnacle,
+            bool_or(
+                normalization_class = 'OFFERED'
+            ) AS offered_book
         FROM provider_bookmaker_mappings
         WHERE provider_code = 'GOALSERVE_TENNIS'
-          AND normalization_class IN ('SHARP', 'OFFERED')
         """
     ).fetchone()
-    return bool(row and int(row[0]) > 0)
+    if row is None:
+        return False, False
+    return bool(row[0]), bool(row[1])
 
 
 __all__ = [
