@@ -117,7 +117,7 @@ def _live_operational_health_cycle(
     *,
     cycle_started_at: datetime,
     live_status: int,
-    expected_runs: int | None = None,
+    failed_slates: int = 0,
 ) -> None:
     checked_at = datetime.now(timezone.utc)
     try:
@@ -126,7 +126,7 @@ def _live_operational_health_cycle(
                 conn,
                 cycle_started_at=cycle_started_at,
                 live_status=live_status,
-                expected_runs=expected_runs,
+                failed_slates=failed_slates,
             )
             persist_live_operational_health(
                 conn,
@@ -143,23 +143,6 @@ def _live_operational_health_cycle(
         f"completed_runs={health.completed_runs} targets={health.target_count} "
         f"errors={health.error_count} notes={health.notes.replace(' ', '_')}"
     )
-
-
-def _requested_live_horizon_days(argv: list[str] | None) -> int:
-    if argv is None:
-        return 3
-    for index, value in enumerate(argv):
-        if value == "--days" and index + 1 < len(argv):
-            try:
-                return int(argv[index + 1])
-            except ValueError:
-                return 3
-        if value.startswith("--days="):
-            try:
-                return int(value.split("=", 1)[1])
-            except ValueError:
-                return 3
-    return 3
 
 
 def _db_dsn() -> str | None:
@@ -459,13 +442,17 @@ def main(argv: list[str] | None = None) -> int:
             f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
         )
 
-    expected_runs = _requested_live_horizon_days(argv)
-    live_status = live_batch_main(argv)
+    live_summary: dict[str, int] = {}
+
+    def capture_live_summary(summary: dict[str, int]) -> None:
+        live_summary.update(summary)
+
+    live_status = live_batch_main(argv, summary_sink=capture_live_summary)
     _live_operational_health_cycle(
         dsn,
         cycle_started_at=shadow_cycle_started_at,
         live_status=live_status,
-        expected_runs=expected_runs,
+        failed_slates=int(live_summary.get("failed_slates", 0)),
     )
     if live_status != 0:
         _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")
