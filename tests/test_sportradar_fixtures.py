@@ -116,7 +116,7 @@ def test_missing_home_away_qualifier_rejects_instead_of_guessing_order() -> None
             {"id": "b", "name": "Player B"},
         ]
     )
-    with pytest.raises(SportradarFixtureError, match="home_away"):
+    with pytest.raises(SportradarFixtureError, match="qualifier"):
         parse_summary(row, received_at=RECEIVED)
 
 
