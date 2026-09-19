@@ -264,6 +264,11 @@ def test_get_run_for_date_uses_target_slate_date_not_execution_date(db: psycopg.
     assert tomorrow_state.prediction_run_id == tomorrow_run
     assert [m.player_1 for m in tomorrow_state.matches] == ["Tomorrow Player A"]
 
+    history = get_history(db)
+    populated = {row.run_date: row.prediction_run_id for row in history if row.kind == "POPULATED"}
+    assert populated[date(2026, 9, 19)] == today_run
+    assert populated[date(2026, 9, 20)] == tomorrow_run
+
 
 def test_get_run_for_date_no_bet(db: psycopg.Connection):
     start = datetime(2026, 9, 7, 15, 0, 0, tzinfo=timezone.utc)
