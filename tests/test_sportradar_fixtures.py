@@ -189,3 +189,17 @@ def test_qualification_phase_is_retained() -> None:
     row["sport_event"]["sport_event_context"]["stage"]["phase"] = "qualification"
     parsed = parse_summary(row, received_at=RECEIVED)
     assert parsed.qualifying_flag is True
+
+
+def test_terminal_winning_reason_overrides_closed_status_conservatively() -> None:
+    walkover = _summary(status="closed")
+    walkover["sport_event_status"]["winning_reason"] = "walkover"
+    assert parse_summary(walkover, received_at=RECEIVED).match_status == "WALKOVER"
+
+    retirement = _summary(status="closed")
+    retirement["sport_event_status"]["winning_reason"] = "retirement"
+    assert parse_summary(retirement, received_at=RECEIVED).match_status == "RETIRED"
+
+    defaulted = _summary(status="ended")
+    defaulted["sport_event_status"]["winning_reason"] = "defaulted"
+    assert parse_summary(defaulted, received_at=RECEIVED).match_status == "RETIRED"
