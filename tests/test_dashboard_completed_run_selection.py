@@ -49,3 +49,4 @@ def test_today_keeps_latest_completed_run_while_newer_run_is_running(
     assert state.prediction_run_id == completed_id
     assert state.run_status == 'COMPLETED'
     assert state.as_of == completed_at
+    assert state.matches == []

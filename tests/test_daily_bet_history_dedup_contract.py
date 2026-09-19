@@ -29,7 +29,8 @@ def test_results_queries_use_first_type_a_bet_per_match():
     assert len(conn.sql) == 2
     for sql, _params in conn.sql:
         assert "DISTINCT ON (d.match_id)" in sql
-        assert "ORDER BY d.match_id, d.as_of, d.decision_id" in sql
+        assert "ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id" in sql
+        assert "d.published_at IS NOT NULL" in sql
         assert "d.signal_type = 'TYPE_A_MODEL_EDGE'" in sql
         assert "d.decision_status = 'BET'" in sql
         assert "d.market_type = 'MATCH_WINNER'" in sql

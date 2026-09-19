@@ -219,6 +219,57 @@ def test_get_run_for_date_populated_consensus(db: psycopg.Connection):
     assert m.sharp_available is True
 
 
+def test_get_run_for_date_uses_target_slate_date_not_execution_date(db: psycopg.Connection):
+    configs = _seed_agent_configs(db)
+    sep19 = _seed_match(
+        db,
+        "Today Player A",
+        "Today Player B",
+        "Today Open",
+        "CHALLENGER",
+        datetime(2026, 9, 19, 14, 0, 0, tzinfo=timezone.utc),
+    )
+    sep20 = _seed_match(
+        db,
+        "Tomorrow Player A",
+        "Tomorrow Player B",
+        "Tomorrow Open",
+        "CHALLENGER",
+        datetime(2026, 9, 20, 14, 0, 0, tzinfo=timezone.utc),
+    )
+
+    today_run, today_as_of = _seed_run(db, date(2026, 9, 19), [sep19])
+    _seed_predictions_and_finalize(
+        db, today_run, sep19, [1, 1, 1], ["0.70", "0.68", "0.66"], today_as_of, configs
+    )
+    _seed_manager(
+        db, today_run, sep19, "CONSENSUS", 1, "0.68", "NONE", 3, 0, as_of=today_as_of
+    )
+
+    tomorrow_run, tomorrow_as_of = _seed_run(db, date(2026, 9, 19), [sep20])
+    _seed_predictions_and_finalize(
+        db, tomorrow_run, sep20, [2, 2, 2], ["0.35", "0.34", "0.33"], tomorrow_as_of, configs
+    )
+    _seed_manager(
+        db, tomorrow_run, sep20, "CONSENSUS", 2, "0.67", "NONE", 3, 0, as_of=tomorrow_as_of
+    )
+
+    assert tomorrow_run > today_run
+
+    today_state = get_run_for_date(db, date(2026, 9, 19))
+    tomorrow_state = get_run_for_date(db, date(2026, 9, 20))
+
+    assert today_state.prediction_run_id == today_run
+    assert [m.player_1 for m in today_state.matches] == ["Today Player A"]
+    assert tomorrow_state.prediction_run_id == tomorrow_run
+    assert [m.player_1 for m in tomorrow_state.matches] == ["Tomorrow Player A"]
+
+    history = get_history(db)
+    populated = {row.run_date: row.prediction_run_id for row in history if row.kind == "POPULATED"}
+    assert populated[date(2026, 9, 19)] == today_run
+    assert populated[date(2026, 9, 20)] == tomorrow_run
+
+
 def test_get_run_for_date_no_bet(db: psycopg.Connection):
     start = datetime(2026, 9, 7, 15, 0, 0, tzinfo=timezone.utc)
     mid = _seed_match(db, "Andrey Rublev", "Taylor Fritz", "Phoenix", "CHALLENGER", start)

@@ -149,11 +149,27 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
     """
     run_row = conn.execute(
         """
-        SELECT prediction_run_id, run_status, as_of
-        FROM prediction_runs
-        WHERE as_of::date = %s
-          AND run_status = 'COMPLETED'
-        ORDER BY as_of DESC, prediction_run_id DESC
+        SELECT pr.prediction_run_id, pr.run_status, pr.as_of
+        FROM prediction_runs pr
+        WHERE pr.run_status = 'COMPLETED'
+          AND EXISTS (
+              SELECT 1
+              FROM prediction_run_targets prt
+              JOIN LATERAL (
+                  SELECT mv.match_start_at
+                  FROM match_versions mv
+                  WHERE mv.match_id = prt.match_id
+                    AND mv.as_of <= pr.as_of
+                    AND mv.source_observed_at <= pr.as_of
+                  ORDER BY mv.as_of DESC,
+                           mv.source_observed_at DESC,
+                           mv.match_version_id DESC
+                  LIMIT 1
+              ) target_mv ON TRUE
+              WHERE prt.prediction_run_id = pr.prediction_run_id
+                AND (target_mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+          )
+        ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
         LIMIT 1
         """,
         (run_date,),
@@ -168,6 +184,36 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
             prediction_run_id=prediction_run_id,
             run_status=run_status,
             matches=matches,
+        )
+
+    # Backward-compatible fallback for legacy/synthetic completed runs that
+    # predate target persistence. Restricting this to zero-target runs prevents
+    # a future target-bearing slate created today from hijacking today's page.
+    run_row = conn.execute(
+        """
+        SELECT pr.prediction_run_id, pr.run_status, pr.as_of
+        FROM prediction_runs pr
+        WHERE pr.as_of::date = %s
+          AND pr.run_status = 'COMPLETED'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM prediction_run_targets prt
+              WHERE prt.prediction_run_id = pr.prediction_run_id
+          )
+        ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
+        LIMIT 1
+        """,
+        (run_date,),
+    ).fetchone()
+    if run_row is not None:
+        prediction_run_id, run_status, as_of = run_row
+        return RunState(
+            kind="POPULATED",
+            run_date=run_date,
+            as_of=as_of,
+            prediction_run_id=prediction_run_id,
+            run_status=run_status,
+            matches=[],
         )
 
     ingest_row = conn.execute(
@@ -253,10 +299,46 @@ def load_run_matches(conn: psycopg.Connection, prediction_run_id: int) -> list[M
 def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
     run_rows = conn.execute(
         """
-        SELECT prediction_run_id, run_status, as_of::date AS run_date, as_of
-        FROM prediction_runs
-        WHERE run_status = 'COMPLETED'
-        ORDER BY as_of DESC, prediction_run_id DESC
+        WITH run_dates AS (
+            SELECT
+                pr.prediction_run_id,
+                pr.run_status,
+                pr.as_of,
+                min((target_mv.match_start_at AT TIME ZONE 'UTC')::date) AS run_date
+            FROM prediction_runs pr
+            JOIN prediction_run_targets prt
+              ON prt.prediction_run_id = pr.prediction_run_id
+            JOIN LATERAL (
+                SELECT mv.match_start_at
+                FROM match_versions mv
+                WHERE mv.match_id = prt.match_id
+                  AND mv.as_of <= pr.as_of
+                  AND mv.source_observed_at <= pr.as_of
+                ORDER BY mv.as_of DESC,
+                         mv.source_observed_at DESC,
+                         mv.match_version_id DESC
+                LIMIT 1
+            ) target_mv ON TRUE
+            WHERE pr.run_status = 'COMPLETED'
+            GROUP BY pr.prediction_run_id, pr.run_status, pr.as_of
+        ),
+        ranked AS (
+            SELECT
+                prediction_run_id,
+                run_status,
+                run_date,
+                as_of,
+                row_number() OVER (
+                    PARTITION BY run_date
+                    ORDER BY as_of DESC, prediction_run_id DESC
+                ) AS recency_rank
+            FROM run_dates
+            WHERE run_date IS NOT NULL
+        )
+        SELECT prediction_run_id, run_status, run_date, as_of
+        FROM ranked
+        WHERE recency_rank = 1
+        ORDER BY run_date DESC, as_of DESC, prediction_run_id DESC
         LIMIT %s
         """,
         (limit,),
@@ -279,22 +361,27 @@ def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
             )
         )
 
+    populated_dates = {summary.run_date for summary in summaries}
     ingest_rows = conn.execute(
         """
-        SELECT ingest_run_id, started_at::date AS run_date, started_at, status
+        SELECT DISTINCT ON ((started_at AT TIME ZONE 'UTC')::date)
+            ingest_run_id,
+            (started_at AT TIME ZONE 'UTC')::date AS run_date,
+            started_at,
+            status
         FROM ingest_runs
         WHERE source_system = 'API_TENNIS'
-          AND NOT EXISTS (
-              SELECT 1 FROM prediction_runs pr
-              WHERE pr.as_of::date = ingest_runs.started_at::date
-          )
-        ORDER BY started_at DESC, ingest_run_id DESC
+        ORDER BY (started_at AT TIME ZONE 'UTC')::date DESC,
+                 started_at DESC,
+                 ingest_run_id DESC
         LIMIT %s
         """,
         (limit,),
     ).fetchall()
 
     for _ingest_id, run_date, as_of, status in ingest_rows:
+        if run_date in populated_dates:
+            continue
         summaries.append(
             RunSummary(
                 run_date=run_date,
@@ -309,9 +396,8 @@ def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
             )
         )
 
-    summaries.sort(key=lambda s: s.as_of, reverse=True)
+    summaries.sort(key=lambda s: (s.run_date, s.as_of), reverse=True)
     return summaries[:limit]
-
 
 def _run_counts(conn: psycopg.Connection, prediction_run_id: int) -> dict[str, int]:
     match_count = conn.execute(

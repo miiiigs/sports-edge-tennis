@@ -59,8 +59,8 @@ def api_paper_bankroll():
             "max_drawdown": _percent(summary.max_drawdown),
             "legacy_bets_excluded": summary.skipped_without_staking_evidence,
             "methodology": (
-                "Prospective paper replay only. Uses the first persisted live BET per match, "
-                "the publication-time recorded odds, and the persisted quarter-Kelly stake fraction. "
+                "Prospective paper replay only. Uses the first client-publishable live BET per match, "
+                "the recorded publication-time odds, and the persisted quarter-Kelly stake fraction. "
                 "It never places a real wager and does not backfill missing historical prices."
             ),
             "curve": [
