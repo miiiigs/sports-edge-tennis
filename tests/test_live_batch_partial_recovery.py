@@ -37,6 +37,7 @@ def _result(slate_date: date, *, prediction_run_id: int | None, targets: int = 0
 
 def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeypatch, tmp_path, capsys):
     market_runs: list[int] = []
+    summaries: list[dict[str, int]] = []
 
     monkeypatch.setattr(batch, "load_secret", lambda name: "api-key" if name == "API_TENNIS_API_KEY" else None)
     monkeypatch.setattr(batch.psycopg, "connect", _Connect())
@@ -65,12 +66,15 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
 
     monkeypatch.setattr(batch, "run_live_mvp", fake_run)
 
-    rc = batch.main([
-        "--start-date", "2026-09-10",
-        "--days", "3",
-        "--dsn", "postgresql://example",
-        "--artifacts-dir", str(tmp_path),
-    ])
+    rc = batch.main(
+        [
+            "--start-date", "2026-09-10",
+            "--days", "3",
+            "--dsn", "postgresql://example",
+            "--artifacts-dir", str(tmp_path),
+        ],
+        summary_sink=summaries.append,
+    )
 
     assert rc == 0
     assert market_runs == [60]
@@ -80,6 +84,23 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
     assert "LIVE_BATCH_SUCCESS" in out
     assert "slates=2" in out
     assert "failed_slates=1" in out
+    assert summaries == [
+        {
+            "slates": 2,
+            "failed_slates": 1,
+            "fixtures": 10,
+            "targets": 29,
+            "consensus": 7,
+            "price_candidates": 0,
+            "pinnapi_requests": 0,
+            "offered_requests": 0,
+            "offered_quotes": 0,
+            "bets": 0,
+            "type_b_value_signals": 0,
+            "close_finalized": 0,
+            "clv_calculated": 0,
+        }
+    ]
 
 
 def test_all_api_tennis_slates_failed_still_fails_closed(monkeypatch, tmp_path, capsys):
