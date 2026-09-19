@@ -8,11 +8,20 @@ import sports_edge_tennis.live.provider_authority as authority
 
 
 class _FakeConn:
-    def __init__(self, *, strict=True, schema=True, history=True, mappings=True):
+    def __init__(
+        self,
+        *,
+        strict=True,
+        schema=True,
+        history=True,
+        sharp_mapping=True,
+        offered_mapping=True,
+    ):
         self.strict = strict
         self.schema = schema
         self.history = history
-        self.mappings = mappings
+        self.sharp_mapping = sharp_mapping
+        self.offered_mapping = offered_mapping
 
     def execute(self, sql, params=None):
         normalized = " ".join(sql.split()).lower()
@@ -26,7 +35,7 @@ class _FakeConn:
         if "from match_result_observations" in normalized and "match_stat_observations" in normalized:
             return _Result((100 if self.history else 0, 200 if self.history else 0))
         if "from provider_bookmaker_mappings" in normalized:
-            return _Result((2 if self.mappings else 0,))
+            return _Result((self.sharp_mapping, self.offered_mapping))
         raise AssertionError(normalized)
 
 
@@ -81,14 +90,21 @@ def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:
 
 def test_target_cutover_requires_strict_manager_schema_history_and_mapping() -> None:
     result = authority.evaluate_cutover_readiness(
-        _FakeConn(strict=False, schema=False, history=False, mappings=False),
+        _FakeConn(
+            strict=False,
+            schema=False,
+            history=False,
+            sharp_mapping=False,
+            offered_mapping=False,
+        ),
         env=_target_env(),
     )
     assert result.ready is False
     assert "STRICT_MANAGER_V2_NOT_MIGRATED" in result.blockers
     assert "CORE_SCHEMA_INCOMPLETE" in result.blockers
     assert "HISTORICAL_CORPUS_EMPTY" in result.blockers
-    assert "GOALSERVE_BOOKMAKER_MAPPING_NOT_VERIFIED" in result.blockers
+    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in result.blockers
+    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" in result.blockers
 
 
 def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -> None:
@@ -96,3 +112,19 @@ def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -
     assert result.ready is False
     assert result.blockers == ("TARGET_RUNTIME_NOT_ACTIVATABLE",)
     assert result.authority.full_target_requested is True
+
+
+def test_target_cutover_requires_both_goalserve_mapping_classes() -> None:
+    missing_sharp = authority.evaluate_cutover_readiness(
+        _FakeConn(sharp_mapping=False, offered_mapping=True),
+        env=_target_env(),
+    )
+    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in missing_sharp.blockers
+    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" not in missing_sharp.blockers
+
+    missing_offered = authority.evaluate_cutover_readiness(
+        _FakeConn(sharp_mapping=True, offered_mapping=False),
+        env=_target_env(),
+    )
+    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" not in missing_offered.blockers
+    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" in missing_offered.blockers
