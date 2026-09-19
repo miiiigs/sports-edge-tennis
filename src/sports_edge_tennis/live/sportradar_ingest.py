@@ -201,7 +201,11 @@ def _persist_fixture(
 
     if overlap.status in {"EXACT_EXISTING_MATCH", "SOURCE_ID_RESOLVED"}:
         match_id = int(overlap.match_id)
-        existing = _existing_match_context(conn, match_id=match_id)
+        existing = _existing_match_context(
+            conn,
+            match_id=match_id,
+            as_of=fixture.received_at,
+        )
         if existing is None:
             raise SportradarIngestError("existing_match_context_missing")
         (
@@ -356,6 +360,7 @@ def _existing_match_context(
     conn: psycopg.Connection,
     *,
     match_id: int,
+    as_of: datetime,
 ):
     return conn.execute(
         """
@@ -372,12 +377,14 @@ def _existing_match_context(
             SELECT match_version_id, player_1_id, player_2_id
             FROM match_versions
             WHERE match_id = m.match_id
+              AND source_observed_at <= %s
+              AND as_of <= %s
             ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
             LIMIT 1
         ) mv ON TRUE
         WHERE m.match_id = %s
         """,
-        (match_id,),
+        (as_of, as_of, match_id),
     ).fetchone()
 
 
