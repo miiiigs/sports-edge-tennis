@@ -50,11 +50,17 @@ def _seed_tournament(
         )
 
 
-def _fixture(tournament_key: str) -> dict[str, object]:
+def _fixture(
+    tournament_key: str,
+    *,
+    tournament_name: str = 'Surface Test',
+    event_type_type: str = 'Atp Challenger Singles',
+) -> dict[str, object]:
     return {
         'event_key': 'surface-test-event',
         'tournament_key': tournament_key,
-        'tournament_name': 'Surface Test',
+        'tournament_name': tournament_name,
+        'event_type_type': event_type_type,
         'event_date': '2026-09-17',
         'event_time': '12:00',
         'event_surface': None,
@@ -126,3 +132,62 @@ def test_draw_transport_failure_does_not_use_prior_season_fallback(
     )
 
     assert rows[0].get('surface') is None
+
+
+def test_davis_cup_never_inherits_prior_season_surface(
+    db: psycopg.Connection,
+    capsys,
+):
+    _seed_tournament(
+        db,
+        tournament_key='3447',
+        surfaces_by_year={2024: 'HARD', 2025: 'HARD'},
+    )
+
+    rows = enrich_api_tennis_fixture_surfaces(
+        db,
+        [
+            _fixture(
+                '3447',
+                tournament_name='ATP Davis Cup - World Group II',
+                event_type_type='Atp Davis Cup Singles',
+            )
+        ],
+        api_key='KEY',
+        fetch_draw=lambda *_args: (
+            datetime(2026, 9, 17, 10, 0, tzinfo=UTC),
+            {'tournament': {}},
+        ),
+    )
+
+    assert rows[0].get('surface') is None
+    out = capsys.readouterr().out
+    assert 'kind=DRAW_NO_SURFACE_TEAM_EVENT' in out
+
+
+def test_davis_cup_accepts_explicit_current_draw_surface(
+    db: psycopg.Connection,
+):
+    _seed_tournament(
+        db,
+        tournament_key='3445',
+        surfaces_by_year={2024: 'CLAY', 2025: 'CLAY'},
+    )
+
+    rows = enrich_api_tennis_fixture_surfaces(
+        db,
+        [
+            _fixture(
+                '3445',
+                tournament_name='ATP Davis Cup - World Group I',
+                event_type_type='Atp Davis Cup Singles',
+            )
+        ],
+        api_key='KEY',
+        fetch_draw=lambda *_args: (
+            datetime(2026, 9, 17, 10, 0, tzinfo=UTC),
+            {'tournament': {'tournament_surface': 'Hard'}},
+        ),
+    )
+
+    assert rows[0]['surface'] == 'Hard'
