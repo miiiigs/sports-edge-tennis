@@ -81,50 +81,51 @@ def ingest_sportradar_daily_summaries(
     try:
         for fixture in parsed.fixtures:
             try:
-                overlap = resolve_sportradar_event_overlap(
-                    conn,
-                    fixture=fixture,
-                )
-                if overlap.status in {
-                    "PLAYER_IDENTITY_UNRESOLVED",
-                    "AMBIGUOUS_EXISTING_MATCH",
-                    "SOURCE_ID_CONFLICT",
-                }:
-                    raise SportradarIngestError(
-                        f"overlap_reconciliation:{overlap.status}"
+                with conn.transaction():
+                    overlap = resolve_sportradar_event_overlap(
+                        conn,
+                        fixture=fixture,
                     )
+                    if overlap.status in {
+                        "PLAYER_IDENTITY_UNRESOLVED",
+                        "AMBIGUOUS_EXISTING_MATCH",
+                        "SOURCE_ID_CONFLICT",
+                    }:
+                        raise SportradarIngestError(
+                            f"overlap_reconciliation:{overlap.status}"
+                        )
 
-                if (
-                    overlap.status == "NEW_CANONICAL_EVENT"
-                    and not allow_new_events
-                ):
-                    deferred_new += 1
-                    rejected.append(
-                        {
-                            "event_id": fixture.source_match_id,
-                            "reason": "new_event_deferred_until_cutover",
-                        }
-                    )
-                    continue
+                    if (
+                        overlap.status == "NEW_CANONICAL_EVENT"
+                        and not allow_new_events
+                    ):
+                        deferred_new += 1
+                        rejected.append(
+                            {
+                                "event_id": fixture.source_match_id,
+                                "reason": "new_event_deferred_until_cutover",
+                            }
+                        )
+                        continue
 
-                locator = _persist_fixture(
-                    conn,
-                    repository=repository,
-                    fixture=fixture,
-                    overlap=overlap,
-                    ingest_run_id=ingest_run_id,
-                )
-                ingested.append(
-                    SportradarIngestedMatch(
-                        source_match_id=fixture.source_match_id,
-                        match_id=locator.match_id,
-                        match_version_id=locator.match_version_id,
-                        player_1_id=locator.player_1_id,
-                        player_2_id=locator.player_2_id,
-                        match_status=fixture.match_status,
-                        overlap_status=overlap.status,
+                    locator = _persist_fixture(
+                        conn,
+                        repository=repository,
+                        fixture=fixture,
+                        overlap=overlap,
+                        ingest_run_id=ingest_run_id,
                     )
-                )
+                    ingested.append(
+                        SportradarIngestedMatch(
+                            source_match_id=fixture.source_match_id,
+                            match_id=locator.match_id,
+                            match_version_id=locator.match_version_id,
+                            player_1_id=locator.player_1_id,
+                            player_2_id=locator.player_2_id,
+                            match_status=fixture.match_status,
+                            overlap_status=overlap.status,
+                        )
+                    )
             except (SportradarIngestError, ValueError) as exc:
                 rejected.append(
                     {
