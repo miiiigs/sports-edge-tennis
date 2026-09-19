@@ -23,6 +23,7 @@ SPORTRADAR_REQUIRED_ENV = (
 )
 GOALSERVE_REQUIRED_ENV = ("GOALSERVE_TENNIS_FEED_URL",)
 MANAGER_POLICY_ENV = "TENNIS_MANAGER_POLICY_VERSION"
+TARGET_RUNTIME_READY = False
 
 
 @dataclass(frozen=True)
@@ -74,6 +75,9 @@ def evaluate_cutover_readiness(
 
     if not authority.target_requested:
         return CutoverReadiness(authority=authority, ready=True, blockers=())
+
+    if not TARGET_RUNTIME_READY:
+        blockers.append("TARGET_RUNTIME_NOT_ACTIVATABLE")
 
     if str(env.get(CUTOVER_AUTH_ENV) or "").strip() != CUTOVER_AUTH_VALUE:
         blockers.append("CUTOVER_AUTHORIZATION_MISSING")
@@ -202,6 +206,7 @@ __all__ = [
     "SPORTRADAR_REQUIRED_ENV",
     "TARGET_DATA_MODE",
     "TARGET_ODDS_MODE",
+    "TARGET_RUNTIME_READY",
     "assert_cutover_ready",
     "evaluate_cutover_readiness",
     "load_provider_authority",
