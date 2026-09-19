@@ -50,6 +50,9 @@ class SportradarFixtureCandidate:
     tour_scope: str
     competition_tier: str
     surface: str | None
+    round_code: str | None
+    best_of_sets: int
+    qualifying_flag: bool
     received_at: datetime
 
 
@@ -115,10 +118,14 @@ def parse_summary(
         else ""
     )
     competition_level = str(competition.get("level") or "").strip()
+    competition_type = str(competition.get("type") or "").strip()
+    competition_gender = str(competition.get("gender") or "").strip()
     tour_scope, competition_tier = classify_competition(
         competition_name=competition_name,
         competition_level=competition_level,
         category_name=category_name,
+        competition_type=competition_type,
+        competition_gender=competition_gender,
     )
 
     competitors = _mapping_list(event.get("competitors"))
@@ -169,6 +176,35 @@ def parse_summary(
     )
     surface = normalize_sportradar_surface(raw_surface) if raw_surface else None
 
+    mode = context.get("mode")
+    raw_best_of = mode.get("best_of") if isinstance(mode, Mapping) else None
+    if raw_best_of in (None, ""):
+        best_of_sets = 3
+    else:
+        try:
+            best_of_sets = int(raw_best_of)
+        except (TypeError, ValueError) as exc:
+            raise SportradarFixtureError("invalid_best_of_sets") from exc
+        if best_of_sets not in (3, 5):
+            raise SportradarFixtureError("unsupported_best_of_sets")
+
+    round_payload = context.get("round")
+    round_code = (
+        str(round_payload.get("name") or "").strip() or None
+        if isinstance(round_payload, Mapping)
+        else None
+    )
+    stage = context.get("stage")
+    phase = (
+        str(stage.get("phase") or "").strip().casefold()
+        if isinstance(stage, Mapping)
+        else ""
+    )
+    qualifying_flag = (
+        "qual" in phase
+        or bool(round_code and "qual" in round_code.casefold())
+    )
+
     return SportradarFixtureCandidate(
         source_match_id=source_match_id,
         competition_source_id=competition_source_id,
@@ -183,6 +219,9 @@ def parse_summary(
         tour_scope=tour_scope,
         competition_tier=competition_tier,
         surface=surface,
+        round_code=round_code,
+        best_of_sets=best_of_sets,
+        qualifying_flag=qualifying_flag,
         received_at=received_at.astimezone(UTC),
     )
 
@@ -192,10 +231,20 @@ def classify_competition(
     competition_name: str,
     competition_level: str,
     category_name: str,
+    competition_type: str = "",
+    competition_gender: str = "",
 ) -> tuple[str, str]:
+    normalized_level = competition_level.casefold().replace("_", " ").replace("-", " ")
+    normalized_type = competition_type.casefold().replace("_", " ").replace("-", " ")
+    normalized_gender = competition_gender.casefold()
     combined = " ".join(
-        (competition_name, competition_level, category_name)
+        (competition_name, normalized_level, category_name)
     ).casefold()
+
+    if normalized_type and normalized_type != "singles":
+        raise SportradarFixtureError("out_of_scope_event_type")
+    if normalized_gender in {"women", "woman", "female", "mixed"}:
+        raise SportradarFixtureError("out_of_scope_event_type")
     if any(token in combined for token in _OUT_OF_SCOPE_TOKENS):
         raise SportradarFixtureError("out_of_scope_event_type")
 
