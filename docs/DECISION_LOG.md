@@ -222,3 +222,19 @@ the locked T-ED2 contract. It changes the prediction finalization FK to
 lifecycle guards, preserves the committed-state rule
 `predictions.prediction_locked_at = prediction_runs.prediction_finalized_at`, and adds no
 new tables, columns, or indexes.
+## D035
+
+The legacy Tennis Manager policy remains immutable replay truth as `tennis_manager_consensus/v1`. The target production policy is versioned as `v2` and requires all three predictive agents to be active. An Agent 3 abstention may never be silently reinterpreted as a v2 consensus.
+
+## D036
+
+The Tennis provider migration is an atomic authority change: `API_TENNIS + LEGACY_SPLIT` may switch only to `SPORTRADAR_V3 + GOALSERVE_TENNIS` as a pair. A partial data-only or odds-only cutover is invalid and must fail closed.
+
+## D037
+
+Cross-provider player, tournament, match, and odds identities must reuse the canonical identity universe. Stable Sportradar or Goalserve source IDs may be attached only after deterministic reconciliation. Ambiguous player identity, multiple plausible match candidates, or a source-ID conflict must not be resolved by fuzzy choice or duplicate canonical creation.
+
+## D038
+
+The verified API-Tennis Agent 2 historical regime is immutable evidence. Sportradar terminal results and final statistics are appended prospectively at their actual receive time. Provider migration must not backdate observations, rewrite old source truth, or recompute historical Manager v1 rows as though the target provider/policy had existed earlier.
+
