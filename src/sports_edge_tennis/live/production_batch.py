@@ -16,6 +16,7 @@ import psycopg
 
 from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
 from sports_edge_tennis.live.batch import main as live_batch_main
+from sports_edge_tennis.live.provider_authority import assert_cutover_ready
 from sports_edge_tennis.live.operational_health import (
     evaluate_live_operational_health,
     persist_live_operational_health,
@@ -451,6 +452,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     shadow_cycle_started_at = datetime.now(timezone.utc)
+
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            provider_authority = assert_cutover_ready(conn, env=os.environ)
+    except (psycopg.Error, ValueError, RuntimeError) as exc:
+        _log(
+            "PROVIDER_AUTHORITY_BLOCKED "
+            f"error_type={type(exc).__name__} reason={str(exc).replace(' ', '_')}"
+        )
+        return 2
+
+    _log(
+        "PROVIDER_AUTHORITY "
+        f"data={provider_authority.data_mode} odds={provider_authority.odds_mode}"
+    )
 
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
