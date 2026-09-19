@@ -31,6 +31,7 @@ from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
     LiveMvpError,
     LivePilotApiTennisFailed,
+    LivePilotSportradarFailed,
     run_live_mvp,
 )
 from sports_edge_tennis.live.price_slate import load_price_scanner_candidate_match_ids
@@ -324,12 +325,13 @@ def main(
                     if provider_authority.data_mode == TARGET_DATA_MODE:
                         live_kwargs["fetch_fixtures"] = fetch_sportradar_fixture_rows
                         live_kwargs["ingest_fixtures"] = ingest_sportradar_fixture_rows
+                        live_kwargs["fixture_provider_code"] = "SPORTRADAR_V3"
                     else:
                         live_kwargs["ingest_fixtures"] = (
                             ingest_api_tennis_source_a_fixtures_with_upcoming_status
                         )
                     result = run_live_mvp(**live_kwargs)
-                except LivePilotApiTennisFailed as exc:
+                except (LivePilotApiTennisFailed, LivePilotSportradarFailed) as exc:
                     totals["failed_slates"] += 1
                     _log(
                         "SLATE_UNAVAILABLE "
