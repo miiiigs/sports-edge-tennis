@@ -12,6 +12,8 @@ from sports_edge_tennis.live.history_refresh_resilient import (
     LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV,
     LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV,
     MARKET_STALE_SELFTEST_ENABLED_ENV,
+    OFFERED_MARKET_AUDIT_MAX_DECISIONS,
+    _run_offered_market_history_audit,
     PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV,
     PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
@@ -585,3 +587,178 @@ def test_optional_live_tennis_surface_probe_dispatches_read_only(
     assert "LIVE_TENNIS_SURFACE_PROBE_DISPATCH" in out
     assert "max_pages=3" in out
     assert "writes=0" in out
+
+
+class _OfferedAuditCursor:
+    def __init__(self, *, row=None, rows=None):
+        self._row = row
+        self._rows = [] if rows is None else rows
+
+    def fetchone(self):
+        return self._row
+
+    def fetchall(self):
+        return self._rows
+
+
+class _OfferedAuditConn:
+    def __init__(
+        self,
+        *,
+        decisions,
+        latest_response,
+        raw_count_by_response_event,
+        offered_by_match,
+    ):
+        self.decisions = list(decisions)
+        self.latest_response = latest_response
+        self.raw_count_by_response_event = dict(raw_count_by_response_event)
+        self.offered_by_match = dict(offered_by_match)
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        rendered = str(sql)
+        self.calls.append((rendered, params))
+        if "FROM decisions d" in rendered:
+            return _OfferedAuditCursor(rows=self.decisions[: int(params[0])])
+        if (
+            "SELECT provider_response_id, received_at" in rendered
+            and "FROM raw_odds_observations" in rendered
+        ):
+            return _OfferedAuditCursor(row=self.latest_response)
+        if "FROM raw_odds_observations" in rendered:
+            response_id = str(params[0])
+            event_id = str(params[1])
+            count = self.raw_count_by_response_event.get((response_id, event_id), 0)
+            return _OfferedAuditCursor(row=(count,))
+        if "FROM odds_snapshots" in rendered:
+            match_id = int(params[-1])
+            return _OfferedAuditCursor(row=self.offered_by_match[match_id])
+        raise AssertionError("unexpected offered-market audit query")
+
+
+def _missing_market_decision(
+    *,
+    decision_id=1,
+    prediction_run_id=10,
+    match_id=100,
+    as_of=None,
+    selected_side=1,
+    source_match_id="evt-100",
+    ttl=15,
+):
+    return (
+        decision_id,
+        prediction_run_id,
+        match_id,
+        as_of or datetime(2026, 9, 19, 4, 6, tzinfo=UTC),
+        selected_side,
+        source_match_id,
+        ttl,
+    )
+
+
+def test_offered_market_history_audit_rejects_unbounded_limit():
+    with pytest.raises(ValueError, match="between 1 and 20"):
+        _run_offered_market_history_audit(
+            _OfferedAuditConn(
+                decisions=[],
+                latest_response=None,
+                raw_count_by_response_event={},
+                offered_by_match={},
+            ),
+            max_decisions=OFFERED_MARKET_AUDIT_MAX_DECISIONS + 1,
+        )
+
+
+@pytest.mark.parametrize(
+    ("raw_count", "offered_row", "expected"),
+    [
+        (0, (0, 0, None), "PROVIDER_EVENT_ABSENT"),
+        (1, (0, 0, None), "PROVIDER_PRESENT_NO_NORMALIZED_MARKET"),
+        (
+            1,
+            (4, 0, datetime(2026, 9, 19, 3, 40, tzinfo=UTC)),
+            "PROVIDER_PRESENT_STALE_SELECTED_SIDE",
+        ),
+        (
+            1,
+            (4, 0, datetime(2026, 9, 19, 4, 4, tzinfo=UTC)),
+            "PROVIDER_PRESENT_SELECTED_SIDE_GAP",
+        ),
+        (
+            1,
+            (4, 1, datetime(2026, 9, 19, 4, 4, tzinfo=UTC)),
+            "OTHER",
+        ),
+    ],
+)
+def test_offered_market_history_audit_classifies_exact_response_cycle(
+    raw_count,
+    offered_row,
+    expected,
+    capsys,
+):
+    response_id = "API_TENNIS_ODDS_V1:2026-09-19T04:05:00+00:00:test"
+    conn = _OfferedAuditConn(
+        decisions=[_missing_market_decision()],
+        latest_response=(
+            response_id,
+            datetime(2026, 9, 19, 4, 5, tzinfo=UTC),
+        ),
+        raw_count_by_response_event={(response_id, "evt-100"): raw_count},
+        offered_by_match={100: offered_row},
+    )
+
+    count = _run_offered_market_history_audit(conn, max_decisions=5)
+
+    assert count == 1
+    out = capsys.readouterr().out
+    assert "OFFERED_MARKET_HISTORY_AUDIT_START decisions=1" in out
+    assert "response_fresh=1" in out
+    assert f"classification={expected}" in out
+    assert "writes=0 provider_requests=0" in out
+    assert "OFFERED_MARKET_HISTORY_AUDIT_SUMMARY decisions=1" in out
+
+
+def test_offered_market_history_audit_flags_no_current_provider_response(capsys):
+    conn = _OfferedAuditConn(
+        decisions=[_missing_market_decision()],
+        latest_response=(
+            "old-response",
+            datetime(2026, 9, 19, 3, 40, tzinfo=UTC),
+        ),
+        raw_count_by_response_event={("old-response", "evt-100"): 1},
+        offered_by_match={100: (2, 0, datetime(2026, 9, 19, 3, 40, tzinfo=UTC))},
+    )
+
+    _run_offered_market_history_audit(conn, max_decisions=5)
+
+    out = capsys.readouterr().out
+    assert "response_fresh=0" in out
+    assert "classification=NO_CURRENT_PROVIDER_RESPONSE" in out
+
+
+def test_offered_market_history_audit_handles_missing_api_event_id(capsys):
+    conn = _OfferedAuditConn(
+        decisions=[_missing_market_decision(source_match_id=None)],
+        latest_response=(
+            "response-1",
+            datetime(2026, 9, 19, 4, 5, tzinfo=UTC),
+        ),
+        raw_count_by_response_event={},
+        offered_by_match={100: (0, 0, None)},
+    )
+
+    _run_offered_market_history_audit(conn, max_decisions=5)
+
+    out = capsys.readouterr().out
+    assert "api_event_id=-" in out
+    assert "classification=NO_API_TENNIS_EVENT_ID" in out
+    raw_count_queries = [
+        sql
+        for sql, _ in conn.calls
+        if "FROM raw_odds_observations" in sql
+        and "SELECT provider_response_id, received_at" not in sql
+    ]
+    assert raw_count_queries == []
