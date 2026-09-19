@@ -10,6 +10,7 @@ from sports_edge_tennis.data.prediction_persistence import (
 )
 from sports_edge_tennis.manager.consensus import evaluate_consensus
 from sports_edge_tennis.manager.contracts import (
+    MANAGER_POLICY_CURRENT_VERSION,
     MANAGER_POLICY_KEY,
     MANAGER_POLICY_VERSION,
     ManagerConsensusError,
@@ -40,7 +41,8 @@ def load_manager_policy_version(
             policy_version,
             three_agent_max_probability_spread,
             agent3_abstention_max_probability_spread,
-            min_active_agent_probability
+            min_active_agent_probability,
+            allow_agent3_abstention
         FROM manager_policy_versions
         WHERE manager_policy_version_id = %s
         """,
@@ -83,7 +85,8 @@ def ensure_manager_policy_version_v1(conn: psycopg.Connection) -> ManagerPolicyV
             policy_version,
             three_agent_max_probability_spread,
             agent3_abstention_max_probability_spread,
-            min_active_agent_probability
+            min_active_agent_probability,
+            allow_agent3_abstention
         FROM manager_policy_versions
         WHERE policy_key = %s AND policy_version = %s
         """,
@@ -91,6 +94,44 @@ def ensure_manager_policy_version_v1(conn: psycopg.Connection) -> ManagerPolicyV
     ).fetchone()
     if row is None:
         raise ManagerConsensusError("failed to resolve the v1 Manager policy version")
+    return ManagerPolicyV1(*row)
+
+
+def ensure_manager_policy_version_current(conn: psycopg.Connection) -> ManagerPolicyV1:
+    """Return the strict production-candidate Manager policy without mutating v1 history."""
+    conn.execute(
+        """
+        INSERT INTO manager_policy_versions (
+            policy_key,
+            policy_version,
+            consensus_mode,
+            allow_agent3_abstention,
+            three_agent_max_probability_spread,
+            agent3_abstention_max_probability_spread,
+            min_active_agent_probability
+        )
+        VALUES (%s, %s, 'UNANIMOUS_ACTIVE_AGENTS', FALSE, 0.080000, 0.000000, 0.500000)
+        ON CONFLICT (policy_key, policy_version) DO NOTHING
+        """,
+        (MANAGER_POLICY_KEY, MANAGER_POLICY_CURRENT_VERSION),
+    )
+    row = conn.execute(
+        """
+        SELECT
+            manager_policy_version_id,
+            policy_key,
+            policy_version,
+            three_agent_max_probability_spread,
+            agent3_abstention_max_probability_spread,
+            min_active_agent_probability,
+            allow_agent3_abstention
+        FROM manager_policy_versions
+        WHERE policy_key = %s AND policy_version = %s
+        """,
+        (MANAGER_POLICY_KEY, MANAGER_POLICY_CURRENT_VERSION),
+    ).fetchone()
+    if row is None:
+        raise ManagerConsensusError("failed to resolve the current Manager policy version")
     return ManagerPolicyV1(*row)
 
 
