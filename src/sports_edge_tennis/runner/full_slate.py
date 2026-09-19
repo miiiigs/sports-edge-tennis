@@ -28,7 +28,7 @@ from sports_edge_tennis.data.prediction_persistence import (
 )
 from sports_edge_tennis.manager.contracts import (
     MANAGER_POLICY_KEY,
-    MANAGER_POLICY_VERSION,
+    SUPPORTED_MANAGER_POLICY_VERSIONS,
 )
 from sports_edge_tennis.manager.persistence import (
     evaluate_and_persist_manager_consensus,
@@ -212,8 +212,10 @@ def _preflight(
         )
     except Exception as exc:
         raise RunnerRequestError(f"invalid manager policy reference: {exc}") from exc
-    if policy.policy_key != MANAGER_POLICY_KEY or policy.policy_version != MANAGER_POLICY_VERSION:
-        raise RunnerRequestError("manager policy must be tennis_manager_consensus/v1")
+    if policy.policy_key != MANAGER_POLICY_KEY or policy.policy_version not in SUPPORTED_MANAGER_POLICY_VERSIONS:
+        raise RunnerRequestError(
+            "manager policy must be a supported tennis_manager_consensus version"
+        )
 
     _validate_lineage(conn, request)
 
