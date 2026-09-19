@@ -530,3 +530,51 @@ def test_batch_requires_api_tennis_key(monkeypatch, capsys):
     rc = batch.main(["--days", "1", "--dsn", "postgresql://example"])
     assert rc == 2
     assert "BLOCKED_MISSING_API_TENNIS_KEY" in capsys.readouterr().out
+
+
+class _DiagnosticCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _DiagnosticConn:
+    def __init__(self, rows):
+        self.rows = rows
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        self.calls.append((sql, params))
+        assert "d.reason_code = 'MISSING_MARKET'" in sql
+        assert "mcr.manager_status = 'CONSENSUS'" in sql
+        return _DiagnosticCursor(self.rows)
+
+
+def test_missing_market_diagnostics_distinguish_provider_absence_and_normalized_gap():
+    decision_as_of = datetime(2026, 9, 19, 4, 6, tzinfo=timezone.utc)
+    latest = datetime(2026, 9, 19, 4, 5, 30, tzinfo=timezone.utc)
+    conn = _DiagnosticConn(
+        [
+            (130521, 1, "12164226", 0, 0, None),
+            (130522, 2, "12164227", 4, 0, latest),
+        ]
+    )
+
+    rows = batch._load_missing_market_diagnostics(
+        conn,
+        337,
+        decision_as_of=decision_as_of,
+        odds_ttl_minutes=15,
+        odds_result={"12164227": {"odds": []}},
+    )
+
+    assert rows == (
+        (130521, 1, "12164226", False, 0, 0, None),
+        (130522, 2, "12164227", True, 4, 0, latest),
+    )
+    assert len(conn.calls) == 1
+    _, params = conn.calls[0]
+    assert params[1] == decision_as_of
+    assert params[2] == 337
