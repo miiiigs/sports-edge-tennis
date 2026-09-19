@@ -13,6 +13,7 @@ from sports_edge_tennis.live.production_batch import (
     _ensure_quarter_kelly_schema,
     _live_batch_gap_cycle,
     _live_operational_health_cycle,
+    _requested_live_horizon_days,
 )
 
 
@@ -170,6 +171,16 @@ def test_live_batch_gap_cycle_is_fail_isolated(monkeypatch, capsys):
     )
 
     assert "LIVE_BATCH_GAP_CHECK_FAILED error_type=RuntimeError" in capsys.readouterr().out
+
+
+def test_requested_live_horizon_days_defaults_to_three():
+    assert _requested_live_horizon_days(None) == 3
+    assert _requested_live_horizon_days([]) == 3
+
+
+def test_requested_live_horizon_days_reads_cli_value():
+    assert _requested_live_horizon_days(["--days", "5"]) == 5
+    assert _requested_live_horizon_days(["--days=4"]) == 4
 
 
 def test_live_operational_health_cycle_is_fail_isolated(monkeypatch, capsys):
