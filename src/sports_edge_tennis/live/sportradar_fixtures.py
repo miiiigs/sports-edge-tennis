@@ -165,6 +165,18 @@ def parse_summary(
     if match_status is None:
         raise SportradarFixtureError("unsupported_event_status")
 
+    # Sportradar can report a terminal event as closed/ended while carrying
+    # the decisive exception in winning_reason. Conservative provider-neutral
+    # settlement treats retirement/default as VOID and walkover as VOID.
+    winning_reason = str(
+        status_payload.get("winning_reason") or ""
+    ).strip().casefold()
+    if raw_status in {"closed", "ended"}:
+        if winning_reason == "walkover":
+            match_status = "WALKOVER"
+        elif winning_reason in {"retirement", "defaulted"}:
+            match_status = "RETIRED"
+
     season = context.get("season")
     season_source_id = (
         str(season.get("id") or "").strip() or None
