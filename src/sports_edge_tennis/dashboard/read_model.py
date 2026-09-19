@@ -149,11 +149,27 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
     """
     run_row = conn.execute(
         """
-        SELECT prediction_run_id, run_status, as_of
-        FROM prediction_runs
-        WHERE as_of::date = %s
-          AND run_status = 'COMPLETED'
-        ORDER BY as_of DESC, prediction_run_id DESC
+        SELECT pr.prediction_run_id, pr.run_status, pr.as_of
+        FROM prediction_runs pr
+        WHERE pr.run_status = 'COMPLETED'
+          AND EXISTS (
+              SELECT 1
+              FROM prediction_run_targets prt
+              JOIN LATERAL (
+                  SELECT mv.match_start_at
+                  FROM match_versions mv
+                  WHERE mv.match_id = prt.match_id
+                    AND mv.as_of <= pr.as_of
+                    AND mv.source_observed_at <= pr.as_of
+                  ORDER BY mv.as_of DESC,
+                           mv.source_observed_at DESC,
+                           mv.match_version_id DESC
+                  LIMIT 1
+              ) target_mv ON TRUE
+              WHERE prt.prediction_run_id = pr.prediction_run_id
+                AND (target_mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+          )
+        ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
         LIMIT 1
         """,
         (run_date,),
