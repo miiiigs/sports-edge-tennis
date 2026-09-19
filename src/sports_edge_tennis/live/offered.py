@@ -27,6 +27,9 @@ class ApiTennisOfferedOddsOutcome:
     normalized_quotes: int
     missing_events: int
     bookmaker_count: int
+    missing_identity: int = 0
+    provider_event_absent: int = 0
+    events_without_complete_market: int = 0
 
 
 def ingest_api_tennis_offered_odds(
@@ -52,17 +55,22 @@ def ingest_api_tennis_offered_odds(
     raw_observations = 0
     normalized_quotes = 0
     missing_events = 0
+    missing_identity = 0
+    provider_event_absent = 0
+    events_without_complete_market = 0
     bookmakers: set[str] = set()
 
     for match_id in candidate_match_ids:
         identity = _load_api_tennis_identity(conn, match_id=match_id, as_of=received_at)
         if identity is None:
             missing_events += 1
+            missing_identity += 1
             continue
         event_id, first_player_source_id, second_player_source_id = identity
         event_payload = odds_result.get(event_id)
         if not isinstance(event_payload, Mapping):
             missing_events += 1
+            provider_event_absent += 1
             continue
 
         observation = build_api_tennis_offered_observation(
@@ -75,6 +83,8 @@ def ingest_api_tennis_offered_odds(
         )
         events_with_odds += 1
         raw_observations += 1
+        if not observation.markets:
+            events_without_complete_market += 1
 
         for market in observation.markets:
             ensure_api_tennis_offered_mapping(
@@ -105,6 +115,9 @@ def ingest_api_tennis_offered_odds(
         normalized_quotes=normalized_quotes,
         missing_events=missing_events,
         bookmaker_count=len(bookmakers),
+        missing_identity=missing_identity,
+        provider_event_absent=provider_event_absent,
+        events_without_complete_market=events_without_complete_market,
     )
 
 
