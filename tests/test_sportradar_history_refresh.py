@@ -8,6 +8,7 @@ from sports_edge_tennis.live.sportradar_fixtures import parse_summary
 from sports_edge_tennis.live.sportradar_history_refresh import (
     _parse_final_stats,
     _parse_terminal_result,
+    _validate_sportradar_player_map,
 )
 
 
@@ -240,3 +241,24 @@ def test_retirement_prefers_provider_set_tally_over_unfinished_period_score() ->
     assert result.sets_won_player_2 == 0
     assert result.games_won_player_1 == 8
     assert result.games_won_player_2 == 8
+
+
+def test_sportradar_stat_player_bridge_requires_exact_canonical_participants() -> None:
+    assert _validate_sportradar_player_map(
+        {"sr:p1": 101, "sr:p2": 202},
+        expected_player_ids=(101, 202),
+    ) == {"sr:p1": 101, "sr:p2": 202}
+
+    with pytest.raises(ValueError, match="player_bridge_mismatch"):
+        _validate_sportradar_player_map(
+            {"sr:p1": 101, "sr:p2": 999},
+            expected_player_ids=(101, 202),
+        )
+
+
+def test_sportradar_stat_player_bridge_rejects_incomplete_resolution() -> None:
+    with pytest.raises(ValueError, match="player_bridge_incomplete"):
+        _validate_sportradar_player_map(
+            {"sr:p1": 101},
+            expected_player_ids=(101, 202),
+        )
