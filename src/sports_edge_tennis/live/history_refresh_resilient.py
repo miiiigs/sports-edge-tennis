@@ -60,6 +60,10 @@ LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV = "LIVE_TENNIS_SURFACE_PROBE_ENABLED"
 LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV = "LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES"
 LIVE_TENNIS_SURFACE_PROBE_DEFAULT_PAGES = 2
 LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES = 5
+OFFERED_MARKET_AUDIT_ONLY_ENV = "OFFERED_MARKET_AUDIT_ONLY"
+OFFERED_MARKET_AUDIT_MAX_DECISIONS_ENV = "OFFERED_MARKET_AUDIT_MAX_DECISIONS"
+OFFERED_MARKET_AUDIT_DEFAULT_MAX_DECISIONS = 5
+OFFERED_MARKET_AUDIT_MAX_DECISIONS = 20
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -569,6 +573,159 @@ def _run_optional_live_tennis_surface_probe(
     )
 
 
+def _run_offered_market_history_audit(
+    conn: psycopg.Connection,
+    *,
+    max_decisions: int = OFFERED_MARKET_AUDIT_DEFAULT_MAX_DECISIONS,
+) -> int:
+    if not 1 <= max_decisions <= OFFERED_MARKET_AUDIT_MAX_DECISIONS:
+        raise ValueError(
+            "offered market audit max decisions must be between 1 and "
+            f"{OFFERED_MARKET_AUDIT_MAX_DECISIONS}"
+        )
+
+    rows = conn.execute(
+        """
+        SELECT
+            d.decision_id,
+            d.prediction_run_id,
+            d.match_id,
+            d.as_of,
+            mcr.selected_side,
+            src.source_match_id,
+            mpv.odds_max_staleness_minutes
+        FROM decisions d
+        JOIN manager_consensus_results mcr
+          ON mcr.manager_consensus_result_id = d.manager_consensus_result_id
+        JOIN market_policy_versions mpv
+          ON mpv.market_policy_version_id = d.market_policy_version_id
+        LEFT JOIN LATERAL (
+            SELECT source_match_id
+            FROM match_source_ids
+            WHERE match_id = d.match_id
+              AND source_system = 'API_TENNIS'
+            ORDER BY match_source_id DESC
+            LIMIT 1
+        ) src ON TRUE
+        WHERE d.market_policy_version_id IS NOT NULL
+          AND d.reason_code = 'MISSING_MARKET'
+          AND mcr.manager_status = 'CONSENSUS'
+          AND mcr.selected_side IN (1, 2)
+        ORDER BY d.as_of DESC, d.decision_id DESC
+        LIMIT %s
+        """,
+        (max_decisions,),
+    ).fetchall()
+
+    print(
+        "OFFERED_MARKET_HISTORY_AUDIT_START "
+        f"decisions={len(rows)} max_decisions={max_decisions} writes=0 provider_requests=0",
+        flush=True,
+    )
+
+    for row in rows:
+        (
+            decision_id,
+            prediction_run_id,
+            match_id,
+            decision_as_of,
+            selected_side,
+            source_match_id,
+            odds_ttl_minutes,
+        ) = row
+        cutoff = decision_as_of - timedelta(minutes=int(odds_ttl_minutes))
+        selected_type = "PLAYER_1" if int(selected_side) == 1 else "PLAYER_2"
+
+        raw_event_rows = 0
+        latest_raw_at = None
+        if source_match_id is not None:
+            raw = conn.execute(
+                """
+                SELECT count(*), max(received_at)
+                FROM raw_odds_observations
+                WHERE provider_code = 'API_TENNIS'
+                  AND provider_event_id = %s
+                  AND received_at >= %s
+                  AND received_at <= %s
+                """,
+                (str(source_match_id), cutoff, decision_as_of),
+            ).fetchone()
+            if raw is not None:
+                raw_event_rows = int(raw[0])
+                latest_raw_at = raw[1]
+
+        offered = conn.execute(
+            """
+            SELECT
+                count(*) FILTER (
+                    WHERE source_system = 'OFFERED'
+                ) AS total_offered_rows,
+                count(*) FILTER (
+                    WHERE source_system = 'OFFERED'
+                      AND selection_type = %s::market_selection_type
+                      AND market_status = 'OPEN'
+                      AND decimal_price > 1
+                      AND source_observed_at >= %s
+                      AND source_observed_at <= %s
+                ) AS fresh_selected_rows,
+                max(source_observed_at) FILTER (
+                    WHERE source_system = 'OFFERED'
+                      AND source_observed_at <= %s
+                ) AS latest_offered_at
+            FROM odds_snapshots
+            WHERE match_id = %s
+            """,
+            (
+                selected_type,
+                cutoff,
+                decision_as_of,
+                decision_as_of,
+                int(match_id),
+            ),
+        ).fetchone()
+        assert offered is not None
+        total_offered_rows = int(offered[0])
+        fresh_selected_rows = int(offered[1])
+        latest_offered_at = offered[2]
+
+        if source_match_id is None:
+            classification = "NO_API_TENNIS_EVENT_ID"
+        elif raw_event_rows == 0:
+            classification = "PROVIDER_EVENT_ABSENT"
+        elif total_offered_rows == 0:
+            classification = "PROVIDER_PRESENT_NO_NORMALIZED_MARKET"
+        elif fresh_selected_rows == 0:
+            if latest_offered_at is None:
+                classification = "PROVIDER_PRESENT_NO_NORMALIZED_MARKET"
+            elif latest_offered_at < cutoff:
+                classification = "PROVIDER_PRESENT_STALE_SELECTED_SIDE"
+            else:
+                classification = "PROVIDER_PRESENT_SELECTED_SIDE_GAP"
+        else:
+            classification = "OTHER"
+
+        print(
+            "OFFERED_MARKET_HISTORY_AUDIT "
+            f"decision_id={int(decision_id)} prediction_run_id={int(prediction_run_id)} "
+            f"match_id={int(match_id)} as_of={decision_as_of.isoformat()} "
+            f"selected_side={int(selected_side)} api_event_id={source_match_id or '-'} "
+            f"ttl_minutes={int(odds_ttl_minutes)} raw_event_rows={raw_event_rows} "
+            f"latest_raw_at={latest_raw_at.isoformat() if latest_raw_at else '-'} "
+            f"total_offered_rows={total_offered_rows} "
+            f"fresh_selected_rows={fresh_selected_rows} "
+            f"latest_offered_at={latest_offered_at.isoformat() if latest_offered_at else '-'} "
+            f"classification={classification} writes=0 provider_requests=0",
+            flush=True,
+        )
+
+    print(
+        "OFFERED_MARKET_HISTORY_AUDIT_SUMMARY "
+        f"decisions={len(rows)} writes=0 provider_requests=0",
+        flush=True,
+    )
+    return len(rows)
+
+
 def ensure_checkpoint_table(conn: psycopg.Connection) -> None:
     conn.execute(_CHECKPOINT_DDL)
 
@@ -861,6 +1018,35 @@ def main(argv: list[str] | None = None) -> int:
     if not args.dsn:
         print("HISTORY_REFRESH_BLOCKED reason=NO_DATABASE", flush=True)
         return 2
+
+    if _flag_enabled(os.environ.get(OFFERED_MARKET_AUDIT_ONLY_ENV)):
+        try:
+            max_decisions = int(
+                str(
+                    os.environ.get(OFFERED_MARKET_AUDIT_MAX_DECISIONS_ENV)
+                    or OFFERED_MARKET_AUDIT_DEFAULT_MAX_DECISIONS
+                ).strip()
+            )
+        except ValueError:
+            print(
+                "OFFERED_MARKET_HISTORY_AUDIT_BLOCKED reason=INVALID_MAX_DECISIONS",
+                flush=True,
+            )
+            return 2
+        try:
+            with psycopg.connect(args.dsn, autocommit=True) as conn:
+                _run_offered_market_history_audit(
+                    conn,
+                    max_decisions=max_decisions,
+                )
+        except (ValueError, RuntimeError, psycopg.Error) as exc:
+            print(
+                "OFFERED_MARKET_HISTORY_AUDIT_BLOCKED "
+                f"reason={str(exc).upper()}",
+                flush=True,
+            )
+            return 2
+        return 0
 
     try:
         api_key = load_secret("API_TENNIS_API_KEY")
