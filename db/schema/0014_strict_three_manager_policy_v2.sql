@@ -1974,10 +1974,7 @@ CREATE TABLE manager_policy_versions (
     CONSTRAINT chk_manager_policy_versions_consensus_mode
         CHECK (consensus_mode = 'UNANIMOUS_ACTIVE_AGENTS'),
     CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
-        CHECK (
-            (policy_version = 'v1' AND allow_agent3_abstention = TRUE)
-            OR (policy_version <> 'v1' AND allow_agent3_abstention IN (TRUE, FALSE))
-        ),
+        CHECK (allow_agent3_abstention = TRUE),
     CONSTRAINT chk_manager_policy_versions_three_agent_spread
         CHECK (
             three_agent_max_probability_spread >= 0
@@ -2008,25 +2005,6 @@ VALUES (
     TRUE,
     0.080000,
     0.060000,
-    0.500000
-);
-
-INSERT INTO manager_policy_versions (
-    policy_key,
-    policy_version,
-    consensus_mode,
-    allow_agent3_abstention,
-    three_agent_max_probability_spread,
-    agent3_abstention_max_probability_spread,
-    min_active_agent_probability
-)
-VALUES (
-    'tennis_manager_consensus',
-    'v2',
-    'UNANIMOUS_ACTIVE_AGENTS',
-    FALSE,
-    0.080000,
-    0.000000,
     0.500000
 );
 
@@ -2647,5 +2625,39 @@ CREATE TRIGGER trg_model_identity_bridge_events_append_only_mutation
 BEFORE UPDATE OR DELETE ON model_identity_bridge_events
 FOR EACH ROW
 EXECUTE FUNCTION raise_append_only_mutation();
+
+COMMIT;
+
+BEGIN;
+
+ALTER TABLE manager_policy_versions
+    DROP CONSTRAINT IF EXISTS chk_manager_policy_versions_allow_agent3_abstention;
+
+ALTER TABLE manager_policy_versions
+    ADD CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
+    CHECK (
+        (policy_version = 'v1' AND allow_agent3_abstention = TRUE)
+        OR (policy_version <> 'v1' AND allow_agent3_abstention IN (TRUE, FALSE))
+    );
+
+INSERT INTO manager_policy_versions (
+    policy_key,
+    policy_version,
+    consensus_mode,
+    allow_agent3_abstention,
+    three_agent_max_probability_spread,
+    agent3_abstention_max_probability_spread,
+    min_active_agent_probability
+)
+VALUES (
+    'tennis_manager_consensus',
+    'v2',
+    'UNANIMOUS_ACTIVE_AGENTS',
+    FALSE,
+    0.080000,
+    0.000000,
+    0.500000
+)
+ON CONFLICT (policy_key, policy_version) DO NOTHING;
 
 COMMIT;
