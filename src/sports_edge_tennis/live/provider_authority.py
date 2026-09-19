@@ -188,6 +188,19 @@ def _goalserve_mapping_state(
 ) -> tuple[bool, bool]:
     row = conn.execute(
         """
+        WITH latest AS (
+            SELECT DISTINCT ON (provider_bookmaker_key)
+                provider_bookmaker_key,
+                bookmaker_code,
+                normalization_class
+            FROM provider_bookmaker_mappings
+            WHERE provider_code = 'GOALSERVE_TENNIS'
+            ORDER BY
+                provider_bookmaker_key,
+                effective_from DESC,
+                mapping_version DESC,
+                provider_bookmaker_mapping_id DESC
+        )
         SELECT
             bool_or(
                 normalization_class = 'SHARP'
@@ -196,8 +209,7 @@ def _goalserve_mapping_state(
             bool_or(
                 normalization_class = 'OFFERED'
             ) AS offered_book
-        FROM provider_bookmaker_mappings
-        WHERE provider_code = 'GOALSERVE_TENNIS'
+        FROM latest
         """
     ).fetchone()
     if row is None:
