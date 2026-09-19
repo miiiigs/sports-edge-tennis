@@ -11,6 +11,7 @@ from sports_edge_tennis.live.orchestrator import (
     BlockedPinnapiBookmakerMapping,
     LivePilotApiTennisFailed,
     LivePilotPinnapiFailed,
+    LivePilotSportradarFailed,
     _client_state,
     _final_status,
     fixture_reconciliation_summary,
@@ -236,6 +237,27 @@ def test_api_tennis_transport_error_becomes_live_pilot_failed():
             None,
             slate_date=SLATE,
             api_tennis_key="K",
+            preflight=lambda conn: None,
+            fetch_fixtures=fetch_fixtures,
+            ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome([]),
+            run_slate=lambda conn, ids, as_of: _run_outcome(),
+            load_consensus=lambda conn, rid: [],
+            build_match_entries=lambda *a, **k: [],
+            write_summary=lambda summary, **k: "p",
+            clock=lambda: FIXED,
+        )
+
+
+def test_sportradar_transport_error_is_not_mislabeled_api_tennis():
+    def fetch_fixtures(key, slate):
+        raise TransportError("HTTP_500", "boom")
+
+    with pytest.raises(LivePilotSportradarFailed):
+        run_live_mvp(
+            None,
+            slate_date=SLATE,
+            api_tennis_key="K",
+            fixture_provider_code="SPORTRADAR_V3",
             preflight=lambda conn: None,
             fetch_fixtures=fetch_fixtures,
             ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome([]),
