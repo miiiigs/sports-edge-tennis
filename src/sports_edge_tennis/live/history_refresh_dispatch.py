@@ -20,6 +20,61 @@ from sports_edge_tennis.live.provider_authority import (
 )
 
 
+_LEGACY_VALUE_FLAGS = {
+    "--start-date",
+    "--chunk-days",
+    "--min-chunk-days",
+    "--max-attempts",
+    "--backoff-seconds",
+    "--checkpoint-key",
+}
+_LEGACY_BOOLEAN_FLAGS = {"--restart-window"}
+
+
+def _target_argv(argv: list[str] | None) -> tuple[list[str], int]:
+    """Remove legacy-only orchestration flags before invoking Sportradar.
+
+    Shared flags such as --dsn and --end-date, plus target-native --days, are
+    preserved. Unknown flags are preserved so the target parser still fails
+    closed instead of silently accepting a typo.
+    """
+    args = list(argv or [])
+    target: list[str] = []
+    ignored = 0
+    index = 0
+    while index < len(args):
+        value = args[index]
+        if value in _LEGACY_BOOLEAN_FLAGS:
+            ignored += 1
+            index += 1
+            continue
+
+        matched_inline = next(
+            (
+                flag
+                for flag in _LEGACY_VALUE_FLAGS
+                if value.startswith(f"{flag}=")
+            ),
+            None,
+        )
+        if matched_inline is not None:
+            ignored += 1
+            index += 1
+            continue
+
+        if value in _LEGACY_VALUE_FLAGS:
+            if index + 1 >= len(args):
+                raise ValueError(f"missing value for {value}")
+            ignored += 2
+            index += 2
+            continue
+
+        target.append(value)
+        index += 1
+
+    return target, ignored
+
+
 def _dsn_from_argv(argv: list[str] | None) -> str | None:
     args = list(argv or [])
     for index, value in enumerate(args):
@@ -77,10 +132,24 @@ def main(argv: list[str] | None = None) -> int:
             main as sportradar_main,
         )
 
-        # The target refresh has its own bounded --days contract. Never pass
-        # legacy long-window/backfill flags into it.
-        print("HISTORY_REFRESH_DISPATCH provider=SPORTRADAR_V3", flush=True)
-        return sportradar_main(argv)
+        # The target refresh has its own bounded --days contract. Translate
+        # away legacy long-window/backfill flags so the same Railway schedule
+        # can safely switch authority without carrying API-Tennis semantics.
+        try:
+            target_argv, ignored = _target_argv(argv)
+        except ValueError as exc:
+            print(
+                "HISTORY_REFRESH_DISPATCH_BLOCKED "
+                f"reason={str(exc).replace(' ', '_')}",
+                flush=True,
+            )
+            return 2
+        print(
+            "HISTORY_REFRESH_DISPATCH "
+            f"provider=SPORTRADAR_V3 legacy_args_ignored={ignored}",
+            flush=True,
+        )
+        return sportradar_main(target_argv)
 
     print("HISTORY_REFRESH_DISPATCH_BLOCKED reason=UNSUPPORTED_PROVIDER", flush=True)
     return 2
