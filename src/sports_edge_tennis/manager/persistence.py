@@ -135,6 +135,21 @@ def ensure_manager_policy_version_current(conn: psycopg.Connection) -> ManagerPo
     return ManagerPolicyV1(*row)
 
 
+
+def select_manager_policy_version(
+    conn: psycopg.Connection,
+    *,
+    policy_version: str,
+) -> ManagerPolicyV1:
+    requested = str(policy_version).strip().lower()
+    if requested == "v1":
+        return ensure_manager_policy_version_v1(conn)
+    if requested == "v2":
+        return ensure_manager_policy_version_current(conn)
+    raise ManagerConsensusError(
+        f"unsupported Tennis Manager policy version {policy_version!r}"
+    )
+
 def evaluate_and_persist_manager_consensus(
     conn: psycopg.Connection,
     *,
