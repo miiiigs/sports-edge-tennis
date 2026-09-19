@@ -131,9 +131,13 @@ def link_surface_target(
         if start_at is None:
             continue
         delta = int(abs((start_at - target.match_start_at).total_seconds()) // 60)
+        try:
+            fixture_id = int(row.get("id"))
+        except (TypeError, ValueError):
+            continue
         raw_surface = str(row.get("surface") or "").strip() or None
         candidate = LiveTennisFixtureCandidate(
-            fixture_id=int(row.get("id")),
+            fixture_id=fixture_id,
             tournament=str(row.get("tournament") or "").strip(),
             player_1_name=str(row.get("player1_name") or "").strip(),
             player_2_name=str(row.get("player2_name") or "").strip(),
@@ -275,7 +279,7 @@ def run_probe(
             "LIVE_TENNIS_SURFACE_LINK "
             f"match_id={target.match_id} status={result.status} "
             f"fixture_id={candidate.fixture_id if candidate else '-'} "
-            f"tournament={candidate.tournament!r if candidate else '-'} "
+            f"tournament={repr(candidate.tournament) if candidate else '-'} "
             f"surface={candidate.canonical_surface if candidate and candidate.canonical_surface else '-'} "
             f"raw_surface={candidate.raw_surface if candidate and candidate.raw_surface else '-'} "
             f"start_delta_min={candidate.start_delta_minutes if candidate else '-'} "
