@@ -57,7 +57,6 @@ def test_successful_nonempty_cycle_is_healthy():
         conn,
         cycle_started_at=CYCLE_START,
         live_status=0,
-        expected_runs=2,
     )
 
     assert health.status == "HEALTHY"
@@ -69,7 +68,7 @@ def test_successful_nonempty_cycle_is_healthy():
     assert "zero_volume=0" in health.notes
 
 
-def test_partial_successful_horizon_is_warning_with_failed_run_count():
+def test_partial_successful_horizon_is_warning_with_failed_slate_count():
     finalized = datetime(2026, 9, 19, 2, 3, tzinfo=UTC)
     conn = _Conn((2, 90, finalized))
 
@@ -77,7 +76,7 @@ def test_partial_successful_horizon_is_warning_with_failed_run_count():
         conn,
         cycle_started_at=datetime(2026, 9, 19, 2, 0, tzinfo=UTC),
         live_status=0,
-        expected_runs=3,
+        failed_slates=1,
     )
 
     assert health.status == "WARNING"
@@ -85,8 +84,7 @@ def test_partial_successful_horizon_is_warning_with_failed_run_count():
     assert health.completed_runs == 2
     assert health.target_count == 90
     assert health.error_count == 1
-    assert "expected_runs=3" in health.notes
-    assert "failed_runs=1" in health.notes
+    assert "failed_slates=1" in health.notes
     assert "partial_slate_failure=1" in health.notes
 
 
