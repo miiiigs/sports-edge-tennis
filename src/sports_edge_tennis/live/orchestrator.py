@@ -90,6 +90,10 @@ class LivePilotApiTennisFailed(LiveMvpError):
     result_code = "LIVE_PILOT_API_TENNIS_FAILED"
 
 
+class LivePilotSportradarFailed(LiveMvpError):
+    result_code = "LIVE_PILOT_SPORTRADAR_FAILED"
+
+
 class LivePilotPinnapiFailed(LiveMvpError):
     result_code = "LIVE_PILOT_PINNAPI_FAILED"
 
@@ -382,6 +386,7 @@ def run_live_mvp(
     board_observation_id_factory: Callable[[], str] = new_pinnapi_board_observation_id,
     clock: Callable[[], datetime] = _utc_now,
     artifacts_dir: Path = Path("artifacts/live_mvp"),
+    fixture_provider_code: str = "API_TENNIS",
 ) -> LiveMvpResult:
     preflight(conn)
 
@@ -391,6 +396,8 @@ def run_live_mvp(
     try:
         fixtures_received_at, fixtures = fetch_fixtures(api_tennis_key, slate_date)
     except TransportError as exc:
+        if fixture_provider_code == "SPORTRADAR_V3":
+            raise LivePilotSportradarFailed(exc.message) from exc
         raise LivePilotApiTennisFailed(exc.message) from exc
 
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)
