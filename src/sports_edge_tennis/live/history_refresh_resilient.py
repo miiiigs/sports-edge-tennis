@@ -659,6 +659,7 @@ def _run_offered_market_history_audit(
             SELECT
                 count(*) FILTER (
                     WHERE source_system = 'OFFERED'
+                      AND source_observed_at <= %s
                 ) AS total_offered_rows,
                 count(*) FILTER (
                     WHERE source_system = 'OFFERED'
@@ -676,6 +677,7 @@ def _run_offered_market_history_audit(
             WHERE match_id = %s
             """,
             (
+                decision_as_of,
                 selected_type,
                 cutoff,
                 decision_as_of,
