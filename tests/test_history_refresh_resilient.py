@@ -12,6 +12,8 @@ from sports_edge_tennis.live.history_refresh_resilient import (
     LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV,
     LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV,
     MARKET_STALE_SELFTEST_ENABLED_ENV,
+    OFFERED_MARKET_AUDIT_MAX_DECISIONS,
+    _run_offered_market_history_audit,
     PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV,
     PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV,
     A2_STATS_DRY_RUN_CHUNK_DAYS_ENV,
@@ -585,3 +587,128 @@ def test_optional_live_tennis_surface_probe_dispatches_read_only(
     assert "LIVE_TENNIS_SURFACE_PROBE_DISPATCH" in out
     assert "max_pages=3" in out
     assert "writes=0" in out
+
+
+class _OfferedAuditCursor:
+    def __init__(self, *, row=None, rows=None):
+        self._row = row
+        self._rows = [] if rows is None else rows
+
+    def fetchone(self):
+        return self._row
+
+    def fetchall(self):
+        return self._rows
+
+
+class _OfferedAuditConn:
+    def __init__(self, *, decisions, raw_by_event, offered_by_match):
+        self.decisions = list(decisions)
+        self.raw_by_event = dict(raw_by_event)
+        self.offered_by_match = dict(offered_by_match)
+        self.calls = []
+
+    def execute(self, sql, params=()):
+        rendered = str(sql)
+        self.calls.append((rendered, params))
+        if "FROM decisions d" in rendered:
+            return _OfferedAuditCursor(rows=self.decisions[: int(params[0])])
+        if "FROM raw_odds_observations" in rendered:
+            event_id = str(params[0])
+            return _OfferedAuditCursor(row=self.raw_by_event[event_id])
+        if "FROM odds_snapshots" in rendered:
+            match_id = int(params[-1])
+            return _OfferedAuditCursor(row=self.offered_by_match[match_id])
+        raise AssertionError("unexpected offered-market audit query")
+
+
+def _missing_market_decision(
+    *,
+    decision_id=1,
+    prediction_run_id=10,
+    match_id=100,
+    as_of=None,
+    selected_side=1,
+    source_match_id="evt-100",
+    ttl=15,
+):
+    return (
+        decision_id,
+        prediction_run_id,
+        match_id,
+        as_of or datetime(2026, 9, 19, 4, 6, tzinfo=UTC),
+        selected_side,
+        source_match_id,
+        ttl,
+    )
+
+
+def test_offered_market_history_audit_rejects_unbounded_limit():
+    with pytest.raises(ValueError, match="between 1 and 20"):
+        _run_offered_market_history_audit(
+            _OfferedAuditConn(decisions=[], raw_by_event={}, offered_by_match={}),
+            max_decisions=OFFERED_MARKET_AUDIT_MAX_DECISIONS + 1,
+        )
+
+
+@pytest.mark.parametrize(
+    ("raw_row", "offered_row", "expected"),
+    [
+        ((0, None), (0, 0, None), "PROVIDER_EVENT_ABSENT"),
+        (
+            (1, datetime(2026, 9, 19, 4, 5, tzinfo=UTC)),
+            (0, 0, None),
+            "PROVIDER_PRESENT_NO_NORMALIZED_MARKET",
+        ),
+        (
+            (1, datetime(2026, 9, 19, 4, 5, tzinfo=UTC)),
+            (4, 0, datetime(2026, 9, 19, 3, 40, tzinfo=UTC)),
+            "PROVIDER_PRESENT_STALE_SELECTED_SIDE",
+        ),
+        (
+            (1, datetime(2026, 9, 19, 4, 5, tzinfo=UTC)),
+            (4, 0, datetime(2026, 9, 19, 4, 4, tzinfo=UTC)),
+            "PROVIDER_PRESENT_SELECTED_SIDE_GAP",
+        ),
+        (
+            (1, datetime(2026, 9, 19, 4, 5, tzinfo=UTC)),
+            (4, 1, datetime(2026, 9, 19, 4, 4, tzinfo=UTC)),
+            "OTHER",
+        ),
+    ],
+)
+def test_offered_market_history_audit_classifies_pit_lineage(
+    raw_row,
+    offered_row,
+    expected,
+    capsys,
+):
+    conn = _OfferedAuditConn(
+        decisions=[_missing_market_decision()],
+        raw_by_event={"evt-100": raw_row},
+        offered_by_match={100: offered_row},
+    )
+
+    count = _run_offered_market_history_audit(conn, max_decisions=5)
+
+    assert count == 1
+    out = capsys.readouterr().out
+    assert "OFFERED_MARKET_HISTORY_AUDIT_START decisions=1" in out
+    assert f"classification={expected}" in out
+    assert "writes=0 provider_requests=0" in out
+    assert "OFFERED_MARKET_HISTORY_AUDIT_SUMMARY decisions=1" in out
+
+
+def test_offered_market_history_audit_handles_missing_api_event_id(capsys):
+    conn = _OfferedAuditConn(
+        decisions=[_missing_market_decision(source_match_id=None)],
+        raw_by_event={},
+        offered_by_match={100: (0, 0, None)},
+    )
+
+    _run_offered_market_history_audit(conn, max_decisions=5)
+
+    out = capsys.readouterr().out
+    assert "api_event_id=-" in out
+    assert "classification=NO_API_TENNIS_EVENT_ID" in out
+    assert not any("FROM raw_odds_observations" in sql for sql, _ in conn.calls)
