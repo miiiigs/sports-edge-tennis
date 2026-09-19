@@ -384,6 +384,9 @@ def main(
                         f"events={offered.events_with_odds} "
                         f"quotes={offered.normalized_quotes} "
                         f"missing={offered.missing_events} "
+                        f"missing_identity={getattr(offered, 'missing_identity', 0)} "
+                        f"provider_absent={getattr(offered, 'provider_event_absent', 0)} "
+                        f"incomplete_markets={getattr(offered, 'events_without_complete_market', 0)} "
                         f"bookmakers={offered.bookmaker_count}"
                     )
                 except TransportError as exc:
