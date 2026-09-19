@@ -703,35 +703,12 @@ def test_finalization_exception_after_commit_does_not_rewrite_failed(
 def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psycopg.Connection):
     _seed_configs(db)
     target = _insert_scheduled_target(db)
-    db.execute(
-        """
-        ALTER TABLE manager_policy_versions
-        DROP CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
-        """
-    )
-    db.execute(
-        """
-        ALTER TABLE manager_policy_versions
-        ADD CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
-        CHECK (
-            (policy_version = 'v1' AND allow_agent3_abstention = TRUE)
-            OR (policy_version <> 'v1' AND allow_agent3_abstention IN (TRUE, FALSE))
-        )
-        """
-    )
     policy_id = db.execute(
         """
-        INSERT INTO manager_policy_versions (
-            policy_key, policy_version, consensus_mode, allow_agent3_abstention,
-            three_agent_max_probability_spread,
-            agent3_abstention_max_probability_spread,
-            min_active_agent_probability
-        )
-        VALUES (
-            'tennis_manager_consensus', 'v2', 'UNANIMOUS_ACTIVE_AGENTS', FALSE,
-            0.080000, 0.000000, 0.500000
-        )
-        RETURNING manager_policy_version_id
+        SELECT manager_policy_version_id
+        FROM manager_policy_versions
+        WHERE policy_key = 'tennis_manager_consensus'
+          AND policy_version = 'v2'
         """
     ).fetchone()[0]
 
