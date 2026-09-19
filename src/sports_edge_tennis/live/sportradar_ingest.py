@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any, Mapping
 
@@ -15,6 +15,7 @@ from sports_edge_tennis.live.sportradar_fixtures import (
     SportradarFixtureCandidate,
     parse_daily_summaries,
 )
+from sports_edge_tennis.live.sportradar_results import parse_result_stat_evidence
 from sports_edge_tennis.live.sportradar_reconciliation import (
     ExistingPlayerResolution,
     resolve_sportradar_event_overlap,
@@ -114,6 +115,12 @@ def ingest_sportradar_daily_summaries(
                         fixture=fixture,
                         overlap=overlap,
                         ingest_run_id=ingest_run_id,
+                    )
+                    _persist_terminal_result_and_stats(
+                        conn,
+                        repository=repository,
+                        fixture=fixture,
+                        locator=locator,
                     )
                     ingested.append(
                         SportradarIngestedMatch(
@@ -467,6 +474,218 @@ def _attach_match_source(
             ingest_run_id,
         ),
     )
+
+
+
+def _persist_terminal_result_and_stats(
+    conn: psycopg.Connection,
+    *,
+    repository: HistoricalRepository,
+    fixture: SportradarFixtureCandidate,
+    locator: MatchLocator,
+) -> None:
+    if fixture.raw_summary is None:
+        return
+    evidence = parse_result_stat_evidence(fixture.raw_summary)
+    if evidence.result is None:
+        return
+
+    provider_to_canonical = _provider_player_mapping(
+        conn,
+        fixture=fixture,
+    )
+    result = evidence.result
+    winner_side = _side_for_provider_player(
+        result.winner_provider_id,
+        provider_to_canonical=provider_to_canonical,
+        locator=locator,
+    )
+    retired_side = _side_for_provider_player(
+        result.retired_provider_id,
+        provider_to_canonical=provider_to_canonical,
+        locator=locator,
+    )
+
+    home_canonical = provider_to_canonical.get(fixture.player_1_source_id)
+    away_canonical = provider_to_canonical.get(fixture.player_2_source_id)
+    direct = (
+        home_canonical == locator.player_1_id
+        and away_canonical == locator.player_2_id
+    )
+    reverse = (
+        home_canonical == locator.player_2_id
+        and away_canonical == locator.player_1_id
+    )
+    if direct == reverse:
+        raise SportradarIngestError("result_orientation_unresolved")
+
+    if direct:
+        sets_p1, sets_p2 = result.sets_home, result.sets_away
+        games_p1, games_p2 = result.games_home, result.games_away
+    else:
+        sets_p1, sets_p2 = result.sets_away, result.sets_home
+        games_p1, games_p2 = result.games_away, result.games_home
+
+    result_semantics = (
+        result.outcome_status,
+        winner_side,
+        retired_side,
+        sets_p1,
+        sets_p2,
+        games_p1,
+        games_p2,
+        result.scoreline_text,
+    )
+    if not _latest_sportradar_result_matches(
+        conn,
+        match_id=locator.match_id,
+        semantics=result_semantics,
+    ):
+        repository.insert_match_result(
+            match_id=locator.match_id,
+            outcome_status=result.outcome_status,
+            winner_side=winner_side,
+            retired_side=retired_side,
+            sets_won_player_1=sets_p1,
+            sets_won_player_2=sets_p2,
+            games_won_player_1=games_p1,
+            games_won_player_2=games_p2,
+            scoreline_text=result.scoreline_text,
+            source_observed_at=fixture.received_at,
+            as_of=fixture.received_at,
+        )
+
+    # Never feed live/in-progress point statistics into A2 history. Statistics
+    # are persisted only when terminal result evidence exists.
+    for stat in evidence.stats:
+        canonical_player_id = provider_to_canonical.get(stat.provider_player_id)
+        if canonical_player_id is None:
+            raise SportradarIngestError("stat_player_identity_unresolved")
+        record_id = (
+            f"{fixture.source_match_id}:{stat.provider_player_id}:TOTALS"
+        )
+        record_hash = source_hash(
+            SOURCE_SYSTEM,
+            {
+                "record_id": record_id,
+                **asdict(stat.line),
+            },
+        )
+        if _latest_sportradar_stat_hash(
+            conn,
+            match_id=locator.match_id,
+            player_id=canonical_player_id,
+            source_record_id=record_id,
+        ) == record_hash:
+            continue
+        repository.insert_match_stat(
+            match_id=locator.match_id,
+            player_id=canonical_player_id,
+            source_system=SOURCE_SYSTEM,
+            source_record_id=record_id,
+            source_record_hash=record_hash,
+            line=stat.line,
+            source_observed_at=fixture.received_at,
+            as_of=fixture.received_at,
+        )
+
+
+def _provider_player_mapping(
+    conn: psycopg.Connection,
+    *,
+    fixture: SportradarFixtureCandidate,
+) -> dict[str, int]:
+    rows = conn.execute(
+        """
+        SELECT source_player_id, player_id
+        FROM player_source_ids
+        WHERE source_system = %s
+          AND source_player_id = ANY(%s)
+        """,
+        (
+            SOURCE_SYSTEM,
+            [fixture.player_1_source_id, fixture.player_2_source_id],
+        ),
+    ).fetchall()
+    mapping = {str(row[0]): int(row[1]) for row in rows}
+    if set(mapping) != {
+        fixture.player_1_source_id,
+        fixture.player_2_source_id,
+    }:
+        raise SportradarIngestError("provider_player_mapping_incomplete")
+    return mapping
+
+
+def _side_for_provider_player(
+    provider_player_id: str | None,
+    *,
+    provider_to_canonical: dict[str, int],
+    locator: MatchLocator,
+) -> int | None:
+    if provider_player_id is None:
+        return None
+    canonical_id = provider_to_canonical.get(provider_player_id)
+    if canonical_id == locator.player_1_id:
+        return 1
+    if canonical_id == locator.player_2_id:
+        return 2
+    raise SportradarIngestError("result_player_identity_unresolved")
+
+
+def _latest_sportradar_result_matches(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    semantics: tuple[object, ...],
+) -> bool:
+    row = conn.execute(
+        """
+        SELECT
+            mro.outcome_status::text,
+            mro.winner_side,
+            mro.retired_side,
+            mro.sets_won_player_1,
+            mro.sets_won_player_2,
+            mro.games_won_player_1,
+            mro.games_won_player_2,
+            mro.scoreline_text
+        FROM match_result_observations mro
+        JOIN ingest_runs ir ON ir.ingest_run_id = mro.ingest_run_id
+        WHERE mro.match_id = %s
+          AND ir.source_system = %s
+        ORDER BY
+            mro.source_observed_at DESC,
+            mro.as_of DESC,
+            mro.match_result_observation_id DESC
+        LIMIT 1
+        """,
+        (match_id, SOURCE_SYSTEM),
+    ).fetchone()
+    return row is not None and tuple(row) == semantics
+
+
+def _latest_sportradar_stat_hash(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    player_id: int,
+    source_record_id: str,
+) -> str | None:
+    row = conn.execute(
+        """
+        SELECT source_record_hash
+        FROM match_stat_observations
+        WHERE source_system = %s
+          AND source_record_id = %s
+          AND match_id = %s
+          AND player_id = %s
+          AND observation_kind = 'RAW_SOURCE'
+        ORDER BY source_observed_at DESC, match_stat_observation_id DESC
+        LIMIT 1
+        """,
+        (SOURCE_SYSTEM, source_record_id, match_id, player_id),
+    ).fetchone()
+    return None if row is None else str(row[0] or "")
 
 
 def _record_hash(fixture: SportradarFixtureCandidate) -> str:
