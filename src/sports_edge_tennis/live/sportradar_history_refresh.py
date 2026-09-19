@@ -350,7 +350,11 @@ def _parse_terminal_result(
     retired_side = None
     if fixture.match_status == "RETIRED" and winner_side in (1, 2):
         retired_side = 2 if winner_side == 1 else 1
-    sets_1, sets_2, games_1, games_2 = _period_totals(status)
+    period_sets_1, period_sets_2, games_1, games_2 = _period_totals(status)
+    sets_1 = _nonnegative_int(status.get("home_score"))
+    sets_2 = _nonnegative_int(status.get("away_score"))
+    if sets_1 is None or sets_2 is None:
+        sets_1, sets_2 = period_sets_1, period_sets_2
     scoreline = (
         f"{sets_1}-{sets_2}"
         if sets_1 is not None and sets_2 is not None
