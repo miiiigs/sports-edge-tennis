@@ -697,3 +697,54 @@ def test_finalization_exception_after_commit_does_not_rewrite_failed(
         (outcome.prediction_run_id,),
     ).fetchone()[0] == 1
 
+
+
+
+def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    db.execute(
+        """
+        ALTER TABLE manager_policy_versions
+        DROP CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
+        """
+    )
+    db.execute(
+        """
+        ALTER TABLE manager_policy_versions
+        ADD CONSTRAINT chk_manager_policy_versions_allow_agent3_abstention
+        CHECK (
+            (policy_version = 'v1' AND allow_agent3_abstention = TRUE)
+            OR (policy_version <> 'v1' AND allow_agent3_abstention IN (TRUE, FALSE))
+        )
+        """
+    )
+    policy_id = db.execute(
+        """
+        INSERT INTO manager_policy_versions (
+            policy_key, policy_version, consensus_mode, allow_agent3_abstention,
+            three_agent_max_probability_spread,
+            agent3_abstention_max_probability_spread,
+            min_active_agent_probability
+        )
+        VALUES (
+            'tennis_manager_consensus', 'v2', 'UNANIMOUS_ACTIVE_AGENTS', FALSE,
+            0.080000, 0.000000, 0.500000
+        )
+        RETURNING manager_policy_version_id
+        """
+    ).fetchone()[0]
+
+    request = _request(db, match_ids=[target["match_id"]])
+    request = request.__class__(
+        match_ids=request.match_ids,
+        as_of=request.as_of,
+        agent_config_refs=request.agent_config_refs,
+        manager_policy_version_id=policy_id,
+        parent_prediction_run_id=request.parent_prediction_run_id,
+        parent_relation_type=request.parent_relation_type,
+    )
+    outcome = run_full_slate(db, request)
+    assert outcome.prediction_run_id > 0
+    assert outcome.target_count == 1
+    assert outcome.prediction_result_count == 3
