@@ -126,7 +126,7 @@ def build_performance_windows(
     *,
     as_of_date: date,
 ) -> dict[str, PeriodBetSummary]:
-    """Return current UTC performance windows from the persisted daily ledger."""
+    """Return UTC performance windows by scheduled match day from the persisted ledger."""
     rows = tuple(summaries)
     return {
         "today": aggregate_bet_summaries(
@@ -153,26 +153,64 @@ def load_daily_bet_summaries(
     *,
     limit: int = 5000,
 ) -> tuple[DailyBetSummary, ...]:
-    """Return one aggregate row per UTC first-BET day, newest first."""
+    """Return one aggregate row per UTC scheduled match day, newest first.
+
+    Client results count one publishable Type A BET per sporting match. Legacy
+    bets from before the publication timestamp boundary are retained, while
+    newer BET decisions that never crossed publication are excluded. The day is
+    the point-in-time scheduled match day, not the earlier publication day.
+    """
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
 
     rows = conn.execute(
         """
-        WITH first_bets AS (
+        WITH publication_boundary AS (
+            SELECT min(published_at) AS first_published_at
+            FROM decisions
+            WHERE published_at IS NOT NULL
+        ),
+        first_bets AS (
             SELECT DISTINCT ON (d.match_id)
                 d.decision_id,
                 d.match_id,
                 d.as_of,
+                COALESCE(d.published_at, d.as_of) AS published_at,
                 d.market_decimal_price
             FROM decisions d
+            CROSS JOIN publication_boundary pb
             WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
               AND d.decision_status = 'BET'
               AND d.market_type = 'MATCH_WINNER'
-            ORDER BY d.match_id, d.as_of, d.decision_id
+              AND (
+                  d.published_at IS NOT NULL
+                  OR pb.first_published_at IS NULL
+                  OR d.as_of < pb.first_published_at
+              )
+            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
+        ),
+        dated_bets AS (
+            SELECT
+                d.*,
+                COALESCE(
+                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
+                    (d.published_at AT TIME ZONE 'UTC')::date
+                ) AS match_date
+            FROM first_bets d
+            LEFT JOIN LATERAL (
+                SELECT mv0.match_start_at
+                FROM match_versions mv0
+                WHERE mv0.match_id = d.match_id
+                  AND mv0.as_of <= d.published_at
+                  AND mv0.source_observed_at <= d.published_at
+                ORDER BY mv0.as_of DESC,
+                         mv0.source_observed_at DESC,
+                         mv0.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
         )
         SELECT
-            (d.as_of AT TIME ZONE 'UTC')::date AS decision_date,
+            d.match_date,
             COUNT(*)::int AS bets,
             COUNT(*) FILTER (
                 WHERE ds.decision_id IS NOT NULL
@@ -199,16 +237,15 @@ def load_daily_bet_summaries(
                 ),
                 0
             ) AS one_unit_profit
-        FROM first_bets d
+        FROM dated_bets d
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        GROUP BY (d.as_of AT TIME ZONE 'UTC')::date
-        ORDER BY decision_date DESC
+        GROUP BY d.match_date
+        ORDER BY d.match_date DESC
         LIMIT %s
         """,
         (limit,),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
-
 
 def _profit_for_status(status: str, price: Decimal) -> Decimal | None:
     if status == "WON":
@@ -227,27 +264,39 @@ def load_daily_bets(
     *,
     decision_date: date,
 ) -> tuple[DailyBetRow, ...]:
-    """Return the first persisted Type A BET per match for one UTC decision day."""
+    """Return the first publishable Type A BET per match for one UTC match day."""
     rows = conn.execute(
         """
-        WITH first_bets AS (
+        WITH publication_boundary AS (
+            SELECT min(published_at) AS first_published_at
+            FROM decisions
+            WHERE published_at IS NOT NULL
+        ),
+        first_bets AS (
             SELECT DISTINCT ON (d.match_id)
                 d.decision_id,
                 d.match_id,
                 d.as_of,
+                COALESCE(d.published_at, d.as_of) AS published_at,
                 d.selection_side,
                 d.market_decimal_price,
                 d.price_bookmaker_code,
                 d.consensus_probability
             FROM decisions d
+            CROSS JOIN publication_boundary pb
             WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
               AND d.decision_status = 'BET'
               AND d.market_type = 'MATCH_WINNER'
-            ORDER BY d.match_id, d.as_of, d.decision_id
+              AND (
+                  d.published_at IS NOT NULL
+                  OR pb.first_published_at IS NULL
+                  OR d.as_of < pb.first_published_at
+              )
+            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
         )
         SELECT
             d.decision_id,
-            d.as_of,
+            d.published_at,
             mv.match_start_at,
             t.canonical_name AS tournament,
             p1.canonical_name AS player_1,
@@ -273,7 +322,8 @@ def load_daily_bets(
                 mv0.match_start_at
             FROM match_versions mv0
             WHERE mv0.match_id = d.match_id
-              AND mv0.as_of <= d.as_of
+              AND mv0.as_of <= d.published_at
+              AND mv0.source_observed_at <= d.published_at
             ORDER BY mv0.as_of DESC,
                      mv0.source_observed_at DESC,
                      mv0.match_version_id DESC
@@ -282,8 +332,11 @@ def load_daily_bets(
         LEFT JOIN players p1 ON p1.player_id = mv.player_1_id
         LEFT JOIN players p2 ON p2.player_id = mv.player_2_id
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        WHERE (d.as_of AT TIME ZONE 'UTC')::date = %s
-        ORDER BY d.as_of DESC, d.decision_id DESC
+        WHERE COALESCE(
+            (mv.match_start_at AT TIME ZONE 'UTC')::date,
+            (d.published_at AT TIME ZONE 'UTC')::date
+        ) = %s
+        ORDER BY d.published_at DESC, d.decision_id DESC
         """,
         (decision_date,),
     ).fetchall()
@@ -310,3 +363,4 @@ def load_daily_bets(
             )
         )
     return tuple(result)
+
