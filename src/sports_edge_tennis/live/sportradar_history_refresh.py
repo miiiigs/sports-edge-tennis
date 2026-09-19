@@ -211,16 +211,18 @@ def refresh_sportradar_history_day(
 
                         canonical_players: dict[str, int] | None = None
                         if stats is not None:
-                            canonical_players = _sportradar_player_map(
-                                conn,
-                                provider_ids=tuple(
-                                    stat.provider_player_id for stat in stats
+                            canonical_players = _validate_sportradar_player_map(
+                                _sportradar_player_map(
+                                    conn,
+                                    provider_ids=tuple(
+                                        stat.provider_player_id for stat in stats
+                                    ),
+                                ),
+                                expected_player_ids=(
+                                    ingested.player_1_id,
+                                    ingested.player_2_id,
                                 ),
                             )
-                            if len(canonical_players) != 2:
-                                raise ValueError(
-                                    "sportradar_final_stats_player_bridge_incomplete"
-                                )
 
                         # A new result observation is intentionally appended
                         # whenever new final-stat evidence becomes visible.
@@ -590,6 +592,19 @@ def _latest_aligned_sportradar_stat_hashes(
         (match_id, SOURCE_SYSTEM, row[0], row[1]),
     ).fetchall()
     return tuple(str(value[0]) for value in rows)
+
+
+def _validate_sportradar_player_map(
+    player_map: Mapping[str, int],
+    *,
+    expected_player_ids: tuple[int, int],
+) -> dict[str, int]:
+    resolved = {str(provider_id): int(player_id) for provider_id, player_id in player_map.items()}
+    if len(resolved) != 2:
+        raise ValueError("sportradar_final_stats_player_bridge_incomplete")
+    if set(resolved.values()) != set(expected_player_ids):
+        raise ValueError("sportradar_final_stats_player_bridge_mismatch")
+    return resolved
 
 
 def _sportradar_player_map(
