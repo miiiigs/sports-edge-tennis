@@ -1,0 +1,2 @@
+Validation-only trigger for a one-run DB-only offered-market history audit from PR #155.
+No runtime/model/market policy code changes.
