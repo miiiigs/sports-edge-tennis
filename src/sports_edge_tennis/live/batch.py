@@ -125,8 +125,8 @@ def _load_missing_market_diagnostics(
             count(os.odds_snapshot_id) FILTER (
                 WHERE os.source_system = 'OFFERED'
                   AND os.selection_type = CASE
-                      WHEN mcr.selected_side = 1 THEN 'PLAYER_1'::selection_type
-                      ELSE 'PLAYER_2'::selection_type
+                      WHEN mcr.selected_side = 1 THEN 'PLAYER_1'::market_selection_type
+                      ELSE 'PLAYER_2'::market_selection_type
                   END
                   AND os.market_status = 'OPEN'
                   AND os.decimal_price > 1
