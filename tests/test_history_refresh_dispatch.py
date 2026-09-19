@@ -87,3 +87,58 @@ def test_dispatch_extracts_explicit_dsn_before_environment(monkeypatch):
     assert dispatch._dsn_from_argv(["--dsn", "postgresql://cli", "--days", "3"]) == "postgresql://cli"
     assert dispatch._dsn_from_argv(["--dsn=postgresql://inline"]) == "postgresql://inline"
     assert dispatch._dsn_from_argv([]) == "postgresql://env"
+
+
+def test_target_dispatch_strips_legacy_schedule_flags(monkeypatch):
+    monkeypatch.setattr(
+        dispatch,
+        "load_provider_authority",
+        lambda env: SimpleNamespace(
+            data_mode=dispatch.TARGET_DATA_MODE,
+            odds_mode="GOALSERVE_TENNIS",
+        ),
+    )
+    monkeypatch.setattr(dispatch, "_assert_target_refresh_ready", lambda argv: True)
+
+    import sports_edge_tennis.live.sportradar_history_refresh as target
+
+    calls = []
+    monkeypatch.setattr(target, "main", lambda argv=None: calls.append(argv) or 0)
+
+    legacy_schedule = [
+        "--start-date", "2026-01-01",
+        "--chunk-days", "7",
+        "--max-attempts", "3",
+        "--min-chunk-days", "1",
+        "--checkpoint-key=API_TENNIS_RECENT_HISTORY_V1",
+        "--restart-window",
+        "--end-date", "2026-09-18",
+        "--dsn", "postgresql://example",
+    ]
+    assert dispatch.main(legacy_schedule) == 0
+    assert calls == [[
+        "--end-date", "2026-09-18",
+        "--dsn", "postgresql://example",
+    ]]
+
+
+def test_target_argument_translation_preserves_target_native_and_unknown_flags():
+    translated, ignored = dispatch._target_argv([
+        "--start-date=2026-01-01",
+        "--days", "5",
+        "--end-date=2026-09-18",
+        "--future-safe-flag",
+    ])
+    assert translated == [
+        "--days", "5",
+        "--end-date=2026-09-18",
+        "--future-safe-flag",
+    ]
+    assert ignored == 1
+
+
+def test_target_argument_translation_rejects_missing_legacy_value():
+    import pytest
+
+    with pytest.raises(ValueError, match="missing value"):
+        dispatch._target_argv(["--chunk-days"])
