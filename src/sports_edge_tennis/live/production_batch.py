@@ -117,6 +117,7 @@ def _live_operational_health_cycle(
     *,
     cycle_started_at: datetime,
     live_status: int,
+    failed_slates: int = 0,
 ) -> None:
     checked_at = datetime.now(timezone.utc)
     try:
@@ -125,6 +126,7 @@ def _live_operational_health_cycle(
                 conn,
                 cycle_started_at=cycle_started_at,
                 live_status=live_status,
+                failed_slates=failed_slates,
             )
             persist_live_operational_health(
                 conn,
@@ -440,11 +442,17 @@ def main(argv: list[str] | None = None) -> int:
             f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
         )
 
-    live_status = live_batch_main(argv)
+    live_summary: dict[str, int] = {}
+
+    def capture_live_summary(summary: dict[str, int]) -> None:
+        live_summary.update(summary)
+
+    live_status = live_batch_main(argv, summary_sink=capture_live_summary)
     _live_operational_health_cycle(
         dsn,
         cycle_started_at=shadow_cycle_started_at,
         live_status=live_status,
+        failed_slates=int(live_summary.get("failed_slates", 0)),
     )
     if live_status != 0:
         _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")

@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import psycopg
 
@@ -109,7 +109,11 @@ def _format_fixture_rejection_reasons(reasons: tuple[tuple[str, int], ...]) -> s
     return ",".join(f"{reason}={count}" for reason, count in reasons)
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    summary_sink: Callable[[dict[str, int]], None] | None = None,
+) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
     parser.add_argument("--days", type=int, default=3)
@@ -238,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
             if totals["slates"] == 0 and totals["failed_slates"]:
+                if summary_sink is not None:
+                    summary_sink(dict(totals))
                 _log("LIVE_BATCH_FAILED_NO_SUCCESSFUL_SLATES")
                 return 2
 
@@ -435,6 +441,8 @@ def main(argv: list[str] | None = None) -> int:
         _log(f"IMPLEMENTATION_FAILED: {type(exc).__name__}: {exc}")
         return 2
 
+    if summary_sink is not None:
+        summary_sink(dict(totals))
     _log(
         "LIVE_BATCH_SUCCESS "
         + " ".join(f"{key}={value}" for key, value in totals.items())

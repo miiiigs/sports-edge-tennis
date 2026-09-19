@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -170,6 +171,53 @@ def test_live_batch_gap_cycle_is_fail_isolated(monkeypatch, capsys):
     )
 
     assert "LIVE_BATCH_GAP_CHECK_FAILED error_type=RuntimeError" in capsys.readouterr().out
+
+
+def test_live_operational_health_cycle_forwards_failed_slates(monkeypatch, capsys):
+    captured = {}
+
+    class _HealthConn:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.psycopg.connect",
+        lambda *args, **kwargs: _HealthConn(),
+    )
+
+    def fake_evaluate(conn, **kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(
+            status="WARNING",
+            freshness_state="FRESH",
+            completed_runs=2,
+            target_count=90,
+            latest_finalized_at=datetime(2026, 9, 19, 2, 3, tzinfo=UTC),
+            error_count=1,
+            notes="failed_slates=1 partial_slate_failure=1",
+        )
+
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.evaluate_live_operational_health",
+        fake_evaluate,
+    )
+    monkeypatch.setattr(
+        "sports_edge_tennis.live.production_batch.persist_live_operational_health",
+        lambda *args, **kwargs: None,
+    )
+
+    _live_operational_health_cycle(
+        "postgresql://example",
+        cycle_started_at=datetime(2026, 9, 19, 2, 0, tzinfo=UTC),
+        live_status=0,
+        failed_slates=1,
+    )
+
+    assert captured["failed_slates"] == 1
+    assert "LIVE_OPERATIONAL_HEALTH status=WARNING" in capsys.readouterr().out
 
 
 def test_live_operational_health_cycle_is_fail_isolated(monkeypatch, capsys):
