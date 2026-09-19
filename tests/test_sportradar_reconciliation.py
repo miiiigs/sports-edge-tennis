@@ -61,6 +61,9 @@ def _fixture():
         tour_scope="CHALLENGER",
         competition_tier="CHALLENGER",
         surface=None,
+        round_code="round_of_32",
+        best_of_sets=3,
+        qualifying_flag=False,
         received_at=datetime(2026, 9, 19, 12, 0, tzinfo=UTC),
     )
 
