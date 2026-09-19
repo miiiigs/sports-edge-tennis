@@ -72,6 +72,7 @@ def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:
     }
     result = authority.evaluate_cutover_readiness(_FakeConn(), env=env)
     assert result.ready is False
+    assert "TARGET_RUNTIME_NOT_ACTIVATABLE" in result.blockers
     assert "CUTOVER_AUTHORIZATION_MISSING" in result.blockers
     assert "STRICT_MANAGER_V2_NOT_SELECTED" in result.blockers
     assert "MISSING_ENV:SPORTRADAR_TENNIS_API_KEY" in result.blockers
@@ -90,8 +91,8 @@ def test_target_cutover_requires_strict_manager_schema_history_and_mapping() -> 
     assert "GOALSERVE_BOOKMAKER_MAPPING_NOT_VERIFIED" in result.blockers
 
 
-def test_target_cutover_can_be_declared_ready_only_after_all_gates() -> None:
+def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -> None:
     result = authority.evaluate_cutover_readiness(_FakeConn(), env=_target_env())
-    assert result.ready is True
-    assert result.blockers == ()
+    assert result.ready is False
+    assert result.blockers == ("TARGET_RUNTIME_NOT_ACTIVATABLE",)
     assert result.authority.full_target_requested is True
