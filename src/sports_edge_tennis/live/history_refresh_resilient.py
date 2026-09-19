@@ -56,6 +56,10 @@ MARKET_STALE_SELFTEST_ENABLED_ENV = "MARKET_STALE_SELFTEST_ENABLED"
 PINNACLE_SCHEDULE_AUDIT_ENABLED_ENV = "PINNACLE_SCHEDULE_AUDIT_ENABLED"
 PINNACLE_SCHEDULE_AUDIT_MATCH_IDS_ENV = "PINNACLE_SCHEDULE_AUDIT_MATCH_IDS"
 PINNACLE_SCHEDULE_AUDIT_MAX_MATCHES = 10
+LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV = "LIVE_TENNIS_SURFACE_PROBE_ENABLED"
+LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV = "LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES"
+LIVE_TENNIS_SURFACE_PROBE_DEFAULT_PAGES = 2
+LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES = 5
 _ADVISORY_LOCK_KEY = 702_260_913
 _RETRYABLE_KINDS = {
     "TIMEOUT", "NETWORK", "HTTP_429", "HTTP_500", "HTTP_502", "HTTP_503", "HTTP_504",
@@ -512,6 +516,59 @@ def _run_optional_pinnacle_schedule_audit(
         )
 
 
+def _run_optional_live_tennis_surface_probe(
+    conn: psycopg.Connection,
+    *,
+    target_date: date,
+    env: Mapping[str, str] | None = None,
+    runner: Callable[..., int] | None = None,
+) -> None:
+    values = os.environ if env is None else env
+    if not _flag_enabled(values.get(LIVE_TENNIS_SURFACE_PROBE_ENABLED_ENV)):
+        return
+
+    try:
+        max_pages = int(
+            str(
+                values.get(LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES_ENV)
+                or LIVE_TENNIS_SURFACE_PROBE_DEFAULT_PAGES
+            ).strip()
+        )
+    except ValueError as exc:
+        raise ValueError("Live Tennis surface probe max pages must be an integer") from exc
+    if not 1 <= max_pages <= LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES:
+        raise ValueError(
+            "Live Tennis surface probe max pages must be between 1 and "
+            f"{LIVE_TENNIS_SURFACE_PROBE_MAX_PAGES}"
+        )
+
+    try:
+        api_key = load_secret("LIVE_TENNIS_API_KEY")
+    except MissingCredentialError as exc:
+        raise ValueError("Live Tennis surface probe requires LIVE_TENNIS_API_KEY") from exc
+    if not api_key:
+        raise ValueError("Live Tennis surface probe requires LIVE_TENNIS_API_KEY")
+
+    if runner is None:
+        from sports_edge_tennis.live.live_tennis_surface_probe import (
+            run_probe as live_tennis_runner,
+        )
+
+        runner = live_tennis_runner
+
+    print(
+        "LIVE_TENNIS_SURFACE_PROBE_DISPATCH "
+        f"date={target_date.isoformat()} max_pages={max_pages} writes=0",
+        flush=True,
+    )
+    runner(
+        conn,
+        api_key=api_key,
+        target_date=target_date,
+        max_pages=max_pages,
+    )
+
+
 def ensure_checkpoint_table(conn: psycopg.Connection) -> None:
     conn.execute(_CHECKPOINT_DDL)
 
@@ -836,6 +893,10 @@ def main(argv: list[str] | None = None) -> int:
             _run_optional_a2_regime_audit(conn)
             _run_optional_stale_market_selftest()
             _run_optional_pinnacle_schedule_audit(conn)
+            _run_optional_live_tennis_surface_probe(
+                conn,
+                target_date=datetime.now(UTC).date(),
+            )
     except TransportError:
         return 2
     except (ValueError, RuntimeError) as exc:
