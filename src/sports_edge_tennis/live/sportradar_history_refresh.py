@@ -324,11 +324,9 @@ def _parse_terminal_result(
         else:
             raise ValueError("terminal_winner_id_unresolved")
 
-    retired_side = (
-        2 if winner_side == 1 else 1
-        if fixture.match_status == "RETIRED" and winner_side in (1, 2)
-        else None
-    )
+    retired_side = None
+    if fixture.match_status == "RETIRED" and winner_side in (1, 2):
+        retired_side = 2 if winner_side == 1 else 1
     sets_1, sets_2, games_1, games_2 = _period_totals(status)
     scoreline = (
         f"{sets_1}-{sets_2}"
