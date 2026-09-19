@@ -29,6 +29,7 @@ from sports_edge_tennis.settlement import (
 
 _QUARTER_KELLY_MIGRATION = Path("db/migrations/0010_quarter_kelly_stake_v1.up.sql")
 _PUBLICATION_CONTROL_MIGRATION = Path("db/migrations/0012_publication_control_v1.up.sql")
+_STRICT_MANAGER_V2_MIGRATION = Path("db/migrations/0014_strict_three_manager_policy_v2.up.sql")
 _PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
@@ -262,6 +263,57 @@ def _ensure_publication_control_schema(
     return "APPLIED"
 
 
+
+def _strict_manager_v2_schema_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, bool]:
+    row = conn.execute(
+        """
+        SELECT
+            allow_agent3_abstention,
+            three_agent_max_probability_spread,
+            agent3_abstention_max_probability_spread,
+            min_active_agent_probability
+        FROM manager_policy_versions
+        WHERE policy_key = 'tennis_manager_consensus'
+          AND policy_version = 'v2'
+        """
+    ).fetchone()
+    if row is None:
+        return False, False
+    valid = (
+        row[0] is False
+        and str(row[1]) == "0.080000"
+        and str(row[2]) == "0.000000"
+        and str(row[3]) == "0.500000"
+    )
+    return True, valid
+
+
+def _ensure_strict_manager_v2_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _STRICT_MANAGER_V2_MIGRATION,
+) -> str:
+    """Prepare strict Manager v2 without selecting it for live production."""
+    present, valid = _strict_manager_v2_schema_state(conn)
+    if present and valid:
+        return "EXISTING"
+    if present and not valid:
+        raise RuntimeError("strict Manager v2 policy row exists with unexpected values")
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    present, valid = _strict_manager_v2_schema_state(conn)
+    if not present or not valid:
+        raise RuntimeError(
+            "strict Manager v2 schema verification failed "
+            f"present={present} valid={valid}"
+        )
+    return "APPLIED"
+
+
 def _shadow_cycle(
     dsn: str,
     *,
@@ -405,6 +457,7 @@ def main(argv: list[str] | None = None) -> int:
             schema_status = _ensure_quarter_kelly_schema(conn)
             publication_control_status = _ensure_publication_control_schema(conn)
             model_identity_bridge_status = ensure_model_identity_bridge_schema(conn)
+            strict_manager_v2_status = _ensure_strict_manager_v2_schema(conn)
     except (psycopg.Error, OSError, RuntimeError) as exc:
         _log(f"SCHEMA_BOOTSTRAP_FAILED error_type={type(exc).__name__}")
         return 2
@@ -417,6 +470,10 @@ def main(argv: list[str] | None = None) -> int:
     _log(
         "SCHEMA_MODEL_IDENTITY_BRIDGE "
         f"status={model_identity_bridge_status} migration=0013"
+    )
+    _log(
+        "SCHEMA_STRICT_MANAGER_V2 "
+        f"status={strict_manager_v2_status} migration=0014 selected={os.environ.get('TENNIS_MANAGER_POLICY_VERSION', 'v1')}"
     )
 
     _live_batch_gap_cycle(
