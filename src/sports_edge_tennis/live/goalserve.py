@@ -1,11 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime, timezone
 from typing import Any, Mapping
 
 import requests
 
 from sports_edge_tennis.live.transport import DEFAULT_TIMEOUT, TransportError
+
+
+@dataclass(frozen=True)
+class GoalserveTennisMatchEnvelope:
+    category_id: str | None
+    category_name: str
+    provider_event_id: str
+    match_start_at: datetime
+    player_1_id: str
+    player_1_name: str
+    player_2_id: str
+    player_2_name: str
+    match_payload: dict[str, Any]
 
 
 def _utc_now() -> datetime:
@@ -55,40 +69,95 @@ def fetch_goalserve_tennis_json(
     return received_at, payload
 
 
-def iter_goalserve_tennis_matches(payload: Mapping[str, Any]) -> tuple[dict[str, Any], ...]:
-    """Extract Tennis match objects from Goalserve's nested score/feed envelope.
+def iter_goalserve_tennis_envelopes(
+    payload: Mapping[str, Any],
+) -> tuple[GoalserveTennisMatchEnvelope, ...]:
+    """Extract provider events with category context and UTC start times."""
+    envelopes: list[GoalserveTennisMatchEnvelope] = []
+    seen: set[str] = set()
 
-    JSON serializers differ on singleton vs list containers, so this traversal
-    intentionally supports either without guessing participant identities.
-    """
-    matches: list[dict[str, Any]] = []
-
-    def visit(value: Any, parent_key: str | None = None) -> None:
+    def visit(value: Any) -> None:
         if isinstance(value, Mapping):
-            if parent_key == "match" and "id" in value:
-                matches.append(dict(value))
-                return
+            categories = value.get("category")
+            if categories is not None:
+                for category in _as_list(categories):
+                    if not isinstance(category, Mapping):
+                        continue
+                    category_id = str(category.get("id") or "").strip() or None
+                    category_name = str(category.get("name") or "").strip()
+                    for raw_match in _as_list(category.get("match")):
+                        if not isinstance(raw_match, Mapping):
+                            continue
+                        try:
+                            envelope = _match_envelope(
+                                raw_match,
+                                category_id=category_id,
+                                category_name=category_name,
+                            )
+                        except ValueError:
+                            continue
+                        if envelope.provider_event_id in seen:
+                            continue
+                        seen.add(envelope.provider_event_id)
+                        envelopes.append(envelope)
             for key, child in value.items():
-                if key == "match":
-                    for item in _as_list(child):
-                        if isinstance(item, Mapping) and "id" in item:
-                            matches.append(dict(item))
-                else:
-                    visit(child, str(key))
+                if key != "category":
+                    visit(child)
         elif isinstance(value, list):
             for item in value:
-                visit(item, parent_key)
+                visit(item)
 
     visit(payload)
-    seen: set[str] = set()
-    unique: list[dict[str, Any]] = []
-    for match in matches:
-        match_id = str(match.get("id") or "").strip()
-        if not match_id or match_id in seen:
-            continue
-        seen.add(match_id)
-        unique.append(match)
-    return tuple(unique)
+    return tuple(envelopes)
+
+
+def iter_goalserve_tennis_matches(
+    payload: Mapping[str, Any],
+) -> tuple[dict[str, Any], ...]:
+    return tuple(envelope.match_payload for envelope in iter_goalserve_tennis_envelopes(payload))
+
+
+def _match_envelope(
+    match: Mapping[str, Any],
+    *,
+    category_id: str | None,
+    category_name: str,
+) -> GoalserveTennisMatchEnvelope:
+    event_id = str(match.get("id") or "").strip()
+    if not event_id:
+        raise ValueError("missing Goalserve event id")
+    raw_date = str(match.get("date") or "").strip()
+    raw_time = str(match.get("time") or "").strip()
+    if not raw_date or not raw_time:
+        raise ValueError("missing Goalserve event time")
+    try:
+        day = datetime.strptime(raw_date, "%d.%m.%Y").date()
+        time_part = datetime.strptime(raw_time, "%H:%M").time()
+    except ValueError as exc:
+        raise ValueError("invalid Goalserve UTC event time") from exc
+    start_at = datetime.combine(day, time_part, tzinfo=UTC)
+
+    players = [item for item in _as_list(match.get("player")) if isinstance(item, Mapping)]
+    if len(players) != 2:
+        raise ValueError("Goalserve event must have exactly two players")
+    p1_id = str(players[0].get("id") or "").strip()
+    p2_id = str(players[1].get("id") or "").strip()
+    p1_name = str(players[0].get("name") or "").strip()
+    p2_name = str(players[1].get("name") or "").strip()
+    if not p1_id or not p2_id or not p1_name or not p2_name or p1_id == p2_id:
+        raise ValueError("invalid Goalserve player identity")
+
+    return GoalserveTennisMatchEnvelope(
+        category_id=category_id,
+        category_name=category_name,
+        provider_event_id=event_id,
+        match_start_at=start_at,
+        player_1_id=p1_id,
+        player_1_name=p1_name,
+        player_2_id=p2_id,
+        player_2_name=p2_name,
+        match_payload=dict(match),
+    )
 
 
 def _as_list(value: Any) -> list[Any]:
