@@ -34,8 +34,13 @@ def _summary(
                     "id": "sr:competition:1",
                     "name": competition_name,
                     "level": level,
+                    "type": "singles",
+                    "gender": "men",
                 },
                 "season": {"id": "sr:season:2026"},
+                "mode": {"best_of": 3},
+                "round": {"name": "round_of_32"},
+                "stage": {"phase": "regular_season"},
             },
             "competitors": competitors
             or [
@@ -66,30 +71,41 @@ def test_parse_challenger_fixture_preserves_stable_ids_and_order() -> None:
     assert row.match_status == "SCHEDULED"
     assert row.tour_scope == "CHALLENGER"
     assert row.competition_tier == "CHALLENGER"
+    assert row.best_of_sets == 3
+    assert row.round_code == "round_of_32"
+    assert row.qualifying_flag is False
 
 
 def test_competition_classifier_is_explicit_and_fail_closed() -> None:
     assert classify_competition(
         competition_name="ATP 500 Tokyo",
-        competition_level="atp",
+        competition_level="atp_500",
         category_name="ATP",
+        competition_type="singles",
+        competition_gender="men",
     ) == ("ATP_MAIN", "ATP_500")
     assert classify_competition(
         competition_name="Davis Cup World Group I",
         competition_level="atp",
         category_name="Davis Cup",
+        competition_type="singles",
+        competition_gender="men",
     ) == ("ATP_MAIN", "ATP_TOUR")
     with pytest.raises(SportradarFixtureError, match="out_of_scope"):
         classify_competition(
             competition_name="WTA 500 Seoul",
             competition_level="wta",
             category_name="WTA",
+            competition_type="singles",
+            competition_gender="women",
         )
     with pytest.raises(SportradarFixtureError, match="unsupported"):
         classify_competition(
             competition_name="Unknown Open",
             competition_level="",
             category_name="",
+            competition_type="singles",
+            competition_gender="men",
         )
 
 
@@ -130,3 +146,46 @@ def test_terminal_status_is_parsed_but_not_reinterpreted() -> None:
         received_at=RECEIVED,
     )
     assert row.match_status == "COMPLETED"
+
+
+def test_sportradar_enum_levels_map_to_exact_tiers() -> None:
+    cases = {
+        "grand_slam": "GRAND_SLAM",
+        "atp_1000": "MASTERS_1000",
+        "atp_500": "ATP_500",
+        "atp_250": "ATP_250",
+    }
+    for level, tier in cases.items():
+        assert classify_competition(
+            competition_name="ATP Event Men Singles",
+            competition_level=level,
+            category_name="ATP",
+            competition_type="singles",
+            competition_gender="men",
+        ) == ("ATP_MAIN", tier)
+
+
+def test_doubles_and_female_competitions_fail_closed_even_if_name_contains_atp() -> None:
+    with pytest.raises(SportradarFixtureError, match="out_of_scope"):
+        classify_competition(
+            competition_name="ATP Event Men Doubles",
+            competition_level="atp_250",
+            category_name="ATP",
+            competition_type="doubles",
+            competition_gender="men",
+        )
+    with pytest.raises(SportradarFixtureError, match="out_of_scope"):
+        classify_competition(
+            competition_name="ATP Event",
+            competition_level="atp_250",
+            category_name="ATP",
+            competition_type="singles",
+            competition_gender="female",
+        )
+
+
+def test_qualification_phase_is_retained() -> None:
+    row = _summary()
+    row["sport_event"]["sport_event_context"]["stage"]["phase"] = "qualification"
+    parsed = parse_summary(row, received_at=RECEIVED)
+    assert parsed.qualifying_flag is True
