@@ -186,6 +186,36 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
             matches=matches,
         )
 
+    # Backward-compatible fallback for legacy/synthetic completed runs that
+    # predate target persistence. Restricting this to zero-target runs prevents
+    # a future target-bearing slate created today from hijacking today's page.
+    run_row = conn.execute(
+        """
+        SELECT pr.prediction_run_id, pr.run_status, pr.as_of
+        FROM prediction_runs pr
+        WHERE pr.as_of::date = %s
+          AND pr.run_status = 'COMPLETED'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM prediction_run_targets prt
+              WHERE prt.prediction_run_id = pr.prediction_run_id
+          )
+        ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
+        LIMIT 1
+        """,
+        (run_date,),
+    ).fetchone()
+    if run_row is not None:
+        prediction_run_id, run_status, as_of = run_row
+        return RunState(
+            kind="POPULATED",
+            run_date=run_date,
+            as_of=as_of,
+            prediction_run_id=prediction_run_id,
+            run_status=run_status,
+            matches=[],
+        )
+
     ingest_row = conn.execute(
         """
         SELECT started_at, status
