@@ -128,3 +128,20 @@ def test_target_cutover_requires_both_goalserve_mapping_classes() -> None:
     )
     assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" not in missing_offered.blockers
     assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" in missing_offered.blockers
+
+
+def test_goalserve_mapping_gate_queries_latest_mapping_per_bookmaker() -> None:
+    seen = {}
+
+    class _Conn:
+        def execute(self, sql, params=None):
+            normalized = " ".join(sql.split()).lower()
+            if "with latest as" in normalized:
+                seen["sql"] = normalized
+                return _Result((True, True))
+            raise AssertionError(normalized)
+
+    assert authority._goalserve_mapping_state(_Conn()) == (True, True)
+    assert "distinct on (provider_bookmaker_key)" in seen["sql"]
+    assert "effective_from desc" in seen["sql"]
+    assert "mapping_version desc" in seen["sql"]
