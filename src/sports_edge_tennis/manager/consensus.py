@@ -57,6 +57,11 @@ def evaluate_consensus(
         )
 
     # 1. Abstention configuration (structural precedence).
+    # v1 historically permits only Agent 3 to abstain. v2 disables all abstention
+    # without mutating or reinterpreting historical v1 Manager truth.
+    if abstaining_count and not policy.allow_agent3_abstention:
+        return no_bet("UNSUPPORTED_ABSTENTION_CONFIGURATION")
+
     if abstaining_count >= 2:
         return no_bet("TWO_OR_MORE_ABSTENTIONS")
 
