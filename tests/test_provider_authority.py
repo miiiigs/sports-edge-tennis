@@ -47,6 +47,7 @@ def _target_env():
         "SPORTRADAR_TENNIS_ACCESS_LEVEL": "production",
         "SPORTRADAR_TENNIS_LANGUAGE": "en",
         "GOALSERVE_TENNIS_FEED_URL": "https://example.invalid/account/tennis.json",
+        authority.MANAGER_POLICY_ENV: "v2",
     }
 
 
@@ -72,6 +73,7 @@ def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:
     result = authority.evaluate_cutover_readiness(_FakeConn(), env=env)
     assert result.ready is False
     assert "CUTOVER_AUTHORIZATION_MISSING" in result.blockers
+    assert "STRICT_MANAGER_V2_NOT_SELECTED" in result.blockers
     assert "MISSING_ENV:SPORTRADAR_TENNIS_API_KEY" in result.blockers
     assert "MISSING_ENV:GOALSERVE_TENNIS_FEED_URL" in result.blockers
 
