@@ -28,6 +28,8 @@ UP_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.u
 DOWN_MIGRATION_PATH_0012 = DB_ROOT / "migrations" / "0012_publication_control_v1.down.sql"
 UP_MIGRATION_PATH_0013 = DB_ROOT / "migrations" / "0013_model_identity_bridge_v1.up.sql"
 DOWN_MIGRATION_PATH_0013 = DB_ROOT / "migrations" / "0013_model_identity_bridge_v1.down.sql"
+UP_MIGRATION_PATH_0014 = DB_ROOT / "migrations" / "0014_strict_three_manager_policy_v2.up.sql"
+DOWN_MIGRATION_PATH_0014 = DB_ROOT / "migrations" / "0014_strict_three_manager_policy_v2.down.sql"
 SCHEMA_SNAPSHOT_PATH = DB_ROOT / "schema" / "0001_tennis_data_foundation.sql"
 SCHEMA_SNAPSHOT_PATH_0002 = DB_ROOT / "schema" / "0002_day5_historical_integrity.sql"
 SCHEMA_SNAPSHOT_PATH_0003 = DB_ROOT / "schema" / "0003_day5_temporal_reconciliation.sql"
@@ -39,6 +41,7 @@ SCHEMA_SNAPSHOT_PATH_0010 = DB_ROOT / "schema" / "0010_quarter_kelly_stake_v1.sq
 SCHEMA_SNAPSHOT_PATH_0011 = DB_ROOT / "schema" / "0011_a2_history_data_regime_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0012 = DB_ROOT / "schema" / "0012_publication_control_v1.sql"
 SCHEMA_SNAPSHOT_PATH_0013 = DB_ROOT / "schema" / "0013_model_identity_bridge_v1.sql"
+SCHEMA_SNAPSHOT_PATH_0014 = DB_ROOT / "schema" / "0014_strict_three_manager_policy_v2.sql"
 
 
 def _read_text(path: Path) -> str:
@@ -111,6 +114,8 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert DOWN_MIGRATION_PATH_0012.exists()
     assert UP_MIGRATION_PATH_0013.exists()
     assert DOWN_MIGRATION_PATH_0013.exists()
+    assert UP_MIGRATION_PATH_0014.exists()
+    assert DOWN_MIGRATION_PATH_0014.exists()
     assert SCHEMA_SNAPSHOT_PATH.exists()
     assert SCHEMA_SNAPSHOT_PATH_0002.exists()
     assert SCHEMA_SNAPSHOT_PATH_0003.exists()
@@ -122,6 +127,7 @@ def test_migration_manifest_is_ordered_and_files_exist():
     assert SCHEMA_SNAPSHOT_PATH_0011.exists()
     assert SCHEMA_SNAPSHOT_PATH_0012.exists()
     assert SCHEMA_SNAPSHOT_PATH_0013.exists()
+    assert SCHEMA_SNAPSHOT_PATH_0014.exists()
 
 
 def test_schema_snapshot_matches_bootstrap_migration():
@@ -264,7 +270,8 @@ def test_a2_history_data_regime_v1_migration_manifest_and_snapshot():
 
 def test_publication_control_v1_migration_manifest_and_snapshot():
     manifest = json.loads(_read_text(MANIFEST_PATH))
-    assert manifest["migrations"][-2] == {
+    by_version = {entry["version"]: entry for entry in manifest["migrations"]}
+    assert by_version["0012"] == {
         "version": "0012",
         "name": "publication_control_v1",
         "up": "db/migrations/0012_publication_control_v1.up.sql",
@@ -292,7 +299,8 @@ def test_publication_control_v1_migration_manifest_and_snapshot():
 
 def test_model_identity_bridge_v1_migration_manifest_and_snapshot():
     manifest = json.loads(_read_text(MANIFEST_PATH))
-    assert manifest["migrations"][-1] == {
+    by_version = {entry["version"]: entry for entry in manifest["migrations"]}
+    assert by_version["0013"] == {
         "version": "0013",
         "name": "model_identity_bridge_v1",
         "up": "db/migrations/0013_model_identity_bridge_v1.up.sql",
@@ -303,6 +311,7 @@ def test_model_identity_bridge_v1_migration_manifest_and_snapshot():
         "\n".join(
             _read_text(REPO_ROOT / Path(entry["up"]))
             for entry in manifest["migrations"]
+            if entry["version"] <= "0013"
         )
     )
     assert expected_full_schema_0013 == _normalized_sql(
@@ -466,3 +475,36 @@ def test_readme_and_docs_reflect_postgres_foundation():
     assert "github actions" in db_readme.lower()
     assert "match_version_sources" in decision_log
     assert "PostgreSQL" in db_readme
+
+
+def test_strict_three_manager_policy_v2_migration_manifest_and_snapshot():
+    manifest = json.loads(_read_text(MANIFEST_PATH))
+    by_version = {entry["version"]: entry for entry in manifest["migrations"]}
+    assert by_version["0014"] == {
+        "version": "0014",
+        "name": "strict_three_manager_policy_v2",
+        "up": "db/migrations/0014_strict_three_manager_policy_v2.up.sql",
+        "down": "db/migrations/0014_strict_three_manager_policy_v2.down.sql",
+        "schema_snapshot": "db/schema/0014_strict_three_manager_policy_v2.sql",
+    }
+    expected_full_schema_0014 = _normalized_sql(
+        "\n".join(
+            _read_text(REPO_ROOT / Path(entry["up"]))
+            for entry in manifest["migrations"]
+            if entry["version"] <= "0014"
+        )
+    )
+    assert expected_full_schema_0014 == _normalized_sql(
+        _read_text(SCHEMA_SNAPSHOT_PATH_0014)
+    )
+
+    sql = _read_text(UP_MIGRATION_PATH_0014).lower()
+    assert "policy_version <> 'v1'" in sql
+    assert "'v2'" in sql
+    assert "allow_agent3_abstention" in sql
+    assert "false" in sql
+
+    down_sql = _read_text(DOWN_MIGRATION_PATH_0014).lower()
+    assert "cannot roll back strict manager v2" in down_sql
+    assert "drop trigger if exists trg_manager_policy_versions_append_only_mutation" in down_sql
+    assert "execute function raise_append_only_mutation()" in down_sql
