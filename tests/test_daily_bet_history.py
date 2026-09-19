@@ -62,6 +62,8 @@ def test_daily_summary_uses_settled_count_for_roi_and_wl_for_hit_rate():
     assert row.hit_rate == 0.75
     assert "TYPE_A_MODEL_EDGE" in conn.calls[0][0]
     assert "decision_status = 'BET'" in conn.calls[0][0]
+    assert "published_at IS NOT NULL" in conn.calls[0][0]
+    assert "match_start_at" in conn.calls[0][0]
 
 
 def test_period_summary_rolls_up_daily_profit_and_settled_stake():
@@ -184,3 +186,5 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
     assert rows[2].profit_units is None
     assert rows[0].selection == "Player A"
     assert conn.calls[0][1] == (date(2026, 9, 13),)
+    assert "published_at IS NOT NULL" in conn.calls[0][0]
+    assert "match_start_at AT TIME ZONE 'UTC'" in conn.calls[0][0]
