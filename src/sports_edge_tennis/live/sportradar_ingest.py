@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Mapping
 
@@ -15,7 +15,6 @@ from sports_edge_tennis.live.sportradar_fixtures import (
     SportradarFixtureCandidate,
     parse_daily_summaries,
 )
-from sports_edge_tennis.live.sportradar_results import parse_result_stat_evidence
 from sports_edge_tennis.live.sportradar_reconciliation import (
     ExistingPlayerResolution,
     resolve_sportradar_event_overlap,
@@ -115,12 +114,6 @@ def ingest_sportradar_daily_summaries(
                         fixture=fixture,
                         overlap=overlap,
                         ingest_run_id=ingest_run_id,
-                    )
-                    _persist_terminal_result_and_stats(
-                        conn,
-                        repository=repository,
-                        fixture=fixture,
-                        locator=locator,
                     )
                     ingested.append(
                         SportradarIngestedMatch(
