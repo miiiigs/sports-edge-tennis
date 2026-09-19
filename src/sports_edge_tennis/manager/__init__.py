@@ -1,6 +1,7 @@
 from sports_edge_tennis.manager.consensus import evaluate_consensus
 from sports_edge_tennis.manager.contracts import (
     AGENT3_ABSTENTION_MAX_PROBABILITY_SPREAD,
+    MANAGER_POLICY_CURRENT_VERSION,
     MANAGER_POLICY_KEY,
     MANAGER_POLICY_VERSION,
     MIN_ACTIVE_AGENT_PROBABILITY,
@@ -17,6 +18,7 @@ from sports_edge_tennis.manager.contracts import (
 )
 from sports_edge_tennis.manager.persistence import (
     ManagerSlateOutcome,
+    ensure_manager_policy_version_current,
     ensure_manager_policy_version_v1,
     evaluate_and_persist_manager_consensus,
     load_manager_policy_version,
@@ -24,6 +26,7 @@ from sports_edge_tennis.manager.persistence import (
 
 __all__ = [
     "AGENT3_ABSTENTION_MAX_PROBABILITY_SPREAD",
+    "MANAGER_POLICY_CURRENT_VERSION",
     "MANAGER_POLICY_KEY",
     "MANAGER_POLICY_VERSION",
     "MIN_ACTIVE_AGENT_PROBABILITY",
@@ -36,6 +39,7 @@ __all__ = [
     "ManagerReasonCode",
     "ManagerStatus",
     "consensus_mean",
+    "ensure_manager_policy_version_current",
     "ensure_manager_policy_version_v1",
     "evaluate_consensus",
     "evaluate_and_persist_manager_consensus",
