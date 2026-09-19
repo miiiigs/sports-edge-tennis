@@ -1,0 +1,1 @@
+Validation-only marker to restore a fresh normal validation-runner snapshot after the read-only offered payload audit.
