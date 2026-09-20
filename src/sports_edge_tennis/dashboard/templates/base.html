@@ -5,25 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Sports Edge Tennis{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
-  <link rel="stylesheet" href="/static/market.css">
-  <link rel="stylesheet" href="/static/client_clarity.css">
   <link rel="stylesheet" href="/static/auth.css">
 </head>
 <body>
+  <a class="visually-hidden" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="header-inner">
-      <div class="brand">
-        <span class="brand-mark">SE</span>
-        <div class="brand-text">
+      <a class="brand" href="/today">
+        <span class="brand-mark" aria-hidden="true">SE</span>
+        <span class="brand-text">
           <span class="brand-name">Sports Edge</span>
           <span class="brand-sub">Tennis</span>
-        </div>
-      </div>
+        </span>
+      </a>
       <nav class="main-nav" aria-label="Primary">
-        <a href="/today" class="nav-link{% if active_nav == 'today' %} is-active{% endif %}">Today</a>
-        <a href="/bet-history" class="nav-link{% if active_nav == 'bet-history' %} is-active{% endif %}">Results</a>
-        <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}">Model Lab</a>
-        <a href="/history" class="nav-link{% if active_nav == 'history' %} is-active{% endif %}">Run History</a>
+        <a href="/today" class="nav-link{% if active_nav == 'today' %} is-active{% endif %}"{% if active_nav == 'today' %} aria-current="page"{% endif %}>Today</a>
+        <a href="/value" class="nav-link{% if active_nav == 'value' %} is-active{% endif %}"{% if active_nav == 'value' %} aria-current="page"{% endif %}>Value</a>
+        <a href="/bet-history" class="nav-link{% if active_nav == 'results' %} is-active{% endif %}"{% if active_nav == 'results' %} aria-current="page"{% endif %}>Results</a>
+        <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}"{% if active_nav == 'performance' %} aria-current="page"{% endif %}>Performance</a>
         {% if tennis_auth_enabled %}
         <form class="auth-signout-form" method="post" action="/logout">
           <button class="nav-link auth-signout" type="submit">Sign out</button>
@@ -32,20 +31,20 @@
       </nav>
       <div class="header-meta">
         {% set status_class, status_label = pres.system_status(latest_activity) %}
-        <span class="status-dot status-{{ status_class }}"></span>
+        <span class="status-dot status-{{ status_class }}" aria-hidden="true"></span>
         <span class="status-label">{{ status_label }}</span>
         {% if latest_activity %}
-        <span class="updated">Updated {{ latest_activity.strftime('%H:%M UTC') }}</span>
+        <span class="updated">· {{ latest_activity.strftime('%H:%M UTC') }}</span>
         {% endif %}
       </div>
     </div>
   </header>
 
   {% if demo_mode %}
-  <div class="demo-banner" role="alert">DEMO DATA — for visual preview only</div>
+  <div class="demo-banner" role="status">Demo data — visual preview only</div>
   {% endif %}
 
-  <main class="page">
+  <main class="page" id="main">
     {% block content %}{% endblock %}
   </main>
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal
 
 import psycopg
@@ -19,6 +20,8 @@ class MarketDecisionView:
     price_bookmaker_code: str | None
     edge_pct: Decimal | None
     min_acceptable_odds: Decimal | None
+    suggested_stake_fraction: Decimal | None = None
+    published_at: datetime | None = None
 
 
 def get_market_decisions_for_run(
@@ -39,7 +42,9 @@ def get_market_decisions_for_run(
             sharp_reference_price,
             price_bookmaker_code,
             edge_pct,
-            min_acceptable_odds
+            min_acceptable_odds,
+            suggested_stake_fraction,
+            published_at
         FROM decisions
         WHERE prediction_run_id = %s
           AND manager_consensus_result_id IS NOT NULL
@@ -58,6 +63,8 @@ def get_market_decisions_for_run(
             price_bookmaker_code=row[6],
             edge_pct=row[7],
             min_acceptable_odds=row[8],
+            suggested_stake_fraction=row[9],
+            published_at=row[10],
         )
         for row in rows
     }

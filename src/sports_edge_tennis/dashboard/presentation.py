@@ -23,14 +23,6 @@ STATE_LABELS = {
     "PREDICTION_PENDING": "Prediction Pending",
 }
 
-RECOMMENDATION_LABELS = {
-    "HIGH_CONFIDENCE_VALUE": "High-Confidence + Value",
-    "HIGH_CONFIDENCE_PICK": "High-Confidence Pick",
-    "PRICE_PENDING": "High-Confidence Pick · Price Pending",
-    "VETOED": "Vetoed · Safety Filter",
-    "NO_BET": "No Bet",
-}
-
 REASON_EXPLANATIONS = {
     "TWO_OR_MORE_ABSTENTIONS": "Not enough model agreement.",
     "UNSUPPORTED_ABSTENTION_CONFIGURATION": "Not enough model agreement.",
@@ -69,10 +61,6 @@ TIER_LABELS = {
 
 def state_label(internal_state: str | None) -> str:
     return STATE_LABELS.get(internal_state or "", internal_state or "Unknown")
-
-
-def recommendation_label(classification: str | None) -> str:
-    return RECOMMENDATION_LABELS.get(classification or "", classification or "Unknown")
 
 
 def reason_explanation(reason_code: str | None) -> str | None:
@@ -158,14 +146,6 @@ def system_status(latest_activity) -> tuple[str, str]:
     if age < 24 * 3600:
         return ("live", "Live data")
     return ("stale", "Stale")
-
-
-def agreement_text(active: int, abstaining: int) -> str:
-    if abstaining == 0 and active == 3:
-        return "3/3 AGREED"
-    if abstaining == 1 and active == 2:
-        return "2/3 AGREED · 1 ABSTAINED"
-    return f"{active}/3 ACTIVE"
 
 
 def start_time(scheduled_start) -> str:

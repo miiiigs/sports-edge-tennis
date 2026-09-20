@@ -1,44 +1,44 @@
 {% extends "base.html" %}
-{% block title %}History · Sports Edge Tennis{% endblock %}
+{% block title %}Run History — Sports Edge Tennis{% endblock %}
 {% set active_nav = 'history' %}
 
 {% block content %}
-<section class="page-heading">
-  <h1>Prediction & Bet History</h1>
-  <p>Previously processed Tennis slates and persisted model decisions.</p>
-</section>
-
-<section class="panel panel-neutral">
-  <h2>Bet ledger status</h2>
-  <p>Sports Edge is already recording prediction and consensus history. Live settled bet performance will appear here once a real offered-bookmaker price is integrated and actionable Market decisions begin to settle. Until then, this page does not fabricate wins, losses, ROI, or profit.</p>
-</section>
+<header class="page-header">
+  <h1 class="page-title">Run history</h1>
+  <p class="page-subtitle">Operational record of processed slates.</p>
+  <p class="page-note">
+    This is a diagnostic view, not a client view. It counts every evaluated match,
+    including the ones that never became a pick. For today's selections see
+    <a href="/today">Today</a>; for settled outcomes see <a href="/bet-history">Results</a>.
+  </p>
+</header>
 
 {% if not history %}
-<section class="panel panel-neutral">
-  <h2>No runs available</h2>
-  <p>Sports Edge has not processed any slates yet.</p>
+<section class="empty-state">
+  <h2 class="empty-title">No runs available</h2>
+  <p class="empty-body">No slates have been processed yet.</p>
 </section>
 {% else %}
-<section class="history-list" aria-label="Run history">
-  <table class="history-table">
+<section class="table-wrap" aria-label="Run history">
+  <table class="data">
     <thead>
       <tr>
         <th scope="col">Date</th>
-        <th scope="col">Matches</th>
-        <th scope="col">Consensus Picks</th>
-        <th scope="col">No Bet</th>
-        <th scope="col">Sharp Prices</th>
-        <th scope="col">Run Status</th>
+        <th scope="col">Evaluated</th>
+        <th scope="col">Consensus picks</th>
+        <th scope="col">No pick</th>
+        <th scope="col">Sharp prices</th>
+        <th scope="col">Run status</th>
       </tr>
     </thead>
     <tbody>
       {% for r in history %}
       <tr>
-        <td><a class="history-link" href="/today?date={{ r.run_date.isoformat() }}">{{ r.run_date.strftime('%a %d %b %Y') }}</a></td>
-        <td>{{ r.match_count }}</td>
-        <td>{{ r.consensus_count }}</td>
-        <td>{{ r.no_bet_count }}</td>
-        <td>{{ r.sharp_count }}</td>
+        <th scope="row"><a href="/today?date={{ r.run_date.isoformat() }}">{{ r.run_date.strftime('%a %d %b %Y') }}</a></th>
+        <td class="num">{{ r.match_count }}</td>
+        <td class="num">{{ r.consensus_count }}</td>
+        <td class="num">{{ r.no_bet_count }}</td>
+        <td class="num">{{ r.sharp_count }}</td>
         <td>
           {% if r.kind == 'EMPTY_SLATE' %}
           <span class="badge badge-neutral">Empty slate</span>

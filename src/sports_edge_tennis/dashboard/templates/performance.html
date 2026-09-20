@@ -1,126 +1,137 @@
 {% extends "base.html" %}
-{% block title %}Model Lab · Sports Edge Tennis{% endblock %}
+{% block title %}Performance — Sports Edge Tennis{% endblock %}
 {% set active_nav = 'performance' %}
 
 {% block content %}
-<section class="page-heading">
-  <h1>Model Lab</h1>
-  <p>See how each Tennis model performs, how reliable its probabilities are, and how much evidence sits behind the result.</p>
-</section>
-
-<section class="concept-strip" aria-label="How to read the Model Lab">
-  <div class="concept-card">
-    <strong>Accuracy</strong>
-    <p>How often the model picked the eventual winner. Useful, but not enough by itself to prove betting profitability.</p>
-  </div>
-  <div class="concept-card">
-    <strong>Calibration</strong>
-    <p>Whether probabilities behave like probabilities. A 70% forecast should win about 70% of the time over a large sample.</p>
-  </div>
-  <div class="concept-card">
-    <strong>Forward Market Evidence</strong>
-    <p>CLV and future paper results test whether the model is finding useful prices in live conditions, not just fitting history.</p>
-  </div>
-</section>
-
-<section class="panel panel-neutral">
-  <h2>What each agent is looking for</h2>
-  <p><strong>Agent 1</strong> measures surface-adjusted player strength. <strong>Agent 2</strong> models serve/return and point-level matchup strength. <strong>Agent 3</strong> looks for matchup and intransitivity evidence that the first two may miss, and can abstain when evidence is too weak.</p>
-</section>
-
-<section class="kpi-grid" aria-label="Model validation overview">
-  {% for model in models %}
-  <article class="kpi">
-    <span class="kpi-label">{{ model.name }}</span>
-    <span class="kpi-value">{{ model.accuracy }}</span>
-    <span class="muted">{{ model.sample }} historical predictions</span>
-  </article>
-  {% endfor %}
-</section>
-
-<section class="history-list" aria-label="Detailed model performance">
-  <table class="history-table">
-    <thead>
-      <tr>
-        <th scope="col">Model</th>
-        <th scope="col">Predictions</th>
-        <th scope="col">Winner Accuracy</th>
-        <th scope="col">Log Loss</th>
-        <th scope="col">Brier</th>
-        <th scope="col">Calibration Error</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for model in models %}
-      <tr>
-        <td><strong>{{ model.name }}</strong><br><span class="muted">{{ model.note }}</span></td>
-        <td>{{ model.sample }}</td>
-        <td>{{ model.accuracy }}</td>
-        <td>{{ model.log_loss }}</td>
-        <td>{{ model.brier }}</td>
-        <td>{{ model.ece }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-
-<section class="panel panel-neutral">
-  <h3>Important distinction</h3>
-  <p>The table above measures <strong>prediction quality</strong>. It does not tell us whether the system makes money at available odds. Live profitability belongs on the Results page and must use point-in-time prices captured when a recommendation was published.</p>
-</section>
-
-<section class="page-heading upcoming-heading">
-  <h2>Forward market evidence</h2>
-  <p>Prospectively collected closing-price coverage and CLV. This is separate from the historical model validation above.</p>
-</section>
-
-{% if clv.initialized %}
-<section class="kpi-grid" aria-label="Prospective CLV overview">
-  <article class="kpi">
-    <span class="kpi-label">Decision Close Coverage</span>
-    <span class="kpi-value">{{ ratio_text(clv.close_coverage) or '—' }}</span>
-    <span class="muted">{{ clv.complete_closes }} complete of {{ clv.close_records }} finalized</span>
-  </article>
-  <article class="kpi">
-    <span class="kpi-label">Priced CLV Coverage</span>
-    <span class="kpi-value">{{ ratio_text(clv.priced_clv_coverage) or '—' }}</span>
-    <span class="muted">{{ clv.clv_records }} calculable of {{ clv.priced_decisions }} priced decisions</span>
-  </article>
-  <article class="kpi">
-    <span class="kpi-label">Mean CLV</span>
-    <span class="kpi-value">{{ clv_text(clv.mean_clv) or '—' }}</span>
-    <span class="muted">same-book close, margin adjusted</span>
-  </article>
-  <article class="kpi">
-    <span class="kpi-label">Median CLV</span>
-    <span class="kpi-value">{{ clv_text(clv.median_clv) or '—' }}</span>
-    <span class="muted">same prospective sample</span>
-  </article>
-</section>
-
-<section class="panel panel-neutral">
-  <h3>Coverage diagnostics</h3>
-  <p>
-    Complete closes: <strong>{{ clv.complete_closes }}</strong> ·
-    Partial: <strong>{{ clv.partial_closes }}</strong> ·
-    Missing: <strong>{{ clv.missing_closes }}</strong> ·
-    No-bet closes: <strong>{{ clv.no_bet_complete_closes }}/{{ clv.no_bet_close_records }}</strong>
+<header class="page-header">
+  <h1 class="page-title">Performance</h1>
+  <p class="page-subtitle">How well the models predict, and what the market says about our prices.</p>
+  <p class="page-note">
+    This page measures <strong>prediction quality</strong>.
+    It does not tell us whether the system makes money at available odds —
+    that is on <a href="/bet-history">Results</a>.
   </p>
-  {% if clv.activation_at %}
-  <p class="muted">Prospective activation: {{ clv.activation_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
-  {% endif %}
-  <p class="muted">Positive CLV over a small sample is not proof of profitability. Coverage and sample size must be read alongside the estimate.</p>
-</section>
-{% else %}
-<section class="panel panel-neutral">
-  <h3>Forward CLV evidence is not available yet</h3>
-  <p>No prospective closing-line ledger has been initialized. Historical odds are not being backfilled and relabeled as live closing evidence.</p>
-</section>
-{% endif %}
+</header>
 
-<section class="panel panel-success">
-  <h2>Next experiment: does more agreement actually help?</h2>
-  <p>We will compare Agent 1, Agent 2, Agent 3, two-agent combinations, the governing consensus policy, and strict 3/3 agreement as separate evidence cohorts. The live rules stay unchanged while enough forward data accumulates to test whether stricter agreement improves results or only reduces coverage.</p>
+<section class="section" aria-label="Model accuracy overview">
+  <h2 class="section-title">Model accuracy</h2>
+  <p class="section-note">
+    Accuracy is how often a model picked the eventual winner. Calibration asks whether
+    the probabilities behave like probabilities: a 70% forecast should win about 70% of
+    the time over a large sample.
+  </p>
+  <div class="stat-grid">
+    {% for model in models %}
+    <article class="stat">
+      <span class="stat-value">{{ model.accuracy }}</span>
+      <span class="stat-label">{{ model.name }}</span>
+      <span class="stat-note">{{ model.sample }} historical predictions</span>
+    </article>
+    {% endfor %}
+  </div>
 </section>
+
+<section class="section" aria-label="Detailed model performance">
+  <h2 class="section-title">Detail</h2>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Model</th>
+          <th scope="col">Predictions</th>
+          <th scope="col">Winner accuracy</th>
+          <th scope="col">Log loss</th>
+          <th scope="col">Brier</th>
+          <th scope="col">Calibration error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for model in models %}
+        <tr>
+          <th scope="row" class="wrap">
+            {{ model.name }}<br><span class="stat-note">{{ model.note }}</span>
+          </th>
+          <td class="num">{{ model.sample }}</td>
+          <td class="num">{{ model.accuracy }}</td>
+          <td class="num">{{ model.log_loss }}</td>
+          <td class="num">{{ model.brier }}</td>
+          <td class="num">{{ model.ece }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note" style="margin-top: 12px;">
+    Agent 1 measures surface-adjusted player strength. Agent 2 models serve/return and
+    point-level matchup strength. Agent 3 · Matchup looks for matchup evidence the first
+    two may miss.
+  </p>
+  <p class="section-note">
+    When Agent 3 abstains it means there is not enough reliable matchup evidence to make
+    a call. This is not a vote for the other player, and it is not a weaker pick — under
+    the strict policy an abstention simply means no consensus.
+  </p>
+</section>
+
+<section class="section" aria-label="Forward market evidence">
+  <h2 class="section-title">Closing-line value</h2>
+  <p class="section-note">
+    Prospectively collected closing-price evidence. This is separate from the historical
+    model validation above.
+  </p>
+
+  {% if clv.initialized %}
+  <div class="stat-grid">
+    <article class="stat">
+      <span class="stat-value">{{ ratio_text(clv.close_coverage) or '—' }}</span>
+      <span class="stat-label">Close coverage</span>
+      <span class="stat-note">{{ clv.complete_closes }} complete of {{ clv.close_records }} finalized</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ ratio_text(clv.priced_clv_coverage) or '—' }}</span>
+      <span class="stat-label">Priced CLV coverage</span>
+      <span class="stat-note">{{ clv.clv_records }} calculable of {{ clv.priced_decisions }} priced decisions</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ clv_text(clv.mean_clv) or '—' }}</span>
+      <span class="stat-label">Mean CLV</span>
+      <span class="stat-note">same-book close, margin adjusted</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ clv_text(clv.median_clv) or '—' }}</span>
+      <span class="stat-label">Median CLV</span>
+      <span class="stat-note">same prospective sample</span>
+    </article>
+  </div>
+
+  <div class="notice" style="margin-top: 14px;">
+    <h3>Coverage</h3>
+    <p>
+      Complete closes: <strong>{{ clv.complete_closes }}</strong> ·
+      Partial: <strong>{{ clv.partial_closes }}</strong> ·
+      Missing: <strong>{{ clv.missing_closes }}</strong> ·
+      No-bet closes: <strong>{{ clv.no_bet_complete_closes }}/{{ clv.no_bet_close_records }}</strong>
+      {% if clv.activation_at %}<br>Prospective activation: {{ clv.activation_at.strftime('%Y-%m-%d %H:%M UTC') }}{% endif %}
+      <br>Positive CLV over a small sample is not proof of profitability. Coverage and
+      sample size must be read alongside the estimate.
+    </p>
+  </div>
+  {% else %}
+  <div class="notice">
+    <h3>Closing-line evidence is not available yet</h3>
+    <p>No prospective closing-line ledger has been initialized. Historical odds are not being backfilled and relabeled as live closing evidence.</p>
+  </div>
+  {% endif %}
+</section>
+
+<section class="section" aria-label="Next experiment">
+  <div class="notice">
+    <h3>Next experiment: does more agreement actually help?</h3>
+    <p>We will compare Agent 1, Agent 2, Agent 3, two-agent combinations, the governing consensus policy, and strict 3/3 agreement as separate evidence cohorts. The live rules stay unchanged while enough forward data accumulates.</p>
+  </div>
+</section>
+
+<p class="section-note" style="margin-top: 28px;">
+  Operational slate history is at <a href="/history">run history</a>.
+</p>
 {% endblock %}

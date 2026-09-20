@@ -14,8 +14,14 @@ from fastapi.templating import Jinja2Templates
 
 from sports_edge_tennis.clv import ClvSummary, load_clv_summary
 from sports_edge_tennis.dashboard import presentation as pres
-from sports_edge_tennis.dashboard.demo import build_demo_state
+from sports_edge_tennis.dashboard.demo import build_demo_market_decisions, build_demo_state
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
+from sports_edge_tennis.dashboard.picks import (
+    build_today_picks,
+    BLOCKED,
+    MODEL_PICK,
+    VALUE_BET,
+)
 from sports_edge_tennis.dashboard.read_model import (
     LiveHealthView,
     RunState,
@@ -109,7 +115,9 @@ def _load_state(requested_date: date) -> RunState:
 
 
 def _load_market_overlay(prediction_run_id: int | None):
-    if DEMO_MODE or prediction_run_id is None:
+    if DEMO_MODE:
+        return build_demo_market_decisions()
+    if prediction_run_id is None:
         return {}
     conn = _connect()
     if conn is None:
@@ -193,6 +201,28 @@ def _clv_text(value) -> str | None:
     return f"{float(value) * 100:+.2f}%"
 
 
+def _pick_payload(pick) -> dict:
+    """Client-facing pick payload. No internal identifiers are exposed."""
+    return {
+        "kind": pick.kind,
+        "kind_label": pick.kind_label,
+        "classification": pick.classification,
+        "player": pick.player,
+        "opponent": pick.opponent,
+        "win_probability": pick.probability_text,
+        "tournament": pick.tournament,
+        "competition_tier": pick.tier_text,
+        "scheduled_start": (
+            pick.scheduled_start.isoformat() if pick.scheduled_start else None
+        ),
+        "is_actionable_bet": pick.is_actionable_bet,
+        "offered_price": str(pick.offered_price) if pick.offered_price else None,
+        "bookmaker": pick.bookmaker,
+        "edge_pct": pick.edge_text,
+        "stake": pick.stake_text,
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return RedirectResponse(url="/today")
@@ -200,12 +230,18 @@ def index():
 
 @app.get("/today", response_class=HTMLResponse)
 def today(request: Request, date: str | None = Query(default=None)):
+    """Today's client-visible picks only.
+
+    Every evaluated target is loaded, but only records that reached a Manager
+    consensus are rendered. Non-selections stay in the operational views.
+    """
     requested_date = _parse_date(date)
     if requested_date is None:
         return HTMLResponse("Invalid date", status_code=400)
 
     state = _load_state(requested_date)
     market_by_match = _load_market_overlay(state.prediction_run_id)
+    today_picks = build_today_picks(state.matches, market_by_match)
     return templates.TemplateResponse(
         request,
         "today.html",
@@ -215,11 +251,36 @@ def today(request: Request, date: str | None = Query(default=None)):
             "selected_date": requested_date,
             "latest_activity": _latest_activity(),
             "operational_health": _load_live_health(),
-            "upcoming": _load_upcoming(),
-            "market_by_match": market_by_match,
+            "today_picks": today_picks,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
             "next_date": requested_date.fromordinal(requested_date.toordinal() + 1),
+        },
+    )
+
+
+@app.get("/value", response_class=HTMLResponse)
+def value(request: Request, date: str | None = Query(default=None)):
+    """Market/value detail, kept off the default morning screen."""
+    requested_date = _parse_date(date)
+    if requested_date is None:
+        return HTMLResponse("Invalid date", status_code=400)
+
+    state = _load_state(requested_date)
+    market_by_match = _load_market_overlay(state.prediction_run_id)
+    today_picks = build_today_picks(state.matches, market_by_match)
+    return templates.TemplateResponse(
+        request,
+        "value.html",
+        {
+            "state": state,
+            "pres": pres,
+            "selected_date": requested_date,
+            "latest_activity": _latest_activity(),
+            "demo_mode": DEMO_MODE,
+            "value_picks": [p for p in today_picks.picks if p.kind == VALUE_BET],
+            "blocked_picks": [p for p in today_picks.picks if p.kind == BLOCKED],
+            "model_only_picks": [p for p in today_picks.picks if p.kind == MODEL_PICK],
         },
     )
 
@@ -269,8 +330,17 @@ def api_today(date: str | None = Query(default=None)):
     market_by_match = _load_market_overlay(state.prediction_run_id)
     upcoming = _load_upcoming()
     operational_health = _load_live_health()
+    today_picks = build_today_picks(state.matches, market_by_match)
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
+        "picks": [_pick_payload(pick) for pick in today_picks.picks],
+        "pick_counts": {
+            "total": today_picks.total,
+            "value_bets": today_picks.value_bet_count,
+            "model_picks": today_picks.model_pick_count,
+            "blocked": today_picks.blocked_count,
+            "evaluated": today_picks.evaluated_count,
+        },
         "operational_health": (
             {
                 "status": operational_health.status,
@@ -368,6 +438,30 @@ def api_history():
             }
             for r in rows
         ]
+    )
+
+
+@app.get("/api/dashboard/value")
+def api_value(date: str | None = Query(default=None)):
+    requested_date = _parse_date(date)
+    if requested_date is None:
+        return JSONResponse({"error": "invalid date"}, status_code=400)
+    state = _load_state(requested_date)
+    market_by_match = _load_market_overlay(state.prediction_run_id)
+    today_picks = build_today_picks(state.matches, market_by_match)
+    return JSONResponse(
+        {
+            "date": state.run_date.isoformat() if state.run_date else None,
+            "value_bets": [
+                _pick_payload(p) for p in today_picks.picks if p.kind == VALUE_BET
+            ],
+            "blocked": [
+                _pick_payload(p) for p in today_picks.picks if p.kind == BLOCKED
+            ],
+            "model_picks_without_value": [
+                _pick_payload(p) for p in today_picks.picks if p.kind == MODEL_PICK
+            ],
+        }
     )
 
 

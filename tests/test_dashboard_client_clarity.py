@@ -13,22 +13,28 @@ def test_today_separates_prediction_from_market_value(monkeypatch):
     response = client.get("/today")
 
     assert response.status_code == 200
-    assert "Our Pick" in response.text
-    assert "Bet Status" in response.text
-    assert "Who the models currently think is more likely to win" in response.text
-    assert "A pick can remain valid without being a bet" in response.text
-    assert "Quarter-Kelly never decides who the model thinks will win" in response.text
+    # The two client concepts stay visually and verbally distinct: a model pick
+    # is a statement about the player, a value bet is a statement about price.
+    assert "MODEL PICK" in response.text
+    assert "VALUE BET" in response.text
+    assert "The model expects this player to win" in response.text
+    assert "The current price does not qualify it as a bet" in response.text
+    assert "the current price is better than our model thinks it should be" in response.text
+    # A model pick is never dressed up as an executable bet.
+    assert "Stake" not in response.text.split("MODEL PICK", 1)[1].split("</article>", 1)[0]
 
 
-def test_today_template_explains_agent_three_abstention():
+def test_agent_three_abstention_is_explained_on_performance():
+    """Agent-level evidence moved off Today, but the explanation must survive.
+
+    Today answers "what are we picking"; the meaning of an Agent 3 abstention
+    belongs with the model evidence, not on the morning screen.
+    """
     template_path = (
-        Path(dashboard_app.__file__).resolve().parent / "templates" / "today.html"
+        Path(dashboard_app.__file__).resolve().parent / "templates" / "performance.html"
     )
     template = template_path.read_text(encoding="utf-8")
 
-    # The demo fixture does not guarantee an Agent 3 abstention, so assert the
-    # conditional client copy exists in the template rather than forcing demo
-    # data to represent a production evidence state it does not contain.
     assert "Agent 3 · Matchup" in template
     assert "This is not a vote for the other player" in template
 
@@ -40,10 +46,14 @@ def test_client_navigation_uses_question_oriented_labels(monkeypatch):
     response = client.get("/today")
 
     assert response.status_code == 200
+    # Primary navigation is understandable without knowing Sports Edge internals.
     assert ">Today<" in response.text
+    assert ">Value<" in response.text
     assert ">Results<" in response.text
-    assert ">Model Lab<" in response.text
-    assert ">Run History<" in response.text
+    assert ">Performance<" in response.text
+    # Operational views stay out of the client navigation.
+    assert ">Run History<" not in response.text
+    assert ">Model Lab<" not in response.text
 
 
 def test_model_lab_separates_prediction_quality_from_profit(monkeypatch):
@@ -53,6 +63,6 @@ def test_model_lab_separates_prediction_quality_from_profit(monkeypatch):
     response = client.get("/performance")
 
     assert response.status_code == 200
-    assert "Model Lab" in response.text
+    assert "Performance" in response.text
     assert "prediction quality" in response.text
     assert "whether the system makes money" in response.text

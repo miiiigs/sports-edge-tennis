@@ -56,7 +56,7 @@
     const payload = await response.json();
     if (!payload.picks || payload.picks.length === 0) return;
 
-    const heading = el("section", "page-heading lifecycle-heading");
+    const heading = el("section", "section-title lifecycle-heading");
     heading.appendChild(el("h2", null, "Published Pick Timeline"));
     heading.appendChild(
       el(
@@ -66,9 +66,9 @@
       )
     );
 
-    const wrap = el("section", "history-list lifecycle-list");
+    const wrap = el("section", "table-wrap lifecycle-list");
     wrap.setAttribute("aria-label", "Published pick timeline");
-    const table = el("table", "history-table");
+    const table = el("table", "data");
     const thead = el("thead");
     const headerRow = el("tr");
     ["First shown", "Match", "Original pick", "Latest model", "Latest status"].forEach((label) => {
@@ -87,22 +87,22 @@
       const matchCell = el("td");
       matchCell.appendChild(el("strong", null, row.match));
       matchCell.appendChild(document.createElement("br"));
-      matchCell.appendChild(el("span", "muted", row.tournament || "Tournament unavailable"));
+      matchCell.appendChild(el("span", "stat-note", row.tournament || "Tournament unavailable"));
       tr.appendChild(matchCell);
 
       const original = el("td");
       original.appendChild(el("strong", null, row.first_pick || "—"));
       original.appendChild(document.createElement("br"));
-      original.appendChild(el("span", "muted", `${percent(row.first_probability)} at first display`));
+      original.appendChild(el("span", "stat-note", `${percent(row.first_probability)} at first display`));
       tr.appendChild(original);
 
       const latest = el("td");
       if (row.latest_pick) {
         latest.appendChild(el("strong", null, row.latest_pick));
         latest.appendChild(document.createElement("br"));
-        latest.appendChild(el("span", "muted", percent(row.latest_probability)));
+        latest.appendChild(el("span", "stat-note", percent(row.latest_probability)));
       } else {
-        latest.appendChild(el("span", "muted", "No current qualifying model pick"));
+        latest.appendChild(el("span", "stat-note", "No current qualifying model pick"));
       }
       tr.appendChild(latest);
 
@@ -111,11 +111,11 @@
       statusCell.appendChild(el("span", `badge badge-${badgeClass}`, label));
       if (row.lifecycle_state === "MODEL_CHANGED" && row.latest_pick) {
         statusCell.appendChild(document.createElement("br"));
-        statusCell.appendChild(el("span", "muted", `Latest pick: ${row.latest_pick}`));
+        statusCell.appendChild(el("span", "stat-note", `Latest pick: ${row.latest_pick}`));
       } else if (row.latest_market_price) {
         statusCell.appendChild(document.createElement("br"));
         statusCell.appendChild(
-          el("span", "muted", `${row.latest_bookmaker || "Bookmaker"} @ ${row.latest_market_price}`)
+          el("span", "stat-note", `${row.latest_bookmaker || "Bookmaker"} @ ${row.latest_market_price}`)
         );
       }
       tr.appendChild(statusCell);
@@ -124,24 +124,19 @@
     table.appendChild(tbody);
     wrap.appendChild(table);
 
-    const upcomingHeading = document.querySelector(".upcoming-heading");
-    if (upcomingHeading && upcomingHeading.parentNode) {
-      upcomingHeading.parentNode.insertBefore(heading, upcomingHeading);
-      upcomingHeading.parentNode.insertBefore(wrap, upcomingHeading);
-    } else {
-      const page = document.querySelector("main.page");
-      if (page) {
-        page.appendChild(heading);
-        page.appendChild(wrap);
-      }
-    }
+    // Mount only into the explicit anchor. These evidence overlays belong on
+    // Results, never on the Today picks page.
+    const mount = document.querySelector('[data-mount="pick-lifecycle"]');
+    if (!mount) return;
+    mount.appendChild(heading);
+    mount.appendChild(wrap);
   }
 
   function bankrollStat(label, value, note) {
-    const card = el("div", "kpi");
-    card.appendChild(el("span", "kpi-value", value));
-    card.appendChild(el("span", "kpi-label", label));
-    if (note) card.appendChild(el("span", "muted", note));
+    const card = el("div", "stat");
+    card.appendChild(el("span", "stat-value", value));
+    card.appendChild(el("span", "stat-label", label));
+    if (note) card.appendChild(el("span", "stat-note", note));
     return card;
   }
 
@@ -160,7 +155,7 @@
 
     const data = await response.json();
     const section = el("section", "paper-bankroll-section");
-    const heading = el("div", "page-heading");
+    const heading = el("div", "section-title");
     heading.appendChild(el("h2", null, "$1,000 Live Paper Bankroll"));
     heading.appendChild(
       el(
@@ -172,7 +167,7 @@
     section.appendChild(heading);
 
     if (!data.initialized) {
-      const panel = el("div", "panel panel-neutral");
+      const panel = el("div", "notice");
       panel.appendChild(el("h3", null, "Paper bankroll is ready"));
       panel.appendChild(
         el(
@@ -183,7 +178,7 @@
       );
       section.appendChild(panel);
     } else {
-      const grid = el("div", "kpi-grid");
+      const grid = el("div", "stat-grid");
       grid.appendChild(bankrollStat("Starting Bankroll", `$${data.starting_bankroll}`));
       grid.appendChild(bankrollStat("Current Bankroll", `$${data.current_bankroll}`));
       grid.appendChild(bankrollStat("Realized P/L", `$${data.realized_profit}`));
@@ -192,7 +187,7 @@
       grid.appendChild(bankrollStat("Max Drawdown", data.max_drawdown));
       section.appendChild(grid);
 
-      const panel = el("div", "panel panel-neutral");
+      const panel = el("div", "notice");
       panel.appendChild(
         el(
           "p",
@@ -203,17 +198,17 @@
       section.appendChild(panel);
     }
 
-    const conceptStrip = document.querySelector(".concept-strip");
-    if (conceptStrip && conceptStrip.parentNode) {
-      conceptStrip.parentNode.insertBefore(section, conceptStrip.nextSibling);
-    } else {
-      const page = document.querySelector("main.page");
-      if (page) page.prepend(section);
-    }
+    const mount = document.querySelector('[data-mount="paper-bankroll"]');
+    if (!mount) return;
+    mount.appendChild(section);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
-    void mountPickLifecycle();
-    void mountPaperBankroll();
+    if (document.querySelector('[data-mount="pick-lifecycle"]')) {
+      void mountPickLifecycle();
+    }
+    if (document.querySelector('[data-mount="paper-bankroll"]')) {
+      void mountPaperBankroll();
+    }
   });
 })();
