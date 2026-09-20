@@ -549,6 +549,144 @@ a {
   font-weight: 600;
 }
 
+/* ----------------------------------------------------- no-bet disclosure */
+
+.no-bet-disclosure {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  overflow: hidden;
+}
+
+.no-bet-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 56px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.no-bet-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.no-bet-toggle:hover {
+  background: var(--surface-sunken);
+}
+
+.no-bet-toggle:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ink) 24%, transparent);
+  outline-offset: -3px;
+}
+
+.no-bet-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.no-bet-toggle-title {
+  font-size: var(--step-2);
+  font-weight: 600;
+}
+
+.no-bet-toggle-subtitle {
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.no-bet-toggle-icon {
+  flex: none;
+  font-size: 1.25rem;
+  color: var(--ink-muted);
+  transition: transform 160ms ease;
+}
+
+.no-bet-disclosure[open] .no-bet-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.no-bet-panel {
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  background: var(--surface-sunken);
+}
+
+.no-bet-intro {
+  margin: 0 0 12px;
+  max-width: 70ch;
+  font-size: var(--step-2);
+  color: var(--ink-secondary);
+}
+
+.no-bet-list {
+  display: grid;
+  gap: 10px;
+}
+
+.no-bet-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+}
+
+.no-bet-card-main {
+  min-width: 0;
+}
+
+.no-bet-match {
+  margin: 0;
+  font-size: var(--step-3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.no-bet-match span {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+.no-bet-context {
+  margin: 4px 0 0;
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.no-bet-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 34ch;
+}
+
+.no-bet-reason p {
+  margin: 1px 0 0;
+  font-size: var(--step-1);
+  color: var(--ink-secondary);
+}
+
+@media (max-width: 620px) {
+  .no-bet-card {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .no-bet-reason {
+    max-width: none;
+  }
+}
+
 /* ----------------------------------------------------------- date strip */
 
 .date-strip {
