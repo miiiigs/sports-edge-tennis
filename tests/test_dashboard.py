@@ -328,9 +328,12 @@ def test_today_demo_populated(client, monkeypatch):
     monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
     resp = client.get("/today")
     assert resp.status_code == 200
-    assert "DEMO DATA" in resp.text
+    assert "Demo data" in resp.text
+    assert "Today's Picks" in resp.text
     assert "Carlos Alcaraz" in resp.text
-    assert "Awaiting Bookmaker Price" in resp.text
+    # The demo slate evaluates five matches but only three are picks.
+    assert "3 picks today" in resp.text
+    assert "Andrey Rublev" not in resp.text
 
 
 def test_today_renders_operational_warning(client, monkeypatch):
@@ -351,8 +354,9 @@ def test_today_renders_operational_warning(client, monkeypatch):
     resp = client.get("/today")
 
     assert resp.status_code == 200
-    assert "Live system needs attention" in resp.text
+    assert "Today's picks may not reflect the latest prices" in resp.text
     assert "16:03 UTC" in resp.text
+    # Internal operational notes must never reach the client surface.
     assert "zero_volume" not in resp.text
 
 
@@ -361,7 +365,7 @@ def test_today_db_error_safe(client, monkeypatch):
     monkeypatch.setattr(dashboard_app, "_connect", lambda: None)
     resp = client.get("/today")
     assert resp.status_code == 200
-    assert "Dashboard data is temporarily unavailable" in resp.text
+    assert "Picks are temporarily unavailable" in resp.text
     assert "TENNIS_DATABASE_URL" not in resp.text
 
 

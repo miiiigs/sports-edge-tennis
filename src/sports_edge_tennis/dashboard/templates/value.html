@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% set active_nav = 'value' %}
+{% block title %}Value Opportunities — Sports Edge Tennis{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Value Opportunities</h1>
+  <p class="page-subtitle">{{ selected_date.strftime('%A, %d %B %Y') }}</p>
+  <p class="page-note">
+    These are the picks where the model likes a player <em>and</em> the bookmaker is
+    offering a better price than our model thinks is fair. Every one of these is also
+    on Today.
+  </p>
+</header>
+
+{% if state.kind == 'DB_ERROR' %}
+<section class="empty-state is-error" role="alert">
+  <h2 class="empty-title">Market data is temporarily unavailable</h2>
+  <p class="empty-body">We could not reach the results store. Please check back shortly.</p>
+</section>
+
+{% elif not value_picks %}
+<section class="empty-state">
+  <h2 class="empty-title">No value bets today</h2>
+  <p class="empty-body">
+    The models may still have picks, but no current bookmaker price clears the value
+    threshold.
+  </p>
+  <p class="empty-hint">See <a href="/today">Today</a> for the model's selections. We never loosen the threshold to create a bet.</p>
+</section>
+
+{% else %}
+<section class="pick-list" aria-label="Value opportunities">
+  {% for pick in value_picks %}
+  <article class="pick-card is-value">
+    <div class="pick-top">
+      <div class="pick-identity">
+        <h2 class="pick-player">{{ pick.player }}</h2>
+        <p class="pick-opponent">vs {{ pick.opponent }}</p>
+        <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }} · {{ pick.tier_text }}</p>
+      </div>
+      <div class="pick-probability">
+        <span class="prob-value">{{ pick.probability_text }}</span>
+        <span class="prob-label">Win probability</span>
+      </div>
+    </div>
+
+    <div class="pick-meta" style="align-items: flex-start;">
+      <span class="badge badge-value">{{ pick.kind_label }}</span>
+      <p class="pick-summary">{{ pick.kind_summary }}</p>
+    </div>
+
+    <div class="metric-row">
+      {% if pick.offered_price %}
+      <div class="metric">
+        <span class="metric-label">Offered odds</span>
+        <span class="metric-value">{{ pick.offered_price }}</span>
+      </div>
+      {% endif %}
+      {% if pick.bookmaker %}
+      <div class="metric">
+        <span class="metric-label">Bookmaker</span>
+        <span class="metric-value">{{ pick.bookmaker }}</span>
+      </div>
+      {% endif %}
+      {% if pick.sharp_reference_price %}
+      <div class="metric">
+        <span class="metric-label">Sharp reference</span>
+        <span class="metric-value">{{ pick.sharp_reference_price }}</span>
+      </div>
+      {% endif %}
+      {% if pick.edge_text %}
+      <div class="metric">
+        <span class="metric-label">Edge</span>
+        <span class="metric-value">{{ pick.edge_text }}</span>
+      </div>
+      {% endif %}
+      {% if pick.stake_text %}
+      <div class="metric">
+        <span class="metric-label">Stake</span>
+        <span class="metric-value">{{ pick.stake_text }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if blocked_picks %}
+<section class="section" aria-label="Blocked by a safety check">
+  <h2 class="section-title">Blocked by a safety check</h2>
+  <p class="section-note">
+    These cleared the model and the price, but a safety check stopped them. We are not
+    betting them, and they carry no stake.
+  </p>
+  <div class="pick-list">
+    {% for pick in blocked_picks %}
+    <article class="pick-card is-blocked">
+      <div class="pick-top">
+        <div class="pick-identity">
+          <h3 class="pick-player">{{ pick.player }}</h3>
+          <p class="pick-opponent">vs {{ pick.opponent }}</p>
+          <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }}</p>
+        </div>
+        <div class="pick-probability">
+          <span class="prob-value">{{ pick.probability_text }}</span>
+          <span class="prob-label">Win probability</span>
+        </div>
+      </div>
+      <div class="pick-meta" style="align-items: flex-start;">
+        <span class="badge badge-blocked">{{ pick.kind_label }}</span>
+        <p class="pick-summary">{{ pick.kind_summary }}</p>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if model_only_picks %}
+<section class="section" aria-label="Model picks without current value">
+  <h2 class="section-title">Model picks without current value</h2>
+  <p class="section-note">
+    The model expects these players to win, but the current price does not qualify them
+    as bets. A later price refresh can change this without changing the model pick.
+  </p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Pick</th>
+          <th scope="col">Opponent</th>
+          <th scope="col">Win probability</th>
+          <th scope="col">Why not a bet</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pick in model_only_picks %}
+        <tr>
+          <th scope="row">{{ pick.player }}</th>
+          <td class="wrap">{{ pick.opponent }}</td>
+          <td class="num">{{ pick.probability_text }}</td>
+          <td class="wrap">{{ pick.market_reason or 'Market evaluation is not complete yet.' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

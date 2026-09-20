@@ -1,180 +1,177 @@
 {% extends "base.html" %}
-{% block title %}Results · Sports Edge Tennis{% endblock %}
-{% set active_nav = 'bet-history' %}
+{% block title %}Results — Sports Edge Tennis{% endblock %}
+{% set active_nav = 'results' %}
 
 {% block content %}
-<section class="page-heading">
-  <h1>Results</h1>
-  <p>This page tracks qualified value bets that were actually publishable to the client. It is intentionally separate from Model Pick accuracy, which includes model winners even when the market price was not good enough to bet.</p>
-</section>
-
-<section class="concept-strip" aria-label="How to read Results">
-  <div class="concept-card">
-    <strong>Qualified Bet Results</strong>
-    <p>One published value bet per sporting match. Hourly reruns never create extra wins or losses.</p>
-  </div>
-  <div class="concept-card">
-    <strong>ROI</strong>
-    <p>Profit relative to stake on settled recommendations. It is different from model accuracy and should be read with sample size.</p>
-  </div>
-  <div class="concept-card">
-    <strong>Model Pick vs Bet</strong>
-    <p>A winning Model Pick is not counted here unless it also passed the market/value gate and became a publishable Bet.</p>
-  </div>
-</section>
+<header class="page-header">
+  <h1 class="page-title">Results</h1>
+  <p class="page-subtitle">Published bets and how they settled.</p>
+  <p class="page-note">
+    One published bet per sporting match. Hourly reruns never create extra wins or
+    losses, and a winning model pick is not counted here unless it also qualified as a
+    bet.
+  </p>
+</header>
 
 {% if bet_history_error %}
-<section class="panel panel-error">
-  <h2>Results are temporarily unavailable</h2>
-  <p>The read-only results ledger could not be loaded. Model execution and settlement are unaffected.</p>
+<section class="empty-state is-error" role="alert">
+  <h2 class="empty-title">Results are temporarily unavailable</h2>
+  <p class="empty-body">The read-only results ledger could not be loaded. Model execution and settlement are unaffected.</p>
 </section>
+
 {% elif not daily_summaries %}
-<section class="panel panel-neutral">
-  <h2>No settled live recommendations yet</h2>
-  <p>Forward results will appear here automatically once qualifying live value-bet decisions are persisted and settled.</p>
+<section class="empty-state">
+  <h2 class="empty-title">No settled bets yet</h2>
+  <p class="empty-body">Results appear here automatically once qualifying bets are published and settled.</p>
 </section>
+
 {% else %}
-
-<section class="page-heading" style="margin-top: 28px;">
-  <h2>Live performance overview</h2>
-  <p>One-unit forward performance by scheduled match day through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled published bets only; pending matches do not affect P/L yet.</p>
+<section class="stat-grid" aria-label="Return on investment by period">
+  <div class="stat"><span class="stat-value">{{ pct(performance_windows.today.roi) }}</span><span class="stat-label">Today ROI</span></div>
+  <div class="stat"><span class="stat-value">{{ pct(performance_windows.last_7_days.roi) }}</span><span class="stat-label">7-day ROI</span></div>
+  <div class="stat"><span class="stat-value">{{ pct(performance_windows.last_30_days.roi) }}</span><span class="stat-label">30-day ROI</span></div>
+  <div class="stat"><span class="stat-value">{{ pct(performance_windows.all_time.roi) }}</span><span class="stat-label">All-time ROI</span></div>
 </section>
 
-<section class="kpi-grid" aria-label="Rolling bet performance">
-  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.today.roi) }}</span><span class="kpi-label">Today ROI</span></div>
-  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.last_7_days.roi) }}</span><span class="kpi-label">7-Day ROI</span></div>
-  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.last_30_days.roi) }}</span><span class="kpi-label">30-Day ROI</span></div>
-  <div class="kpi"><span class="kpi-value">{{ pct(performance_windows.all_time.roi) }}</span><span class="kpi-label">All-Time ROI</span></div>
-</section>
-
-<section class="history-list" aria-label="Rolling performance details">
-  <table class="history-table">
-    <thead>
-      <tr>
-        <th scope="col">Period</th>
-        <th scope="col">Bets</th>
-        <th scope="col">Settled</th>
-        <th scope="col">Won</th>
-        <th scope="col">Lost</th>
-        <th scope="col">Pending</th>
-        <th scope="col">Win Rate</th>
-        <th scope="col">P/L</th>
-        <th scope="col">ROI</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% set periods = [
-        ('Today', performance_windows.today),
-        ('Last 7 Days', performance_windows.last_7_days),
-        ('Last 30 Days', performance_windows.last_30_days),
-        ('All Time', performance_windows.all_time)
-      ] %}
-      {% for label, period in periods %}
-      <tr>
-        <td><strong>{{ label }}</strong></td>
-        <td>{{ period.bets }}</td>
-        <td>{{ period.settled }}</td>
-        <td>{{ period.wins }}</td>
-        <td>{{ period.losses }}</td>
-        <td>{{ period.pending }}</td>
-        <td>{{ pct(period.hit_rate) }}</td>
-        <td>{{ units(period.one_unit_profit) }}</td>
-        <td>{{ pct(period.roi) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</section>
-
-<section class="panel panel-neutral">
-  <h3>What this does and does not prove</h3>
-  <p><strong>Win rate</strong> tells us how often the selected player won. <strong>ROI</strong> tells us whether the recorded prices produced profit. A high win rate can still lose money at poor prices, and a lower win rate can still be profitable at good prices.</p>
+<section class="section" aria-label="Performance by period">
+  <h2 class="section-title">By period</h2>
+  <p class="section-note">One-unit performance by scheduled match day through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only; pending matches do not affect P/L yet.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Settled</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Win rate</th>
+          <th scope="col">P/L</th>
+          <th scope="col">ROI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set periods = [
+          ('Today', performance_windows.today),
+          ('Last 7 days', performance_windows.last_7_days),
+          ('Last 30 days', performance_windows.last_30_days),
+          ('All time', performance_windows.all_time)
+        ] %}
+        {% for label, period in periods %}
+        <tr>
+          <th scope="row">{{ label }}</th>
+          <td class="num">{{ period.bets }}</td>
+          <td class="num">{{ period.settled }}</td>
+          <td class="num">{{ period.wins }}</td>
+          <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.pending }}</td>
+          <td class="num">{{ pct(period.hit_rate) }}</td>
+          <td class="num">{{ units(period.one_unit_profit) }}</td>
+          <td class="num">{{ pct(period.roi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note" style="margin-top: 12px;">
+    Win rate tells us how often the selected player won. ROI tells us whether the
+    recorded prices produced profit. A high win rate can still lose money at poor
+    prices, and a lower win rate can still be profitable at good prices.
+  </p>
 </section>
 
 {% if selected_summary %}
-<section class="page-heading" style="margin-top: 28px;">
-  <h2>{{ selected_date.strftime('%a %d %b %Y') }}</h2>
-  <p>Every first published value bet scheduled for this UTC match day.</p>
-</section>
+<section class="section" aria-label="Selected day">
+  <h2 class="section-title">{{ selected_date.strftime('%a %d %b %Y') }}</h2>
+  <p class="section-note">Every published bet scheduled for this UTC match day.</p>
 
-<section class="kpi-grid" aria-label="Daily bet performance">
-  <div class="kpi"><span class="kpi-value">{{ selected_summary.bets }}</span><span class="kpi-label">Bets</span></div>
-  <div class="kpi"><span class="kpi-value">{{ selected_summary.wins }}</span><span class="kpi-label">Wins</span></div>
-  <div class="kpi"><span class="kpi-value">{{ selected_summary.losses }}</span><span class="kpi-label">Losses</span></div>
-  <div class="kpi"><span class="kpi-value">{{ selected_summary.pending }}</span><span class="kpi-label">Pending</span></div>
-  <div class="kpi"><span class="kpi-value">{{ pct(selected_summary.hit_rate) }}</span><span class="kpi-label">Win Rate</span></div>
-  <div class="kpi"><span class="kpi-value">{{ units(selected_summary.one_unit_profit) }}</span><span class="kpi-label">Daily P/L</span></div>
-  <div class="kpi"><span class="kpi-value">{{ pct(selected_summary.roi) }}</span><span class="kpi-label">Daily ROI</span></div>
-</section>
+  <div class="stat-grid" style="margin-bottom: 14px;">
+    <div class="stat"><span class="stat-value">{{ selected_summary.bets }}</span><span class="stat-label">Bets</span></div>
+    <div class="stat"><span class="stat-value">{{ selected_summary.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ selected_summary.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ selected_summary.pending }}</span><span class="stat-label">Pending</span></div>
+    <div class="stat"><span class="stat-value">{{ pct(selected_summary.hit_rate) }}</span><span class="stat-label">Win rate</span></div>
+    <div class="stat"><span class="stat-value">{{ units(selected_summary.one_unit_profit) }}</span><span class="stat-label">P/L</span></div>
+  </div>
 
-<section class="history-list" aria-label="Bets for selected day">
-  <table class="history-table">
-    <thead>
-      <tr>
-        <th scope="col">Published</th>
-        <th scope="col">Match</th>
-        <th scope="col">Our Bet</th>
-        <th scope="col">Recorded Odds</th>
-        <th scope="col">Model Probability</th>
-        <th scope="col">Result</th>
-        <th scope="col">P/L</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for bet in daily_bets %}
-      <tr>
-        <td>{{ bet.decision_at.strftime('%H:%M UTC') }}</td>
-        <td>
-          <strong>{{ bet.player_1 or 'Player 1' }} vs {{ bet.player_2 or 'Player 2' }}</strong><br>
-          <span class="muted">{{ bet.tournament or 'Tournament unavailable' }}{% if bet.match_start_at %} · {{ bet.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
-        </td>
-        <td>{{ bet.selection or '—' }}</td>
-        <td>{{ '%.2f'|format(bet.market_decimal_price) }}{% if bet.bookmaker_code %}<br><span class="muted">{{ bet.bookmaker_code }}</span>{% endif %}</td>
-        <td>{% if bet.consensus_probability is not none %}{{ pct(bet.consensus_probability) }}{% else %}—{% endif %}</td>
-        <td><span class="badge badge-neutral">{{ bet.settlement_status }}</span></td>
-        <td>{{ units(bet.profit_units) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Published</th>
+          <th scope="col">Bet</th>
+          <th scope="col">Opponent / event</th>
+          <th scope="col">Odds</th>
+          <th scope="col">Win probability</th>
+          <th scope="col">Result</th>
+          <th scope="col">P/L</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bet in daily_bets %}
+        <tr>
+          <td class="num">{{ bet.decision_at.strftime('%H:%M UTC') }}</td>
+          <th scope="row" class="wrap">{{ bet.selection or '—' }}</th>
+          <td class="wrap">
+            {{ bet.player_1 or 'Player 1' }} vs {{ bet.player_2 or 'Player 2' }}<br>
+            <span class="stat-note">{{ bet.tournament or 'Tournament unavailable' }}{% if bet.match_start_at %} · {{ bet.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
+          </td>
+          <td class="num">{{ '%.2f'|format(bet.market_decimal_price) }}{% if bet.bookmaker_code %}<br><span class="stat-note">{{ bet.bookmaker_code }}</span>{% endif %}</td>
+          <td class="num">{% if bet.consensus_probability is not none %}{{ pct(bet.consensus_probability) }}{% else %}—{% endif %}</td>
+          <td>
+            {% set settle = bet.settlement_status %}
+            <span class="badge badge-{{ 'won' if settle == 'WON' else ('lost' if settle == 'LOST' else 'neutral') }}">{{ settle }}</span>
+          </td>
+          <td class="num">{{ units(bet.profit_units) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endif %}
 
-<section class="page-heading" style="margin-top: 40px;">
-  <h2>Daily results</h2>
-  <p>Select a scheduled match day to inspect every published value bet that contributed to that day's result.</p>
+<section class="section" aria-label="Daily results history">
+  <h2 class="section-title">Daily results</h2>
+  <p class="section-note">Select a scheduled match day to inspect every published bet that contributed to that day's result.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Void</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Win rate</th>
+          <th scope="col">P/L</th>
+          <th scope="col">ROI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in daily_summaries %}
+        <tr>
+          <th scope="row"><a href="/bet-history?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></th>
+          <td class="num">{{ day.bets }}</td>
+          <td class="num">{{ day.wins }}</td>
+          <td class="num">{{ day.losses }}</td>
+          <td class="num">{{ day.voids + day.cancelled }}</td>
+          <td class="num">{{ day.pending }}</td>
+          <td class="num">{{ pct(day.hit_rate) }}</td>
+          <td class="num">{{ units(day.one_unit_profit) }}</td>
+          <td class="num">{{ pct(day.roi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
-<section class="history-list" aria-label="Daily performance history">
-  <table class="history-table">
-    <thead>
-      <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Bets</th>
-        <th scope="col">Won</th>
-        <th scope="col">Lost</th>
-        <th scope="col">Void</th>
-        <th scope="col">Pending</th>
-        <th scope="col">Win Rate</th>
-        <th scope="col">P/L</th>
-        <th scope="col">ROI</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for day in daily_summaries %}
-      <tr>
-        <td><a class="history-link" href="/bet-history?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></td>
-        <td>{{ day.bets }}</td>
-        <td>{{ day.wins }}</td>
-        <td>{{ day.losses }}</td>
-        <td>{{ day.voids + day.cancelled }}</td>
-        <td>{{ day.pending }}</td>
-        <td>{{ pct(day.hit_rate) }}</td>
-        <td>{{ units(day.one_unit_profit) }}</td>
-        <td>{{ pct(day.roi) }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+<section class="section" aria-label="Published pick timeline and paper bankroll">
+  <div data-mount="pick-lifecycle"></div>
+  <div data-mount="paper-bankroll"></div>
 </section>
 {% endif %}
 {% endblock %}

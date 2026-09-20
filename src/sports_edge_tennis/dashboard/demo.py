@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
+from sports_edge_tennis.dashboard.market_overlay import MarketDecisionView
 from sports_edge_tennis.dashboard.read_model import AgentView, MatchView, RunState
 
 
@@ -84,3 +85,40 @@ def build_demo_state() -> RunState:
         kind="POPULATED", run_date=date(2026, 9, 7),
         as_of=base, prediction_run_id=9999, run_status="COMPLETED", matches=matches,
     )
+
+
+def build_demo_market_decisions() -> dict[int, MarketDecisionView]:
+    """Demo Market overlay so every client pick state is visually reachable.
+
+    Match 1 is a qualified value bet, match 3 is a pick the Veto blocked, and
+    match 2 has no decision yet so it stays a plain model pick. Demo only; this
+    is never used when SPORTS_EDGE_DASHBOARD_DEMO is unset.
+    """
+    return {
+        1: MarketDecisionView(
+            match_id=1,
+            decision_status="BET",
+            reason_code="NONE",
+            selected_side=1,
+            market_decimal_price=Decimal("1.72"),
+            sharp_reference_price=Decimal("1.57"),
+            price_bookmaker_code="BET365",
+            edge_pct=Decimal("0.0412"),
+            min_acceptable_odds=Decimal("1.64"),
+            suggested_stake_fraction=Decimal("0.014200000000"),
+            published_at=datetime(2026, 9, 7, 9, 5, tzinfo=timezone.utc),
+        ),
+        3: MarketDecisionView(
+            match_id=3,
+            decision_status="VETOED",
+            reason_code="VETO_TRIGGERED",
+            selected_side=1,
+            market_decimal_price=Decimal("1.95"),
+            sharp_reference_price=Decimal("1.80"),
+            price_bookmaker_code="PINNACLE",
+            edge_pct=Decimal("0.0290"),
+            min_acceptable_odds=Decimal("1.86"),
+            suggested_stake_fraction=None,
+            published_at=None,
+        ),
+    }
