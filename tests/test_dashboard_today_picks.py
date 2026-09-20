@@ -272,9 +272,23 @@ def test_today_page_renders_only_picks(demo_client) -> None:
     # Demo slate: 5 evaluated, 3 consensus picks.
     assert "3 picks today" in body
     assert "Carlos Alcaraz" in body
-    # The two NO_BET matches must not appear at all.
-    assert "Andrey Rublev" not in body
-    assert "Stefanos Tsitsipas" not in body
+    # The main pick list still contains only the three actual picks.
+    assert body.count('<article class="pick-card') == 3
+    # NO_BET matches may be inspected only inside the collapsed disclosure.
+    assert "Show no-bet matches" in body
+    assert "Andrey Rublev" in body
+    assert "Stefanos Tsitsipas" in body
+
+
+
+def test_no_bet_matches_are_collapsed_by_default_and_explain_the_reason(demo_client) -> None:
+    body = demo_client.get("/today").text
+
+    assert '<details class="no-bet-disclosure section">' in body
+    assert "<details class=\"no-bet-disclosure section\" open" not in body
+    assert "2 evaluated matches did not become a pick" in body
+    assert "NO BET" in body
+    assert "Models disagreed on the winner." in body
 
 
 def test_today_page_shows_probability_prominently(demo_client) -> None:

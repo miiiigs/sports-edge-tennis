@@ -101,6 +101,36 @@
 {% endif %}
 {% endif %}
 
+{% if no_bet_matches %}
+<details class="no-bet-disclosure section">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy">
+      <span class="no-bet-toggle-title">Show no-bet matches</span>
+      <span class="no-bet-toggle-subtitle">{{ no_bet_matches|length }} evaluated match{{ '' if no_bet_matches|length == 1 else 'es' }} did not become a pick</span>
+    </span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+
+  <div class="no-bet-panel">
+    <p class="no-bet-intro">These matches were evaluated, but the models did not reach the required pick criteria. They are shown here for reference only.</p>
+    <div class="no-bet-list">
+      {% for match in no_bet_matches %}
+      <article class="no-bet-card">
+        <div class="no-bet-card-main">
+          <h3 class="no-bet-match">{{ match.player_1 }} <span>vs</span> {{ match.player_2 }}</h3>
+          <p class="no-bet-context">{{ pres.start_time(match.scheduled_start) }} · {{ match.tournament }} · {{ pres.tier_label(match.competition_tier) }}</p>
+        </div>
+        <div class="no-bet-reason">
+          <span class="badge badge-model">NO BET</span>
+          <p>{{ pres.reason_explanation(match.reason_code) or 'The match did not reach the required model consensus.' }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% endif %}
+
 <nav class="date-strip section" aria-label="Change day">
   <a class="date-link" href="/today?date={{ prev_date.isoformat() }}">‹ {{ prev_date.strftime('%a %d %b') }}</a>
   <a class="date-link" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>

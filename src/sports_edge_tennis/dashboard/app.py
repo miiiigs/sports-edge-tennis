@@ -233,7 +233,8 @@ def today(request: Request, date: str | None = Query(default=None)):
     """Today's client-visible picks only.
 
     Every evaluated target is loaded, but only records that reached a Manager
-    consensus are rendered. Non-selections stay in the operational views.
+    consensus are rendered by default. Manager NO_BET rows are available only
+    through an optional collapsed disclosure on the same page.
     """
     requested_date = _parse_date(date)
     if requested_date is None:
@@ -242,6 +243,7 @@ def today(request: Request, date: str | None = Query(default=None)):
     state = _load_state(requested_date)
     market_by_match = _load_market_overlay(state.prediction_run_id)
     today_picks = build_today_picks(state.matches, market_by_match)
+    no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
         request,
         "today.html",
@@ -252,6 +254,7 @@ def today(request: Request, date: str | None = Query(default=None)):
             "latest_activity": _latest_activity(),
             "operational_health": _load_live_health(),
             "today_picks": today_picks,
+            "no_bet_matches": no_bet_matches,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
             "next_date": requested_date.fromordinal(requested_date.toordinal() + 1),
