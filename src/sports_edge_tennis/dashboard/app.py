@@ -22,6 +22,10 @@ from sports_edge_tennis.dashboard.picks import (
     MODEL_PICK,
     VALUE_BET,
 )
+from sports_edge_tennis.performance.regimes import (
+    load_regime_cohorts,
+    resolve_current_regime,
+)
 from sports_edge_tennis.dashboard.read_model import (
     LiveHealthView,
     RunState,
@@ -201,6 +205,28 @@ def _clv_text(value) -> str | None:
     return f"{float(value) * 100:+.2f}%"
 
 
+def _load_regime_context() -> dict:
+    """Current production regime, resolved from persisted lineage.
+
+    Returns empty context rather than guessing when the database is
+    unreachable or no production run has produced a Manager result yet.
+    """
+    if DEMO_MODE:
+        return {"current_regime": None, "has_multiple_regimes": False}
+    conn = _connect()
+    if conn is None:
+        return {"current_regime": None, "has_multiple_regimes": False}
+    try:
+        return {
+            "current_regime": resolve_current_regime(conn),
+            "has_multiple_regimes": len(load_regime_cohorts(conn)) > 1,
+        }
+    except Exception:
+        return {"current_regime": None, "has_multiple_regimes": False}
+    finally:
+        conn.close()
+
+
 def _pick_payload(pick) -> dict:
     """Client-facing pick payload. No internal identifiers are exposed."""
     return {
@@ -295,6 +321,7 @@ def performance(request: Request):
         "performance.html",
         {
             "models": MODEL_PERFORMANCE,
+            **_load_regime_context(),
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),

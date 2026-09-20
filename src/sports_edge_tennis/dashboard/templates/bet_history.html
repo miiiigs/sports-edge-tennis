@@ -26,16 +26,74 @@
 </section>
 
 {% else %}
-<section class="stat-grid" aria-label="Return on investment by period">
-  <div class="stat"><span class="stat-value">{{ pct(performance_windows.today.roi) }}</span><span class="stat-label">Today ROI</span></div>
-  <div class="stat"><span class="stat-value">{{ pct(performance_windows.last_7_days.roi) }}</span><span class="stat-label">7-day ROI</span></div>
-  <div class="stat"><span class="stat-value">{{ pct(performance_windows.last_30_days.roi) }}</span><span class="stat-label">30-day ROI</span></div>
-  <div class="stat"><span class="stat-value">{{ pct(performance_windows.all_time.roi) }}</span><span class="stat-label">All-time ROI</span></div>
+<section class="section" aria-label="Current system performance" style="margin-top: 0;">
+  <h2 class="section-title">Current system</h2>
+  <p class="section-note">
+    {% if current_regime %}
+    Only bets produced by the production system running right now
+    ({{ current_regime.label }}){% if current_regime_started_at %}, which started
+    {{ current_regime_started_at.strftime('%d %b %Y') }}{% endif %}.
+    {% else %}
+    No production bets have been generated yet.
+    {% endif %}
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-value">{{ current_bets }}</span><span class="stat-label">Bets</span></div>
+    <div class="stat"><span class="stat-value">{{ current_windows.all_time.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ current_windows.all_time.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ pct(current_windows.all_time.roi) }}</span><span class="stat-label">ROI</span></div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 14px;">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Settled</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Win rate</th>
+          <th scope="col">P/L</th>
+          <th scope="col">ROI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set current_periods = [
+          ('Today', current_windows.today),
+          ('Last 7 days', current_windows.last_7_days),
+          ('Last 30 days', current_windows.last_30_days),
+          ('Since this system started', current_windows.all_time)
+        ] %}
+        {% for label, period in current_periods %}
+        <tr>
+          <th scope="row">{{ label }}</th>
+          <td class="num">{{ period.bets }}</td>
+          <td class="num">{{ period.settled }}</td>
+          <td class="num">{{ period.wins }}</td>
+          <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.pending }}</td>
+          <td class="num">{{ pct(period.hit_rate) }}</td>
+          <td class="num">{{ units(period.one_unit_profit) }}</td>
+          <td class="num">{{ pct(period.roi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 
-<section class="section" aria-label="Performance by period">
-  <h2 class="section-title">By period</h2>
-  <p class="section-note">One-unit performance by scheduled match day through {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only; pending matches do not affect P/L yet.</p>
+<section class="section" aria-label="All historical performance">
+  <h2 class="section-title">All historical performance</h2>
+  <p class="section-note">
+    Every legitimate production bet we have ever published{% if has_multiple_regimes %}, combining
+    more than one system version{% endif %}. Older bets keep the price, the selection and the
+    result they had at the time — nothing is re-scored against today's models.
+    One-unit performance by scheduled match day through
+    {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only.
+  </p>
   <div class="table-wrap">
     <table class="data">
       <thead>
@@ -107,6 +165,7 @@
           <th scope="col">Win probability</th>
           <th scope="col">Result</th>
           <th scope="col">P/L</th>
+          <th scope="col">System</th>
         </tr>
       </thead>
       <tbody>
@@ -125,12 +184,60 @@
             <span class="badge badge-{{ 'won' if settle == 'WON' else ('lost' if settle == 'LOST' else 'neutral') }}">{{ settle }}</span>
           </td>
           <td class="num">{{ units(bet.profit_units) }}</td>
+          <td class="wrap"><span class="stat-note">{{ 'Manager ' ~ bet.manager_policy_version if bet.manager_policy_version else 'Legacy production' }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+{% endif %}
+
+{% if has_multiple_regimes %}
+<details class="no-bet-disclosure section" aria-label="Performance by system version">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy">
+      <span class="no-bet-toggle-title">Show performance by system version</span>
+      <span class="no-bet-toggle-subtitle">{{ cohorts|length }} production system versions</span>
+    </span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="no-bet-panel">
+    <p class="no-bet-intro">Each row is one production system version, scored on its own bets at the prices it actually took.</p>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">System</th>
+            <th scope="col">Period</th>
+            <th scope="col">Bets</th>
+            <th scope="col">W–L</th>
+            <th scope="col">P/L</th>
+            <th scope="col">ROI</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cohort in cohorts %}
+          <tr>
+            <th scope="row" class="wrap">
+              {{ cohort.label }}
+              {% if current_regime and cohort.regime_key == current_regime.regime_key %}
+              <span class="badge badge-value" style="margin-left: 6px;">CURRENT</span>
+              {% endif %}
+              <br><span class="stat-note">Prices from {{ cohort.odds_provider_label }}</span>
+            </th>
+            <td class="wrap">{{ cohort.period_text }}</td>
+            <td class="num">{{ cohort.bets }}</td>
+            <td class="num">{{ cohort.wins }}–{{ cohort.losses }}</td>
+            <td class="num">{{ units(cohort.one_unit_profit) }}</td>
+            <td class="num">{{ pct(cohort.roi) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</details>
 {% endif %}
 
 <section class="section" aria-label="Daily results history">

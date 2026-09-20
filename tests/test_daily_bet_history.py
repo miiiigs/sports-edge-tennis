@@ -144,6 +144,9 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 Decimal("0.61"),
                 "WON",
                 now,
+                "v1",
+                "OFFERED",
+                "MANAGER_V1",
             ),
             (
                 102,
@@ -158,6 +161,9 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 Decimal("0.58"),
                 "LOST",
                 now,
+                "v1",
+                "OFFERED",
+                "MANAGER_V1",
             ),
             (
                 103,
@@ -172,6 +178,9 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 Decimal("0.56"),
                 "PENDING",
                 None,
+                None,
+                None,
+                "LEGACY_UNVERSIONED",
             ),
         ]
     )

@@ -4,6 +4,12 @@ This module intentionally does not alter prediction, Manager, market, Veto, stak
 or settlement behaviour. It summarizes persisted production-live evidence so historical
 model metrics can be compared with live coverage and unique-match outcomes without
 counting hourly reruns as independent sporting events.
+
+Scope: this is **all production evidence**, not current-system evidence. It uses
+the first production-live prediction per unique match across the whole
+production history, which can span more than one system regime. Anything that
+presents these numbers must say so; see performance.regimes for cohorting that
+answers "how is the current system doing".
 """
 
 from __future__ import annotations

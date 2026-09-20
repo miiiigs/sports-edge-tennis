@@ -15,6 +15,8 @@ from typing import Iterable
 
 import psycopg
 
+from sports_edge_tennis.performance.regimes import first_production_bets_cte
+
 
 @dataclass(frozen=True)
 class DailyBetSummary:
@@ -60,6 +62,9 @@ class DailyBetRow:
     settlement_status: str
     settled_at: datetime | None
     profit_units: Decimal | None
+    manager_policy_version: str | None = None
+    price_source_system: str | None = None
+    regime_key: str | None = None
 
 
 def _summary_from_row(row) -> DailyBetSummary:
@@ -152,6 +157,7 @@ def load_daily_bet_summaries(
     conn: psycopg.Connection,
     *,
     limit: int = 5000,
+    regime_key: str | None = None,
 ) -> tuple[DailyBetSummary, ...]:
     """Return one aggregate row per UTC scheduled match day, newest first.
 
@@ -159,36 +165,18 @@ def load_daily_bet_summaries(
     bets from before the publication timestamp boundary are retained, while
     newer BET decisions that never crossed publication are excluded. The day is
     the point-in-time scheduled match day, not the earlier publication day.
+
+    ``regime_key`` restricts the result to one production regime. It is applied
+    *after* the first-bet-per-match selection, never inside it: filtering first
+    would let a later duplicate bet on the same match become that match's
+    "first" bet within the cohort and inflate the sample.
     """
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
 
     rows = conn.execute(
-        """
-        WITH publication_boundary AS (
-            SELECT min(published_at) AS first_published_at
-            FROM decisions
-            WHERE published_at IS NOT NULL
-        ),
-        first_bets AS (
-            SELECT DISTINCT ON (d.match_id)
-                d.decision_id,
-                d.match_id,
-                d.as_of,
-                COALESCE(d.published_at, d.as_of) AS published_at,
-                d.market_decimal_price
-            FROM decisions d
-            CROSS JOIN publication_boundary pb
-            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
-              AND d.decision_status = 'BET'
-              AND d.market_type = 'MATCH_WINNER'
-              AND (
-                  d.published_at IS NOT NULL
-                  OR pb.first_published_at IS NULL
-                  OR d.as_of < pb.first_published_at
-              )
-            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
-        ),
+        f"""
+        WITH {first_production_bets_cte()},
         dated_bets AS (
             SELECT
                 d.*,
@@ -239,11 +227,12 @@ def load_daily_bet_summaries(
             ) AS one_unit_profit
         FROM dated_bets d
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
+        WHERE %s::text IS NULL OR d.regime_key = %s::text
         GROUP BY d.match_date
         ORDER BY d.match_date DESC
         LIMIT %s
         """,
-        (limit,),
+        (regime_key, regime_key, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -266,34 +255,8 @@ def load_daily_bets(
 ) -> tuple[DailyBetRow, ...]:
     """Return the first publishable Type A BET per match for one UTC match day."""
     rows = conn.execute(
-        """
-        WITH publication_boundary AS (
-            SELECT min(published_at) AS first_published_at
-            FROM decisions
-            WHERE published_at IS NOT NULL
-        ),
-        first_bets AS (
-            SELECT DISTINCT ON (d.match_id)
-                d.decision_id,
-                d.match_id,
-                d.as_of,
-                COALESCE(d.published_at, d.as_of) AS published_at,
-                d.selection_side,
-                d.market_decimal_price,
-                d.price_bookmaker_code,
-                d.consensus_probability
-            FROM decisions d
-            CROSS JOIN publication_boundary pb
-            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
-              AND d.decision_status = 'BET'
-              AND d.market_type = 'MATCH_WINNER'
-              AND (
-                  d.published_at IS NOT NULL
-                  OR pb.first_published_at IS NULL
-                  OR d.as_of < pb.first_published_at
-              )
-            ORDER BY d.match_id, COALESCE(d.published_at, d.as_of), d.decision_id
-        )
+        f"""
+        WITH {first_production_bets_cte()}
         SELECT
             d.decision_id,
             d.published_at,
@@ -310,7 +273,10 @@ def load_daily_bets(
             d.price_bookmaker_code,
             d.consensus_probability,
             COALESCE(ds.settlement_status::text, 'PENDING') AS settlement_status,
-            ds.settled_at
+            ds.settled_at,
+            d.manager_policy_version,
+            d.price_source_system,
+            d.regime_key
         FROM first_bets d
         JOIN matches m ON m.match_id = d.match_id
         JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
@@ -360,6 +326,9 @@ def load_daily_bets(
                 settlement_status=status,
                 settled_at=row[11],
                 profit_units=_profit_for_status(status, price),
+                manager_policy_version=str(row[12]) if row[12] is not None else None,
+                price_source_system=str(row[13]) if row[13] is not None else None,
+                regime_key=str(row[14]) if row[14] is not None else None,
             )
         )
     return tuple(result)
