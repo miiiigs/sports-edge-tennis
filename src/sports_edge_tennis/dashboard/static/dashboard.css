@@ -500,9 +500,7 @@ a {
 /* --------------------------------------------------------------- notices */
 
 .notice {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
   padding: 12px 14px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
@@ -780,10 +778,6 @@ table.data td.wrap {
 .notice p {
   margin: 0;
   color: var(--ink-secondary);
-}
-
-.notice {
-  display: block;
 }
 
 .stat .stat-note {
