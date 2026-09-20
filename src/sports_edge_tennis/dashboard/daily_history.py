@@ -208,6 +208,14 @@ def api_bet_history(date: str | None = Query(default=None)):
                 "regime_key": view.current_regime.regime_key,
                 "label": view.current_regime.label,
                 "manager_policy_version": view.current_regime.manager_policy_version,
+                # Structured lineage, so a consumer never has to parse the key.
+                "agent_config_versions": list(
+                    view.current_regime.agent_config_versions
+                ),
+                "market_policy_version": view.current_regime.market_policy_version,
+                "veto_policy_version": view.current_regime.veto_policy_version,
+                "has_complete_lineage": view.current_regime.has_complete_lineage,
+                "lineage_inconsistent": view.current_regime.is_inconsistent,
                 "started_at": view.current_regime_started_at.isoformat()
                 if view.current_regime_started_at
                 else None,
@@ -223,6 +231,10 @@ def api_bet_history(date: str | None = Query(default=None)):
                     "regime_key": c.regime_key,
                     "label": c.label,
                     "manager_policy_version": c.manager_policy_version,
+                    "agent_config_versions": list(c.agent_config_versions),
+                    "market_policy_version": c.market_policy_version,
+                    "veto_policy_version": c.veto_policy_version,
+                    "has_complete_lineage": c.has_complete_lineage,
                     "bets": c.bets,
                     "settled": c.settled,
                     "pending": c.pending,
@@ -288,6 +300,9 @@ def api_bet_history(date: str | None = Query(default=None)):
                     "settled_at": row.settled_at.isoformat() if row.settled_at else None,
                     "regime_key": row.regime_key,
                     "manager_policy_version": row.manager_policy_version,
+                    "agent_config_versions": list(row.agent_config_versions),
+                    "market_policy_version": row.market_policy_version,
+                    "veto_policy_version": row.veto_policy_version,
                     "price_source_system": row.price_source_system,
                 }
                 for row in bets

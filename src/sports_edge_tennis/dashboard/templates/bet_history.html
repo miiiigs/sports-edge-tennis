@@ -29,10 +29,20 @@
 <section class="section" aria-label="Current system performance" style="margin-top: 0;">
   <h2 class="section-title">Current system</h2>
   <p class="section-note">
-    {% if current_regime %}
-    Only bets produced by the production system running right now
+    {% if current_regime and current_regime.is_inconsistent %}
+    The latest production run did not record one consistent configuration, so we
+    cannot say which system is running right now. Nothing is shown here rather
+    than showing you a number we cannot stand behind. The full record below is
+    unaffected.
+    {% elif current_regime and not current_regime.has_complete_lineage %}
+    The latest production run did not record the full configuration that
+    produced it, so its bets are not claimed as a current-system record.
+    {% elif current_regime %}
+    Only bets produced by the exact production configuration running right now
     ({{ current_regime.label }}){% if current_regime_started_at %}, which started
-    {{ current_regime_started_at.strftime('%d %b %Y') }}{% endif %}.
+    {{ current_regime_started_at.strftime('%d %b %Y') }}{% endif %}. A change to
+    the Manager, to any Agent's configuration, or to the Market policy starts a
+    new system here.
     {% else %}
     No production bets have been generated yet.
     {% endif %}

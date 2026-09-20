@@ -15,7 +15,10 @@ from typing import Iterable
 
 import psycopg
 
-from sports_edge_tennis.performance.regimes import first_production_bets_cte
+from sports_edge_tennis.performance.regimes import (
+    first_production_bets_cte,
+    veto_audits_available,
+)
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,9 @@ class DailyBetRow:
     manager_policy_version: str | None = None
     price_source_system: str | None = None
     regime_key: str | None = None
+    market_policy_version: str | None = None
+    veto_policy_version: str | None = None
+    agent_config_versions: tuple[str | None, ...] = (None, None, None)
 
 
 def _summary_from_row(row) -> DailyBetSummary:
@@ -176,7 +182,7 @@ def load_daily_bet_summaries(
 
     rows = conn.execute(
         f"""
-        WITH {first_production_bets_cte()},
+        WITH {first_production_bets_cte(veto_available=veto_audits_available(conn))},
         dated_bets AS (
             SELECT
                 d.*,
@@ -256,7 +262,7 @@ def load_daily_bets(
     """Return the first publishable Type A BET per match for one UTC match day."""
     rows = conn.execute(
         f"""
-        WITH {first_production_bets_cte()}
+        WITH {first_production_bets_cte(veto_available=veto_audits_available(conn))}
         SELECT
             d.decision_id,
             d.published_at,
@@ -276,7 +282,12 @@ def load_daily_bets(
             ds.settled_at,
             d.manager_policy_version,
             d.price_source_system,
-            d.regime_key
+            d.regime_key,
+            d.market_policy_version,
+            d.veto_policy_version,
+            d.agent_a1_config_version,
+            d.agent_a2_config_version,
+            d.agent_a3_config_version
         FROM first_bets d
         JOIN matches m ON m.match_id = d.match_id
         JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
@@ -329,6 +340,12 @@ def load_daily_bets(
                 manager_policy_version=str(row[12]) if row[12] is not None else None,
                 price_source_system=str(row[13]) if row[13] is not None else None,
                 regime_key=str(row[14]) if row[14] is not None else None,
+                market_policy_version=str(row[15]) if row[15] is not None else None,
+                veto_policy_version=str(row[16]) if row[16] is not None else None,
+                agent_config_versions=tuple(
+                    str(row[17 + index]) if row[17 + index] is not None else None
+                    for index in range(3)
+                ),
             )
         )
     return tuple(result)
