@@ -333,7 +333,10 @@ def test_today_demo_populated(client, monkeypatch):
     assert "Carlos Alcaraz" in resp.text
     # The demo slate evaluates five matches but only three are picks.
     assert "3 picks today" in resp.text
-    assert "Andrey Rublev" not in resp.text
+    assert resp.text.count('<article class="pick-card') == 3
+    # Rejected matches exist only inside the collapsed reference disclosure.
+    assert "Show no-bet matches" in resp.text
+    assert "Andrey Rublev" in resp.text
 
 
 def test_today_renders_operational_warning(client, monkeypatch):
