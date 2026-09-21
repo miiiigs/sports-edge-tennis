@@ -72,12 +72,20 @@ def build_oddspapi_tennis_observation(
     provider_observed_at = max(observed_times) if observed_times else _parse_timestamp(event_payload.get("updatedAt"))
     if provider_observed_at is not None and provider_observed_at > received_at.astimezone(UTC):
         provider_observed_at = None
+    raw_payload = dict(event_payload)
+    if isinstance(books, Mapping):
+        raw_payload["bookmakerOdds"] = {
+            str(slug): dict(raw_book)
+            for slug, raw_book in books.items()
+            if str(slug).strip() in allowed and isinstance(raw_book, Mapping)
+        }
+
     return ProviderObservation(
         provider_code=ODDSPAPI_PROVIDER_CODE,
         provider_event_id=fixture_id,
         provider_observation_key=f"{response_id}:EVENT:{fixture_id}",
         received_at=received_at.astimezone(UTC),
-        payload=dict(event_payload),
+        payload=raw_payload,
         adapter_version=ODDSPAPI_ADAPTER_VERSION,
         markets=tuple(markets),
         provider_observed_at=provider_observed_at,
