@@ -15,6 +15,7 @@ from sports_edge_tennis.live.oddspapi import (
     ODDSPAPI_SHARP_BOOKMAKER,
     fetch_oddspapi_tennis_fixtures,
     fetch_oddspapi_tennis_odds_by_tournaments,
+    merge_oddspapi_fixture_odds,
     parse_oddspapi_tennis_fixture,
 )
 from sports_edge_tennis.live.oddspapi_reconciliation import reconcile_oddspapi_event
@@ -79,10 +80,10 @@ def main(argv: list[str] | None = None) -> int:
             bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
         )
         requests_used += 1
-        odds_rows = [
-            row for row in board_rows
-            if str(row.get("fixtureId") or "") in fixture_ids
-        ]
+        odds_rows = merge_oddspapi_fixture_odds(
+            fixtures,
+            board_rows,
+        )
 
     summary = {
         "requests_used": requests_used,
