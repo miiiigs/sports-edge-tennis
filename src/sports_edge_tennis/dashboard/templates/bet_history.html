@@ -271,7 +271,7 @@
       <tbody>
         {% for day in daily_summaries %}
         <tr>
-          <th scope="row"><a href="/bet-history?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></th>
+          <th scope="row"><a href="/value-bet-results?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></th>
           <td class="num">{{ day.bets }}</td>
           <td class="num">{{ day.wins }}</td>
           <td class="num">{{ day.losses }}</td>
