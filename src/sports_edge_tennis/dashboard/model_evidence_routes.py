@@ -68,6 +68,13 @@ def api_model_evidence():
                 }
                 for row in summary.market_reasons
             ],
+            # Scope is stated explicitly. This evidence spans every production
+            # regime, so it must never be read as "current system accuracy".
+            "agents_definition": (
+                "first production-live prediction per unique match across all "
+                "production regimes; experiment/backtest rows excluded"
+            ),
+            "agents_scope": "ALL_PRODUCTION_REGIMES",
             "agents": [
                 {
                     "agent_code": row.agent_code,

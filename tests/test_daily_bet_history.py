@@ -19,13 +19,27 @@ class _Result:
     def fetchall(self):
         return self._rows
 
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
+
 
 class _Conn:
+    """A connection stub that answers the loaders' queries in order.
+
+    The Veto audit-table probe is answered out of band and does not consume a
+    scripted response, so a test scripts only the rows it actually cares
+    about. Reporting the table as absent is the right answer for a stub with
+    no database behind it: Veto is then fingerprinted as MISSING, exactly as
+    it is on a database where the Veto service has never written.
+    """
+
     def __init__(self, *responses):
         self._responses = iter(responses)
         self.calls = []
 
     def execute(self, sql, params=()):
+        if "to_regclass" in sql:
+            return _Result([(None,)])
         self.calls.append((sql, params))
         return _Result(next(self._responses))
 
@@ -144,6 +158,14 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 Decimal("0.61"),
                 "WON",
                 now,
+                "v1",
+                "OFFERED",
+                "REGIME_1111111111111111",
+                "v1",
+                "tennis_veto_v1",
+                "a1-base",
+                "a2-base",
+                "a3-base",
             ),
             (
                 102,
@@ -158,6 +180,14 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 Decimal("0.58"),
                 "LOST",
                 now,
+                "v1",
+                "OFFERED",
+                "REGIME_1111111111111111",
+                "v1",
+                "tennis_veto_v1",
+                "a1-base",
+                "a2-base",
+                "a3-base",
             ),
             (
                 103,
@@ -171,6 +201,14 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
                 "BOOK",
                 Decimal("0.56"),
                 "PENDING",
+                None,
+                None,
+                None,
+                "LEGACY_2222222222222222",
+                None,
+                None,
+                None,
+                None,
                 None,
             ),
         ]

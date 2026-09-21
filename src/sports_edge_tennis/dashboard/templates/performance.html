@@ -13,9 +13,37 @@
   </p>
 </header>
 
-<section class="section" aria-label="Model accuracy overview">
-  <h2 class="section-title">Model accuracy</h2>
+<section class="section" aria-label="Current live system evidence" style="margin-top: 0;">
+  <h2 class="section-title">Current live system</h2>
   <p class="section-note">
+    {% if current_regime %}
+    Production is currently running <strong>{{ current_regime.label }}</strong>. Its realised
+    betting record — only bets this system actually produced — is on
+    <a href="/bet-history">Results</a> under "Current system".
+    {% else %}
+    No production system has generated bets yet.
+    {% endif %}
+  </p>
+  <div class="notice">
+    <h3>Current-system results include only bets produced under the currently active production regime.</h3>
+    <p>
+      Everything below this section is different evidence. Read each section on its own
+      terms; none of them is a live profit figure.
+    </p>
+  </div>
+</section>
+
+<section class="section" aria-label="Historical model validation">
+  <h2 class="section-title">Historical model validation</h2>
+  <div class="notice notice-warning">
+    <h3>These are historical validation figures, not the live betting record.</h3>
+    <p>
+      They measure how each model scored against a fixed historical evidence set. They are
+      not recomputed when the production system changes, they are not tied to the system
+      currently generating picks, and they say nothing about money won or lost.
+    </p>
+  </div>
+  <p class="section-note" style="margin-top: 14px;">
     Accuracy is how often a model picked the eventual winner. Calibration asks whether
     the probabilities behave like probabilities: a 70% forecast should win about 70% of
     the time over a large sample.
@@ -31,8 +59,8 @@
   </div>
 </section>
 
-<section class="section" aria-label="Detailed model performance">
-  <h2 class="section-title">Detail</h2>
+<section class="section" aria-label="Historical model validation detail">
+  <h2 class="section-title">Historical validation detail</h2>
   <div class="table-wrap">
     <table class="data">
       <thead>
@@ -78,6 +106,11 @@
   <p class="section-note">
     Prospectively collected closing-price evidence. This is separate from the historical
     model validation above.
+    {% if clv.initialized and has_multiple_regimes %}
+    This sample spans more than one production system version.
+    {% elif clv.initialized and current_regime %}
+    This sample was collected under {{ current_regime.label }}.
+    {% endif %}
   </p>
 
   {% if clv.initialized %}

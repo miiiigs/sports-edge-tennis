@@ -7,8 +7,14 @@ from sports_edge_tennis.dashboard.daily_bets import (
 
 
 class _Result:
+    def __init__(self, rows=()):
+        self._rows = rows
+
     def fetchall(self):
-        return []
+        return list(self._rows)
+
+    def fetchone(self):
+        return self._rows[0] if self._rows else None
 
 
 class _Conn:
@@ -16,6 +22,10 @@ class _Conn:
         self.sql = []
 
     def execute(self, sql, params=()):
+        # The Veto audit-table probe is infrastructure, not one of the result
+        # queries this contract inspects, so it is answered without recording.
+        if "to_regclass" in sql:
+            return _Result([(None,)])
         self.sql.append((sql, params))
         return _Result()
 

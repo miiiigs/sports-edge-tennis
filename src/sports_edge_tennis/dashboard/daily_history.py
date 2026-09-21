@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
@@ -17,6 +18,13 @@ from sports_edge_tennis.dashboard.daily_bets import (
     load_daily_bets,
 )
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.performance.regimes import (
+    RegimeCohort,
+    RegimeIdentity,
+    current_regime_started_at,
+    load_regime_cohorts,
+    resolve_current_regime,
+)
 
 router = APIRouter()
 
@@ -57,26 +65,72 @@ def _period_json(summary: PeriodBetSummary) -> dict[str, object]:
     }
 
 
-def _load_history(requested_date: date | None):
+@dataclass(frozen=True)
+class ResultsView:
+    """Everything the Results surfaces need, already split by regime.
+
+    ``current_summaries`` contains only bets produced by the regime that is
+    generating picks right now. ``all_summaries`` is the full production record
+    across every regime, unchanged. The two are computed from the same
+    first-bet-per-match ledger, so they can never disagree about a bet's terms.
+    """
+
+    all_summaries: tuple[DailyBetSummary, ...] = ()
+    current_summaries: tuple[DailyBetSummary, ...] = ()
+    current_regime: RegimeIdentity | None = None
+    current_regime_started_at: datetime | None = None
+    cohorts: tuple[RegimeCohort, ...] = ()
+    selected_date: date | None = None
+    selected_summary: DailyBetSummary | None = None
+    bets: tuple = ()
+    failed: bool = False
+
+    @property
+    def has_multiple_regimes(self) -> bool:
+        return len(self.cohorts) > 1
+
+
+def _load_history(requested_date: date | None) -> ResultsView:
     if DEMO_MODE:
-        return (), requested_date, None, (), False
+        return ResultsView(selected_date=requested_date)
     conn = _connect()
     if conn is None:
-        return (), requested_date, None, (), True
+        return ResultsView(selected_date=requested_date, failed=True)
     try:
         summaries = load_daily_bet_summaries(conn)
-        selected_date = requested_date or (summaries[0].decision_date if summaries else None)
+        current_regime = resolve_current_regime(conn)
+        current_summaries: tuple[DailyBetSummary, ...] = ()
+        started_at = None
+        if current_regime is not None:
+            current_summaries = load_daily_bet_summaries(
+                conn, regime_key=current_regime.regime_key
+            )
+            started_at = current_regime_started_at(conn, current_regime.regime_key)
+        cohorts = load_regime_cohorts(conn)
+
+        selected_date = requested_date or (
+            summaries[0].decision_date if summaries else None
+        )
         selected_summary: DailyBetSummary | None = None
-        bets = ()
+        bets: tuple = ()
         if selected_date is not None:
             selected_summary = next(
                 (row for row in summaries if row.decision_date == selected_date),
                 None,
             )
             bets = load_daily_bets(conn, decision_date=selected_date)
-        return summaries, selected_date, selected_summary, bets, False
+        return ResultsView(
+            all_summaries=summaries,
+            current_summaries=current_summaries,
+            current_regime=current_regime,
+            current_regime_started_at=started_at,
+            cohorts=cohorts,
+            selected_date=selected_date,
+            selected_summary=selected_summary,
+            bets=bets,
+        )
     except Exception:
-        return (), requested_date, None, (), True
+        return ResultsView(selected_date=requested_date, failed=True)
     finally:
         conn.close()
 
@@ -88,9 +142,8 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
     except ValueError:
         return HTMLResponse("Invalid date", status_code=400)
 
-    summaries, selected_date, selected_summary, bets, failed = _load_history(requested_date)
+    view = _load_history(requested_date)
     as_of_date = datetime.now(UTC).date()
-    performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
     return templates.TemplateResponse(
         request,
         "bet_history.html",
@@ -98,13 +151,25 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
-            "daily_summaries": summaries,
-            "selected_date": selected_date,
-            "selected_summary": selected_summary,
-            "daily_bets": bets,
-            "performance_windows": performance_windows,
+            "daily_summaries": view.all_summaries,
+            "selected_date": view.selected_date,
+            "selected_summary": view.selected_summary,
+            "daily_bets": view.bets,
+            # "Current System" windows use only the active regime's bets.
+            "current_windows": build_performance_windows(
+                view.current_summaries, as_of_date=as_of_date
+            ),
+            "current_regime": view.current_regime,
+            "current_regime_started_at": view.current_regime_started_at,
+            "current_bets": sum(row.bets for row in view.current_summaries),
+            # "All Historical" spans every production regime, unchanged.
+            "performance_windows": build_performance_windows(
+                view.all_summaries, as_of_date=as_of_date
+            ),
+            "cohorts": view.cohorts,
+            "has_multiple_regimes": view.has_multiple_regimes,
             "performance_as_of": as_of_date,
-            "bet_history_error": failed,
+            "bet_history_error": view.failed,
             "pct": _pct,
             "units": _units,
         },
@@ -118,17 +183,76 @@ def api_bet_history(date: str | None = Query(default=None)):
     except ValueError:
         return JSONResponse({"error": "invalid date"}, status_code=400)
 
-    summaries, selected_date, selected_summary, bets, failed = _load_history(requested_date)
-    if failed:
+    view = _load_history(requested_date)
+    if view.failed:
         return JSONResponse({"error": "bet history unavailable"}, status_code=503)
 
+    summaries = view.all_summaries
+    selected_date = view.selected_date
+    selected_summary = view.selected_summary
+    bets = view.bets
     as_of_date = datetime.now(UTC).date()
     performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
+    current_windows = build_performance_windows(
+        view.current_summaries, as_of_date=as_of_date
+    )
 
     return JSONResponse(
         {
             "as_of_date": as_of_date.isoformat(),
+            # Existing key retained for compatibility: all production regimes.
             "performance_windows": {key: _period_json(value) for key, value in performance_windows.items()},
+            "current_regime": None
+            if view.current_regime is None
+            else {
+                "regime_key": view.current_regime.regime_key,
+                "label": view.current_regime.label,
+                "manager_policy_version": view.current_regime.manager_policy_version,
+                # Structured lineage, so a consumer never has to parse the key.
+                "agent_config_versions": list(
+                    view.current_regime.agent_config_versions
+                ),
+                "market_policy_version": view.current_regime.market_policy_version,
+                "veto_policy_version": view.current_regime.veto_policy_version,
+                "has_complete_lineage": view.current_regime.has_complete_lineage,
+                "lineage_inconsistent": view.current_regime.is_inconsistent,
+                "started_at": view.current_regime_started_at.isoformat()
+                if view.current_regime_started_at
+                else None,
+            },
+            "current_regime_performance": {
+                key: _period_json(value) for key, value in current_windows.items()
+            },
+            "all_historical_performance": {
+                key: _period_json(value) for key, value in performance_windows.items()
+            },
+            "regimes": [
+                {
+                    "regime_key": c.regime_key,
+                    "label": c.label,
+                    "manager_policy_version": c.manager_policy_version,
+                    "agent_config_versions": list(c.agent_config_versions),
+                    "market_policy_version": c.market_policy_version,
+                    "veto_policy_version": c.veto_policy_version,
+                    "has_complete_lineage": c.has_complete_lineage,
+                    "bets": c.bets,
+                    "settled": c.settled,
+                    "pending": c.pending,
+                    "wins": c.wins,
+                    "losses": c.losses,
+                    "voids": c.voids,
+                    "cancelled": c.cancelled,
+                    "profit_units": str(c.one_unit_profit),
+                    "roi": str(c.roi) if c.roi is not None else None,
+                    "hit_rate": c.hit_rate,
+                    "first_bet_date": c.first_bet_date.isoformat() if c.first_bet_date else None,
+                    "last_bet_date": c.last_bet_date.isoformat() if c.last_bet_date else None,
+                    "odds_sources": list(c.odds_sources),
+                    "is_current": view.current_regime is not None
+                    and c.regime_key == view.current_regime.regime_key,
+                }
+                for c in view.cohorts
+            ],
             "selected_date": selected_date.isoformat() if selected_date else None,
             "selected_summary": None
             if selected_summary is None
@@ -174,6 +298,12 @@ def api_bet_history(date: str | None = Query(default=None)):
                     "result": row.settlement_status,
                     "profit_units": str(row.profit_units) if row.profit_units is not None else None,
                     "settled_at": row.settled_at.isoformat() if row.settled_at else None,
+                    "regime_key": row.regime_key,
+                    "manager_policy_version": row.manager_policy_version,
+                    "agent_config_versions": list(row.agent_config_versions),
+                    "market_policy_version": row.market_policy_version,
+                    "veto_policy_version": row.veto_policy_version,
+                    "price_source_system": row.price_source_system,
                 }
                 for row in bets
             ],
