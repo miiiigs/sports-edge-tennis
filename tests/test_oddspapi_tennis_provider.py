@@ -112,6 +112,7 @@ def test_single_book_filter_keeps_timestamp_book_specific() -> None:
     assert observation.provider_observed_at == datetime(
         2026, 9, 21, 11, 59, tzinfo=UTC
     )
+    assert set(observation.payload["bookmakerOdds"]) == {"bet365"}
 
 
 def test_incomplete_or_inactive_winner_market_is_not_emitted() -> None:
