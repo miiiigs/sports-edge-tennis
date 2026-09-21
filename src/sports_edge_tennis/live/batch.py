@@ -25,8 +25,14 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
 )
 from sports_edge_tennis.live.bootstrap import ensure_pinnapi_bookmaker_mapping
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
-from sports_edge_tennis.live.goalserve import fetch_goalserve_tennis_json
-from sports_edge_tennis.live.goalserve_odds import ingest_goalserve_tennis_odds
+from sports_edge_tennis.live.oddspapi import (
+    ODDSPAPI_PLAN_BOOKMAKERS,
+    ODDSPAPI_SHARP_BOOKMAKER,
+    fetch_oddspapi_tennis_fixtures,
+    fetch_oddspapi_tennis_odds_by_tournaments,
+    parse_oddspapi_tennis_fixture,
+)
+from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
     LiveMvpError,
@@ -247,16 +253,13 @@ def main(
         if provider_authority.odds_mode == LEGACY_ODDS_MODE
         else None
     )
-    goalserve_feed_url = (
-        load_secret("GOALSERVE_TENNIS_FEED_URL")
+    oddspapi_key = (
+        load_secret("ODDSPAPI_API_KEY")
         if provider_authority.odds_mode == TARGET_ODDS_MODE
         else None
     )
-    if (
-        provider_authority.odds_mode == TARGET_ODDS_MODE
-        and not goalserve_feed_url
-    ):
-        _log("BLOCKED_MISSING_GOALSERVE_TENNIS_FEED_URL")
+    if provider_authority.odds_mode == TARGET_ODDS_MODE and not oddspapi_key:
+        _log("BLOCKED_MISSING_ODDSPAPI_API_KEY")
         return 2
     totals = {
         "slates": 0,
@@ -268,9 +271,10 @@ def main(
         "pinnapi_requests": 0,
         "offered_requests": 0,
         "offered_quotes": 0,
-        "goalserve_events": 0,
-        "goalserve_exact": 0,
-        "goalserve_ambiguous": 0,
+        "oddspapi_events": 0,
+        "oddspapi_exact": 0,
+        "oddspapi_ambiguous": 0,
+        "oddspapi_conflict": 0,
         "bets": 0,
         "type_b_value_signals": 0,
         "close_finalized": 0,
@@ -388,6 +392,11 @@ def main(
                 horizon_start=args.start_date,
                 horizon_days=args.days,
                 as_of=market_as_of,
+                source_systems=(
+                    ("SPORTRADAR",)
+                    if provider_authority.data_mode == TARGET_DATA_MODE
+                    else ("API_TENNIS",)
+                ),
             )
             totals["price_candidates"] = len(candidate_match_ids)
             _log(
@@ -459,38 +468,76 @@ def main(
                         _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
                 elif provider_authority.odds_mode == TARGET_ODDS_MODE:
                     try:
-                        goalserve_received_at, goalserve_payload = (
-                            fetch_goalserve_tennis_json(goalserve_feed_url)
+                        window_start = datetime.combine(
+                            args.start_date,
+                            datetime.min.time(),
+                            tzinfo=timezone.utc,
                         )
-                        totals["offered_requests"] = 1
-                        goalserve = ingest_goalserve_tennis_odds(
+                        window_end = window_start + timedelta(days=args.days)
+                        discovery_received_at, discovery_rows = (
+                            fetch_oddspapi_tennis_fixtures(
+                                oddspapi_key,
+                                from_at=window_start,
+                                to_at=window_end,
+                                bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+                            )
+                        )
+                        totals["offered_requests"] += 1
+                        fixture_ids: set[str] = set()
+                        tournament_ids: list[int] = []
+                        for payload in discovery_rows:
+                            try:
+                                envelope = parse_oddspapi_tennis_fixture(payload)
+                            except ValueError:
+                                continue
+                            fixture_ids.add(envelope.fixture_id)
+                            tournament_ids.append(envelope.tournament_id)
+
+                        odds_received_at = discovery_received_at
+                        odds_rows: list[dict[str, Any]] = []
+                        if tournament_ids:
+                            odds_received_at, board_rows = (
+                                fetch_oddspapi_tennis_odds_by_tournaments(
+                                    oddspapi_key,
+                                    tournament_ids=tournament_ids,
+                                    bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
+                                )
+                            )
+                            totals["offered_requests"] += 1
+                            odds_rows = [
+                                row
+                                for row in board_rows
+                                if str(row.get("fixtureId") or "") in fixture_ids
+                            ]
+
+                        oddspapi = ingest_oddspapi_tennis_odds(
                             conn,
-                            payload=goalserve_payload,
-                            received_at=goalserve_received_at,
+                            payload_rows=odds_rows,
+                            received_at=odds_received_at,
                             candidate_match_ids=candidate_match_ids,
                         )
-                        totals["offered_quotes"] = goalserve.normalized_quotes
-                        totals["goalserve_events"] = goalserve.provider_events_seen
-                        totals["goalserve_exact"] = (
-                            goalserve.exact_events + goalserve.existing_events
+                        totals["offered_quotes"] = oddspapi.normalized_quotes
+                        totals["oddspapi_events"] = oddspapi.provider_events_seen
+                        totals["oddspapi_exact"] = (
+                            oddspapi.exact_events + oddspapi.existing_events
                         )
-                        totals["goalserve_ambiguous"] = goalserve.ambiguous_events
-                        market_as_of = max(
-                            market_as_of,
-                            goalserve_received_at,
-                        )
+                        totals["oddspapi_ambiguous"] = oddspapi.ambiguous_events
+                        totals["oddspapi_conflict"] = oddspapi.conflict_events
+                        market_as_of = max(market_as_of, odds_received_at)
                         _log(
                             "OFFERED_ODDS "
-                            f"provider=GOALSERVE_TENNIS "
-                            f"candidates={goalserve.candidate_matches} "
-                            f"events={goalserve.provider_events_seen} "
-                            f"exact={goalserve.exact_events} "
-                            f"existing={goalserve.existing_events} "
-                            f"unmatched={goalserve.unmatched_events} "
-                            f"ambiguous={goalserve.ambiguous_events} "
-                            f"quotes={goalserve.normalized_quotes} "
-                            f"unknown_bookmaker={goalserve.unknown_bookmaker_groups} "
-                            f"unknown_participant={goalserve.unknown_participant_groups}"
+                            f"provider=ODDSPAPI_TENNIS "
+                            f"requests={totals['offered_requests']} "
+                            f"candidates={oddspapi.candidate_matches} "
+                            f"events={oddspapi.provider_events_seen} "
+                            f"exact={oddspapi.exact_events} "
+                            f"existing={oddspapi.existing_events} "
+                            f"unmatched={oddspapi.unmatched_events} "
+                            f"ambiguous={oddspapi.ambiguous_events} "
+                            f"conflict={oddspapi.conflict_events} "
+                            f"quotes={oddspapi.normalized_quotes} "
+                            f"unknown_bookmaker={oddspapi.unknown_bookmaker_groups} "
+                            f"unknown_participant={oddspapi.unknown_participant_groups}"
                         )
                     except TransportError as exc:
                         _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
