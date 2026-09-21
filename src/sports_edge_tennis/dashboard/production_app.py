@@ -5,6 +5,10 @@ from fastapi.responses import HTMLResponse
 from sports_edge_tennis.dashboard.app import app
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
+from sports_edge_tennis.dashboard.model_pick_history import (
+    api_model_pick_results,
+    model_pick_results,
+)
 from sports_edge_tennis.dashboard.opportunity_evidence_routes import api_opportunity_evidence
 from sports_edge_tennis.dashboard.paper_bankroll_routes import api_paper_bankroll
 from sports_edge_tennis.dashboard.pick_lifecycle_routes import api_pick_lifecycle
@@ -16,9 +20,27 @@ app.get(
     name="bet_history",
 )(bet_history)
 app.get(
+    "/value-bet-results",
+    response_class=HTMLResponse,
+    name="value_bet_results",
+)(bet_history)
+app.get(
+    "/model-pick-results",
+    response_class=HTMLResponse,
+    name="model_pick_results",
+)(model_pick_results)
+app.get(
     "/api/dashboard/bet-history",
     name="api_bet_history",
 )(api_bet_history)
+app.get(
+    "/api/dashboard/value-bet-results",
+    name="api_value_bet_results",
+)(api_bet_history)
+app.get(
+    "/api/dashboard/model-pick-results",
+    name="api_model_pick_results",
+)(api_model_pick_results)
 app.get(
     "/api/dashboard/pick-lifecycle",
     name="api_pick_lifecycle",
@@ -42,7 +64,11 @@ app.get(
 
 _required_paths = {
     "/bet-history",
+    "/value-bet-results",
+    "/model-pick-results",
     "/api/dashboard/bet-history",
+    "/api/dashboard/value-bet-results",
+    "/api/dashboard/model-pick-results",
     "/api/dashboard/pick-lifecycle",
     "/api/dashboard/paper-bankroll",
     "/api/dashboard/model-evidence",
