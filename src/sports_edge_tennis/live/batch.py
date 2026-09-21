@@ -28,6 +28,8 @@ from sports_edge_tennis.live.credentials import MissingCredentialError, load_sec
 from sports_edge_tennis.live.oddspapi import (
     ODDSPAPI_PLAN_BOOKMAKERS,
     ODDSPAPI_SHARP_BOOKMAKER,
+    OddspapiRequestBudget,
+    fetch_oddspapi_account,
     fetch_oddspapi_tennis_fixtures,
     fetch_oddspapi_tennis_odds_by_tournaments,
     merge_oddspapi_fixture_odds,
@@ -262,6 +264,20 @@ def main(
     if provider_authority.odds_mode == TARGET_ODDS_MODE and not oddspapi_key:
         _log("BLOCKED_MISSING_ODDSPAPI_API_KEY")
         return 2
+    oddspapi_budget: OddspapiRequestBudget | None = None
+    if provider_authority.odds_mode == TARGET_ODDS_MODE and oddspapi_key:
+        try:
+            oddspapi_account = fetch_oddspapi_account(oddspapi_key)
+        except TransportError as exc:
+            _log(f"BLOCKED_ODDSPAPI_ACCOUNT_UNAVAILABLE kind={exc.kind}")
+            return 2
+        if oddspapi_account.request_limit is None or oddspapi_account.request_count is None:
+            _log("BLOCKED_ODDSPAPI_ACCOUNT_USAGE_UNPARSED")
+            return 2
+        oddspapi_budget = OddspapiRequestBudget(
+            monthly_limit=oddspapi_account.request_limit,
+            monthly_used=oddspapi_account.request_count,
+        )
     totals = {
         "slates": 0,
         "failed_slates": 0,
@@ -481,6 +497,7 @@ def main(
                                 from_at=window_start,
                                 to_at=window_end,
                                 bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+                                budget=oddspapi_budget,
                             )
                         )
                         totals["offered_requests"] += 1
@@ -502,6 +519,7 @@ def main(
                                     oddspapi_key,
                                     tournament_ids=tournament_ids,
                                     bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
+                                    budget=oddspapi_budget,
                                 )
                             )
                             totals["offered_requests"] += 1
