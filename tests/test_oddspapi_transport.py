@@ -76,3 +76,42 @@ def test_transport_errors_never_include_api_key(monkeypatch):
             to_at=datetime(2026, 9, 22, tzinfo=UTC),
         )
     assert "super-secret-key" not in str(exc.value)
+
+
+def test_merge_board_prices_preserves_fixture_discovery_identity():
+    fixture = {
+        "fixtureId": "f1",
+        "sportId": 12,
+        "tournamentId": 44,
+        "participant1Id": 101,
+        "participant1Name": "Player One",
+        "participant2Id": 202,
+        "participant2Name": "Player Two",
+        "startTime": "2026-09-21T13:00:00Z",
+        "externalProviders": {"betradarId": 98765},
+        "hasOdds": True,
+    }
+    # Tournament-board rows are allowed to be price-centric and omit names,
+    # sport, start time, and external provider links.
+    board = {
+        "fixtureId": "f1",
+        "tournamentId": 44,
+        "bookmakerOdds": {"pinnacle+30": {"markets": {}}},
+    }
+    rows = oddspapi.merge_oddspapi_fixture_odds([fixture], [board])
+    assert len(rows) == 1
+    merged = rows[0]
+    assert merged["participant1Name"] == "Player One"
+    assert merged["participant2Name"] == "Player Two"
+    assert merged["sportId"] == 12
+    assert merged["startTime"] == "2026-09-21T13:00:00Z"
+    assert merged["externalProviders"]["betradarId"] == 98765
+    assert "bookmakerOdds" in merged
+
+
+def test_merge_drops_board_rows_outside_discovered_fixture_scope():
+    rows = oddspapi.merge_oddspapi_fixture_odds(
+        [{"fixtureId": "f1"}],
+        [{"fixtureId": "f2", "bookmakerOdds": {}}],
+    )
+    assert rows == []
