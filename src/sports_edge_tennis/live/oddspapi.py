@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import time
 from typing import Any, Mapping, Sequence
 
 import requests
@@ -43,25 +44,30 @@ class OddspapiAccountUsage:
         return max(0, self.request_limit - self.request_count)
 
 
-@dataclass(frozen=True)
+@dataclass
 class OddspapiRequestBudget:
     monthly_limit: int = ODDSPAPI_MONTHLY_REQUEST_LIMIT
     monthly_used: int = 0
     monthly_reserve: int = ODDSPAPI_MONTHLY_REQUEST_RESERVE
+    session_used: int = 0
 
     def ensure_available(self, planned_requests: int = 1) -> None:
         if planned_requests < 0:
             raise ValueError("planned_requests must be non-negative")
         if self.monthly_limit <= 0:
             raise ValueError("monthly_limit must be positive")
-        if self.monthly_used < 0:
-            raise ValueError("monthly_used must be non-negative")
-        available = self.monthly_limit - self.monthly_reserve - self.monthly_used
+        if self.monthly_used < 0 or self.session_used < 0:
+            raise ValueError("request usage must be non-negative")
+        available = self.monthly_limit - self.monthly_reserve - self.monthly_used - self.session_used
         if planned_requests > available:
             raise TransportError(
                 "ODDSPAPI_QUOTA_BUDGET",
                 "oddspapi monthly request budget would be exceeded",
             )
+
+    def consume_attempt(self, attempted_requests: int = 1) -> None:
+        self.ensure_available(attempted_requests)
+        self.session_used += attempted_requests
 
 
 def _utc_now() -> datetime:
@@ -111,8 +117,6 @@ def fetch_oddspapi_tennis_fixtures(
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
-    if budget is not None:
-        budget.ensure_available(1)
     clock = clock or _utc_now
     params = {
         "apiKey": key,
@@ -129,6 +133,7 @@ def fetch_oddspapi_tennis_fixtures(
         params=params,
         timeout=timeout,
         label="oddspapi fixtures",
+        budget=budget,
     )
     received_at = clock()
     rows = _fixture_list(payload)
@@ -151,8 +156,6 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
-    if budget is not None:
-        budget.ensure_available(1)
     clock = clock or _utc_now
     params = {
         "apiKey": key,
@@ -167,6 +170,7 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
         params=params,
         timeout=timeout,
         label="oddspapi tournament odds",
+        budget=budget,
     )
     received_at = clock()
     return received_at, _fixture_list(payload)
@@ -254,7 +258,26 @@ def parse_oddspapi_tennis_fixture(
     )
 
 
-def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str) -> Any:
+def wait_for_oddspapi_cooldown(seconds: float, *, sleeper: callable = time.sleep) -> None:
+    if seconds < 0:
+        raise ValueError("cooldown seconds must be non-negative")
+    if seconds:
+        sleeper(seconds)
+
+
+def _get_json(
+    url: str,
+    *,
+    params: Mapping[str, Any],
+    timeout: float,
+    label: str,
+    budget: OddspapiRequestBudget | None = None,
+) -> Any:
+    if budget is not None:
+        # OddsPapi documents that 4xx/5xx responses can still count once the
+        # endpoint processes a billable request. Counting before the attempt is
+        # intentionally conservative for ambiguous network failures.
+        budget.consume_attempt(1)
     try:
         response = requests.get(url, params=dict(params), timeout=timeout)
     except requests.exceptions.Timeout as exc:
@@ -262,7 +285,11 @@ def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str
     except requests.exceptions.RequestException as exc:
         raise TransportError("NETWORK", f"{label} request failed") from exc
     if response.status_code != 200:
-        raise TransportError(f"HTTP_{response.status_code}", f"{label} returned a non-200 response")
+        raise TransportError(
+            f"HTTP_{response.status_code}",
+            f"{label} returned a non-200 response",
+            details=_safe_oddspapi_error_details(response),
+        )
     try:
         return response.json()
     except ValueError as exc:
@@ -279,6 +306,53 @@ def _fixture_list(payload: Any) -> list[dict[str, Any]]:
         if isinstance(fixtures, list):
             return [dict(row) for row in fixtures if isinstance(row, Mapping)]
     raise TransportError("PARSE", "oddspapi response did not contain fixture rows")
+
+
+def _safe_oddspapi_error_details(response) -> dict[str, Any]:
+    details: dict[str, Any] = {"status_code": response.status_code}
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+    if isinstance(payload, Mapping):
+        safe = _allowlisted_error_payload(payload)
+        if safe:
+            details["provider"] = safe
+        if safe.get("code") is not None:
+            details["provider_code"] = safe["code"]
+        if safe.get("message") is not None:
+            details["provider_message"] = safe["message"]
+        if safe.get("details") is not None:
+            details["provider_details"] = safe["details"]
+        retry_ms = safe.get("retryMs", safe.get("retry_ms"))
+        if retry_ms is not None:
+            details["retry_ms"] = retry_ms
+    return details
+
+
+def _allowlisted_error_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    allowed = {"code", "error", "message", "details", "retryMs", "retry_ms"}
+    safe: dict[str, Any] = {}
+    for key, value in payload.items():
+        key_text = str(key)
+        if key_text not in allowed:
+            continue
+        safe_value = _safe_error_value(value)
+        if safe_value is not None:
+            safe[key_text] = safe_value
+    return safe
+
+
+def _safe_error_value(value: Any) -> Any:
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, Mapping):
+        nested = _allowlisted_error_payload(value)
+        return nested or None
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        nested_values = [_safe_error_value(item) for item in value]
+        return [item for item in nested_values if item is not None]
+    return None
 
 
 def _clean_bookmakers(values: Sequence[str]) -> tuple[str, ...]:
@@ -355,4 +429,5 @@ __all__ = [
     "fetch_oddspapi_tennis_odds_by_tournaments",
     "merge_oddspapi_fixture_odds",
     "parse_oddspapi_tennis_fixture",
+    "wait_for_oddspapi_cooldown",
 ]

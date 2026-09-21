@@ -18,6 +18,7 @@ from sports_edge_tennis.live.oddspapi import (
     fetch_oddspapi_tennis_odds_by_tournaments,
     merge_oddspapi_fixture_odds,
     parse_oddspapi_tennis_fixture,
+    wait_for_oddspapi_cooldown,
 )
 from sports_edge_tennis.live.transport import TransportError
 from sports_edge_tennis.odds.providers.oddspapi_tennis import (
@@ -39,6 +40,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path)
     parser.add_argument("--account-only", action="store_true")
     parser.add_argument("--fixtures-only", action="store_true")
+    parser.add_argument("--odds-only-tournament-ids")
+    parser.add_argument("--cooldown-seconds", type=float, default=2.0)
     args = parser.parse_args(argv)
 
     if args.days < 1 or args.days > 2:
@@ -69,19 +72,20 @@ def main(argv: list[str] | None = None) -> int:
     window_start = datetime.combine(args.start_date, datetime.min.time(), tzinfo=UTC)
     window_end = window_start + timedelta(days=args.days)
 
-    billable_requests = 0
-    fixture_received_at, fixtures = fetch_oddspapi_tennis_fixtures(
-        api_key,
-        from_at=window_start,
-        to_at=window_end,
-        bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
-        budget=budget,
-    )
-    billable_requests += 1
-
+    fixtures: list[dict[str, Any]] = []
     valid_fixtures = []
+    fixture_received_at = datetime.now(UTC)
+    if not args.odds_only_tournament_ids:
+        fixture_received_at, fixtures = fetch_oddspapi_tennis_fixtures(
+            api_key,
+            from_at=window_start,
+            to_at=window_end,
+            bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+            budget=budget,
+        )
+
     parse_failures = 0
-    tournament_ids: list[int] = []
+    tournament_ids: list[int] = _parse_tournament_ids(args.odds_only_tournament_ids)
     bookmaker_fixture_hits = {slug: 0 for slug in ODDSPAPI_PLAN_BOOKMAKERS}
     for payload in fixtures:
         try:
@@ -102,16 +106,22 @@ def main(argv: list[str] | None = None) -> int:
     observed_market_ids: dict[str, int] = {}
     observed_outcome_ids: dict[str, int] = {}
     odds_error_kind = None
+    odds_error_details: dict[str, Any] = {}
     if tournament_ids and not args.fixtures_only:
         try:
+            if fixtures:
+                wait_for_oddspapi_cooldown(args.cooldown_seconds)
             odds_received_at, board_rows = fetch_oddspapi_tennis_odds_by_tournaments(
                 api_key,
                 tournament_ids=tournament_ids,
                 bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
                 budget=budget,
             )
-            billable_requests += 1
-            odds_rows = merge_oddspapi_fixture_odds(fixtures, board_rows)
+            odds_rows = (
+                merge_oddspapi_fixture_odds(fixtures, board_rows)
+                if fixtures
+                else [dict(row) for row in board_rows]
+            )
             for payload in odds_rows:
                 _count_odds_shape(
                     payload,
@@ -122,19 +132,23 @@ def main(argv: list[str] | None = None) -> int:
         except TransportError as exc:
             odds_received_at = datetime.now(UTC)
             odds_error_kind = exc.kind
-            if exc.kind.startswith("HTTP_"):
-                billable_requests += 1
+            odds_error_details = dict(exc.details)
     else:
         odds_received_at = fixture_received_at
 
     account_after = fetch_oddspapi_account(api_key)
+    odds_http_status = odds_error_details.get("status_code")
+    if odds_http_status is None and odds_error_kind and odds_error_kind.startswith("HTTP_"):
+        odds_http_status = _status_from_kind(odds_error_kind)
     report = {
         "generated_at": datetime.now(UTC).isoformat(),
+        "account_request_limit": account_before.request_limit,
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
         "fixture_received_at": fixture_received_at.isoformat(),
         "odds_received_at": odds_received_at.isoformat(),
-        "billable_requests_attempted": billable_requests,
+        "session_billable_requests": budget.session_used,
+        "billable_requests_attempted": budget.session_used,
         "account_request_limit_before": account_before.request_limit,
         "account_request_count_before": account_before.request_count,
         "account_request_count_after": account_after.request_count,
@@ -142,6 +156,11 @@ def main(argv: list[str] | None = None) -> int:
         "valid_fixture_rows": len(valid_fixtures),
         "fixture_parse_failures": parse_failures,
         "unique_tournament_ids": len(set(tournament_ids)),
+        "odds_http_status": odds_http_status,
+        "odds_error_code": odds_error_details.get("provider_code"),
+        "odds_error_message": odds_error_details.get("provider_message"),
+        "odds_error_details": odds_error_details.get("provider_details"),
+        "odds_retry_ms": odds_error_details.get("retry_ms"),
         "odds_rows": len(odds_rows),
         "odds_error_kind": odds_error_kind,
         "bookmaker_fixture_hits": bookmaker_fixture_hits,
@@ -153,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
         "match_winner_books": match_winner_books,
         "observed_market_ids": observed_market_ids,
         "observed_outcome_ids": observed_outcome_ids,
+        "reconciliation_summary": None,
+        "pinnacle_comparison_summary": None,
         "sanitized_fixture_sample": _fixture_sample(valid_fixtures[0]) if valid_fixtures else None,
         "sanitized_odds_sample": _odds_sample(odds_rows[0]) if odds_rows else None,
     }
@@ -170,6 +191,19 @@ def _budget_from_account(account, *, reserve: int) -> OddspapiRequestBudget:
         monthly_used=account.request_count or 0,
         monthly_reserve=max(0, reserve),
     )
+
+
+def _parse_tournament_ids(raw: str | None) -> list[int]:
+    if not raw:
+        return []
+    return [int(value.strip()) for value in raw.split(",") if value.strip()]
+
+
+def _status_from_kind(kind: str) -> int | None:
+    try:
+        return int(kind.removeprefix("HTTP_"))
+    except ValueError:
+        return None
 
 
 def _count_odds_shape(

@@ -28,10 +28,11 @@ class TransportError(RuntimeError):
     credential or a credential-bearing URL.
     """
 
-    def __init__(self, kind: str, message: str):
+    def __init__(self, kind: str, message: str, *, details: dict[str, Any] | None = None):
         super().__init__(message)
         self.kind = kind
         self.message = message
+        self.details = details or {}
 
 
 def _utc_now() -> datetime:

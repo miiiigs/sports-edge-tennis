@@ -101,10 +101,18 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     )
 
     odds_received = datetime(2026, 9, 19, 12, 30, tzinfo=UTC)
+    account_calls = []
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_account",
+        lambda key: account_calls.append(key)
+        or SimpleNamespace(request_limit=5000, request_count=3),
+    )
     discovery_calls = []
 
     def fake_discovery(key, **kwargs):
         discovery_calls.append((key, kwargs))
+        kwargs["budget"].consume_attempt()
         return odds_received, [_oddspapi_row()]
 
     monkeypatch.setattr(
@@ -117,6 +125,9 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
 
     def fake_board(key, **kwargs):
         board_calls.append((key, kwargs))
+        assert kwargs["budget"] is discovery_calls[0][1]["budget"]
+        assert kwargs["budget"].session_used == 1
+        kwargs["budget"].consume_attempt()
         return odds_received, [_oddspapi_row()]
 
     monkeypatch.setattr(
@@ -198,8 +209,11 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     assert live_calls[0]["ingest_fixtures"] is batch.ingest_sportradar_fixture_rows
     assert live_calls[0]["pinnapi_key"] is None
     assert price_calls[0]["source_systems"] == ("SPORTRADAR",)
+    assert account_calls == ["odds-key"]
     assert discovery_calls[0][0] == "odds-key"
     assert discovery_calls[0][1]["bookmakers"] == ("pinnacle+30",)
+    assert discovery_calls[0][1]["budget"].monthly_used == 3
+    assert discovery_calls[0][1]["budget"].session_used == 2
     assert board_calls[0][0] == "odds-key"
     assert board_calls[0][1]["tournament_ids"] == [303]
     assert board_calls[0][1]["bookmakers"] == (
@@ -210,3 +224,175 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     )
     assert ingest_calls[0]["candidate_match_ids"] == (10,)
     assert ingest_calls[0]["received_at"] == odds_received
+
+
+def test_legacy_mode_never_touches_oddspapi_budget_or_account(monkeypatch, tmp_path):
+    authority = SimpleNamespace(
+        data_mode=batch.LEGACY_DATA_MODE,
+        odds_mode=batch.LEGACY_ODDS_MODE,
+    )
+    monkeypatch.setattr(batch, "load_provider_authority", lambda env: authority)
+    monkeypatch.setattr(batch, "assert_cutover_ready", lambda conn, env: authority)
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: {
+            "API_TENNIS_API_KEY": "legacy-api-tennis",
+            "PINNAPI_KEY": "legacy-pinnapi",
+            "ODDSPAPI_API_KEY": "odds-key",
+        }.get(name),
+    )
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    monkeypatch.setattr(batch, "run_live_mvp", lambda **kwargs: _live_result())
+    monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda *a, **k: ())
+    monkeypatch.setattr(
+        batch,
+        "load_price_scanner_candidate_match_ids",
+        lambda *a, **k: (),
+    )
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_account",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("OddsPapi account called in legacy mode")
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_tennis_fixtures",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("OddsPapi fixtures called in legacy mode")
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_tennis_odds_by_tournaments",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("OddsPapi odds called in legacy mode")
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "ensure_market_policy_version_v1",
+        lambda conn: SimpleNamespace(
+            market_policy_version_id=77,
+            odds_max_staleness_minutes=15,
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "evaluate_and_persist_market_slate",
+        lambda *a, **k: SimpleNamespace(
+            status="PERSISTED",
+            new_decision_count=1,
+            qualified_bet_count=0,
+        ),
+    )
+    monkeypatch.setattr(batch, "_load_market_reason_counts", lambda *a, **k: ())
+    monkeypatch.setattr(batch, "activation_from_env", lambda: None)
+
+    rc = batch.main(
+        [
+            "--start-date",
+            "2026-09-19",
+            "--days",
+            "1",
+            "--dsn",
+            "postgresql://example",
+            "--artifacts-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert rc == 0
+
+
+def test_target_mode_budget_blocks_second_billable_call(monkeypatch, tmp_path):
+    authority = SimpleNamespace(
+        data_mode=batch.TARGET_DATA_MODE,
+        odds_mode=batch.TARGET_ODDS_MODE,
+    )
+    monkeypatch.setattr(batch, "load_provider_authority", lambda env: authority)
+    monkeypatch.setattr(batch, "assert_cutover_ready", lambda conn, env: authority)
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(
+        batch,
+        "load_secret",
+        lambda name: {
+            "SPORTRADAR_TENNIS_API_KEY": "sr-key",
+            "ODDSPAPI_API_KEY": "odds-key",
+        }.get(name),
+    )
+    monkeypatch.setattr(batch, "run_live_mvp", lambda **kwargs: _live_result())
+    monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda *a, **k: ())
+    monkeypatch.setattr(
+        batch,
+        "load_price_scanner_candidate_match_ids",
+        lambda *a, **k: (10,),
+    )
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_account",
+        lambda key: SimpleNamespace(request_limit=5000, request_count=4499),
+    )
+    odds_received = datetime(2026, 9, 19, 12, 30, tzinfo=UTC)
+    board_calls = []
+
+    def fake_discovery(key, **kwargs):
+        kwargs["budget"].consume_attempt()
+        return odds_received, [_oddspapi_row()]
+
+    def fake_board(key, **kwargs):
+        kwargs["budget"].consume_attempt()
+        board_calls.append((key, kwargs))
+        return odds_received, [_oddspapi_row()]
+
+    monkeypatch.setattr(batch, "fetch_oddspapi_tennis_fixtures", fake_discovery)
+    monkeypatch.setattr(batch, "fetch_oddspapi_tennis_odds_by_tournaments", fake_board)
+    monkeypatch.setattr(
+        batch,
+        "ensure_market_policy_version_v1",
+        lambda conn: SimpleNamespace(
+            market_policy_version_id=77,
+            odds_max_staleness_minutes=15,
+        ),
+    )
+    monkeypatch.setattr(
+        batch,
+        "evaluate_and_persist_market_slate",
+        lambda *a, **k: SimpleNamespace(
+            status="PERSISTED",
+            new_decision_count=1,
+            qualified_bet_count=0,
+        ),
+    )
+    monkeypatch.setattr(batch, "_load_market_reason_counts", lambda *a, **k: ())
+    monkeypatch.setattr(batch, "scan_type_b_value_signals", lambda *a, **k: ())
+    monkeypatch.setattr(
+        batch,
+        "persist_type_b_scan",
+        lambda *a, **k: SimpleNamespace(
+            scan_run_id=1,
+            inserted_signal_count=0,
+            persisted_signal_count=0,
+        ),
+    )
+    monkeypatch.setattr(batch, "consecutive_zero_signal_days", lambda *a, **k: 0)
+    monkeypatch.setattr(batch, "activation_from_env", lambda: None)
+
+    rc = batch.main(
+        [
+            "--start-date",
+            "2026-09-19",
+            "--days",
+            "1",
+            "--dsn",
+            "postgresql://example",
+            "--artifacts-dir",
+            str(tmp_path),
+        ]
+    )
+
+    assert rc == 0
+    assert board_calls == []

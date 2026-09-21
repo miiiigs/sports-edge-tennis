@@ -103,6 +103,82 @@ def test_request_budget_fails_closed_before_billable_call(monkeypatch):
     assert exc.value.kind == "ODDSPAPI_QUOTA_BUDGET"
 
 
+def test_request_budget_is_cumulative_across_sequential_calls(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append(params)
+        return _Response(200, [])
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    budget = oddspapi.OddspapiRequestBudget(
+        monthly_limit=5000,
+        monthly_used=4499,
+        monthly_reserve=500,
+    )
+    oddspapi.fetch_oddspapi_tennis_fixtures(
+        "secret-key",
+        from_at=datetime(2026, 9, 21, tzinfo=UTC),
+        to_at=datetime(2026, 9, 22, tzinfo=UTC),
+        budget=budget,
+    )
+    assert budget.session_used == 1
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
+            "secret-key",
+            tournament_ids=(1,),
+            budget=budget,
+        )
+    assert exc.value.kind == "ODDSPAPI_QUOTA_BUDGET"
+    assert len(calls) == 1
+
+
+def test_request_budget_allows_normal_two_call_session(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(200, []),
+    )
+    budget = oddspapi.OddspapiRequestBudget(
+        monthly_limit=5000,
+        monthly_used=3,
+        monthly_reserve=500,
+    )
+    oddspapi.fetch_oddspapi_tennis_fixtures(
+        "secret-key",
+        from_at=datetime(2026, 9, 21, tzinfo=UTC),
+        to_at=datetime(2026, 9, 22, tzinfo=UTC),
+        budget=budget,
+    )
+    oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
+        "secret-key",
+        tournament_ids=(1,),
+        budget=budget,
+    )
+    assert budget.session_used == 2
+
+
+def test_request_budget_counts_processed_http_error_attempt(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(403, {"code": "FORBIDDEN"}),
+    )
+    budget = oddspapi.OddspapiRequestBudget(
+        monthly_limit=5000,
+        monthly_used=3,
+        monthly_reserve=500,
+    )
+    with pytest.raises(TransportError):
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "secret-key",
+            from_at=datetime(2026, 9, 21, tzinfo=UTC),
+            to_at=datetime(2026, 9, 22, tzinfo=UTC),
+            budget=budget,
+        )
+    assert budget.session_used == 1
+
+
 def test_429_has_stable_secret_safe_classifier(monkeypatch):
     monkeypatch.setattr(
         oddspapi.requests,
@@ -117,6 +193,48 @@ def test_429_has_stable_secret_safe_classifier(monkeypatch):
         )
     assert exc.value.kind == "HTTP_429"
     assert "super-secret-key" not in str(exc.value)
+
+
+def test_http_error_details_are_allowlisted_and_secret_safe(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(
+            403,
+            {
+                "code": "BOOKMAKER_NOT_AVAILABLE",
+                "message": "Bookmaker is not enabled",
+                "details": {"message": "Use a subscribed bookmaker", "apiKey": "nested-secret"},
+                "retryMs": 1000,
+                "apiKey": "super-secret-key",
+                "url": "https://api.oddspapi.io/v4/odds-by-tournaments?apiKey=super-secret-key",
+                "headers": {"Authorization": "super-secret-key"},
+            },
+        ),
+    )
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
+            "super-secret-key",
+            tournament_ids=(1,),
+        )
+    assert exc.value.kind == "HTTP_403"
+    assert exc.value.details["status_code"] == 403
+    assert exc.value.details["provider_code"] == "BOOKMAKER_NOT_AVAILABLE"
+    assert exc.value.details["provider_message"] == "Bookmaker is not enabled"
+    assert exc.value.details["provider_details"] == {
+        "message": "Use a subscribed bookmaker"
+    }
+    assert exc.value.details["retry_ms"] == 1000
+    assert "apiKey" not in exc.value.details["provider"]
+    assert "url" not in exc.value.details["provider"]
+    assert "super-secret-key" not in str(exc.value)
+    assert "super-secret-key" not in repr(exc.value.details)
+
+
+def test_cooldown_helper_uses_injected_sleeper():
+    sleeps = []
+    oddspapi.wait_for_oddspapi_cooldown(1.25, sleeper=sleeps.append)
+    assert sleeps == [1.25]
 
 
 def test_transport_errors_never_include_api_key(monkeypatch):
