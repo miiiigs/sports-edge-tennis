@@ -9,19 +9,19 @@ import psycopg
 LEGACY_DATA_MODE = "API_TENNIS"
 TARGET_DATA_MODE = "SPORTRADAR_V3"
 LEGACY_ODDS_MODE = "LEGACY_SPLIT"
-TARGET_ODDS_MODE = "GOALSERVE_TENNIS"
+TARGET_ODDS_MODE = "ODDSPAPI_TENNIS"
 
 DATA_MODE_ENV = "TENNIS_DATA_PROVIDER_MODE"
 ODDS_MODE_ENV = "TENNIS_ODDS_PROVIDER_MODE"
 CUTOVER_AUTH_ENV = "TENNIS_PROVIDER_CUTOVER_AUTHORIZATION"
-CUTOVER_AUTH_VALUE = "SPORTRADAR_GOALSERVE_V1"
+CUTOVER_AUTH_VALUE = "SPORTRADAR_ODDSPAPI_V1"
 
 SPORTRADAR_REQUIRED_ENV = (
     "SPORTRADAR_TENNIS_API_KEY",
     "SPORTRADAR_TENNIS_ACCESS_LEVEL",
     "SPORTRADAR_TENNIS_LANGUAGE",
 )
-GOALSERVE_REQUIRED_ENV = ("GOALSERVE_TENNIS_FEED_URL",)
+ODDSPAPI_REQUIRED_ENV = ("ODDSPAPI_API_KEY",)
 MANAGER_POLICY_ENV = "TENNIS_MANAGER_POLICY_VERSION"
 TARGET_RUNTIME_READY = False
 
@@ -85,7 +85,7 @@ def evaluate_cutover_readiness(
     if str(env.get(MANAGER_POLICY_ENV) or "v1").strip().lower() != "v2":
         blockers.append("STRICT_MANAGER_V2_NOT_SELECTED")
 
-    for name in (*SPORTRADAR_REQUIRED_ENV, *GOALSERVE_REQUIRED_ENV):
+    for name in (*SPORTRADAR_REQUIRED_ENV, *ODDSPAPI_REQUIRED_ENV):
         if not str(env.get(name) or "").strip():
             blockers.append(f"MISSING_ENV:{name}")
 
@@ -98,15 +98,15 @@ def evaluate_cutover_readiness(
     if not _historical_corpus_present(conn):
         blockers.append("HISTORICAL_CORPUS_EMPTY")
 
-    sharp_mapping, offered_mapping = _goalserve_mapping_state(conn)
+    sharp_mapping, offered_mapping = _oddspapi_mapping_state(conn)
     if not sharp_mapping:
-        blockers.append("GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED")
+        blockers.append("ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED")
     if not offered_mapping:
-        blockers.append("GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED")
+        blockers.append("ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED")
 
-    # The adapters and schema can be prepared before the account payload exists,
-    # but production authority must remain locked until the actual Goalserve
-    # feed has been observed and its bookmaker identity mapping is persisted.
+    # The adapters and schema can be prepared before cutover, but production
+    # authority remains locked until the purchased OddsPapi feed has been
+    # shadow-validated and its bookmaker identity mappings are persisted.
     return CutoverReadiness(
         authority=authority,
         ready=not blockers,
@@ -183,7 +183,7 @@ def _historical_corpus_present(conn: psycopg.Connection) -> bool:
     return bool(row and int(row[0]) > 0 and int(row[1]) > 0)
 
 
-def _goalserve_mapping_state(
+def _oddspapi_mapping_state(
     conn: psycopg.Connection,
 ) -> tuple[bool, bool]:
     row = conn.execute(
@@ -194,7 +194,7 @@ def _goalserve_mapping_state(
                 bookmaker_code,
                 normalization_class
             FROM provider_bookmaker_mappings
-            WHERE provider_code = 'GOALSERVE_TENNIS'
+            WHERE provider_code = 'ODDSPAPI'
             ORDER BY
                 provider_bookmaker_key,
                 effective_from DESC,
@@ -222,7 +222,7 @@ __all__ = [
     "CUTOVER_AUTH_VALUE",
     "CutoverReadiness",
     "DATA_MODE_ENV",
-    "GOALSERVE_REQUIRED_ENV",
+    "ODDSPAPI_REQUIRED_ENV",
     "LEGACY_DATA_MODE",
     "LEGACY_ODDS_MODE",
     "MANAGER_POLICY_ENV",

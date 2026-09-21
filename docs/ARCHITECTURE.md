@@ -54,12 +54,12 @@ The provider cutover is also explicit and paired:
 
 ```text
 legacy: API_TENNIS + LEGACY_SPLIT
-target: SPORTRADAR_V3 + GOALSERVE_TENNIS
+target: SPORTRADAR_V3 + ODDSPAPI_TENNIS
 ```
 
-A mixed state is invalid. Target activation requires strict Manager v2, the target provider credentials, verified Goalserve SHARP/PINNACLE and OFFERED mappings, the canonical schema/history corpus, and an explicit cutover authorization. Until those gates pass, production remains on legacy authority.
+A mixed state is invalid. Target activation requires strict Manager v2, the target provider credentials, verified OddsPapi SHARP/PINNACLE and OFFERED mappings, the canonical schema/history corpus, a successful read-only shadow comparison, and an explicit cutover authorization. Until those gates pass, production remains on legacy authority.
 
-Cross-provider identity is never resolved by creating parallel canonical matches. Sportradar and Goalserve provider IDs are reconciled to the existing canonical player/match universe first. Ambiguous identity or multiple candidate matches fail closed. Stable provider IDs are appended only after exact reconciliation.
+Cross-provider identity is never resolved by creating parallel canonical matches. OddsPapi fixture IDs are reconciled to the existing canonical player/match universe first, preferring OddsPapi `externalProviders.betradarId` against persisted Sportradar event IDs and falling back only to deterministic participant/time matching. Ambiguous identity or multiple candidate matches fail closed. Stable provider IDs are appended only after exact reconciliation.
 ## T-ED0 contract lock
 
 - Sports Edge Tennis remains a dedicated repository, database, runtime, deployment, and
