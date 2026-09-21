@@ -7,9 +7,10 @@
   <h1 class="page-title">Performance</h1>
   <p class="page-subtitle">How well the models predict, and what the market says about our prices.</p>
   <p class="page-note">
-    This page measures <strong>prediction quality</strong>.
-    It does not tell us whether the system makes money at available odds —
-    that is on <a href="/bet-history">Results</a>.
+    This page measures <strong>prediction quality</strong>, which is separate from
+    whether the system makes money at available odds. For realised production picks,
+    see <a href="/model-pick-results">Model Picks Results</a>. Betting profitability is on
+    <a href="/value-bet-results">Value Bets Results</a>.
   </p>
 </header>
 
@@ -18,8 +19,8 @@
   <p class="section-note">
     {% if current_regime %}
     Production is currently running <strong>{{ current_regime.label }}</strong>. Its realised
-    betting record — only bets this system actually produced — is on
-    <a href="/bet-history">Results</a> under "Current system".
+    model W/L record is on <a href="/model-pick-results">Model Picks Results</a>.
+    Its qualified betting record is on <a href="/value-bet-results">Value Bets Results</a>.
     {% else %}
     No production system has generated bets yet.
     {% endif %}

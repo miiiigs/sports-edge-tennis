@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Model Picks Results — Sports Edge Tennis{% endblock %}
+{% set active_nav = 'model_results' %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Model Picks Results</h1>
+  <p class="page-subtitle">How often the Manager's selected player actually won.</p>
+  <p class="page-note">
+    This ignores betting price and value. One model pick is counted per sporting match,
+    using the first production Manager consensus. If that same pick also qualified as a
+    Value Bet, it is still included here and counts only once.
+  </p>
+</header>
+
+{% if model_pick_history_error %}
+<section class="empty-state is-error" role="alert">
+  <h2 class="empty-title">Model pick results are temporarily unavailable</h2>
+  <p class="empty-body">The read-only model-pick ledger could not be loaded. Model execution is unaffected.</p>
+</section>
+
+{% elif not daily_summaries %}
+<section class="empty-state">
+  <h2 class="empty-title">No model picks to score yet</h2>
+  <p class="empty-body">Results appear here once production Manager picks have completed matches.</p>
+</section>
+
+{% else %}
+<section class="section" aria-label="Current model system performance" style="margin-top: 0;">
+  <h2 class="section-title">Current model system</h2>
+  <p class="section-note">
+    {% if current_regime and current_regime.is_inconsistent %}
+    The latest production run did not record one consistent model configuration, so no
+    current-system record is shown rather than mixing different systems.
+    {% elif current_regime and not current_regime.has_complete_lineage %}
+    The latest production run does not have enough persisted model lineage to claim an
+    exact current-system record.
+    {% elif current_regime %}
+    Only picks produced by the exact Manager + Agent configuration running now
+    ({{ current_regime.label }}){% if current_regime_started_at %}, starting
+    {{ current_regime_started_at.strftime('%d %b %Y') }}{% endif %}.
+    Market price, Market policy and Veto do not affect this model-only W/L record.
+    {% else %}
+    No production model regime has generated picks yet.
+    {% endif %}
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-value">{{ current_picks }}</span><span class="stat-label">Picks</span></div>
+    <div class="stat"><span class="stat-value">{{ current_windows.all_time.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ current_windows.all_time.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ pct(current_windows.all_time.hit_rate) }}</span><span class="stat-label">Win rate</span></div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 14px;">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Picks</th>
+          <th scope="col">Scored</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Void</th>
+          <th scope="col">Win rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set periods = [
+          ('Today', current_windows.today),
+          ('Last 7 days', current_windows.last_7_days),
+          ('Last 30 days', current_windows.last_30_days),
+          ('Since this model system started', current_windows.all_time)
+        ] %}
+        {% for label, period in periods %}
+        <tr>
+          <th scope="row">{{ label }}</th>
+          <td class="num">{{ period.picks }}</td>
+          <td class="num">{{ period.scored }}</td>
+          <td class="num">{{ period.wins }}</td>
+          <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.pending }}</td>
+          <td class="num">{{ period.voids }}</td>
+          <td class="num">{{ pct(period.hit_rate) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" aria-label="All historical model picks">
+  <h2 class="section-title">All historical model picks</h2>
+  <p class="section-note">
+    Every first production Manager consensus per sporting match across all model-system
+    versions. This is prediction accuracy only. No odds, units or ROI are applied.
+  </p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Picks</th>
+          <th scope="col">Scored</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Void</th>
+          <th scope="col">Win rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set periods = [
+          ('Today', performance_windows.today),
+          ('Last 7 days', performance_windows.last_7_days),
+          ('Last 30 days', performance_windows.last_30_days),
+          ('All time', performance_windows.all_time)
+        ] %}
+        {% for label, period in periods %}
+        <tr>
+          <th scope="row">{{ label }}</th>
+          <td class="num">{{ period.picks }}</td>
+          <td class="num">{{ period.scored }}</td>
+          <td class="num">{{ period.wins }}</td>
+          <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.pending }}</td>
+          <td class="num">{{ period.voids }}</td>
+          <td class="num">{{ pct(period.hit_rate) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if selected_summary %}
+<section class="section" aria-label="Selected model-pick day">
+  <h2 class="section-title">{{ selected_date.strftime('%a %d %b %Y') }}</h2>
+  <p class="section-note">Every first model pick scheduled for this UTC match day.</p>
+
+  <div class="stat-grid" style="margin-bottom: 14px;">
+    <div class="stat"><span class="stat-value">{{ selected_summary.picks }}</span><span class="stat-label">Picks</span></div>
+    <div class="stat"><span class="stat-value">{{ selected_summary.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ selected_summary.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ pct(selected_summary.hit_rate) }}</span><span class="stat-label">Win rate</span></div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Picked</th>
+          <th scope="col">Model pick</th>
+          <th scope="col">Opponent / event</th>
+          <th scope="col">Model probability</th>
+          <th scope="col">Result</th>
+          <th scope="col">Type</th>
+          <th scope="col">System</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pick in daily_picks %}
+        <tr>
+          <td class="num">{{ pick.picked_at.strftime('%H:%M UTC') }}</td>
+          <th scope="row" class="wrap">{{ pick.selection or '—' }}</th>
+          <td class="wrap">
+            {{ pick.player_1 or 'Player 1' }} vs {{ pick.player_2 or 'Player 2' }}<br>
+            <span class="stat-note">{{ pick.tournament or 'Tournament unavailable' }}{% if pick.match_start_at %} · {{ pick.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
+          </td>
+          <td class="num">{% if pick.consensus_probability is not none %}{{ pct(pick.consensus_probability) }}{% else %}—{% endif %}</td>
+          <td>
+            <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.result_status }}</span>
+          </td>
+          <td>
+            {% if pick.is_value_bet %}
+            <span class="badge badge-value">VALUE BET</span>
+            {% else %}
+            <span class="badge badge-model">MODEL PICK</span>
+            {% endif %}
+          </td>
+          <td class="wrap"><span class="stat-note">{{ 'Manager ' ~ pick.manager_policy_version if pick.manager_policy_version else 'Legacy model' }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if has_multiple_regimes %}
+<details class="no-bet-disclosure section" aria-label="Model performance by system version">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy">
+      <span class="no-bet-toggle-title">Show model performance by system version</span>
+      <span class="no-bet-toggle-subtitle">{{ cohorts|length }} model configurations</span>
+    </span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="no-bet-panel">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th scope="col">System</th>
+            <th scope="col">Period</th>
+            <th scope="col">Picks</th>
+            <th scope="col">W–L</th>
+            <th scope="col">Win rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cohort in cohorts %}
+          <tr>
+            <th scope="row" class="wrap">
+              {{ cohort.label }}
+              {% if current_regime and cohort.regime_key == current_regime.regime_key %}
+              <span class="badge badge-value" style="margin-left: 6px;">CURRENT</span>
+              {% endif %}
+            </th>
+            <td class="wrap">{{ cohort.period_text }}</td>
+            <td class="num">{{ cohort.picks }}</td>
+            <td class="num">{{ cohort.wins }}–{{ cohort.losses }}</td>
+            <td class="num">{{ pct(cohort.hit_rate) }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</details>
+{% endif %}
+
+<section class="section" aria-label="Daily model-pick results history">
+  <h2 class="section-title">Daily model-pick results</h2>
+  <p class="section-note">Select a scheduled match day to inspect the model picks behind the W/L record.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Picks</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Void</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Win rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in daily_summaries %}
+        <tr>
+          <th scope="row"><a href="/model-pick-results?date={{ day.decision_date.isoformat() }}">{{ day.decision_date.strftime('%a %d %b %Y') }}</a></th>
+          <td class="num">{{ day.picks }}</td>
+          <td class="num">{{ day.wins }}</td>
+          <td class="num">{{ day.losses }}</td>
+          <td class="num">{{ day.voids }}</td>
+          <td class="num">{{ day.pending }}</td>
+          <td class="num">{{ pct(day.hit_rate) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

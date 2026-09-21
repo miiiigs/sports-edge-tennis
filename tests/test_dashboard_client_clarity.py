@@ -49,7 +49,8 @@ def test_client_navigation_uses_question_oriented_labels(monkeypatch):
     # Primary navigation is understandable without knowing Sports Edge internals.
     assert ">Today<" in response.text
     assert ">Value<" in response.text
-    assert ">Results<" in response.text
+    assert ">Model Picks<" in response.text
+    assert ">Value Bets<" in response.text
     assert ">Performance<" in response.text
     # Operational views stay out of the client navigation.
     assert ">Run History<" not in response.text

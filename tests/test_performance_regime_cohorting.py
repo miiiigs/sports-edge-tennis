@@ -20,6 +20,10 @@ from sports_edge_tennis.dashboard.daily_bets import (
     load_daily_bet_summaries,
     load_daily_bets,
 )
+from sports_edge_tennis.dashboard.model_pick_history import (
+    load_daily_model_pick_summaries,
+    load_daily_model_picks,
+)
 from sports_edge_tennis.manager import (
     ensure_manager_policy_version_v1,
     evaluate_and_persist_manager_consensus,
@@ -35,6 +39,8 @@ from sports_edge_tennis.performance.regimes import (
     RegimeCohort,
     RegimeFingerprint,
     current_regime_started_at,
+    load_model_regime_cohorts,
+    resolve_current_model_regime,
     is_complete_regime_key,
     load_regime_cohorts,
     regime_label_for,
@@ -1332,3 +1338,214 @@ def test_staking_version_does_not_split_one_unit_roi_cohorts(
     assert cohorts[0].bets == 2
     # Both one-unit wins land in the same ROI, which is what staking cannot move.
     assert cohorts[0].one_unit_profit == Decimal("2.00")
+
+
+# ----------------------------------------------------- model-pick result truth
+
+
+def _seed_match_result(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    winner_side: int | None,
+    outcome_status: str = "COMPLETED",
+) -> None:
+    start = _val(
+        conn,
+        "SELECT match_start_at FROM match_versions WHERE match_id = %s "
+        "ORDER BY as_of DESC, match_version_id DESC LIMIT 1",
+        (match_id,),
+    )
+    observed = start + timedelta(hours=3)
+    conn.execute(
+        """
+        INSERT INTO match_result_observations (
+            match_id, outcome_status, winner_side, source_observed_at, as_of
+        )
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (match_id, outcome_status, winner_side, observed, observed),
+    )
+
+
+def _seed_model_pick_only(
+    conn: psycopg.Connection,
+    *,
+    label: str,
+    match_day: date,
+    policy_version: str = "v1",
+    agent_config_versions: tuple[str, str, str] = DEFAULT_AGENT_CONFIGS,
+) -> int:
+    start = datetime(
+        match_day.year, match_day.month, match_day.day, 12, 0, tzinfo=timezone.utc
+    )
+    as_of = start - timedelta(hours=4)
+    match_id = _seed_match(conn, label=label, start=start)
+    run_id = _seed_run(
+        conn,
+        match_id=match_id,
+        as_of=as_of,
+        agent_config_versions=agent_config_versions,
+    )
+    outcome = evaluate_and_persist_manager_consensus(
+        conn,
+        prediction_run_id=run_id,
+        manager_policy_version_id=_policy_id(conn, policy_version),
+    )
+    assert outcome.status == "PERSISTED"
+    return match_id
+
+
+def test_model_pick_results_include_model_only_and_value_bet_picks(
+    db: psycopg.Connection,
+) -> None:
+    """A Value Bet is still a Model Pick, but price is irrelevant to model W/L."""
+    day = date(2026, 9, 12)
+
+    decision_id = _seed_bet(
+        db,
+        label="ValuePick",
+        policy_version="v1",
+        match_day=day,
+        price="2.00",
+        settlement="WON",
+    )
+    value_match_id = int(
+        _val(db, "SELECT match_id FROM decisions WHERE decision_id = %s", (decision_id,))
+    )
+    _seed_match_result(db, match_id=value_match_id, winner_side=1)
+
+    model_only_match_id = _seed_model_pick_only(
+        db,
+        label="ModelOnly",
+        match_day=day,
+    )
+    _seed_match_result(db, match_id=model_only_match_id, winner_side=2)
+
+    model_summary = load_daily_model_pick_summaries(db)
+    assert sum(row.picks for row in model_summary) == 2
+    assert sum(row.wins for row in model_summary) == 1
+    assert sum(row.losses for row in model_summary) == 1
+    assert sum(row.scored for row in model_summary) == 2
+
+    # The betting ledger remains the strict subset: only the actual Value Bet.
+    value_summary = load_daily_bet_summaries(db)
+    assert sum(row.bets for row in value_summary) == 1
+
+    rows = load_daily_model_picks(db, decision_date=day)
+    assert len(rows) == 2
+    by_name = {row.selection: row for row in rows}
+    assert by_name["ValuePick One"].is_value_bet is True
+    assert by_name["ValuePick One"].result_status == "WON"
+    assert by_name["ModelOnly One"].is_value_bet is False
+    assert by_name["ModelOnly One"].result_status == "LOST"
+
+
+def test_model_pick_regime_does_not_split_when_only_market_policy_changes(
+    db: psycopg.Connection,
+) -> None:
+    """Market policy changes betting qualification, not the model's own W/L identity."""
+    first_id = _seed_bet(
+        db,
+        label="MarketOne",
+        policy_version="v1",
+        match_day=date(2026, 9, 13),
+        price="2.00",
+        settlement="WON",
+        market_policy_version="v1",
+    )
+    second_id = _seed_bet(
+        db,
+        label="MarketTwo",
+        policy_version="v1",
+        match_day=date(2026, 9, 14),
+        price="1.90",
+        settlement="LOST",
+        market_policy_version="v2",
+    )
+    for decision_id, winner in ((first_id, 1), (second_id, 2)):
+        match_id = int(
+            _val(db, "SELECT match_id FROM decisions WHERE decision_id = %s", (decision_id,))
+        )
+        _seed_match_result(db, match_id=match_id, winner_side=winner)
+
+    model_cohorts = load_model_regime_cohorts(db)
+    assert len(model_cohorts) == 1
+    assert model_cohorts[0].picks == 2
+
+    # The value-bet accounting correctly sees two betting regimes.
+    assert len(load_regime_cohorts(db)) == 2
+
+
+def test_model_pick_regime_splits_when_agent_configuration_changes(
+    db: psycopg.Connection,
+) -> None:
+    old_agents = ("a1-base", "a2-base", "a3-base")
+    new_agents = ("a1-base", "a2-retrained", "a3-base")
+
+    old_id = _seed_bet(
+        db,
+        label="ModelOld",
+        policy_version="v1",
+        match_day=date(2026, 9, 15),
+        price="2.00",
+        settlement="WON",
+        agent_config_versions=old_agents,
+    )
+    new_id = _seed_bet(
+        db,
+        label="ModelNew",
+        policy_version="v1",
+        match_day=date(2026, 9, 16),
+        price="1.80",
+        settlement="LOST",
+        agent_config_versions=new_agents,
+    )
+    for decision_id, winner in ((old_id, 1), (new_id, 2)):
+        match_id = int(
+            _val(db, "SELECT match_id FROM decisions WHERE decision_id = %s", (decision_id,))
+        )
+        _seed_match_result(db, match_id=match_id, winner_side=winner)
+
+    cohorts = load_model_regime_cohorts(db)
+    assert len(cohorts) == 2
+    old = next(c for c in cohorts if c.agent_config_versions == old_agents)
+    new = next(c for c in cohorts if c.agent_config_versions == new_agents)
+    assert old.regime_key != new.regime_key
+
+    current = resolve_current_model_regime(db)
+    assert current is not None
+    assert current.regime_key == new.regime_key
+
+    current_rows = load_daily_model_pick_summaries(
+        db, model_regime_key=current.regime_key
+    )
+    assert sum(row.picks for row in current_rows) == 1
+    assert sum(row.losses for row in current_rows) == 1
+
+
+def test_model_pick_results_count_first_consensus_per_match_once(
+    db: psycopg.Connection,
+) -> None:
+    day = date(2026, 9, 17)
+    match_id = _seed_model_pick_only(db, label="RepeatPick", match_day=day)
+
+    # A later hourly production run reaches the same consensus on the same match.
+    start = datetime(2026, 9, 17, 12, 0, tzinfo=timezone.utc)
+    later_run = _seed_run(
+        db,
+        match_id=match_id,
+        as_of=start - timedelta(hours=3),
+        agent_config_versions=DEFAULT_AGENT_CONFIGS,
+    )
+    outcome = evaluate_and_persist_manager_consensus(
+        db,
+        prediction_run_id=later_run,
+        manager_policy_version_id=_policy_id(db, "v1"),
+    )
+    assert outcome.status == "PERSISTED"
+    _seed_match_result(db, match_id=match_id, winner_side=1)
+
+    summaries = load_daily_model_pick_summaries(db)
+    assert sum(row.picks for row in summaries) == 1
+    assert sum(row.wins for row in summaries) == 1
