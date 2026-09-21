@@ -13,11 +13,14 @@ from sports_edge_tennis.live.oddspapi import (
     ODDSPAPI_PLAN_BOOKMAKERS,
     ODDSPAPI_SHARP_BOOKMAKER,
     OddspapiRequestBudget,
+    build_oddspapi_tournament_odds_params,
     fetch_oddspapi_account,
+    fetch_oddspapi_tennis_fixture_odds,
     fetch_oddspapi_tennis_fixtures,
     fetch_oddspapi_tennis_odds_by_tournaments,
     merge_oddspapi_fixture_odds,
     parse_oddspapi_tennis_fixture,
+    sanitized_request_shape,
     wait_for_oddspapi_cooldown,
 )
 from sports_edge_tennis.live.transport import TransportError
@@ -41,6 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--account-only", action="store_true")
     parser.add_argument("--fixtures-only", action="store_true")
     parser.add_argument("--odds-only-tournament-ids")
+    parser.add_argument("--minimal-bulk-control-tournament-id", type=int)
+    parser.add_argument("--fallback-fixture-id")
     parser.add_argument("--cooldown-seconds", type=float, default=2.0)
     args = parser.parse_args(argv)
 
@@ -71,6 +76,16 @@ def main(argv: list[str] | None = None) -> int:
     budget = _budget_from_account(account_before, reserve=int(os.environ.get("ODDSPAPI_MONTHLY_RESERVE", "500")))
     window_start = datetime.combine(args.start_date, datetime.min.time(), tzinfo=UTC)
     window_end = window_start + timedelta(days=args.days)
+
+    if args.minimal_bulk_control_tournament_id is not None:
+        return _run_minimal_bulk_control(
+            api_key=api_key,
+            account_before=account_before,
+            budget=budget,
+            tournament_id=args.minimal_bulk_control_tournament_id,
+            fallback_fixture_id=args.fallback_fixture_id,
+            output=args.output,
+        )
 
     fixtures: list[dict[str, Any]] = []
     valid_fixtures = []
@@ -191,6 +206,225 @@ def _budget_from_account(account, *, reserve: int) -> OddspapiRequestBudget:
         monthly_used=account.request_count or 0,
         monthly_reserve=max(0, reserve),
     )
+
+
+def _run_minimal_bulk_control(
+    *,
+    api_key: str,
+    account_before,
+    budget: OddspapiRequestBudget,
+    tournament_id: int,
+    fallback_fixture_id: str | None,
+    output: Path | None,
+) -> int:
+    current_params = build_oddspapi_tournament_odds_params(
+        api_key=api_key,
+        tournament_ids=(tournament_id,),
+    )
+    minimal_params = build_oddspapi_tournament_odds_params(
+        api_key=api_key,
+        tournament_ids=(tournament_id,),
+        include_bookmakers=False,
+        include_optional_params=False,
+    )
+    current_request_shape = sanitized_request_shape(
+        endpoint="/v4/odds-by-tournaments",
+        params=current_params,
+        base_url="https://api.oddspapi.io",
+    )
+    minimal_request_shape = sanitized_request_shape(
+        endpoint="/v4/odds-by-tournaments",
+        params=minimal_params,
+        base_url="https://api.oddspapi.io",
+    )
+    print(
+        "ODDSPAPI_REQUEST_SHAPE "
+        + json.dumps(current_request_shape, sort_keys=True),
+        flush=True,
+    )
+
+    bulk_metadata = {}
+    bulk_error_kind = None
+    bulk_error_details: dict[str, Any] = {}
+    bulk_rows: list[dict[str, Any]] = []
+    try:
+        _received_at, bulk_rows = fetch_oddspapi_tennis_odds_by_tournaments(
+            api_key,
+            tournament_ids=(tournament_id,),
+            include_bookmakers=False,
+            include_optional_params=False,
+            budget=budget,
+            metadata_sink=lambda metadata: bulk_metadata.update(_metadata_dict(metadata)),
+        )
+    except TransportError as exc:
+        bulk_error_kind = exc.kind
+        bulk_error_details = dict(exc.details)
+
+    fixture_payload = None
+    fixture_metadata = {}
+    fixture_error_kind = None
+    fixture_error_details: dict[str, Any] = {}
+    if bulk_error_kind is not None and fallback_fixture_id:
+        try:
+            _fixture_received_at, fixture_payload = fetch_oddspapi_tennis_fixture_odds(
+                api_key,
+                fixture_id=fallback_fixture_id,
+                budget=budget,
+                metadata_sink=lambda metadata: fixture_metadata.update(_metadata_dict(metadata)),
+            )
+        except TransportError as exc:
+            fixture_error_kind = exc.kind
+            fixture_error_details = dict(exc.details)
+
+    odds_rows = bulk_rows or ([fixture_payload] if isinstance(fixture_payload, Mapping) else [])
+    returned_bookmakers, observed_market_ids, observed_outcome_ids = _shape_counts(odds_rows)
+    candidate = _candidate_match_winner(odds_rows)
+    account_after = fetch_oddspapi_account(api_key)
+    endpoint_tested = "/v4/odds-by-tournaments"
+    if fixture_payload is not None or fixture_error_kind is not None:
+        endpoint_tested = "/v4/odds"
+    artifact = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "endpoint_tested": endpoint_tested,
+        "sanitized_params": minimal_request_shape["params"],
+        "current_sanitized_request_shape": current_request_shape,
+        "minimal_sanitized_request_shape": minimal_request_shape,
+        "account_request_limit": account_before.request_limit,
+        "account_request_count_before": account_before.request_count,
+        "account_request_count_after": account_after.request_count,
+        "session_billable_requests": budget.session_used,
+        "http_status": fixture_metadata.get("status_code") or fixture_error_details.get("status_code") or bulk_metadata.get("status_code") or bulk_error_details.get("status_code"),
+        "content_type": fixture_metadata.get("content_type") or fixture_error_details.get("content_type") or bulk_metadata.get("content_type") or bulk_error_details.get("content_type"),
+        "response_size_bytes": fixture_metadata.get("response_size_bytes") or fixture_error_details.get("response_size_bytes") or bulk_metadata.get("response_size_bytes") or bulk_error_details.get("response_size_bytes"),
+        "bulk_http_status": bulk_metadata.get("status_code") or bulk_error_details.get("status_code"),
+        "bulk_error_summary": _error_summary(bulk_error_kind, bulk_error_details),
+        "fixture_http_status": fixture_metadata.get("status_code") or fixture_error_details.get("status_code"),
+        "fixture_error_summary": _error_summary(fixture_error_kind, fixture_error_details),
+        "fixture_id": (fixture_payload or {}).get("fixtureId") if isinstance(fixture_payload, Mapping) else fallback_fixture_id,
+        "tournament_id": tournament_id,
+        "returned_bookmakers": returned_bookmakers,
+        "observed_market_ids": observed_market_ids,
+        "observed_outcome_ids": observed_outcome_ids,
+        "candidate_match_winner_market": candidate,
+        "timestamp_fields_observed": _timestamp_fields(odds_rows),
+        "sanitized_odds_sample": _odds_sample(odds_rows[0]) if odds_rows else None,
+        "error_summary": _error_summary(fixture_error_kind or bulk_error_kind, fixture_error_details or bulk_error_details),
+    }
+    text = json.dumps(artifact, sort_keys=True)
+    if output:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text + "\n", encoding="utf-8")
+    print("ODDSPAPI_VALIDATION " + text, flush=True)
+    return 0
+
+
+def _metadata_dict(metadata) -> dict[str, Any]:
+    return {
+        "status_code": metadata.status_code,
+        "content_type": metadata.content_type,
+        "response_size_bytes": metadata.response_size_bytes,
+    }
+
+
+def _error_summary(kind: str | None, details: Mapping[str, Any]) -> dict[str, Any] | None:
+    if kind is None and not details:
+        return None
+    return {
+        "kind": kind,
+        "status_code": details.get("status_code"),
+        "code": details.get("provider_code"),
+        "message": details.get("provider_message"),
+        "details": details.get("provider_details"),
+        "retry_ms": details.get("retry_ms"),
+        "content_type": details.get("content_type"),
+        "response_size_bytes": details.get("response_size_bytes"),
+    }
+
+
+def _shape_counts(rows: list[Mapping[str, Any]]) -> tuple[list[str], dict[str, int], dict[str, int]]:
+    bookmakers: set[str] = set()
+    markets: dict[str, int] = {}
+    outcomes: dict[str, int] = {}
+    for payload in rows:
+        books = payload.get("bookmakerOdds")
+        if not isinstance(books, Mapping):
+            continue
+        for slug, raw_book in books.items():
+            bookmakers.add(str(slug))
+            raw_markets = raw_book.get("markets") if isinstance(raw_book, Mapping) else None
+            if not isinstance(raw_markets, Mapping):
+                continue
+            for market_id, raw_market in raw_markets.items():
+                market_key = str(market_id)
+                markets[market_key] = markets.get(market_key, 0) + 1
+                raw_outcomes = raw_market.get("outcomes") if isinstance(raw_market, Mapping) else None
+                if isinstance(raw_outcomes, Mapping):
+                    for outcome_id in raw_outcomes:
+                        outcome_key = str(outcome_id)
+                        outcomes[outcome_key] = outcomes.get(outcome_key, 0) + 1
+    return sorted(bookmakers), markets, outcomes
+
+
+def _candidate_match_winner(rows: list[Mapping[str, Any]]) -> dict[str, Any] | None:
+    for payload in rows:
+        books = payload.get("bookmakerOdds")
+        if not isinstance(books, Mapping):
+            continue
+        p1 = str(payload.get("participant1Id") or "")
+        p2 = str(payload.get("participant2Id") or "")
+        for slug, raw_book in books.items():
+            markets = raw_book.get("markets") if isinstance(raw_book, Mapping) else None
+            if not isinstance(markets, Mapping):
+                continue
+            if "121" in markets and _market_has_outcomes(markets["121"], ("121", "122")):
+                return {
+                    "bookmaker": str(slug),
+                    "market_id": "121",
+                    "outcome_ids": ["121", "122"],
+                    "participant_1_id": p1,
+                    "participant_2_id": p2,
+                    "participant_1_maps_to": "121",
+                    "participant_2_maps_to": "122",
+                    "status": "CURRENT_ASSUMPTION_VERIFIED_BY_STRUCTURE",
+                }
+    return None
+
+
+def _market_has_outcomes(raw_market: Any, outcome_ids: tuple[str, ...]) -> bool:
+    outcomes = raw_market.get("outcomes") if isinstance(raw_market, Mapping) else None
+    if not isinstance(outcomes, Mapping):
+        return False
+    for outcome_id in outcome_ids:
+        outcome = outcomes.get(outcome_id)
+        players = outcome.get("players") if isinstance(outcome, Mapping) else None
+        if not isinstance(players, Mapping) or not isinstance(players.get("0"), Mapping):
+            return False
+    return True
+
+
+def _timestamp_fields(rows: list[Mapping[str, Any]]) -> dict[str, int]:
+    counts = {"changedAt": 0, "bookmakerChangedAt": 0}
+    for payload in rows:
+        books = payload.get("bookmakerOdds")
+        if not isinstance(books, Mapping):
+            continue
+        for raw_book in books.values():
+            markets = raw_book.get("markets") if isinstance(raw_book, Mapping) else None
+            if not isinstance(markets, Mapping):
+                continue
+            for raw_market in markets.values():
+                outcomes = raw_market.get("outcomes") if isinstance(raw_market, Mapping) else None
+                if not isinstance(outcomes, Mapping):
+                    continue
+                for outcome in outcomes.values():
+                    players = outcome.get("players") if isinstance(outcome, Mapping) else None
+                    player = players.get("0") if isinstance(players, Mapping) else None
+                    if not isinstance(player, Mapping):
+                        continue
+                    for key in counts:
+                        if player.get(key) is not None:
+                            counts[key] += 1
+    return counts
 
 
 def _parse_tournament_ids(raw: str | None) -> list[int]:

@@ -9,9 +9,11 @@ from sports_edge_tennis.live.transport import TransportError
 
 
 class _Response:
-    def __init__(self, status_code=200, payload=None):
+    def __init__(self, status_code=200, payload=None, headers=None, content=b"{}"):
         self.status_code = status_code
         self._payload = payload
+        self.headers = headers or {}
+        self.content = content
 
     def json(self):
         if isinstance(self._payload, Exception):
@@ -61,6 +63,67 @@ def test_tournament_odds_batches_all_ids_in_one_call(monkeypatch):
         calls[0][1]["bookmakers"]
         == "pinnacle+30,1xbet,unibet,bet365"
     )
+
+
+def test_tournament_odds_can_omit_optional_params(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append((url, params))
+        return _Response(200, [])
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
+        "secret-key",
+        tournament_ids=(20102,),
+        include_bookmakers=False,
+        include_optional_params=False,
+    )
+    assert calls == [
+        (
+            "https://api.oddspapi.io/v4/odds-by-tournaments",
+            {"apiKey": "secret-key", "tournamentIds": "20102"},
+        )
+    ]
+
+
+def test_sanitized_request_shape_encodes_plus_without_api_key():
+    params = oddspapi.build_oddspapi_tournament_odds_params(
+        api_key="super-secret-key",
+        tournament_ids=(20102,),
+    )
+    shape = oddspapi.sanitized_request_shape(
+        endpoint="/v4/odds-by-tournaments",
+        params=params,
+        base_url="https://api.oddspapi.io",
+    )
+    assert shape["endpoint"] == "/v4/odds-by-tournaments"
+    assert "apiKey" not in shape["params"]
+    assert "super-secret-key" not in shape["encoded_query"]
+    assert "pinnacle%2B30" in shape["encoded_query"]
+
+
+def test_fixture_odds_transport_uses_minimal_fixture_request(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append((url, params))
+        return _Response(200, {"fixtureId": "id1202010274891198"})
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    received_at, payload = oddspapi.fetch_oddspapi_tennis_fixture_odds(
+        "secret-key",
+        fixture_id="id1202010274891198",
+        clock=lambda: datetime(2026, 9, 22, 1, tzinfo=UTC),
+    )
+    assert received_at == datetime(2026, 9, 22, 1, tzinfo=UTC)
+    assert payload["fixtureId"] == "id1202010274891198"
+    assert calls == [
+        (
+            "https://api.oddspapi.io/v4/odds",
+            {"apiKey": "secret-key", "fixtureId": "id1202010274891198"},
+        )
+    ]
 
 
 def test_account_usage_parses_subscription_request_budget(monkeypatch):
@@ -210,6 +273,8 @@ def test_http_error_details_are_allowlisted_and_secret_safe(monkeypatch):
                 "url": "https://api.oddspapi.io/v4/odds-by-tournaments?apiKey=super-secret-key",
                 "headers": {"Authorization": "super-secret-key"},
             },
+            headers={"content-type": "application/json"},
+            content=b'{"code":"BOOKMAKER_NOT_AVAILABLE"}',
         ),
     )
     with pytest.raises(TransportError) as exc:
@@ -219,6 +284,10 @@ def test_http_error_details_are_allowlisted_and_secret_safe(monkeypatch):
         )
     assert exc.value.kind == "HTTP_403"
     assert exc.value.details["status_code"] == 403
+    assert exc.value.details["content_type"] == "application/json"
+    assert exc.value.details["response_size_bytes"] == len(
+        b'{"code":"BOOKMAKER_NOT_AVAILABLE"}'
+    )
     assert exc.value.details["provider_code"] == "BOOKMAKER_NOT_AVAILABLE"
     assert exc.value.details["provider_message"] == "Bookmaker is not enabled"
     assert exc.value.details["provider_details"] == {
