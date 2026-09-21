@@ -80,6 +80,13 @@ INCONSISTENT_CURRENT_REGIME_KEY = "LEGACY_INCONSISTENT_CURRENT_RUN"
 #: Shown wherever the data provider cannot be proven from persisted evidence.
 DATA_PROVIDER_UNAVAILABLE = "Provider lineage unavailable"
 
+#: Model-only regime prefixes. These deliberately exclude Market/Veto identity
+#: because a pure model pick exists before either layer is evaluated.
+MODEL_COMPLETE_REGIME_PREFIX = "MODEL_REGIME_"
+MODEL_LEGACY_REGIME_PREFIX = "MODEL_LEGACY_"
+MODEL_INCONSISTENT_CURRENT_REGIME_KEY = "MODEL_LEGACY_INCONSISTENT_CURRENT_RUN"
+
+
 #: Fingerprint slots, in canonical order. ``agent_code`` is the enum value the
 #: ``predictions`` rows carry.
 AGENT_SLOTS: tuple[tuple[str, str], ...] = (
@@ -686,6 +693,360 @@ def load_regime_cohorts(conn: psycopg.Connection) -> tuple[RegimeCohort, ...]:
     )
 
 
+
+# --------------------------------------------------------- model-pick regimes
+
+
+@dataclass(frozen=True)
+class ModelRegimeFingerprint:
+    """Persisted identity of the prediction system before price/value filters."""
+
+    manager: Dimension
+    agents: tuple[Dimension, ...]
+
+    @property
+    def is_complete(self) -> bool:
+        return self.manager.is_proven and all(agent.is_proven for agent in self.agents)
+
+    def canonical(self) -> str:
+        return "|".join(part.canonical() for part in (self.manager, *self.agents))
+
+    @property
+    def regime_key(self) -> str:
+        prefix = (
+            MODEL_COMPLETE_REGIME_PREFIX
+            if self.is_complete
+            else MODEL_LEGACY_REGIME_PREFIX
+        )
+        digest = hashlib.sha256(self.canonical().encode("utf-8")).hexdigest()
+        return f"{prefix}{digest[:16]}"
+
+
+def is_complete_model_regime_key(regime_key: str | None) -> bool:
+    return bool(regime_key) and regime_key.startswith(MODEL_COMPLETE_REGIME_PREFIX)
+
+
+@dataclass(frozen=True)
+class ModelRegimeIdentity:
+    regime_key: str
+    manager_policy_version: str | None
+    agent_config_versions: tuple[str | None, ...] = (None, None, None)
+    is_inconsistent: bool = False
+
+    @property
+    def has_complete_lineage(self) -> bool:
+        return is_complete_model_regime_key(self.regime_key)
+
+    @property
+    def label(self) -> str:
+        if self.is_inconsistent:
+            return "Current model configuration could not be determined"
+        if not self.has_complete_lineage:
+            return "Legacy model configuration"
+        return f"Manager {self.manager_policy_version} · current model configuration"
+
+
+@dataclass(frozen=True)
+class ModelRegimeCohort:
+    regime_key: str
+    manager_policy_version: str | None
+    picks: int
+    scored: int
+    pending: int
+    voids: int
+    wins: int
+    losses: int
+    first_pick_date: date | None
+    last_pick_date: date | None
+    agent_config_versions: tuple[str | None, ...] = (None, None, None)
+    sequence: int | None = None
+
+    @property
+    def has_complete_lineage(self) -> bool:
+        return is_complete_model_regime_key(self.regime_key)
+
+    @property
+    def label(self) -> str:
+        if not self.has_complete_lineage or not self.manager_policy_version:
+            return "Legacy model configuration"
+        label = f"Manager {self.manager_policy_version}"
+        if self.sequence is not None:
+            label += f" · model config {self.sequence}"
+        return label
+
+    @property
+    def hit_rate(self) -> float | None:
+        return (self.wins / self.scored) if self.scored else None
+
+    @property
+    def period_text(self) -> str:
+        if self.first_pick_date is None or self.last_pick_date is None:
+            return "—"
+        if self.first_pick_date == self.last_pick_date:
+            return self.first_pick_date.strftime("%d %b %Y")
+        return (
+            f"{self.first_pick_date.strftime('%d %b %Y')} – "
+            f"{self.last_pick_date.strftime('%d %b %Y')}"
+        )
+
+
+def _model_complete_sql() -> str:
+    agent_checks = " AND ".join(
+        f"agents.{tag.lower()}_n = 1" for tag, _ in AGENT_SLOTS
+    )
+    return f"""
+        mpv.policy_version IS NOT NULL AND btrim(mpv.policy_version) <> ''
+        AND {agent_checks}
+    """
+
+
+def _model_fingerprint_sql() -> str:
+    parts = [
+        _simple_dimension_sql("MGR", "mpv.policy_version"),
+        *(_agent_dimension_sql(tag) for tag, _ in AGENT_SLOTS),
+    ]
+    return " || '|' || ".join(parts)
+
+
+def _model_regime_key_sql() -> str:
+    return f"""
+        (CASE WHEN {_model_complete_sql()}
+              THEN '{MODEL_COMPLETE_REGIME_PREFIX}'
+              ELSE '{MODEL_LEGACY_REGIME_PREFIX}' END)
+        || substr(
+            encode(sha256(convert_to({_model_fingerprint_sql()}, 'UTF8')), 'hex'),
+            1, 16
+        )
+    """
+
+
+def _model_lineage_columns() -> str:
+    agent_columns = ",\n                ".join(
+        f"CASE WHEN agents.{tag.lower()}_n = 1 THEN agents.{tag.lower()}_v END "
+        f"AS agent_{tag.lower()}_config_version"
+        for tag, _ in AGENT_SLOTS
+    )
+    return f"""
+                {_model_regime_key_sql()} AS model_regime_key,
+                mpv.policy_version AS manager_policy_version,
+                {agent_columns}
+    """
+
+
+def first_production_model_picks_cte() -> str:
+    """First production Manager CONSENSUS per sporting match, globally.
+
+    A Value Bet is necessarily downstream of one of these model picks. The
+    first pick remains the scored pick even if later hourly reruns change the
+    Manager state, preventing duplicate wins/losses or hindsight replacement.
+    """
+    return f"""
+        first_model_picks AS (
+            SELECT DISTINCT ON (mcr.match_id)
+                mcr.manager_consensus_result_id,
+                mcr.prediction_run_id,
+                mcr.match_id,
+                mcr.as_of AS picked_at,
+                mcr.selected_side,
+                mcr.consensus_probability,
+                {_model_lineage_columns()}
+            FROM manager_consensus_results mcr
+            JOIN prediction_runs pr
+              ON pr.prediction_run_id = mcr.prediction_run_id
+            JOIN manager_policy_versions mpv
+              ON mpv.manager_policy_version_id = mcr.manager_policy_version_id
+            {_agent_lineage_lateral("mcr")}
+            WHERE mcr.manager_status = 'CONSENSUS'
+              AND mcr.selected_side IN (1, 2)
+              AND mcr.consensus_probability IS NOT NULL
+              AND {PRODUCTION_RUN_PREDICATE}
+            ORDER BY mcr.match_id, mcr.as_of, mcr.manager_consensus_result_id
+        )
+    """
+
+
+def resolve_current_model_regime(
+    conn: psycopg.Connection,
+) -> ModelRegimeIdentity | None:
+    """Exact Manager + A1/A2/A3 identity of the latest production model run."""
+    rows = conn.execute(
+        f"""
+        WITH latest_run AS (
+            SELECT pr.prediction_run_id
+            FROM prediction_runs pr
+            WHERE {PRODUCTION_RUN_PREDICATE}
+              AND EXISTS (
+                  SELECT 1
+                  FROM manager_consensus_results m0
+                  WHERE m0.prediction_run_id = pr.prediction_run_id
+                    AND m0.manager_status = 'CONSENSUS'
+                    AND m0.selected_side IN (1, 2)
+              )
+            ORDER BY pr.prediction_finalized_at DESC, pr.prediction_run_id DESC
+            LIMIT 1
+        )
+        SELECT DISTINCT
+            {_model_lineage_columns()}
+        FROM manager_consensus_results mcr
+        JOIN latest_run lr ON lr.prediction_run_id = mcr.prediction_run_id
+        JOIN prediction_runs pr ON pr.prediction_run_id = mcr.prediction_run_id
+        JOIN manager_policy_versions mpv
+          ON mpv.manager_policy_version_id = mcr.manager_policy_version_id
+        {_agent_lineage_lateral("mcr")}
+        WHERE mcr.manager_status = 'CONSENSUS'
+          AND mcr.selected_side IN (1, 2)
+        """
+    ).fetchall()
+
+    if not rows:
+        return None
+    if len(rows) > 1:
+        return ModelRegimeIdentity(
+            regime_key=MODEL_INCONSISTENT_CURRENT_REGIME_KEY,
+            manager_policy_version=None,
+            is_inconsistent=True,
+        )
+
+    row = rows[0]
+    return ModelRegimeIdentity(
+        regime_key=str(row[0]),
+        manager_policy_version=str(row[1]) if row[1] else None,
+        agent_config_versions=tuple(
+            str(row[2 + index]) if row[2 + index] else None
+            for index in range(len(AGENT_SLOTS))
+        ),
+    )
+
+
+def load_model_regime_cohorts(
+    conn: psycopg.Connection,
+) -> tuple[ModelRegimeCohort, ...]:
+    rows = conn.execute(
+        f"""
+        WITH {first_production_model_picks_cte()},
+        dated AS (
+            SELECT
+                p.*,
+                COALESCE(
+                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
+                    (p.picked_at AT TIME ZONE 'UTC')::date
+                ) AS match_date
+            FROM first_model_picks p
+            LEFT JOIN LATERAL (
+                SELECT mv0.match_start_at
+                FROM match_versions mv0
+                WHERE mv0.match_id = p.match_id
+                  AND mv0.as_of <= p.picked_at
+                  AND mv0.source_observed_at <= p.picked_at
+                ORDER BY mv0.as_of DESC,
+                         mv0.source_observed_at DESC,
+                         mv0.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
+        ),
+        with_results AS (
+            SELECT
+                d.*,
+                r.outcome_status,
+                r.winner_side
+            FROM dated d
+            LEFT JOIN LATERAL (
+                SELECT
+                    mro.outcome_status::text AS outcome_status,
+                    mro.winner_side
+                FROM match_result_observations mro
+                WHERE mro.match_id = d.match_id
+                  AND mro.outcome_status IN (
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  )
+                ORDER BY mro.as_of DESC,
+                         mro.source_observed_at DESC,
+                         mro.match_result_observation_id DESC
+                LIMIT 1
+            ) r ON TRUE
+        )
+        SELECT
+            model_regime_key,
+            max(manager_policy_version) AS manager_policy_version,
+            count(*)::int AS picks,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
+            )::int AS scored,
+            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+            )::int AS voids,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED'
+                  AND winner_side = selected_side
+            )::int AS wins,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED'
+                  AND winner_side IN (1, 2)
+                  AND winner_side <> selected_side
+            )::int AS losses,
+            min(match_date) AS first_pick_date,
+            max(match_date) AS last_pick_date,
+            max(agent_a1_config_version),
+            max(agent_a2_config_version),
+            max(agent_a3_config_version)
+        FROM with_results
+        GROUP BY model_regime_key
+        ORDER BY max(match_date) DESC NULLS LAST, model_regime_key
+        """
+    ).fetchall()
+
+    cohorts = [
+        ModelRegimeCohort(
+            regime_key=str(row[0]),
+            manager_policy_version=str(row[1]) if row[1] else None,
+            picks=int(row[2]),
+            scored=int(row[3]),
+            pending=int(row[4]),
+            voids=int(row[5]),
+            wins=int(row[6]),
+            losses=int(row[7]),
+            first_pick_date=row[8],
+            last_pick_date=row[9],
+            agent_config_versions=tuple(
+                str(row[10 + index]) if row[10 + index] else None
+                for index in range(len(AGENT_SLOTS))
+            ),
+        )
+        for row in rows
+    ]
+    ordered = sorted(
+        (cohort for cohort in cohorts if cohort.has_complete_lineage),
+        key=lambda cohort: (
+            cohort.first_pick_date or date.min,
+            cohort.regime_key,
+        ),
+    )
+    sequence_by_key = {
+        cohort.regime_key: index for index, cohort in enumerate(ordered, start=1)
+    }
+    return tuple(
+        replace(cohort, sequence=sequence_by_key.get(cohort.regime_key))
+        for cohort in cohorts
+    )
+
+
+def current_model_regime_started_at(
+    conn: psycopg.Connection, regime_key: str
+) -> datetime | None:
+    row = conn.execute(
+        f"""
+        WITH {first_production_model_picks_cte()}
+        SELECT min(p.picked_at)
+        FROM first_model_picks p
+        WHERE p.model_regime_key = %s
+        """,
+        (regime_key,),
+    ).fetchone()
+    return row[0] if row else None
+
+
+
 def current_regime_started_at(
     conn: psycopg.Connection, regime_key: str
 ) -> datetime | None:
@@ -707,6 +1068,9 @@ __all__ = [
     "AGENT_SLOTS",
     "COMPLETE_REGIME_PREFIX",
     "DATA_PROVIDER_UNAVAILABLE",
+    "MODEL_COMPLETE_REGIME_PREFIX",
+    "MODEL_INCONSISTENT_CURRENT_REGIME_KEY",
+    "MODEL_LEGACY_REGIME_PREFIX",
     "INCONSISTENT_CURRENT_REGIME_KEY",
     "LEGACY_REGIME_PREFIX",
     "PRODUCTION_RUN_PREDICATE",
@@ -717,7 +1081,15 @@ __all__ = [
     "RegimeCohort",
     "RegimeFingerprint",
     "RegimeIdentity",
+    "ModelRegimeCohort",
+    "ModelRegimeFingerprint",
+    "ModelRegimeIdentity",
     "current_regime_started_at",
+    "current_model_regime_started_at",
+    "first_production_model_picks_cte",
+    "is_complete_model_regime_key",
+    "load_model_regime_cohorts",
+    "resolve_current_model_regime",
     "first_production_bets_cte",
     "is_complete_regime_key",
     "load_regime_cohorts",
