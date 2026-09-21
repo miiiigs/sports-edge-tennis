@@ -6,7 +6,10 @@ from typing import Any, Mapping, Sequence
 
 import psycopg
 
-from sports_edge_tennis.live.oddspapi import parse_oddspapi_tennis_fixture
+from sports_edge_tennis.live.oddspapi import (
+    ODDSPAPI_PLAN_BOOKMAKERS,
+    parse_oddspapi_tennis_fixture,
+)
 from sports_edge_tennis.live.oddspapi_reconciliation import (
     OddspapiReconciliationError,
     reconcile_oddspapi_event,
@@ -80,15 +83,23 @@ def ingest_oddspapi_tennis_odds(
                 f"unsupported OddsPapi reconciliation status {resolution.status!r}"
             )
 
-        observation = build_oddspapi_tennis_observation(
-            event_payload=payload,
-            received_at=received_at,
-            response_id=response_id,
-        )
-        result = ingest_provider_observation(conn, observation)
-        normalized_quotes += result.normalized_inserted + result.normalized_existing
-        unknown_bookmaker += result.unknown_bookmaker
-        unknown_participant += result.unknown_participant
+        # One raw observation per bookmaker avoids smearing timestamps across
+        # books. This preserves exact staleness and CLV lineage.
+        for bookmaker in ODDSPAPI_PLAN_BOOKMAKERS:
+            observation = build_oddspapi_tennis_observation(
+                event_payload=payload,
+                received_at=received_at,
+                response_id=f"{response_id}:BOOK:{bookmaker}",
+                allowed_bookmakers=(bookmaker,),
+            )
+            if not observation.markets:
+                continue
+            result = ingest_provider_observation(conn, observation)
+            normalized_quotes += (
+                result.normalized_inserted + result.normalized_existing
+            )
+            unknown_bookmaker += result.unknown_bookmaker
+            unknown_participant += result.unknown_participant
 
     return OddspapiOddsIngestOutcome(
         candidate_matches=len(candidate_match_ids),
