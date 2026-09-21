@@ -107,6 +107,54 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     return received_at, _fixture_list(payload)
 
 
+def merge_oddspapi_fixture_odds(
+    fixture_rows: Sequence[Mapping[str, Any]],
+    odds_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Join odds-board rows to fixture-discovery identity by fixtureId.
+
+    Odds-by-tournaments is optimized for price payloads and must not be relied on
+    to repeat every identity field exposed by /v4/fixtures. Discovery remains
+    authoritative for participants, start time, tournament, sport, and external
+    provider links; the odds row overlays price/status fields.
+    """
+    discovery: dict[str, dict[str, Any]] = {}
+    for row in fixture_rows:
+        fixture_id = str(row.get("fixtureId") or "").strip()
+        if fixture_id and fixture_id not in discovery:
+            discovery[fixture_id] = dict(row)
+
+    merged: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in odds_rows:
+        fixture_id = str(row.get("fixtureId") or "").strip()
+        if not fixture_id or fixture_id in seen:
+            continue
+        base = discovery.get(fixture_id)
+        if base is None:
+            continue
+        combined = dict(base)
+        combined.update(dict(row))
+        # Identity fields stay governed by fixture discovery even when an odds
+        # response happens to repeat them with a different omission/shape.
+        for key in (
+            "fixtureId",
+            "sportId",
+            "tournamentId",
+            "participant1Id",
+            "participant1Name",
+            "participant2Id",
+            "participant2Name",
+            "startTime",
+            "externalProviders",
+        ):
+            if key in base:
+                combined[key] = base[key]
+        merged.append(combined)
+        seen.add(fixture_id)
+    return merged
+
+
 def parse_oddspapi_tennis_fixture(
     payload: Mapping[str, Any],
 ) -> OddspapiTennisFixtureEnvelope:
@@ -216,5 +264,6 @@ __all__ = [
     "OddspapiTennisFixtureEnvelope",
     "fetch_oddspapi_tennis_fixtures",
     "fetch_oddspapi_tennis_odds_by_tournaments",
+    "merge_oddspapi_fixture_odds",
     "parse_oddspapi_tennis_fixture",
 ]
