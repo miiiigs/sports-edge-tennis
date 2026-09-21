@@ -3,6 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m sports_edge_tennis.live.batch --days 3"
-cronSchedule = "0 * * * *"
+startCommand = "python -m sports_edge_tennis.live.oddspapi_shadow --days 3"
 restartPolicyType = "NEVER"
