@@ -115,6 +115,31 @@ def test_single_book_filter_keeps_timestamp_book_specific() -> None:
     assert set(observation.payload["bookmakerOdds"]) == {"bet365"}
 
 
+def test_bookmaker_changed_at_takes_precedence_for_observed_timestamp() -> None:
+    event = _event()
+    event["bookmakerOdds"]["pinnacle+30"]["markets"]["121"]["outcomes"]["121"][
+        "players"
+    ]["0"]["changedAt"] = "2026-09-21T12:00:00Z"
+    event["bookmakerOdds"]["pinnacle+30"]["markets"]["121"]["outcomes"]["121"][
+        "players"
+    ]["0"]["bookmakerChangedAt"] = "2026-09-21T11:58:00Z"
+    event["bookmakerOdds"]["pinnacle+30"]["markets"]["121"]["outcomes"]["122"][
+        "players"
+    ]["0"]["changedAt"] = "2026-09-21T12:00:00Z"
+    event["bookmakerOdds"]["pinnacle+30"]["markets"]["121"]["outcomes"]["122"][
+        "players"
+    ]["0"]["bookmakerChangedAt"] = "2026-09-21T11:59:00Z"
+    observation = build_oddspapi_tennis_observation(
+        event_payload=event,
+        received_at=datetime(2026, 9, 21, 12, 1, tzinfo=UTC),
+        response_id="response-1:BOOK:pinnacle",
+        allowed_bookmakers=("pinnacle+30",),
+    )
+    assert observation.provider_observed_at == datetime(
+        2026, 9, 21, 11, 59, tzinfo=UTC
+    )
+
+
 def test_incomplete_or_inactive_winner_market_is_not_emitted() -> None:
     event = _event()
     event["bookmakerOdds"]["pinnacle+30"]["markets"]["121"]["outcomes"][

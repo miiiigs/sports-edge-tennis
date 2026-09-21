@@ -128,7 +128,7 @@ def _winner_selections(raw_market: Mapping[str, Any], *, p1_id: str, p2_id: str)
         price = _decimal_price(price_obj.get("price"))
         if price is None:
             return [], []
-        changed_at = _parse_timestamp(price_obj.get("changedAt")) or _parse_timestamp(price_obj.get("bookmakerChangedAt"))
+        changed_at = _parse_timestamp(price_obj.get("bookmakerChangedAt")) or _parse_timestamp(price_obj.get("changedAt"))
         if changed_at is not None:
             timestamps.append(changed_at)
         selections.append(

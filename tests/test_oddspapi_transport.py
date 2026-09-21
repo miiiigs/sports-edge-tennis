@@ -63,6 +63,62 @@ def test_tournament_odds_batches_all_ids_in_one_call(monkeypatch):
     )
 
 
+def test_account_usage_parses_subscription_request_budget(monkeypatch):
+    def fake_get(url, params, timeout):
+        assert url.endswith("/v4/account")
+        assert params["apiKey"] == "secret-key"
+        return _Response(
+            200,
+            {
+                "subscription": {
+                    "request_limit": 5000,
+                    "request_count": 123,
+                }
+            },
+        )
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    usage = oddspapi.fetch_oddspapi_account("secret-key")
+    assert usage.request_limit == 5000
+    assert usage.request_count == 123
+    assert usage.remaining == 4877
+
+
+def test_request_budget_fails_closed_before_billable_call(monkeypatch):
+    def fake_get(*args, **kwargs):
+        raise AssertionError("billable request should be blocked")
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "secret-key",
+            from_at=datetime(2026, 9, 21, tzinfo=UTC),
+            to_at=datetime(2026, 9, 22, tzinfo=UTC),
+            budget=oddspapi.OddspapiRequestBudget(
+                monthly_limit=5000,
+                monthly_used=4501,
+                monthly_reserve=500,
+            ),
+        )
+    assert exc.value.kind == "ODDSPAPI_QUOTA_BUDGET"
+
+
+def test_429_has_stable_secret_safe_classifier(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(429, {"code": "REQUEST_LIMIT_EXCEEDED"}),
+    )
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "super-secret-key",
+            from_at=datetime(2026, 9, 21, tzinfo=UTC),
+            to_at=datetime(2026, 9, 22, tzinfo=UTC),
+        )
+    assert exc.value.kind == "HTTP_429"
+    assert "super-secret-key" not in str(exc.value)
+
+
 def test_transport_errors_never_include_api_key(monkeypatch):
     monkeypatch.setattr(
         oddspapi.requests,

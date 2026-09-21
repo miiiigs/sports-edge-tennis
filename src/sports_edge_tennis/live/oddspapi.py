@@ -13,6 +13,8 @@ ODDSPAPI_BASE_URL = "https://api.oddspapi.io/v4"
 ODDSPAPI_TENNIS_SPORT_ID = 12
 ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "unibet", "bet365")
 ODDSPAPI_SHARP_BOOKMAKER = "pinnacle+30"
+ODDSPAPI_MONTHLY_REQUEST_LIMIT = 5000
+ODDSPAPI_MONTHLY_REQUEST_RESERVE = 500
 
 
 @dataclass(frozen=True)
@@ -28,8 +30,65 @@ class OddspapiTennisFixtureEnvelope:
     raw_payload: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class OddspapiAccountUsage:
+    request_limit: int | None
+    request_count: int | None
+    raw_payload: dict[str, Any]
+
+    @property
+    def remaining(self) -> int | None:
+        if self.request_limit is None or self.request_count is None:
+            return None
+        return max(0, self.request_limit - self.request_count)
+
+
+@dataclass(frozen=True)
+class OddspapiRequestBudget:
+    monthly_limit: int = ODDSPAPI_MONTHLY_REQUEST_LIMIT
+    monthly_used: int = 0
+    monthly_reserve: int = ODDSPAPI_MONTHLY_REQUEST_RESERVE
+
+    def ensure_available(self, planned_requests: int = 1) -> None:
+        if planned_requests < 0:
+            raise ValueError("planned_requests must be non-negative")
+        if self.monthly_limit <= 0:
+            raise ValueError("monthly_limit must be positive")
+        if self.monthly_used < 0:
+            raise ValueError("monthly_used must be non-negative")
+        available = self.monthly_limit - self.monthly_reserve - self.monthly_used
+        if planned_requests > available:
+            raise TransportError(
+                "ODDSPAPI_QUOTA_BUDGET",
+                "oddspapi monthly request budget would be exceeded",
+            )
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def fetch_oddspapi_account(
+    api_key: str,
+    *,
+    timeout: float = DEFAULT_TIMEOUT,
+    base_url: str = ODDSPAPI_BASE_URL,
+) -> OddspapiAccountUsage:
+    key = str(api_key or "").strip()
+    if not key:
+        raise ValueError("OddsPapi API key must be non-empty")
+    payload = _get_json(
+        f"{base_url.rstrip('/')}/account",
+        params={"apiKey": key},
+        timeout=timeout,
+        label="oddspapi account",
+    )
+    raw = dict(payload) if isinstance(payload, Mapping) else {"payload": payload}
+    return OddspapiAccountUsage(
+        request_limit=_find_int(raw, "request_limit"),
+        request_count=_find_int(raw, "request_count"),
+        raw_payload=raw,
+    )
 
 
 def fetch_oddspapi_tennis_fixtures(
@@ -38,6 +97,7 @@ def fetch_oddspapi_tennis_fixtures(
     from_at: datetime,
     to_at: datetime,
     bookmakers: Sequence[str] = (ODDSPAPI_SHARP_BOOKMAKER,),
+    budget: OddspapiRequestBudget | None = None,
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
@@ -51,6 +111,8 @@ def fetch_oddspapi_tennis_fixtures(
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
+    if budget is not None:
+        budget.ensure_available(1)
     clock = clock or _utc_now
     params = {
         "apiKey": key,
@@ -78,6 +140,7 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     *,
     tournament_ids: Sequence[int],
     bookmakers: Sequence[str] = ODDSPAPI_PLAN_BOOKMAKERS,
+    budget: OddspapiRequestBudget | None = None,
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
@@ -88,6 +151,8 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
+    if budget is not None:
+        budget.ensure_available(1)
     clock = clock or _utc_now
     params = {
         "apiKey": key,
@@ -241,6 +306,25 @@ def _required_int(value: Any, reason: str) -> int:
         raise ValueError(reason) from exc
 
 
+def _find_int(payload: Mapping[str, Any], key: str) -> int | None:
+    value = payload.get(key)
+    if value is None:
+        subscription = payload.get("subscription")
+        if isinstance(subscription, Mapping):
+            value = subscription.get(key)
+    if value is None:
+        subscriptions = payload.get("subscriptions")
+        if isinstance(subscriptions, Sequence) and not isinstance(subscriptions, (str, bytes)):
+            for item in subscriptions:
+                if isinstance(item, Mapping) and item.get(key) is not None:
+                    value = item.get(key)
+                    break
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _parse_timestamp(value: Any, reason: str) -> datetime:
     raw = str(value or "").strip()
     if not raw:
@@ -258,10 +342,15 @@ def _parse_timestamp(value: Any, reason: str) -> datetime:
 
 __all__ = [
     "ODDSPAPI_BASE_URL",
+    "ODDSPAPI_MONTHLY_REQUEST_LIMIT",
+    "ODDSPAPI_MONTHLY_REQUEST_RESERVE",
     "ODDSPAPI_PLAN_BOOKMAKERS",
     "ODDSPAPI_SHARP_BOOKMAKER",
     "ODDSPAPI_TENNIS_SPORT_ID",
+    "OddspapiAccountUsage",
+    "OddspapiRequestBudget",
     "OddspapiTennisFixtureEnvelope",
+    "fetch_oddspapi_account",
     "fetch_oddspapi_tennis_fixtures",
     "fetch_oddspapi_tennis_odds_by_tournaments",
     "merge_oddspapi_fixture_odds",
