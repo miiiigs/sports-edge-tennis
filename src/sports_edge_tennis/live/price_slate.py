@@ -22,14 +22,18 @@ def load_price_scanner_candidate_match_ids(
     horizon_start: date,
     horizon_days: int,
     as_of: datetime,
+    source_systems: tuple[str, ...] = ("API_TENNIS",),
 ) -> tuple[int, ...]:
-    """Return every canonical in-scope scheduled API-Tennis singles fixture.
+    """Return every canonical in-scope scheduled provider-backed singles fixture.
 
     Type B is intentionally independent of predictive-agent and Manager eligibility,
     so its price slate must be derived from the canonical fixture feed rather than
     prediction_run_targets or manager_consensus_results.
     """
     if horizon_days < 1:
+        return ()
+    source_systems = tuple(dict.fromkeys(str(value).strip() for value in source_systems if str(value).strip()))
+    if not source_systems:
         return ()
     start_at = datetime.combine(horizon_start, time.min, tzinfo=timezone.utc)
     end_at = start_at + timedelta(days=horizon_days)
@@ -62,7 +66,7 @@ def load_price_scanner_candidate_match_ids(
               SELECT 1
               FROM match_source_ids msi
               WHERE msi.match_id = latest.match_id
-                AND msi.source_system = 'API_TENNIS'
+                AND msi.source_system = ANY(%s)
           )
         ORDER BY latest.match_id
         """,
@@ -73,6 +77,7 @@ def load_price_scanner_candidate_match_ids(
             list(_SUPPORTED_TIERS),
             start_at,
             end_at,
+            list(source_systems),
         ),
     ).fetchall()
     return tuple(int(row[0]) for row in rows)
