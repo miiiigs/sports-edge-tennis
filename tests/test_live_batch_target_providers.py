@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import sports_edge_tennis.live.batch as batch
@@ -35,7 +35,23 @@ def _live_result():
     )
 
 
-def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
+def _oddspapi_row():
+    return {
+        "fixtureId": "id1200000000000001",
+        "participant1Id": 101,
+        "participant2Id": 202,
+        "participant1Name": "Carlos Alcaraz",
+        "participant2Name": "Jannik Sinner",
+        "sportId": 12,
+        "tournamentId": 303,
+        "startTime": "2026-09-19T14:00:00Z",
+        "hasOdds": True,
+        "externalProviders": {"betradarId": 12345},
+        "bookmakerOdds": {},
+    }
+
+
+def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     authority = SimpleNamespace(
         data_mode=batch.TARGET_DATA_MODE,
         odds_mode=batch.TARGET_ODDS_MODE,
@@ -46,8 +62,7 @@ def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
 
     secrets = {
         "SPORTRADAR_TENNIS_API_KEY": "sr-key",
-        "GOALSERVE_TENNIS_FEED_URL": "https://secret.invalid/feed",
-        # Deliberately present: target mode must still not use them.
+        "ODDSPAPI_API_KEY": "odds-key",
         "API_TENNIS_API_KEY": "legacy-api-tennis",
         "PINNAPI_KEY": "legacy-pinnapi",
     }
@@ -61,10 +76,17 @@ def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
 
     monkeypatch.setattr(batch, "run_live_mvp", fake_live)
     monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda *a, **k: ())
+
+    price_calls = []
+
+    def fake_price_slate(*args, **kwargs):
+        price_calls.append(kwargs)
+        return (10,)
+
     monkeypatch.setattr(
         batch,
         "load_price_scanner_candidate_match_ids",
-        lambda *a, **k: (10,),
+        fake_price_slate,
     )
 
     def legacy_call_forbidden(*args, **kwargs):
@@ -72,22 +94,41 @@ def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
 
     monkeypatch.setattr(batch, "fetch_api_tennis_odds", legacy_call_forbidden)
     monkeypatch.setattr(batch, "fetch_pinnapi_board", legacy_call_forbidden)
-    monkeypatch.setattr(batch, "normalize_pinnapi_board_for_matches", legacy_call_forbidden)
-
-    goalserve_received = datetime(2026, 9, 19, 12, 30, tzinfo=UTC)
-    goalserve_fetches = []
     monkeypatch.setattr(
         batch,
-        "fetch_goalserve_tennis_json",
-        lambda url: (
-            goalserve_fetches.append(url) or goalserve_received,
-            {"scores": {}},
-        ),
+        "normalize_pinnapi_board_for_matches",
+        legacy_call_forbidden,
     )
-    goalserve_ingests = []
 
-    def fake_goalserve_ingest(conn, **kwargs):
-        goalserve_ingests.append(kwargs)
+    odds_received = datetime(2026, 9, 19, 12, 30, tzinfo=UTC)
+    discovery_calls = []
+
+    def fake_discovery(key, **kwargs):
+        discovery_calls.append((key, kwargs))
+        return odds_received, [_oddspapi_row()]
+
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_tennis_fixtures",
+        fake_discovery,
+    )
+
+    board_calls = []
+
+    def fake_board(key, **kwargs):
+        board_calls.append((key, kwargs))
+        return odds_received, [_oddspapi_row()]
+
+    monkeypatch.setattr(
+        batch,
+        "fetch_oddspapi_tennis_odds_by_tournaments",
+        fake_board,
+    )
+
+    ingest_calls = []
+
+    def fake_oddspapi_ingest(conn, **kwargs):
+        ingest_calls.append(kwargs)
         return SimpleNamespace(
             candidate_matches=1,
             provider_events_seen=1,
@@ -95,15 +136,16 @@ def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
             existing_events=0,
             unmatched_events=0,
             ambiguous_events=0,
-            normalized_quotes=4,
+            conflict_events=0,
+            normalized_quotes=6,
             unknown_bookmaker_groups=0,
             unknown_participant_groups=0,
         )
 
     monkeypatch.setattr(
         batch,
-        "ingest_goalserve_tennis_odds",
-        fake_goalserve_ingest,
+        "ingest_oddspapi_tennis_odds",
+        fake_oddspapi_ingest,
     )
     monkeypatch.setattr(
         batch,
@@ -155,6 +197,16 @@ def test_target_mode_uses_only_sportradar_and_goalserve(monkeypatch, tmp_path):
     assert live_calls[0]["fetch_fixtures"] is batch.fetch_sportradar_fixture_rows
     assert live_calls[0]["ingest_fixtures"] is batch.ingest_sportradar_fixture_rows
     assert live_calls[0]["pinnapi_key"] is None
-    assert goalserve_fetches == ["https://secret.invalid/feed"]
-    assert goalserve_ingests[0]["candidate_match_ids"] == (10,)
-    assert goalserve_ingests[0]["received_at"] == goalserve_received
+    assert price_calls[0]["source_systems"] == ("SPORTRADAR",)
+    assert discovery_calls[0][0] == "odds-key"
+    assert discovery_calls[0][1]["bookmakers"] == ("pinnacle+30",)
+    assert board_calls[0][0] == "odds-key"
+    assert board_calls[0][1]["tournament_ids"] == [303]
+    assert board_calls[0][1]["bookmakers"] == (
+        "pinnacle+30",
+        "1xbet",
+        "unibet",
+        "bet365",
+    )
+    assert ingest_calls[0]["candidate_match_ids"] == (10,)
+    assert ingest_calls[0]["received_at"] == odds_received
