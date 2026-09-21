@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-09-19
+Last updated: 2026-09-21
 
 ## 2026-09-19 provider-cutover truth
 
@@ -13,7 +13,7 @@ PRODUCTION DATA AUTHORITY: API_TENNIS
 PRODUCTION ODDS AUTHORITY: LEGACY_SPLIT (PinnAPI sharp + API-Tennis offered)
 PRODUCTION MANAGER POLICY: tennis_manager_consensus/v1
 TARGET DATA AUTHORITY: SPORTRADAR_V3
-TARGET ODDS AUTHORITY: GOALSERVE_TENNIS
+TARGET ODDS AUTHORITY: ODDSPAPI_TENNIS
 TARGET MANAGER POLICY: tennis_manager_consensus/v2 (strict active 3/3)
 TARGET ACTIVATION: BLOCKED / NOT YET AUTHORIZED
 ```
@@ -26,13 +26,13 @@ PR #162 prepares, but does not activate, the target stack. It includes:
 - paired provider-authority gates that forbid a half-cutover;
 - fail-closed Sportradar fixture parsing and exact cross-provider match/player reconciliation;
 - overlap-safe Sportradar canonical ingestion that prevents duplicate match creation;
-- Goalserve event/player reconciliation plus provider-neutral odds normalization;
-- explicit Goalserve SHARP/PINNACLE and OFFERED mapping requirements;
+- OddsPapi fixture/player reconciliation plus provider-neutral odds normalization, preferring its Betradar/Sportradar bridge where available;
+- explicit OddsPapi mappings for `pinnacle+30` -> SHARP/PINNACLE and `1xbet` / `unibet` / `bet365` -> OFFERED;
 - a dormant target live path that forbids legacy provider calls when target mode is selected;
 - bounded Sportradar terminal-result and final serve/return-stat refresh;
 - a provider-aware history-refresh dispatcher.
 
-The target activation flag remains fail-closed in source until the actual Goalserve account feed has been observed, exact bookmaker keys have been mapped, the latest PostgreSQL suite is green, migration 0014 is verified in production, and the cutover runbook is executed deliberately.
+The previously planned Goalserve odds target is superseded by the purchased OddsPapi Tennis plan. PR #169 prepares the replacement in shadow mode. Target activation remains fail-closed until the live OddsPapi account is shadow-validated for fixture coverage, identity orientation, Match Winner market `121`, Pinnacle +30-second price parity, offered-book coverage, and request-budget behavior; the latest PostgreSQL suite must also be green, migration 0014 verified in production, and the cutover runbook executed deliberately.
 
 The verified API-Tennis historical Agent 2 regime remains append-only historical evidence. Sportradar evidence is prospective/provider-versioned and must not rewrite source observation timestamps or reinterpret prior v1 Manager decisions.
 ## Current milestone
