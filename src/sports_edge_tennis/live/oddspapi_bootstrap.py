@@ -13,6 +13,7 @@ MAPPINGS = (
     ("bet365", "BET365", "OFFERED"),
 )
 MAPPING_VERSION = 1
+ODDSPAPI_V4_EFFECTIVE_FROM = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 class OddspapiBookmakerMappingConflictError(RuntimeError):
@@ -22,9 +23,10 @@ class OddspapiBookmakerMappingConflictError(RuntimeError):
 def ensure_oddspapi_bookmaker_mappings(
     conn: psycopg.Connection,
     *,
-    clock: callable | None = None,
+    effective_from: datetime = ODDSPAPI_V4_EFFECTIVE_FROM,
 ) -> tuple[int, ...]:
-    clock = clock or (lambda: datetime.now(UTC))
+    if effective_from.tzinfo is None:
+        raise ValueError("OddsPapi mapping effective_from must be timezone-aware")
     ids: list[int] = []
     for provider_key, bookmaker_code, normalization_class in MAPPINGS:
         row = conn.execute(
@@ -58,11 +60,17 @@ def ensure_oddspapi_bookmaker_mappings(
                 MAPPING_VERSION,
                 bookmaker_code,
                 normalization_class,
-                clock(),
+                effective_from.astimezone(UTC),
             ),
         ).fetchone()[0]
         ids.append(int(mapping_id))
     return tuple(ids)
 
 
-__all__ = ["MAPPINGS", "PROVIDER_CODE", "ensure_oddspapi_bookmaker_mappings"]
+__all__ = [
+    "MAPPINGS",
+    "MAPPING_VERSION",
+    "ODDSPAPI_V4_EFFECTIVE_FROM",
+    "PROVIDER_CODE",
+    "ensure_oddspapi_bookmaker_mappings",
+]
