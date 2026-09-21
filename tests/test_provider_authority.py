@@ -55,7 +55,7 @@ def _target_env():
         "SPORTRADAR_TENNIS_API_KEY": "sr-secret",
         "SPORTRADAR_TENNIS_ACCESS_LEVEL": "production",
         "SPORTRADAR_TENNIS_LANGUAGE": "en",
-        "GOALSERVE_TENNIS_FEED_URL": "https://example.invalid/account/tennis.json",
+        "ODDSPAPI_API_KEY": "odds-secret",
         authority.MANAGER_POLICY_ENV: "v2",
     }
 
@@ -85,7 +85,7 @@ def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:
     assert "CUTOVER_AUTHORIZATION_MISSING" in result.blockers
     assert "STRICT_MANAGER_V2_NOT_SELECTED" in result.blockers
     assert "MISSING_ENV:SPORTRADAR_TENNIS_API_KEY" in result.blockers
-    assert "MISSING_ENV:GOALSERVE_TENNIS_FEED_URL" in result.blockers
+    assert "MISSING_ENV:ODDSPAPI_API_KEY" in result.blockers
 
 
 def test_target_cutover_requires_strict_manager_schema_history_and_mapping() -> None:
@@ -103,8 +103,8 @@ def test_target_cutover_requires_strict_manager_schema_history_and_mapping() -> 
     assert "STRICT_MANAGER_V2_NOT_MIGRATED" in result.blockers
     assert "CORE_SCHEMA_INCOMPLETE" in result.blockers
     assert "HISTORICAL_CORPUS_EMPTY" in result.blockers
-    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in result.blockers
-    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" in result.blockers
+    assert "ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in result.blockers
+    assert "ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED" in result.blockers
 
 
 def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -> None:
@@ -114,23 +114,23 @@ def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -
     assert result.authority.full_target_requested is True
 
 
-def test_target_cutover_requires_both_goalserve_mapping_classes() -> None:
+def test_target_cutover_requires_both_oddspapi_mapping_classes() -> None:
     missing_sharp = authority.evaluate_cutover_readiness(
         _FakeConn(sharp_mapping=False, offered_mapping=True),
         env=_target_env(),
     )
-    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in missing_sharp.blockers
-    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" not in missing_sharp.blockers
+    assert "ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in missing_sharp.blockers
+    assert "ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED" not in missing_sharp.blockers
 
     missing_offered = authority.evaluate_cutover_readiness(
         _FakeConn(sharp_mapping=True, offered_mapping=False),
         env=_target_env(),
     )
-    assert "GOALSERVE_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" not in missing_offered.blockers
-    assert "GOALSERVE_OFFERED_MAPPING_NOT_VERIFIED" in missing_offered.blockers
+    assert "ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" not in missing_offered.blockers
+    assert "ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED" in missing_offered.blockers
 
 
-def test_goalserve_mapping_gate_queries_latest_mapping_per_bookmaker() -> None:
+def test_oddspapi_mapping_gate_queries_latest_mapping_per_bookmaker() -> None:
     seen = {}
 
     class _Conn:
@@ -141,7 +141,7 @@ def test_goalserve_mapping_gate_queries_latest_mapping_per_bookmaker() -> None:
                 return _Result((True, True))
             raise AssertionError(normalized)
 
-    assert authority._goalserve_mapping_state(_Conn()) == (True, True)
+    assert authority._oddspapi_mapping_state(_Conn()) == (True, True)
     assert "distinct on (provider_bookmaker_key)" in seen["sql"]
     assert "effective_from desc" in seen["sql"]
     assert "mapping_version desc" in seen["sql"]
