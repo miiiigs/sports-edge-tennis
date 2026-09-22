@@ -6,8 +6,10 @@ import pytest
 
 from sports_edge_tennis.live.sportradar_fixtures import parse_summary
 from sports_edge_tennis.live.sportradar_history_refresh import (
+    ParsedResult,
     _parse_final_stats,
     _parse_terminal_result,
+    _terminal_result_conflict,
     _validate_sportradar_player_map,
 )
 
@@ -262,3 +264,54 @@ def test_sportradar_stat_player_bridge_rejects_incomplete_resolution() -> None:
             {"sr:p1": 101},
             expected_player_ids=(101, 202),
         )
+
+def test_terminal_result_conflict_blocks_status_reinterpretation() -> None:
+    candidate = ParsedResult(
+        outcome_status="COMPLETED",
+        winner_side=1,
+        retired_side=None,
+        sets_won_player_1=1,
+        sets_won_player_2=0,
+        games_won_player_1=None,
+        games_won_player_2=None,
+        scoreline_text="1-0",
+    )
+    current = ("RETIRED", 1, 2, 1, 0, None, None)
+    assert (
+        _terminal_result_conflict(current, candidate)
+        == "terminal_outcome_conflict:RETIRED:COMPLETED"
+    )
+
+
+def test_terminal_result_conflict_blocks_winner_flip() -> None:
+    candidate = ParsedResult(
+        outcome_status="COMPLETED",
+        winner_side=2,
+        retired_side=None,
+        sets_won_player_1=0,
+        sets_won_player_2=2,
+        games_won_player_1=None,
+        games_won_player_2=None,
+        scoreline_text="0-2",
+    )
+    current = ("COMPLETED", 1, None, 2, 0, None, None)
+    assert (
+        _terminal_result_conflict(current, candidate)
+        == "terminal_winner_conflict:1:2"
+    )
+
+
+def test_terminal_result_conflict_allows_matching_terminal_truth() -> None:
+    candidate = ParsedResult(
+        outcome_status="RETIRED",
+        winner_side=1,
+        retired_side=2,
+        sets_won_player_1=1,
+        sets_won_player_2=0,
+        games_won_player_1=8,
+        games_won_player_2=8,
+        scoreline_text="1-0",
+    )
+    current = ("RETIRED", 1, 2, 1, 0, 8, 8)
+    assert _terminal_result_conflict(current, candidate) is None
+
