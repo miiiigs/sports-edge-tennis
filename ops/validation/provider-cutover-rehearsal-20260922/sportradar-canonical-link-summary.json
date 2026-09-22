@@ -1,0 +1,75 @@
+{
+  "database": {
+    "transaction_read_only": "on",
+    "writes": 0
+  },
+  "exact": {
+    "atp_count": 87,
+    "atp_pct": 55.06,
+    "challenger_count": 422,
+    "challenger_pct": 81.31,
+    "count": 509,
+    "pct": 75.18
+  },
+  "historical_window": {
+    "end_utc": "2026-09-21T23:59:59Z",
+    "start_utc": "2026-09-10T00:00:00Z"
+  },
+  "link_status_counts": {
+    "EXACT": 509,
+    "TIME_MISMATCH": 1,
+    "UNRESOLVED": 167
+  },
+  "match_identity": {
+    "candidate_match_source_ids": 509,
+    "event_identity_conflicts": 0
+  },
+  "oddspapi": {
+    "betradar_conflicts": 0,
+    "crosscheck_counts": {
+      "NOT_EXACT": 167,
+      "SPORTRADAR_ONLY": 29,
+      "TRIPLE_EXACT": 481
+    },
+    "errors": [],
+    "fixture_calls": 2,
+    "fixture_rows": 2140
+  },
+  "player_identity": {
+    "ambiguous_player_bindings": 1,
+    "candidate_new_player_mappings": 469,
+    "existing_player_mappings": 0,
+    "identity_conflicts": 0,
+    "unique_exact_player_bindings": 469
+  },
+  "production_mutation": false,
+  "result": {
+    "current_known": 622,
+    "current_missing": 55,
+    "gaps_resolvable": 8
+  },
+  "run_id": "sportradar_canonical_link_audit_v1",
+  "runtime_errors": [],
+  "sportradar": {
+    "daily_summary_calls": 12,
+    "errors": []
+  },
+  "start_delta_distribution": {
+    "0": 30,
+    "1-15": 420,
+    "121-180": 1,
+    "16-30": 46,
+    "31-60": 5,
+    "61-120": 7
+  },
+  "surface": {
+    "current_known": 523,
+    "current_missing": 154,
+    "gaps_resolvable": 0
+  },
+  "targets": {
+    "atp": 158,
+    "challenger": 519,
+    "total": 677
+  }
+}

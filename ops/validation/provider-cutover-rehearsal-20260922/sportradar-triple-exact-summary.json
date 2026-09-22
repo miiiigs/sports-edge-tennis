@@ -1,0 +1,43 @@
+{
+  "candidate_artifact_sha256": "bae6a36a25d1bc1ba64d24eb4da2d9a4ba18adb6d175b0a2d0946cb96f0e3d18",
+  "database": {
+    "transaction_read_only": "on",
+    "writes": 0
+  },
+  "eligibility": {
+    "already_existing": 0,
+    "betradar_conflicts": 0,
+    "eligible_apply": 477,
+    "match_conflicts": 0,
+    "orientation_failures": 0,
+    "other_skips": 3,
+    "player_conflicts": 3,
+    "reconciled_total": 480
+  },
+  "final_actions": {
+    "APPLY": 477,
+    "SKIP_CONFLICT": 3
+  },
+  "match_source_actions": {
+    "INSERT": 480
+  },
+  "oddspapi_betradar": {
+    "MATCH": 480
+  },
+  "orientation": {
+    "DIRECT": 480
+  },
+  "player_source_actions": {
+    "DUPLICATE_PROVIDER_ID": 3,
+    "INSERT": 957
+  },
+  "production_mutation": false,
+  "provider_calls": {
+    "oddspapi_fixture_calls": 2,
+    "sportradar_daily_summary_calls": 12
+  },
+  "run_id": "sportradar_triple_exact_apply_preview_v1",
+  "triple_exact_input": 480,
+  "unique_sportradar_competitor_ids": 464,
+  "unique_sportradar_event_ids": 480
+}
