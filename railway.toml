@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m pip install . >/dev/null 2>&1 && python ops/validation/sportradar_final_stats_shadow_20260923.py"
+startCommand = "python -c \"print('VALIDATION_IDLE')\""
 restartPolicyType = "NEVER"
