@@ -8,8 +8,10 @@ import pytest
 import sports_edge_tennis.validation.sportradar_stage1b_match_only as stage1b
 from sports_edge_tennis.validation.sportradar_stage1b_match_only import (
     AUTH_ENV,
+    AUTH_TOKEN,
     DEFAULT_ARTIFACT,
     ENABLED_ENV,
+    HASH_ENV,
     EXPECTED_ARTIFACT_SHA256,
     EXPECTED_ROWS,
     apply_stage1b_match_only,
@@ -94,3 +96,103 @@ def test_stage1b_apply_is_disabled_by_default():
             dsn="postgresql://unused",
             env={ENABLED_ENV: "false", AUTH_ENV: "DISABLED"},
         )
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("evidence_type", "FUZZY", "unexpected evidence"),
+        ("orientation", "REVERSED", "unexpected orientation"),
+        ("candidate_count", 2, "candidate_count changed"),
+    ],
+)
+def test_stage1b_rejects_evidence_contract_changes(field, value, message):
+    rows = list(load_candidates())
+    rows[0] = replace(rows[0], **{field: value})
+    with pytest.raises(ValueError, match=message):
+        validate_candidates(rows)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("event_id", ""),
+        ("player_1_source_id", ""),
+        ("player_2_source_id", ""),
+    ],
+)
+def test_stage1b_rejects_missing_provider_identity(field, value):
+    rows = list(load_candidates())
+    rows[0] = replace(rows[0], **{field: value})
+    with pytest.raises(ValueError, match="missing provider identity"):
+        validate_candidates(rows)
+
+
+def test_stage1b_rejects_player_collisions():
+    rows = list(load_candidates())
+    rows[0] = replace(rows[0], player_2_id=rows[0].player_1_id)
+    with pytest.raises(ValueError, match="canonical player collision"):
+        validate_candidates(rows)
+
+    rows = list(load_candidates())
+    rows[0] = replace(
+        rows[0],
+        player_2_source_id=rows[0].player_1_source_id,
+    )
+    with pytest.raises(ValueError, match="provider player collision"):
+        validate_candidates(rows)
+
+
+def test_stage1b_rejects_match_to_multiple_event_mapping():
+    rows = list(load_candidates())
+    rows[1] = replace(rows[1], match_id=rows[0].match_id)
+    with pytest.raises(ValueError, match="canonical match maps to multiple events"):
+        validate_candidates(rows)
+
+
+def test_stage1b_rejects_event_to_multiple_match_mapping():
+    rows = list(load_candidates())
+    rows[1] = replace(rows[1], event_id=rows[0].event_id)
+    with pytest.raises(ValueError, match="Sportradar event maps to multiple matches"):
+        validate_candidates(rows)
+
+
+def test_stage1b_rejects_canonical_player_to_multiple_source_ids():
+    rows = list(load_candidates())
+    rows[1] = replace(rows[1], player_1_id=rows[0].player_1_id)
+    with pytest.raises(ValueError, match="canonical player maps to multiple Sportradar IDs"):
+        validate_candidates(rows)
+
+
+def test_stage1b_rejects_source_id_to_multiple_canonical_players():
+    rows = list(load_candidates())
+    rows[1] = replace(
+        rows[1],
+        player_1_source_id=rows[0].player_1_source_id,
+    )
+    with pytest.raises(ValueError, match="Sportradar player maps to multiple canonical IDs"):
+        validate_candidates(rows)
+
+
+def test_stage1b_apply_requires_exact_authorization():
+    with pytest.raises(RuntimeError, match=AUTH_ENV):
+        apply_stage1b_match_only(
+            dsn="postgresql://unused",
+            env={
+                ENABLED_ENV: "true",
+                AUTH_ENV: "wrong",
+                HASH_ENV: EXPECTED_ARTIFACT_SHA256,
+            },
+        )
+
+
+def test_stage1b_apply_requires_reviewed_artifact_hash():
+    with pytest.raises(RuntimeError, match=HASH_ENV):
+        apply_stage1b_match_only(
+            dsn="postgresql://unused",
+            env={
+                ENABLED_ENV: "true",
+                AUTH_ENV: AUTH_TOKEN,
+                HASH_ENV: "not-reviewed",
+            },
+        )
+
