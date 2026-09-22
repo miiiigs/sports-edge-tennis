@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import nullcontext
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
@@ -152,6 +153,39 @@ def test_exact_overlap_persists_one_match(monkeypatch) -> None:
     assert result.matches[0].match_id == 10
     assert result.matches[0].overlap_status == "EXACT_EXISTING_MATCH"
     assert finished[0]["rows_inserted"] == 1
+
+
+def test_existing_terminal_truth_blocks_conflicting_provider_status(monkeypatch) -> None:
+    fixture = replace(_fixture(), match_status="COMPLETED")
+    finished = _patch_common(monkeypatch, _parsed(fixture))
+    monkeypatch.setattr(
+        ingest,
+        "resolve_sportradar_event_overlap",
+        lambda *a, **k: _exact_overlap(),
+    )
+    monkeypatch.setattr(
+        ingest,
+        "_latest_terminal_outcome",
+        lambda *a, **k: "RETIRED",
+    )
+    persisted = []
+    monkeypatch.setattr(
+        ingest,
+        "_persist_fixture",
+        lambda *a, **k: persisted.append(k),
+    )
+
+    result = ingest.ingest_sportradar_daily_summaries(
+        _Conn(),
+        {"summaries": []},
+        received_at=RECEIVED,
+    )
+
+    assert result.rows_ingested == 0
+    assert result.rows_rejected == 1
+    assert "terminal_truth_conflict:RETIRED:COMPLETED" in str(result.rejected_rows)
+    assert persisted == []
+    assert finished[0]["rows_inserted"] == 0
 
 
 def test_ambiguous_overlap_is_rejected_without_persisting(monkeypatch) -> None:
