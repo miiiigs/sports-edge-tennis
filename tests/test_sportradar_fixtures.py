@@ -148,6 +148,20 @@ def test_terminal_status_is_parsed_but_not_reinterpreted() -> None:
     assert row.match_status == "COMPLETED"
 
 
+def test_detailed_match_status_overrides_broad_ended_status() -> None:
+    retired = _summary(status="ended")
+    retired["sport_event_status"]["match_status"] = "retired"
+    assert parse_summary(retired, received_at=RECEIVED).match_status == "RETIRED"
+
+    walkover = _summary(status="ended")
+    walkover["sport_event_status"]["match_status"] = "walkover"
+    assert parse_summary(walkover, received_at=RECEIVED).match_status == "WALKOVER"
+
+    cancelled = _summary(status="ended")
+    cancelled["sport_event_status"]["match_status"] = "cancelled"
+    assert parse_summary(cancelled, received_at=RECEIVED).match_status == "CANCELLED"
+
+
 def test_sportradar_enum_levels_map_to_exact_tiers() -> None:
     cases = {
         "grand_slam": "GRAND_SLAM",
