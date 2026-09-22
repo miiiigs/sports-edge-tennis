@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m pip install . && SPORTRADAR_STATS_START_DATE=2026-09-21 SPORTRADAR_STATS_END_DATE=2026-09-21 python ops/validation/sportradar_linked_stats_backfill_preview_20260923.py"
+startCommand = "python -c \"print('VALIDATION_IDLE')\""
 restartPolicyType = "NEVER"
