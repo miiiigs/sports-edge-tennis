@@ -141,6 +141,24 @@ def test_retirement_sets_only_losing_side_as_retired() -> None:
     assert result.retired_side == 1
 
 
+def test_retirement_uses_detailed_match_status_when_winning_reason_missing() -> None:
+    summary = _summary(
+        status="ended",
+        winner_id="sr:p2",
+        winning_reason="",
+        period_scores=_periods(),
+    )
+    summary["sport_event_status"]["match_status"] = "retired"
+    fixture = parse_summary(summary, received_at=RECEIVED)
+
+    result = _parse_terminal_result(summary, fixture=fixture)
+
+    assert fixture.match_status == "RETIRED"
+    assert result.outcome_status == "RETIRED"
+    assert result.winner_side == 2
+    assert result.retired_side == 1
+
+
 def test_walkover_remains_terminal_but_has_no_retired_side() -> None:
     summary = _summary(
         winner_id="sr:p1",
