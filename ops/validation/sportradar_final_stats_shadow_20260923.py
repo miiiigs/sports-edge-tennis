@@ -10,9 +10,11 @@ import psycopg
 from sports_edge_tennis.live.credentials import load_secret
 from sports_edge_tennis.live.sportradar_fixtures import SportradarFixtureError, parse_summary
 from sports_edge_tennis.live.sportradar_history_refresh import (
+    _latest_result_semantic_key,
     _parse_final_stats,
     _parse_terminal_result,
     _sportradar_player_map,
+    _terminal_result_conflict,
     _validate_sportradar_player_map,
 )
 from sports_edge_tennis.live.target_fixtures import fetch_sportradar_fixture_rows
@@ -89,11 +91,20 @@ def main() -> int:
             counts["terminal_linked"] += 1
 
             try:
-                _parse_terminal_result(summary, fixture=fixture)
+                parsed_result = _parse_terminal_result(summary, fixture=fixture)
                 counts["terminal_result_parse_ok"] += 1
             except ValueError as exc:
                 counts["terminal_result_parse_rejected"] += 1
                 reasons[str(exc)] += 1
+                continue
+
+            result_conflict = _terminal_result_conflict(
+                _latest_result_semantic_key(conn, match_id=match_id),
+                parsed_result,
+            )
+            if result_conflict is not None:
+                counts["terminal_truth_conflict"] += 1
+                reasons[result_conflict] += 1
                 continue
 
             if fixture.match_status != "COMPLETED":
