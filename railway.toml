@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -c \"$IDENTITY_DB_PREVIEW_SCRIPT\""
+startCommand = "python -m pip install --quiet \"psycopg[binary]\" && python -c \"$IDENTITY_DB_PREVIEW_SCRIPT\""
 restartPolicyType = "NEVER"
