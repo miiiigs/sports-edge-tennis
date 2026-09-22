@@ -319,9 +319,10 @@ def collect_candidates(
                 hashes=candidate.stat_hashes,
             )
             if len(existing) == 2:
+                # Keep fully existing semantic candidates in the reviewed
+                # artifact so apply remains hash-stable and idempotent.
                 counts["already_backfilled"] += 1
-                continue
-            if existing:
+            elif existing:
                 counts["partial_existing_stats"] += 1
                 reasons["partial_existing_sportradar_stats"] += 1
                 continue
