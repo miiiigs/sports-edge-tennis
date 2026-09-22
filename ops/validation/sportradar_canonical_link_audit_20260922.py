@@ -28,6 +28,7 @@ def main(argv: list[str] | None = None) -> int:
         start_date=args.start_date,
         end_date=args.end_date,
     )
+    preview = summary["triple_exact_preview"]
     print(
         "SPORTRADAR_CANONICAL_LINK_AUDIT "
         + json.dumps(
@@ -43,6 +44,18 @@ def main(argv: list[str] | None = None) -> int:
                 "candidate_match_source_ids": summary["match_identity"]["candidate_match_source_ids"],
                 "surface_gaps_resolvable": summary["surface"]["gaps_resolvable"],
                 "result_gaps_resolvable": summary["result"]["gaps_resolvable"],
+                "triple_exact_preview": {
+                    "candidate_artifact_sha256": preview["candidate_artifact_sha256"],
+                    "eligibility": preview["eligibility"],
+                    "final_actions": preview["final_actions"],
+                    "match_source_actions": preview["match_source_actions"],
+                    "oddspapi_betradar": preview["oddspapi_betradar"],
+                    "orientation": preview["orientation"],
+                    "player_source_actions": preview["player_source_actions"],
+                    "triple_exact_input": preview["triple_exact_input"],
+                    "unique_sportradar_competitor_ids": preview["unique_sportradar_competitor_ids"],
+                    "unique_sportradar_event_ids": preview["unique_sportradar_event_ids"],
+                },
                 "runtime_errors": len(summary["runtime_errors"]),
             },
             sort_keys=True,

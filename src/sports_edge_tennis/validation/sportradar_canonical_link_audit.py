@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import time as time_module
 from collections import Counter, defaultdict
@@ -35,6 +36,9 @@ RUN_ID = "sportradar_canonical_link_audit_v1"
 SOURCE_SYSTEM = "SPORTRADAR"
 ODDSPAPI_STATUS_FINISHED = 2
 ODDSPAPI_FIXTURE_COOLDOWN_SECONDS = 2.1
+TRIPLE_EXACT_CANDIDATES_FILE = "sportradar-triple-exact-candidates.csv"
+TRIPLE_EXACT_SUMMARY_FILE = "sportradar-triple-exact-summary.json"
+IDENTITY_APPLY_PREVIEW_FILE = "sportradar-identity-apply-preview.csv"
 
 
 @dataclass(frozen=True)
@@ -102,6 +106,63 @@ def classify_oddspapi_crosscheck(
     if len(rows) > 1:
         return "BETRADAR_CONFLICT", rows[0]
     return "SPORTRADAR_ONLY", None
+
+
+def classify_betradar_check(*, sportradar_event_id: str | None, oddspapi_betradar_id: str | None) -> str:
+    if not oddspapi_betradar_id:
+        return "MISSING"
+    if event_id_key(sportradar_event_id) == event_id_key(oddspapi_betradar_id):
+        return "MATCH"
+    return "CONFLICT"
+
+
+def classify_source_binding(
+    *,
+    canonical_id: int,
+    source_id: str | None,
+    existing_source_ids: Mapping[str, int],
+    candidate_source_to_canonical_ids: Mapping[str, set[int]] | None = None,
+) -> str:
+    if not source_id:
+        return "CONFLICT_OTHER_MATCH"
+    existing = existing_source_ids.get(str(source_id))
+    if existing is None and source_id.startswith("sr:sport_event:"):
+        existing = existing_source_ids.get(event_id_key(source_id))
+    if existing is None and str(source_id).isdigit():
+        existing = existing_source_ids.get(f"sr:sport_event:{source_id}")
+    if existing is not None:
+        return "EXISTING_SAME" if int(existing) == int(canonical_id) else "CONFLICT_OTHER_MATCH"
+    candidate_ids: set[int] = set()
+    if candidate_source_to_canonical_ids is not None:
+        candidate_ids.update(candidate_source_to_canonical_ids.get(str(source_id), set()))
+        key = event_id_key(source_id)
+        if key and key != str(source_id):
+            candidate_ids.update(candidate_source_to_canonical_ids.get(key, set()))
+    if len(candidate_ids) > 1:
+        return "DUPLICATE_PROVIDER_ID"
+    return "INSERT"
+
+
+def classify_orientation(
+    *,
+    canonical_player_1_id: int,
+    canonical_player_2_id: int,
+    p1_source_id: str | None,
+    p2_source_id: str | None,
+    sport_event_player_1_id: str | None,
+    sport_event_player_2_id: str | None,
+) -> str:
+    if not p1_source_id or not p2_source_id:
+        return "INVALID"
+    if p1_source_id == p2_source_id:
+        return "INVALID"
+    if canonical_player_1_id == canonical_player_2_id:
+        return "INVALID"
+    direct = p1_source_id == sport_event_player_1_id and p2_source_id == sport_event_player_2_id
+    reversed_ = p1_source_id == sport_event_player_2_id and p2_source_id == sport_event_player_1_id
+    if direct == reversed_:
+        return "INVALID"
+    return "DIRECT" if direct else "REVERSED"
 
 
 def summarize_player_bindings(rows: Sequence[Mapping[str, Any]]) -> dict[str, int]:
@@ -226,6 +287,24 @@ def audit_sportradar_canonical_links(
 
     write_csv(output_dir / "sportradar-canonical-link-audit.csv", artifact_rows)
     write_json(output_dir / "sportradar-canonical-link-summary.json", summary)
+    triple_rows = build_triple_exact_candidate_rows(artifact_rows)
+    preview_rows = build_apply_preview_rows(
+        triple_rows,
+        existing_matches=existing_matches,
+        existing_players=existing_players,
+    )
+    write_csv(output_dir / TRIPLE_EXACT_CANDIDATES_FILE, triple_rows)
+    candidate_hash = sha256_file(output_dir / TRIPLE_EXACT_CANDIDATES_FILE)
+    triple_summary = build_triple_exact_summary(
+        read_only=read_only,
+        broad_summary=summary,
+        candidate_rows=triple_rows,
+        preview_rows=preview_rows,
+        candidate_sha256=candidate_hash,
+    )
+    summary["triple_exact_preview"] = triple_summary
+    write_csv(output_dir / IDENTITY_APPLY_PREVIEW_FILE, preview_rows)
+    write_json(output_dir / TRIPLE_EXACT_SUMMARY_FILE, triple_summary)
     return summary
 
 
@@ -455,6 +534,11 @@ def artifact_row(
         "player_1_sportradar_name": None,
         "player_2_sportradar_id": None,
         "player_2_sportradar_name": None,
+        "sportradar_player_1_id": None,
+        "sportradar_player_1_name": None,
+        "sportradar_player_2_id": None,
+        "sportradar_player_2_name": None,
+        "orientation": None,
         "player_1_binding": None,
         "player_2_binding": None,
         "match_source_id_state": None,
@@ -503,6 +587,11 @@ def artifact_row(
             "player_1_sportradar_name": candidate.player_1_sportradar_name,
             "player_2_sportradar_id": candidate.player_2_sportradar_id,
             "player_2_sportradar_name": candidate.player_2_sportradar_name,
+            "sportradar_player_1_id": candidate.sport_event_player_1_id,
+            "sportradar_player_1_name": candidate.sport_event_player_1_name,
+            "sportradar_player_2_id": candidate.sport_event_player_2_id,
+            "sportradar_player_2_name": candidate.sport_event_player_2_name,
+            "orientation": candidate.orientation,
             "player_1_binding": player_binding_state(
                 player_id=target.target.player_1_id,
                 source_player_id=candidate.player_1_sportradar_id,
@@ -525,6 +614,211 @@ def artifact_row(
         }
     )
     return base
+
+
+def build_triple_exact_candidate_rows(rows: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    for row in rows:
+        if row.get("link_status") != "EXACT" or row.get("evidence_type") != "TRIPLE_EXACT_BETRADAR":
+            continue
+        candidates.append(
+            {
+                "canonical_match_id": row.get("canonical_match_id"),
+                "canonical_player_1_id": row.get("canonical_player_1_id"),
+                "canonical_player_1_name": row.get("canonical_player_1_name"),
+                "canonical_player_2_id": row.get("canonical_player_2_id"),
+                "canonical_player_2_name": row.get("canonical_player_2_name"),
+                "sportradar_event_id": row.get("sportradar_event_id"),
+                "sportradar_player_1_id": row.get("sportradar_player_1_id"),
+                "sportradar_player_1_name": row.get("sportradar_player_1_name"),
+                "sportradar_player_2_id": row.get("sportradar_player_2_id"),
+                "sportradar_player_2_name": row.get("sportradar_player_2_name"),
+                "oddspapi_fixture_id": row.get("oddspapi_fixture_id"),
+                "oddspapi_betradar_id": row.get("oddspapi_betradar_id"),
+                "start_delta_minutes": row.get("start_delta_minutes"),
+                "orientation": row.get("orientation"),
+                "evidence_type": "TRIPLE_EXACT_BETRADAR",
+                "p1_sportradar_id": row.get("player_1_sportradar_id"),
+                "p2_sportradar_id": row.get("player_2_sportradar_id"),
+            }
+        )
+    return candidates
+
+
+def build_apply_preview_rows(
+    candidate_rows: Sequence[Mapping[str, Any]],
+    *,
+    existing_matches: Mapping[str, int],
+    existing_players: Mapping[str, int],
+) -> list[dict[str, Any]]:
+    event_to_matches: dict[str, set[int]] = defaultdict(set)
+    player_source_to_players: dict[str, set[int]] = defaultdict(set)
+    match_to_events: dict[int, set[str]] = defaultdict(set)
+    player_to_sources: dict[int, set[str]] = defaultdict(set)
+    for row in candidate_rows:
+        match_id = int(row["canonical_match_id"])
+        event_key = event_id_key(row.get("sportradar_event_id"))
+        if event_key:
+            event_to_matches[event_key].add(match_id)
+            match_to_events[match_id].add(event_key)
+        for side in ("1", "2"):
+            player_id = int(row[f"canonical_player_{side}_id"])
+            source_id = str(row.get(f"p{side}_sportradar_id") or "")
+            if source_id:
+                player_source_to_players[source_id].add(player_id)
+                player_to_sources[player_id].add(source_id)
+
+    preview: list[dict[str, Any]] = []
+    for row in candidate_rows:
+        match_id = int(row["canonical_match_id"])
+        event_id = str(row.get("sportradar_event_id") or "")
+        event_key = event_id_key(event_id)
+        match_action = classify_source_binding(
+            canonical_id=match_id,
+            source_id=event_id,
+            existing_source_ids=existing_matches,
+            candidate_source_to_canonical_ids=event_to_matches,
+        )
+        if len(match_to_events[match_id]) > 1:
+            match_action = "DUPLICATE_PROVIDER_ID"
+
+        p1_id = int(row["canonical_player_1_id"])
+        p2_id = int(row["canonical_player_2_id"])
+        p1_source = str(row.get("p1_sportradar_id") or "")
+        p2_source = str(row.get("p2_sportradar_id") or "")
+        p1_action = classify_source_binding(
+            canonical_id=p1_id,
+            source_id=p1_source,
+            existing_source_ids=existing_players,
+            candidate_source_to_canonical_ids=player_source_to_players,
+        ).replace("CONFLICT_OTHER_MATCH", "CONFLICT_OTHER_PLAYER")
+        p2_action = classify_source_binding(
+            canonical_id=p2_id,
+            source_id=p2_source,
+            existing_source_ids=existing_players,
+            candidate_source_to_canonical_ids=player_source_to_players,
+        ).replace("CONFLICT_OTHER_MATCH", "CONFLICT_OTHER_PLAYER")
+        if len(player_to_sources[p1_id]) > 1 and p1_action == "INSERT":
+            p1_action = "DUPLICATE_PROVIDER_ID"
+        if len(player_to_sources[p2_id]) > 1 and p2_action == "INSERT":
+            p2_action = "DUPLICATE_PROVIDER_ID"
+
+        betradar_check = classify_betradar_check(
+            sportradar_event_id=event_id,
+            oddspapi_betradar_id=str(row.get("oddspapi_betradar_id") or ""),
+        )
+        orientation_check = classify_orientation(
+            canonical_player_1_id=p1_id,
+            canonical_player_2_id=p2_id,
+            p1_source_id=p1_source,
+            p2_source_id=p2_source,
+            sport_event_player_1_id=str(row.get("sportradar_player_1_id") or ""),
+            sport_event_player_2_id=str(row.get("sportradar_player_2_id") or ""),
+        )
+        conflict_actions = {
+            "CONFLICT_OTHER_MATCH",
+            "CONFLICT_OTHER_PLAYER",
+            "DUPLICATE_PROVIDER_ID",
+        }
+        has_conflict = bool(
+            {match_action, p1_action, p2_action} & conflict_actions
+            or betradar_check != "MATCH"
+        )
+        if has_conflict:
+            final_action = "SKIP_CONFLICT"
+        elif orientation_check == "INVALID":
+            final_action = "SKIP_INVALID"
+        elif match_action == "EXISTING_SAME" and p1_action == "EXISTING_SAME" and p2_action == "EXISTING_SAME":
+            final_action = "EXISTING"
+        else:
+            final_action = "APPLY"
+        preview.append(
+            {
+                "match_id": match_id,
+                "sportradar_event_id": event_id,
+                "match_source_action": "EXISTING" if match_action == "EXISTING_SAME" else match_action,
+                "p1_sportradar_id": p1_source,
+                "p1_player_source_action": "EXISTING" if p1_action == "EXISTING_SAME" else p1_action,
+                "p2_sportradar_id": p2_source,
+                "p2_player_source_action": "EXISTING" if p2_action == "EXISTING_SAME" else p2_action,
+                "oddspapi_fixture_id": row.get("oddspapi_fixture_id"),
+                "betradar_check": betradar_check,
+                "orientation_check": orientation_check,
+                "final_action": final_action,
+            }
+        )
+    return preview
+
+
+def build_triple_exact_summary(
+    *,
+    read_only: str,
+    broad_summary: Mapping[str, Any],
+    candidate_rows: Sequence[Mapping[str, Any]],
+    preview_rows: Sequence[Mapping[str, Any]],
+    candidate_sha256: str,
+) -> dict[str, Any]:
+    final_counts = Counter(str(row["final_action"]) for row in preview_rows)
+    match_actions = Counter(str(row["match_source_action"]) for row in preview_rows)
+    p1_actions = Counter(str(row["p1_player_source_action"]) for row in preview_rows)
+    p2_actions = Counter(str(row["p2_player_source_action"]) for row in preview_rows)
+    player_actions = p1_actions + p2_actions
+    betradar = Counter(str(row["betradar_check"]) for row in preview_rows)
+    orientation = Counter(str(row["orientation_check"]) for row in preview_rows)
+    skip_count = len(preview_rows) - final_counts.get("APPLY", 0) - final_counts.get("EXISTING", 0)
+    reconciled_total = final_counts.get("APPLY", 0) + final_counts.get("EXISTING", 0) + skip_count
+    return {
+        "run_id": "sportradar_triple_exact_apply_preview_v1",
+        "database": {"transaction_read_only": read_only, "writes": 0},
+        "provider_calls": {
+            "sportradar_daily_summary_calls": broad_summary["sportradar"]["daily_summary_calls"],
+            "oddspapi_fixture_calls": broad_summary["oddspapi"]["fixture_calls"],
+        },
+        "triple_exact_input": len(candidate_rows),
+        "candidate_artifact_sha256": candidate_sha256,
+        "unique_sportradar_event_ids": len({event_id_key(row.get("sportradar_event_id")) for row in candidate_rows}),
+        "unique_sportradar_competitor_ids": len(
+            {
+                source_id
+                for row in candidate_rows
+                for source_id in (row.get("p1_sportradar_id"), row.get("p2_sportradar_id"))
+                if source_id
+            }
+        ),
+        "match_source_actions": dict(sorted(match_actions.items())),
+        "player_source_actions": dict(sorted(player_actions.items())),
+        "oddspapi_betradar": dict(sorted(betradar.items())),
+        "orientation": dict(sorted(orientation.items())),
+        "final_actions": dict(sorted(final_counts.items())),
+        "eligibility": {
+            "eligible_apply": final_counts.get("APPLY", 0),
+            "already_existing": final_counts.get("EXISTING", 0),
+            "match_conflicts": sum(
+                1
+                for row in preview_rows
+                if row["match_source_action"] in {"CONFLICT_OTHER_MATCH", "DUPLICATE_PROVIDER_ID"}
+            ),
+            "player_conflicts": sum(
+                1
+                for row in preview_rows
+                if row["p1_player_source_action"] in {"CONFLICT_OTHER_PLAYER", "DUPLICATE_PROVIDER_ID"}
+                or row["p2_player_source_action"] in {"CONFLICT_OTHER_PLAYER", "DUPLICATE_PROVIDER_ID"}
+            ),
+            "betradar_conflicts": betradar.get("CONFLICT", 0) + betradar.get("MISSING", 0),
+            "orientation_failures": orientation.get("INVALID", 0),
+            "other_skips": max(0, skip_count - betradar.get("CONFLICT", 0) - betradar.get("MISSING", 0) - orientation.get("INVALID", 0)),
+            "reconciled_total": reconciled_total,
+        },
+        "production_mutation": False,
+    }
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def player_binding_state(
@@ -691,10 +985,17 @@ def write_csv(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
 __all__ = [
     "RUN_ID",
     "audit_sportradar_canonical_links",
+    "build_apply_preview_rows",
+    "build_triple_exact_candidate_rows",
+    "build_triple_exact_summary",
+    "classify_betradar_check",
     "classify_oddspapi_crosscheck",
+    "classify_orientation",
+    "classify_source_binding",
     "delta_bucket",
     "event_id_key",
     "event_id_variants",
     "player_binding_state",
+    "sha256_file",
     "summarize_player_bindings",
 ]

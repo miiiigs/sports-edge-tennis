@@ -85,6 +85,11 @@ class SportradarLinkCandidate:
     player_1_sportradar_name: str
     player_2_sportradar_id: str
     player_2_sportradar_name: str
+    orientation: str = "DIRECT"
+    sport_event_player_1_id: str = ""
+    sport_event_player_1_name: str = ""
+    sport_event_player_2_id: str = ""
+    sport_event_player_2_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -423,6 +428,11 @@ def _candidate_for_summary(
         player_1_sportradar_name=_text(player_1.get("name")),
         player_2_sportradar_id=_text(player_2.get("id")),
         player_2_sportradar_name=_text(player_2.get("name")),
+        orientation="DIRECT" if direct else "REVERSED",
+        sport_event_player_1_id=_text(first.get("id")),
+        sport_event_player_1_name=first_name,
+        sport_event_player_2_id=_text(second.get("id")),
+        sport_event_player_2_name=second_name,
     )
 
 
