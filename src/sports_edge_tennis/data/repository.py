@@ -626,7 +626,7 @@ class HistoricalRepository:
             )
             VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                COALESCE(%s::timestamptz, CURRENT_TIMESTAMP), %s
+                COALESCE(%s::timestamptz, clock_timestamp()), %s
             )
             """,
             (
@@ -716,7 +716,7 @@ class HistoricalRepository:
             )
             VALUES (
                 %s, %s, %s, %s, %s, 'RAW_SOURCE', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                COALESCE(%s::timestamptz, CURRENT_TIMESTAMP), %s
+                COALESCE(%s::timestamptz, clock_timestamp()), %s
             )
             """,
             (

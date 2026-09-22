@@ -267,7 +267,7 @@ def test_repository_inserts_accept_explicit_ingested_at() -> None:
     ) is True
     result_sql = conn.calls[-1][0]
     assert "ingested_at" in result_sql
-    assert "COALESCE(%s::timestamptz, CURRENT_TIMESTAMP)" in result_sql
+    assert "COALESCE(%s::timestamptz, clock_timestamp())" in result_sql
     assert conn.calls[-1][1][-2] == received
 
     stat_conn = _RecordingConn()
@@ -285,13 +285,40 @@ def test_repository_inserts_accept_explicit_ingested_at() -> None:
     ) is True
     stat_sql = stat_conn.calls[-1][0]
     assert "ingested_at" in stat_sql
-    assert "COALESCE(%s::timestamptz, CURRENT_TIMESTAMP)" in stat_sql
+    assert "COALESCE(%s::timestamptz, clock_timestamp())" in stat_sql
     assert stat_conn.calls[-1][1][-2] == received
 
 
-def test_backfill_anchors_ingested_at_to_provider_receive_time() -> None:
+def test_repository_defaults_ingested_at_to_statement_clock() -> None:
+    from sports_edge_tennis.data.repository import HistoricalRepository
+
+    received = RECEIVED + timedelta(minutes=5)
+    conn = _RecordingConn()
+    repository = HistoricalRepository(conn, 7)
+    repository.insert_match_result(
+        match_id=101,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        retired_side=None,
+        sets_won_player_1=2,
+        sets_won_player_2=0,
+        games_won_player_1=12,
+        games_won_player_2=7,
+        scoreline_text="2-0",
+        source_observed_at=received,
+        as_of=received,
+    )
+    result_sql = conn.calls[-1][0]
+    assert "clock_timestamp()" in result_sql
+    assert "CURRENT_TIMESTAMP" not in result_sql
+    # No explicit ingestion time: the database statement clock is used instead.
+    assert conn.calls[-1][1][-2] is None
+
+
+def test_backfill_uses_database_clock_for_ingested_at() -> None:
     source = inspect.getsource(backfill.apply_linked_stats_backfill)
-    assert source.count("ingested_at=candidate.received_at") == 2
+    # The backfill must not conflate provider receipt time with ingestion time.
+    assert "ingested_at=" not in source
 
 
 class _RecordingPacer:
