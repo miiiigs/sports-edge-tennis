@@ -54,13 +54,17 @@ def test_fixture_transport_emits_historical_completed_status(monkeypatch):
     oddspapi.fetch_oddspapi_tennis_fixtures(
         "secret-key",
         from_at=datetime(2026, 9, 10, tzinfo=UTC),
-        to_at=datetime(2026, 9, 11, tzinfo=UTC),
+        to_at=datetime(2026, 9, 18, tzinfo=UTC),
         status_id=2,
+        has_odds=None,
+        bookmakers=None,
     )
     assert seen["params"]["statusId"] == 2
+    assert "hasOdds" not in seen["params"]
+    assert "bookmakers" not in seen["params"]
 
 
-def test_fixture_transport_accepts_47_hour_sport_window(monkeypatch):
+def test_fixture_transport_accepts_under_10_day_sport_window(monkeypatch):
     monkeypatch.setattr(
         oddspapi.requests,
         "get",
@@ -69,16 +73,16 @@ def test_fixture_transport_accepts_47_hour_sport_window(monkeypatch):
     oddspapi.fetch_oddspapi_tennis_fixtures(
         "secret-key",
         from_at=datetime(2026, 9, 10, tzinfo=UTC),
-        to_at=datetime(2026, 9, 10, tzinfo=UTC) + timedelta(hours=47),
+        to_at=datetime(2026, 9, 10, tzinfo=UTC) + timedelta(days=9),
     )
 
 
-def test_fixture_transport_rejects_48_hour_sport_window():
-    with pytest.raises(ValueError, match="strictly under 48 hours"):
+def test_fixture_transport_rejects_10_day_sport_window():
+    with pytest.raises(ValueError, match="strictly under 10 days"):
         oddspapi.fetch_oddspapi_tennis_fixtures(
             "secret-key",
             from_at=datetime(2026, 9, 10, tzinfo=UTC),
-            to_at=datetime(2026, 9, 12, tzinfo=UTC),
+            to_at=datetime(2026, 9, 20, tzinfo=UTC),
         )
 
 

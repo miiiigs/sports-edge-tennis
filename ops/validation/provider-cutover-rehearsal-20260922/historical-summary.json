@@ -1,6 +1,6 @@
 {
-  "atp_count": null,
-  "challenger_count": null,
+  "atp_count": 13,
+  "challenger_count": 615,
   "credentials": {
     "DATABASE_URL": "MISSING",
     "ODDSPAPI_API_KEY": "SET",
@@ -26,107 +26,55 @@
     "odds_provider": "ODDSPAPI_V4",
     "sporting_provider": "SPORTRADAR_V3"
   },
+  "oddspapi_betradar_id_coverage": 2140,
   "oddspapi_fixture_chunks": [
     {
-      "chunk_end": "2026-09-11T00:00:00Z",
-      "chunk_start": "2026-09-10T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-12T00:00:00Z",
-      "chunk_start": "2026-09-11T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-13T00:00:00Z",
-      "chunk_start": "2026-09-12T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-14T00:00:00Z",
-      "chunk_start": "2026-09-13T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-15T00:00:00Z",
-      "chunk_start": "2026-09-14T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-16T00:00:00Z",
-      "chunk_start": "2026-09-15T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
+      "bookmakers_filter": false,
       "chunk_end": "2026-09-17T00:00:00Z",
       "chunk_start": "2026-09-16T00:00:00Z",
-      "fixture_rows": 0,
+      "fixture_rows": 211,
+      "has_odds_filter": false,
+      "phase": "PROBE",
+      "query_shape": "sportId,statusId,from,to,language",
       "run_id": "provider_shadow_run_v1",
       "status": "OK",
-      "unique_fixture_rows": 0
+      "unique_fixture_rows": 211
     },
     {
-      "chunk_end": "2026-09-18T00:00:00Z",
-      "chunk_start": "2026-09-17T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
+      "bookmakers_filter": false,
       "chunk_end": "2026-09-19T00:00:00Z",
-      "chunk_start": "2026-09-18T00:00:00Z",
-      "fixture_rows": 0,
+      "chunk_start": "2026-09-10T00:00:00Z",
+      "fixture_rows": 1626,
+      "has_odds_filter": false,
+      "phase": "FULL",
+      "query_shape": "sportId,statusId,from,to,language",
       "run_id": "provider_shadow_run_v1",
       "status": "OK",
-      "unique_fixture_rows": 0
+      "unique_fixture_rows": 1626
     },
     {
-      "chunk_end": "2026-09-20T00:00:00Z",
-      "chunk_start": "2026-09-19T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
-      "chunk_end": "2026-09-21T00:00:00Z",
-      "chunk_start": "2026-09-20T00:00:00Z",
-      "fixture_rows": 0,
-      "run_id": "provider_shadow_run_v1",
-      "status": "OK",
-      "unique_fixture_rows": 0
-    },
-    {
+      "bookmakers_filter": false,
       "chunk_end": "2026-09-22T00:00:00Z",
-      "chunk_start": "2026-09-21T00:00:00Z",
-      "fixture_rows": 0,
+      "chunk_start": "2026-09-19T00:00:00Z",
+      "fixture_rows": 516,
+      "has_odds_filter": false,
+      "phase": "FULL",
+      "query_shape": "sportId,statusId,from,to,language",
       "run_id": "provider_shadow_run_v1",
       "status": "OK",
-      "unique_fixture_rows": 0
+      "unique_fixture_rows": 2140
     }
   ],
-  "oddspapi_fixture_rows": 0,
-  "oddspapi_parsed_fixture_rows": 0,
+  "oddspapi_fixture_rows": 2140,
+  "oddspapi_has_odds_distribution": {
+    "False": 2140
+  },
+  "oddspapi_parsed_fixture_rows": 2140,
+  "oddspapi_pinnacle_id_coverage": 805,
   "oddspapi_priced_rows": 0,
+  "oddspapi_status_distribution": {
+    "2:Finished": 2140
+  },
   "production_mutation": false,
   "result_coverage": null,
   "run_id": "provider_shadow_run_v1",

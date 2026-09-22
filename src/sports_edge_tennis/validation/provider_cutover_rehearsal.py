@@ -36,6 +36,7 @@ AGENT2 = "CURRENT_PRODUCTION_A2"
 AGENT3 = "agent3_intransitivity_v1"
 BOOKMAKERS = ("pinnacle+30", "bet365", "1xbet", "unibet")
 HISTORICAL_FIXTURE_STATUS_ID = 2
+FIXTURE_COOLDOWN_SECONDS = 2.1
 BOOKMAKER_LABELS = {
     "pinnacle+30": "PINNACLE",
     "bet365": "BET365",
@@ -61,7 +62,7 @@ class RequestLedger:
         endpoint: str,
         *,
         day: date,
-        bookmakers: Sequence[str],
+        bookmakers: Sequence[str] = (),
     ) -> None:
         self.by_endpoint[endpoint] = self.by_endpoint.get(endpoint, 0) + 1
         day_key = day.isoformat()
@@ -119,7 +120,7 @@ def run_rehearsal(
             }
         )
 
-    oddspapi_rows = [_oddspapi_artifact_row(row) for row in merged_rows]
+    oddspapi_rows = [_oddspapi_artifact_row(row) for row in fixture_rows]
     summary = _historical_summary(
         start_date=start_date,
         end_date=end_date,
@@ -147,6 +148,7 @@ def run_rehearsal(
     _write_csv(output_dir / "market-comparison.csv", _blocked_comparison_rows("requires read-only production database"))
     _write_csv(output_dir / "settlement-validation.csv", _blocked_comparison_rows("requires Sportradar result feed and canonical decisions"))
     _write_csv(output_dir / "clv-validation.csv", _blocked_comparison_rows("requires OddsPapi historical closing path and shadow value bets"))
+    _write_csv(output_dir / "historical-odds-sample.csv", _blocked_comparison_rows("historical odds sample is run as a bounded manual validation step"))
     _write_json(output_dir / "request-economics.json", economics)
     _write_json(output_dir / "acceptance-gates.json", gates)
 
@@ -319,53 +321,77 @@ def _fetch_oddspapi_window(
     fixture_chunks: list[dict[str, Any]] = []
     runtime_errors: list[dict[str, str]] = []
     fixtures_by_id: dict[str, Mapping[str, Any]] = {}
+    probe_date = min(start_date + timedelta(days=6), end_date)
+    probe_from = datetime.combine(probe_date, time.min, tzinfo=UTC)
+    probe_to = probe_from + timedelta(days=1)
+    probe_rows, probe_error = _fetch_fixture_chunk(
+        api_key,
+        from_at=probe_from,
+        to_at=probe_to,
+        ledger=ledger,
+        day=probe_date,
+    )
+    if probe_error is not None:
+        fixture_chunks.append(
+            _fixture_chunk_row(
+                probe_from,
+                probe_to,
+                status=probe_error["kind"],
+                fixture_rows=0,
+                unique_fixture_rows=0,
+                phase="PROBE",
+            )
+        )
+        runtime_errors.append(probe_error)
+        return [], [], fixture_chunks, runtime_errors
+    for fixture in probe_rows:
+        fixture_id = str(fixture.get("fixtureId") or "").strip()
+        if fixture_id and fixture_id not in fixtures_by_id:
+            fixtures_by_id[fixture_id] = fixture
+    fixture_chunks.append(
+        _fixture_chunk_row(
+            probe_from,
+            probe_to,
+            status="OK",
+            fixture_rows=len(probe_rows),
+            unique_fixture_rows=len(fixtures_by_id),
+            phase="PROBE",
+        )
+    )
+    if not probe_rows:
+        runtime_errors.append(
+            {
+                "provider": "ODDSPAPI",
+                "kind": "PROBE_ZERO_FIXTURES",
+                "message": "historical fixture probe returned zero rows",
+            }
+        )
+        return [], [], fixture_chunks, runtime_errors
+    time_module.sleep(FIXTURE_COOLDOWN_SECONDS)
+
     for chunk_start, chunk_end in _chunks(start_date, end_date):
         chunk_from = datetime.combine(chunk_start, time.min, tzinfo=UTC)
         chunk_to = datetime.combine(chunk_end + timedelta(days=1), time.min, tzinfo=UTC)
-        received_at = None
-        fixtures: list[dict[str, Any]] = []
-        last_error: TransportError | None = None
-        for attempt in range(3):
-            if attempt:
-                time_module.sleep(0.75)
-            try:
-                received_at, fixtures = fetch_oddspapi_tennis_fixtures(
-                    api_key,
-                    from_at=chunk_from,
-                    to_at=chunk_to,
-                    status_id=HISTORICAL_FIXTURE_STATUS_ID,
-                    bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
-                )
-                last_error = None
-                break
-            except TransportError as exc:
-                last_error = exc
-                ledger.error("/v4/fixtures", exc.kind, exc.message)
-                if exc.kind != "HTTP_429":
-                    break
-        if last_error is not None:
+        fixtures, error = _fetch_fixture_chunk(
+            api_key,
+            from_at=chunk_from,
+            to_at=chunk_to,
+            ledger=ledger,
+            day=chunk_start,
+        )
+        if error is not None:
             fixture_chunks.append(
                 _fixture_chunk_row(
                     chunk_from,
                     chunk_to,
-                    status=last_error.kind,
+                    status=error["kind"],
                     fixture_rows=0,
                     unique_fixture_rows=len(fixtures_by_id),
+                    phase="FULL",
                 )
             )
-            runtime_errors.append(
-                {
-                    "provider": "ODDSPAPI",
-                    "kind": last_error.kind,
-                    "message": last_error.message,
-                }
-            )
+            runtime_errors.append(error)
             break
-        ledger.record(
-            "/v4/fixtures",
-            day=chunk_start,
-            bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
-        )
         for fixture in fixtures:
             fixture_id = str(fixture.get("fixtureId") or "").strip()
             if fixture_id and fixture_id not in fixtures_by_id:
@@ -377,30 +403,10 @@ def _fetch_oddspapi_window(
                 status="OK",
                 fixture_rows=len(fixtures),
                 unique_fixture_rows=len(fixtures_by_id),
+                phase="FULL",
             )
         )
-
-        tournament_ids: list[int] = []
-        for row in fixtures:
-            try:
-                tournament_ids.append(parse_oddspapi_tennis_fixture(row).tournament_id)
-            except ValueError:
-                continue
-        if not tournament_ids:
-            time_module.sleep(0.75)
-            continue
-        _odds_received_at, odds_rows = fetch_oddspapi_tennis_odds_by_tournaments(
-            api_key,
-            tournament_ids=tournament_ids,
-            bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
-        )
-        ledger.record(
-            "/v4/odds-by-tournaments",
-            day=received_at.date(),
-            bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
-        )
-        all_merged.extend(merge_oddspapi_fixture_odds(fixtures, odds_rows))
-        time_module.sleep(0.75)
+        time_module.sleep(FIXTURE_COOLDOWN_SECONDS)
     return (
         list(fixtures_by_id.values()),
         _dedupe_by_fixture_id(all_merged),
@@ -410,7 +416,13 @@ def _fetch_oddspapi_window(
 
 
 def _chunks(start_date: date, end_date: date) -> list[tuple[date, date]]:
-    return [(cursor, cursor) for cursor in _date_range(start_date, end_date)]
+    chunks: list[tuple[date, date]] = []
+    cursor = start_date
+    while cursor <= end_date:
+        chunk_end = min(cursor + timedelta(days=8), end_date)
+        chunks.append((cursor, chunk_end))
+        cursor = chunk_end + timedelta(days=1)
+    return chunks
 
 
 def _date_range(start_date: date, end_date: date):
@@ -427,14 +439,56 @@ def _fixture_chunk_row(
     status: str,
     fixture_rows: int,
     unique_fixture_rows: int,
+    phase: str,
 ) -> dict[str, Any]:
     return {
         "run_id": RUN_ID,
+        "phase": phase,
         "chunk_start": chunk_from.isoformat().replace("+00:00", "Z"),
         "chunk_end": chunk_to.isoformat().replace("+00:00", "Z"),
         "status": status,
         "fixture_rows": fixture_rows,
         "unique_fixture_rows": unique_fixture_rows,
+        "query_shape": "sportId,statusId,from,to,language",
+        "has_odds_filter": False,
+        "bookmakers_filter": False,
+    }
+
+
+def _fetch_fixture_chunk(
+    api_key: str,
+    *,
+    from_at: datetime,
+    to_at: datetime,
+    ledger: RequestLedger,
+    day: date,
+) -> tuple[list[dict[str, Any]], dict[str, str] | None]:
+    for attempt in range(3):
+        if attempt:
+            time_module.sleep(FIXTURE_COOLDOWN_SECONDS * attempt)
+        try:
+            _received_at, rows = fetch_oddspapi_tennis_fixtures(
+                api_key,
+                from_at=from_at,
+                to_at=to_at,
+                status_id=HISTORICAL_FIXTURE_STATUS_ID,
+                has_odds=None,
+                bookmakers=None,
+            )
+            ledger.record("/v4/fixtures", day=day)
+            return rows, None
+        except TransportError as exc:
+            ledger.error("/v4/fixtures", exc.kind, exc.message)
+            if exc.kind != "HTTP_429":
+                return [], {
+                    "provider": "ODDSPAPI",
+                    "kind": exc.kind,
+                    "message": exc.message,
+                }
+    return [], {
+        "provider": "ODDSPAPI",
+        "kind": "HTTP_429",
+        "message": "oddspapi fixtures returned repeated rate limits",
     }
 
 
@@ -463,6 +517,13 @@ def _oddspapi_artifact_row(payload: Mapping[str, Any]) -> dict[str, Any]:
         "parse_status": parse_status,
         "fixture_id": payload.get("fixtureId"),
         "tournament_id": payload.get("tournamentId"),
+        "tournament_name": payload.get("tournamentName"),
+        "category_name": payload.get("categoryName"),
+        "sport_id": payload.get("sportId"),
+        "sport_name": payload.get("sportName"),
+        "status_id": payload.get("statusId"),
+        "status_name": payload.get("statusName"),
+        "has_odds": payload.get("hasOdds"),
         "participant_1_id": payload.get("participant1Id"),
         "participant_1_name": payload.get("participant1Name"),
         "participant_2_id": payload.get("participant2Id"),
@@ -470,6 +531,7 @@ def _oddspapi_artifact_row(payload: Mapping[str, Any]) -> dict[str, Any]:
         "start_time": payload.get("startTime"),
         "updated_at": payload.get("updatedAt"),
         "betradar_id": envelope.betradar_id if envelope else None,
+        "pinnacle_id": _external_provider_id(payload, "pinnacleId"),
         "canonical_match_id": None,
         "reconciliation_status": "BLOCKED_NO_DATABASE",
     }
@@ -485,6 +547,13 @@ def _oddspapi_artifact_row(payload: Mapping[str, Any]) -> dict[str, Any]:
         row[f"{label}_changed_at"] = state["changed_at"]
         row[f"{label}_limit"] = state["limit"]
     return row
+
+
+def _external_provider_id(payload: Mapping[str, Any], key: str) -> Any:
+    external = payload.get("externalProviders")
+    if not isinstance(external, Mapping):
+        return None
+    return external.get(key)
 
 
 def _bookmaker_state(payload: Mapping[str, Any], bookmaker: str) -> dict[str, Any]:
@@ -584,6 +653,10 @@ def _historical_summary(
     parsed = 0
     atp = 0
     challenger = 0
+    status_distribution: dict[str, int] = {}
+    has_odds_distribution: dict[str, int] = {}
+    betradar_coverage = 0
+    pinnacle_id_coverage = 0
     for row in fixture_rows:
         try:
             parse_oddspapi_tennis_fixture(row)
@@ -595,6 +668,16 @@ def _historical_summary(
             challenger += 1
         elif "atp" in text or "grand slam" in text:
             atp += 1
+        status_key = f"{row.get('statusId')}:{row.get('statusName')}"
+        status_distribution[status_key] = status_distribution.get(status_key, 0) + 1
+        has_odds_key = str(row.get("hasOdds"))
+        has_odds_distribution[has_odds_key] = has_odds_distribution.get(has_odds_key, 0) + 1
+        external = row.get("externalProviders")
+        if isinstance(external, Mapping):
+            if external.get("betradarId"):
+                betradar_coverage += 1
+            if external.get("pinnacleId"):
+                pinnacle_id_coverage += 1
     return {
         "run_id": RUN_ID,
         "lineage": _lineage(),
@@ -615,6 +698,10 @@ def _historical_summary(
         "oddspapi_fixture_rows": len(fixture_rows),
         "oddspapi_parsed_fixture_rows": parsed,
         "oddspapi_priced_rows": len(merged_rows),
+        "oddspapi_status_distribution": status_distribution,
+        "oddspapi_has_odds_distribution": has_odds_distribution,
+        "oddspapi_betradar_id_coverage": betradar_coverage,
+        "oddspapi_pinnacle_id_coverage": pinnacle_id_coverage,
         "oddspapi_fixture_chunks": list(fixture_chunks),
         "runtime_errors": list(runtime_errors),
         "production_mutation": False,

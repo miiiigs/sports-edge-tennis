@@ -22,12 +22,12 @@
     {
       "gate": "GATE 4",
       "name": "OddsPapi ATP odds coverage",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "gate": "GATE 5",
       "name": "OddsPapi Challenger odds coverage",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "gate": "GATE 6",
@@ -42,17 +42,17 @@
     {
       "gate": "GATE 8",
       "name": "Moneyline participant mapping",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "gate": "GATE 9",
       "name": "Timestamp/freshness semantics",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "gate": "GATE 10",
       "name": "Active/suspended semantics",
-      "status": "FAIL"
+      "status": "PASS"
     },
     {
       "gate": "GATE 11",
@@ -92,7 +92,7 @@
     {
       "gate": "GATE 18",
       "name": "Estimated OddsPapi request economics sustainable",
-      "status": "FAIL"
+      "status": "PASS"
     }
   ],
   "overall": "FAIL",

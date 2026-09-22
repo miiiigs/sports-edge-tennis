@@ -26,6 +26,7 @@ def test_rehearsal_writes_shadow_artifacts_without_provider_fetch(tmp_path, monk
         "oddspapi-fixture-chunks.csv",
         "sportradar-reconciliation.csv",
         "oddspapi-reconciliation.csv",
+        "historical-odds-sample.csv",
         "old-vs-new.csv",
         "market-comparison.csv",
         "settlement-validation.csv",
@@ -41,11 +42,11 @@ def test_rehearsal_writes_shadow_artifacts_without_provider_fetch(tmp_path, monk
     assert result["gates"]["overall"] == "FAIL"
 
 
-def test_rehearsal_uses_daily_completed_fixture_chunks(tmp_path, monkeypatch):
+def test_rehearsal_uses_probe_then_minimal_completed_fixture_chunks(tmp_path, monkeypatch):
     calls = []
 
-    def fake_fixtures(api_key, *, from_at, to_at, status_id, bookmakers):
-        calls.append((from_at, to_at, status_id, bookmakers))
+    def fake_fixtures(api_key, *, from_at, to_at, status_id, has_odds, bookmakers):
+        calls.append((from_at, to_at, status_id, has_odds, bookmakers))
         day = from_at.date().isoformat()
         return from_at, [
             {
@@ -62,11 +63,7 @@ def test_rehearsal_uses_daily_completed_fixture_chunks(tmp_path, monkeypatch):
 
     monkeypatch.setattr(rehearsal, "load_secret", lambda name: "secret")
     monkeypatch.setattr(rehearsal, "fetch_oddspapi_tennis_fixtures", fake_fixtures)
-    monkeypatch.setattr(
-        rehearsal,
-        "fetch_oddspapi_tennis_odds_by_tournaments",
-        lambda *args, **kwargs: (calls[-1][0], []),
-    )
+    monkeypatch.setattr(rehearsal.time_module, "sleep", lambda seconds: None)
 
     rehearsal.run_rehearsal(
         output_dir=tmp_path,
@@ -74,14 +71,19 @@ def test_rehearsal_uses_daily_completed_fixture_chunks(tmp_path, monkeypatch):
         end_date=date(2026, 9, 12),
     )
 
-    assert len(calls) == 3
+    assert len(calls) == 2
     assert {call[2] for call in calls} == {2}
-    assert all((call[1] - call[0]).total_seconds() == 24 * 60 * 60 for call in calls)
+    assert {call[3] for call in calls} == {None}
+    assert {call[4] for call in calls} == {None}
+    assert (calls[0][1] - calls[0][0]).total_seconds() == 24 * 60 * 60
+    assert (calls[1][1] - calls[1][0]).total_seconds() == 3 * 24 * 60 * 60
 
     with (tmp_path / "oddspapi-fixture-chunks.csv").open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
-    assert [row["fixture_rows"] for row in rows] == ["1", "1", "1"]
-    assert [row["unique_fixture_rows"] for row in rows] == ["1", "2", "3"]
+    assert [row["phase"] for row in rows] == ["PROBE", "FULL"]
+    assert [row["fixture_rows"] for row in rows] == ["1", "1"]
+    assert [row["has_odds_filter"] for row in rows] == ["False", "False"]
+    assert [row["bookmakers_filter"] for row in rows] == ["False", "False"]
 
 
 def test_oddspapi_bookmaker_state_records_active_prices(tmp_path, monkeypatch):

@@ -1,0 +1,9 @@
+run_id,sample,fixture_id,batch,bookmakers,status,book,historical_points
+provider_shadow_run_v1,ATP_DAVIS,id1200210074561288,A,"pinnacle+30,bet365,1xbet",200,1xbet,61
+provider_shadow_run_v1,ATP_DAVIS,id1200210074561288,A,"pinnacle+30,bet365,1xbet",200,bet365,6
+provider_shadow_run_v1,ATP_DAVIS,id1200210074561288,A,"pinnacle+30,bet365,1xbet",200,pinnacle+30,146
+provider_shadow_run_v1,ATP_DAVIS,id1200210074561288,B,unibet,404,,
+provider_shadow_run_v1,CHALLENGER,id1205174074533224,A,"pinnacle+30,bet365,1xbet",200,1xbet,16051
+provider_shadow_run_v1,CHALLENGER,id1205174074533224,A,"pinnacle+30,bet365,1xbet",200,bet365,1321
+provider_shadow_run_v1,CHALLENGER,id1205174074533224,A,"pinnacle+30,bet365,1xbet",200,pinnacle+30,9710
+provider_shadow_run_v1,CHALLENGER,id1205174074533224,B,unibet,200,unibet,60

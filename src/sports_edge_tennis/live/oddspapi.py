@@ -14,7 +14,7 @@ ODDSPAPI_TENNIS_SPORT_ID = 12
 ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "unibet", "bet365")
 ODDSPAPI_SHARP_BOOKMAKER = "pinnacle+30"
 ODDSPAPI_FIXTURE_STATUS_IDS = frozenset({0, 1, 2, 3})
-ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW = timedelta(hours=48)
+ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW = timedelta(days=10)
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,8 @@ def fetch_oddspapi_tennis_fixtures(
     from_at: datetime,
     to_at: datetime,
     status_id: int = 0,
-    bookmakers: Sequence[str] = (ODDSPAPI_SHARP_BOOKMAKER,),
+    has_odds: bool | None = True,
+    bookmakers: Sequence[str] | None = (ODDSPAPI_SHARP_BOOKMAKER,),
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
@@ -51,10 +52,11 @@ def fetch_oddspapi_tennis_fixtures(
         raise ValueError("OddsPapi fixture window must have to_at > from_at")
     if status_id not in ODDSPAPI_FIXTURE_STATUS_IDS:
         raise ValueError("OddsPapi fixture status_id must be one of 0, 1, 2, 3")
-    # OddsPapi's sportId + from/to fixture discovery contract requires windows
-    # strictly under 48 hours when no tournamentId or participantId is supplied.
+    # OddsPapi allows sportId + from/to fixture discovery when the interval is
+    # strictly under 10 days. The stricter 48-hour rule applies to from/to-only
+    # discovery without sport, tournament, or participant filters.
     if to_at - from_at >= ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW:
-        raise ValueError("OddsPapi sport fixture window must be strictly under 48 hours")
+        raise ValueError("OddsPapi sport fixture window must be strictly under 10 days")
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
@@ -65,10 +67,12 @@ def fetch_oddspapi_tennis_fixtures(
         "from": _iso_z(from_at),
         "to": _iso_z(to_at),
         "statusId": status_id,
-        "hasOdds": "true",
-        "bookmakers": ",".join(_clean_bookmakers(bookmakers)),
         "language": "en",
     }
+    if has_odds is not None:
+        params["hasOdds"] = "true" if has_odds else "false"
+    if bookmakers is not None:
+        params["bookmakers"] = ",".join(_clean_bookmakers(bookmakers))
     payload = _get_json(
         f"{base_url.rstrip('/')}/fixtures",
         params=params,
