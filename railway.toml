@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m pip install . && python ops/validation/sportradar_retirement_provenance_20260923.py"
+startCommand = "python -m pip install . >/dev/null 2>&1 && python -m pip install pytest >/dev/null 2>&1 && python -m pytest -q tests/test_sportradar_ingest.py tests/test_sportradar_history_refresh.py tests/test_sportradar_stage1b_match_only.py"
 restartPolicyType = "NEVER"
