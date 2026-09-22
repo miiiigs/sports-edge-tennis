@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m pytest -q tests/test_sportradar_identity_apply.py tests/test_sportradar_canonical_link_audit.py"
+startCommand = "python -c \"$IDENTITY_DB_PREVIEW_SCRIPT\""
 restartPolicyType = "NEVER"
