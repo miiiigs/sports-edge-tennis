@@ -95,6 +95,17 @@ def ingest_sportradar_daily_summaries(
                             f"overlap_reconciliation:{overlap.status}"
                         )
 
+                    if overlap.match_id is not None:
+                        terminal_conflict = _terminal_status_conflict(
+                            _latest_terminal_outcome(
+                                conn,
+                                match_id=int(overlap.match_id),
+                            ),
+                            fixture.match_status,
+                        )
+                        if terminal_conflict is not None:
+                            raise SportradarIngestError(terminal_conflict)
+
                     if (
                         overlap.status == "NEW_CANONICAL_EVENT"
                         and not allow_new_events
@@ -168,6 +179,37 @@ def ingest_sportradar_daily_summaries(
         matches=tuple(ingested),
         rejected_rows=tuple(rejected),
     )
+
+
+def _latest_terminal_outcome(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+) -> str | None:
+    row = conn.execute(
+        """
+        SELECT outcome_status::text
+        FROM match_result_observations
+        WHERE match_id = %s
+        ORDER BY as_of DESC, source_observed_at DESC,
+                 match_result_observation_id DESC
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    status = str(row[0])
+    return status if status in {"COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"} else None
+
+
+def _terminal_status_conflict(
+    existing_outcome: str | None,
+    incoming_status: str,
+) -> str | None:
+    if existing_outcome is None or existing_outcome == incoming_status:
+        return None
+    return f"terminal_truth_conflict:{existing_outcome}:{incoming_status}"
 
 
 def _persist_fixture(
