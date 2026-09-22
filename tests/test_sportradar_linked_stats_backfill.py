@@ -9,6 +9,7 @@ import sports_edge_tennis.validation.sportradar_linked_stats_backfill as backfil
 from sports_edge_tennis.data.contracts import MatchStatLine
 from sports_edge_tennis.live.sportradar_fixtures import SportradarFixtureCandidate
 from sports_edge_tennis.live.sportradar_history_refresh import ParsedResult, ParsedStat
+from sports_edge_tennis.live.transport import TransportError
 from sports_edge_tennis.validation.sportradar_linked_stats_backfill import (
     AUTH_ENV,
     AUTH_TOKEN,
@@ -291,4 +292,88 @@ def test_repository_inserts_accept_explicit_ingested_at() -> None:
 def test_backfill_anchors_ingested_at_to_provider_receive_time() -> None:
     source = inspect.getsource(backfill.apply_linked_stats_backfill)
     assert source.count("ingested_at=candidate.received_at") == 2
+
+
+class _RecordingPacer:
+    def __init__(self) -> None:
+        self.waits = 0
+        self.slept: list[float] = []
+
+    def wait(self) -> None:
+        self.waits += 1
+
+    def sleep_for(self, seconds: float) -> None:
+        self.slept.append(seconds)
+
+
+def test_collect_retries_transient_transport_error(monkeypatch) -> None:
+    fixture = _fixture()
+    stats = (_stat("sr:p1", "hash-a"), _stat("sr:p2", "hash-b"))
+
+    monkeypatch.setattr(backfill, "parse_summary", lambda *args, **kwargs: fixture)
+    monkeypatch.setattr(
+        backfill, "_linked_match_context", lambda *args, **kwargs: (101, 11, 22)
+    )
+    monkeypatch.setattr(
+        backfill, "_parse_terminal_result", lambda *args, **kwargs: _result()
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_sportradar_player_map",
+        lambda *args, **kwargs: {"sr:p1": 11, "sr:p2": 22},
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_latest_result_semantic_key",
+        lambda *args, **kwargs: ("COMPLETED", 1, None, 2, 0, 12, 7),
+    )
+    monkeypatch.setattr(
+        backfill, "_parse_final_stats", lambda *args, **kwargs: stats
+    )
+    monkeypatch.setattr(
+        backfill, "_existing_stat_hashes", lambda *args, **kwargs: set()
+    )
+
+    attempts = {"n": 0}
+
+    def fetch_rows(api_key, target_date):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise TransportError("HTTP_429", "rate limited")
+        return RECEIVED, [{"summary": 1}]
+
+    pacer = _RecordingPacer()
+    collection = backfill.collect_candidates(
+        object(),
+        api_key="unused",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 21),
+        fetch_rows=fetch_rows,
+        pacer=pacer,
+    )
+
+    assert attempts["n"] == 2
+    assert pacer.slept == [backfill.TRIAL_429_RETRY_SECONDS]
+    assert collection.counts["provider_requests"] == 1
+    assert collection.counts["candidate_matches"] == 1
+
+
+def test_collect_rejects_non_transient_transport_error(monkeypatch) -> None:
+    attempts = {"n": 0}
+
+    def fetch_rows(api_key, target_date):
+        attempts["n"] += 1
+        raise TransportError("HTTP_403", "forbidden")
+
+    with pytest.raises(TransportError):
+        backfill.collect_candidates(
+            object(),
+            api_key="unused",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 21),
+            fetch_rows=fetch_rows,
+            pacer=_RecordingPacer(),
+        )
+
+    assert attempts["n"] == 1
 

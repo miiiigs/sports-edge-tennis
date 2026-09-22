@@ -29,12 +29,30 @@ from sports_edge_tennis.live.sportradar_history_refresh import (
     _terminal_result_conflict,
     _validate_sportradar_player_map,
 )
+from sports_edge_tennis.live.sportradar_probe import (
+    TRIAL_429_RETRY_SECONDS,
+    TRIAL_MIN_REQUEST_INTERVAL_SECONDS,
+    RequestPacer,
+)
 from sports_edge_tennis.live.target_fixtures import fetch_sportradar_fixture_rows
+from sports_edge_tennis.live.transport import TransportError
 
 
 SOURCE_DATASET = "sportradar_linked_stats_backfill"
 SOURCE_VERSION = "SPORTRADAR_LINKED_STATS_BACKFILL_V1"
 MAX_DAYS = 14
+DEFAULT_FETCH_ATTEMPTS = 3
+TRANSIENT_TRANSPORT_KINDS = frozenset(
+    {
+        "HTTP_429",
+        "HTTP_500",
+        "HTTP_502",
+        "HTTP_503",
+        "HTTP_504",
+        "TIMEOUT",
+        "NETWORK",
+    }
+)
 ENABLED_ENV = "SPORTRADAR_STATS_BACKFILL_APPLY_ENABLED"
 AUTH_ENV = "SPORTRADAR_STATS_BACKFILL_APPLY_AUTHORIZATION"
 HASH_ENV = "SPORTRADAR_STATS_BACKFILL_ARTIFACT_SHA256"
@@ -209,6 +227,35 @@ def _same_candidate(
     return left_row == right_row
 
 
+def _fetch_day_with_backoff(
+    fetch_rows: FetchRows,
+    *,
+    api_key: str,
+    target_date: date,
+    pacer: RequestPacer,
+    attempts: int,
+    backoff_seconds: float,
+) -> tuple[datetime, list[dict[str, Any]]]:
+    """Fetch one daily summary with trial pacing and bounded transient retries."""
+    last_error: TransportError | None = None
+    for attempt in range(1, attempts + 1):
+        pacer.wait()
+        try:
+            return fetch_rows(api_key, target_date)
+        except TransportError as exc:
+            last_error = exc
+            if exc.kind not in TRANSIENT_TRANSPORT_KINDS or attempt >= attempts:
+                raise
+            print(
+                "SPORTRADAR_BACKFILL_FETCH_RETRY "
+                f"date={target_date.isoformat()} kind={exc.kind} attempt={attempt}",
+                flush=True,
+            )
+        pacer.sleep_for(backoff_seconds * attempt)
+    assert last_error is not None
+    raise last_error
+
+
 def collect_candidates(
     conn: psycopg.Connection,
     *,
@@ -216,14 +263,24 @@ def collect_candidates(
     start_date: date,
     end_date: date,
     fetch_rows: FetchRows = fetch_sportradar_fixture_rows,
+    pacer: RequestPacer | None = None,
+    fetch_attempts: int = DEFAULT_FETCH_ATTEMPTS,
 ) -> CandidateCollection:
     _validate_window(start_date, end_date)
+    pacer = pacer or RequestPacer(TRIAL_MIN_REQUEST_INTERVAL_SECONDS)
     counts: Counter[str] = Counter()
     reasons: Counter[str] = Counter()
     by_match: dict[int, BackfillCandidate] = {}
 
     for target_date in _dates(start_date, end_date):
-        received_at, summaries = fetch_rows(api_key, target_date)
+        received_at, summaries = _fetch_day_with_backoff(
+            fetch_rows,
+            api_key=api_key,
+            target_date=target_date,
+            pacer=pacer,
+            attempts=fetch_attempts,
+            backoff_seconds=TRIAL_429_RETRY_SECONDS,
+        )
         if received_at.tzinfo is None:
             raise ValueError("Sportradar receive time must be timezone-aware")
         counts["provider_requests"] += 1
