@@ -1,0 +1,2 @@
+run_id,canonical_match_id,sportradar_sport_event_id,classification,reason
+provider_shadow_run_v1,,,BLOCKED_NO_DATABASE,Sportradar credential exists but canonical DB is unavailable

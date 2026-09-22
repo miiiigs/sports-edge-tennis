@@ -1,0 +1,91 @@
+{
+  "candidate_plan_monthly_allowance": 5000,
+  "errors": [
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    },
+    {
+      "code": "HTTP_429",
+      "endpoint": "/v4/fixtures",
+      "message": "oddspapi fixtures returned a non-200 response"
+    }
+  ],
+  "estimated_monthly_requests_at_hourly_cadence": 16560,
+  "failed_requests_by_endpoint": {
+    "/v4/fixtures": 11
+  },
+  "historical_endpoint_calls": {},
+  "requests_by_bookmaker": {
+    "PINNACLE": 12
+  },
+  "requests_by_day": {
+    "2026-09-10": 1,
+    "2026-09-11": 1,
+    "2026-09-12": 1,
+    "2026-09-13": 1,
+    "2026-09-14": 1,
+    "2026-09-15": 1,
+    "2026-09-16": 1,
+    "2026-09-17": 1,
+    "2026-09-18": 1,
+    "2026-09-19": 1,
+    "2026-09-20": 1,
+    "2026-09-21": 1
+  },
+  "requests_by_endpoint": {
+    "/v4/fixtures": 23
+  },
+  "run_id": "provider_shadow_run_v1",
+  "successful_requests_by_endpoint": {
+    "/v4/fixtures": 12
+  },
+  "sustainable_under_candidate_plan": false,
+  "total_billable_requests": 23
+}

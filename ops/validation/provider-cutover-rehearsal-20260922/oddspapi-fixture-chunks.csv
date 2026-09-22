@@ -1,0 +1,13 @@
+run_id,chunk_start,chunk_end,status,fixture_rows,unique_fixture_rows
+provider_shadow_run_v1,2026-09-10T00:00:00Z,2026-09-11T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-11T00:00:00Z,2026-09-12T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-12T00:00:00Z,2026-09-13T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-13T00:00:00Z,2026-09-14T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-14T00:00:00Z,2026-09-15T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-15T00:00:00Z,2026-09-16T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-16T00:00:00Z,2026-09-17T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-17T00:00:00Z,2026-09-18T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-18T00:00:00Z,2026-09-19T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-19T00:00:00Z,2026-09-20T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-20T00:00:00Z,2026-09-21T00:00:00Z,OK,0,0
+provider_shadow_run_v1,2026-09-21T00:00:00Z,2026-09-22T00:00:00Z,OK,0,0

@@ -1,0 +1,139 @@
+{
+  "atp_count": null,
+  "challenger_count": null,
+  "credentials": {
+    "DATABASE_URL": "MISSING",
+    "ODDSPAPI_API_KEY": "SET",
+    "SPORTRADAR_TENNIS_ACCESS_LEVEL": "SET",
+    "SPORTRADAR_TENNIS_API_KEY": "SET",
+    "SPORTRADAR_TENNIS_LANGUAGE": "SET",
+    "TENNIS_DATABASE_URL": "SET"
+  },
+  "database": {
+    "available": false,
+    "reason": "OperationalError"
+  },
+  "final_stat_coverage": null,
+  "historical_window": {
+    "end_utc": "2026-09-21T23:59:59Z",
+    "start_utc": "2026-09-10T00:00:00Z"
+  },
+  "lineage": {
+    "agent1": "CURRENT_PRODUCTION_A1",
+    "agent2": "CURRENT_PRODUCTION_A2",
+    "agent3": "agent3_intransitivity_v1",
+    "manager_policy": "CURRENT_PRODUCTION_MANAGER_POLICY",
+    "odds_provider": "ODDSPAPI_V4",
+    "sporting_provider": "SPORTRADAR_V3"
+  },
+  "oddspapi_fixture_chunks": [
+    {
+      "chunk_end": "2026-09-11T00:00:00Z",
+      "chunk_start": "2026-09-10T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-12T00:00:00Z",
+      "chunk_start": "2026-09-11T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-13T00:00:00Z",
+      "chunk_start": "2026-09-12T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-14T00:00:00Z",
+      "chunk_start": "2026-09-13T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-15T00:00:00Z",
+      "chunk_start": "2026-09-14T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-16T00:00:00Z",
+      "chunk_start": "2026-09-15T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-17T00:00:00Z",
+      "chunk_start": "2026-09-16T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-18T00:00:00Z",
+      "chunk_start": "2026-09-17T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-19T00:00:00Z",
+      "chunk_start": "2026-09-18T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-20T00:00:00Z",
+      "chunk_start": "2026-09-19T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-21T00:00:00Z",
+      "chunk_start": "2026-09-20T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    },
+    {
+      "chunk_end": "2026-09-22T00:00:00Z",
+      "chunk_start": "2026-09-21T00:00:00Z",
+      "fixture_rows": 0,
+      "run_id": "provider_shadow_run_v1",
+      "status": "OK",
+      "unique_fixture_rows": 0
+    }
+  ],
+  "oddspapi_fixture_rows": 0,
+  "oddspapi_parsed_fixture_rows": 0,
+  "oddspapi_priced_rows": 0,
+  "production_mutation": false,
+  "result_coverage": null,
+  "run_id": "provider_shadow_run_v1",
+  "runtime_errors": [],
+  "shadow_only": true,
+  "sporting_matches_found": null,
+  "sportradar_exact": null,
+  "sportradar_unresolved": null,
+  "surface_coverage": null
+}

@@ -1,0 +1,2 @@
+run_id,canonical_match_id,status,reason
+provider_shadow_run_v1,,BLOCKED,requires Sportradar result feed and canonical decisions

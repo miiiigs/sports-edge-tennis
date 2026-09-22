@@ -13,6 +13,8 @@ ODDSPAPI_BASE_URL = "https://api.oddspapi.io/v4"
 ODDSPAPI_TENNIS_SPORT_ID = 12
 ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "unibet", "bet365")
 ODDSPAPI_SHARP_BOOKMAKER = "pinnacle+30"
+ODDSPAPI_FIXTURE_STATUS_IDS = frozenset({0, 1, 2, 3})
+ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW = timedelta(hours=48)
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,7 @@ def fetch_oddspapi_tennis_fixtures(
     *,
     from_at: datetime,
     to_at: datetime,
+    status_id: int = 0,
     bookmakers: Sequence[str] = (ODDSPAPI_SHARP_BOOKMAKER,),
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
@@ -46,8 +49,12 @@ def fetch_oddspapi_tennis_fixtures(
         raise ValueError("OddsPapi fixture window must be timezone-aware")
     if to_at <= from_at:
         raise ValueError("OddsPapi fixture window must have to_at > from_at")
-    if to_at - from_at >= timedelta(days=10):
-        raise ValueError("OddsPapi sport fixture window must be under 10 days")
+    if status_id not in ODDSPAPI_FIXTURE_STATUS_IDS:
+        raise ValueError("OddsPapi fixture status_id must be one of 0, 1, 2, 3")
+    # OddsPapi's sportId + from/to fixture discovery contract requires windows
+    # strictly under 48 hours when no tournamentId or participantId is supplied.
+    if to_at - from_at >= ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW:
+        raise ValueError("OddsPapi sport fixture window must be strictly under 48 hours")
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
@@ -57,7 +64,7 @@ def fetch_oddspapi_tennis_fixtures(
         "sportId": ODDSPAPI_TENNIS_SPORT_ID,
         "from": _iso_z(from_at),
         "to": _iso_z(to_at),
-        "statusId": 0,
+        "statusId": status_id,
         "hasOdds": "true",
         "bookmakers": ",".join(_clean_bookmakers(bookmakers)),
         "language": "en",
@@ -197,6 +204,17 @@ def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str
     except requests.exceptions.RequestException as exc:
         raise TransportError("NETWORK", f"{label} request failed") from exc
     if response.status_code != 200:
+        if response.status_code == 404 and label == "oddspapi fixtures":
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = None
+            if (
+                isinstance(payload, Mapping)
+                and isinstance(payload.get("error"), Mapping)
+                and payload["error"].get("code") == "FIXTURE_NOT_FOUND"
+            ):
+                return []
         raise TransportError(f"HTTP_{response.status_code}", f"{label} returned a non-200 response")
     try:
         return response.json()
@@ -258,8 +276,10 @@ def _parse_timestamp(value: Any, reason: str) -> datetime:
 
 __all__ = [
     "ODDSPAPI_BASE_URL",
+    "ODDSPAPI_FIXTURE_STATUS_IDS",
     "ODDSPAPI_PLAN_BOOKMAKERS",
     "ODDSPAPI_SHARP_BOOKMAKER",
+    "ODDSPAPI_SPORT_FIXTURE_MAX_WINDOW",
     "ODDSPAPI_TENNIS_SPORT_ID",
     "OddspapiTennisFixtureEnvelope",
     "fetch_oddspapi_tennis_fixtures",

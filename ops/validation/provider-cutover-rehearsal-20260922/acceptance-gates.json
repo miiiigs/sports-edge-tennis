@@ -1,0 +1,100 @@
+{
+  "coverage": {
+    "best_offered_available_pct": 0.0,
+    "pinnacle_available_pct": 0.0
+  },
+  "gates": [
+    {
+      "gate": "GATE 1",
+      "name": "Sportradar ATP coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 2",
+      "name": "Sportradar Challenger coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 3",
+      "name": "Sportradar deterministic identity reconciliation",
+      "status": "BLOCKED_NO_DATABASE"
+    },
+    {
+      "gate": "GATE 4",
+      "name": "OddsPapi ATP odds coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 5",
+      "name": "OddsPapi Challenger odds coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 6",
+      "name": "Pinnacle +30 sec coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 7",
+      "name": "bet365 / 1xBet / Unibet offered-price coverage",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 8",
+      "name": "Moneyline participant mapping",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 9",
+      "name": "Timestamp/freshness semantics",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 10",
+      "name": "Active/suspended semantics",
+      "status": "FAIL"
+    },
+    {
+      "gate": "GATE 11",
+      "name": "No duplicate sporting matches",
+      "status": "BLOCKED_NO_DATABASE"
+    },
+    {
+      "gate": "GATE 12",
+      "name": "No duplicate first bets",
+      "status": "BLOCKED_NO_DATABASE"
+    },
+    {
+      "gate": "GATE 13",
+      "name": "Correct settlement",
+      "status": "BLOCKED_NO_DATABASE"
+    },
+    {
+      "gate": "GATE 14",
+      "name": "CLV calculation possible",
+      "status": "BLOCKED_NO_DATABASE"
+    },
+    {
+      "gate": "GATE 15",
+      "name": "No odds leakage to predictive agents",
+      "status": "PASS"
+    },
+    {
+      "gate": "GATE 16",
+      "name": "No production DB mutation",
+      "status": "PASS"
+    },
+    {
+      "gate": "GATE 17",
+      "name": "No runtime failures",
+      "status": "PASS"
+    },
+    {
+      "gate": "GATE 18",
+      "name": "Estimated OddsPapi request economics sustainable",
+      "status": "FAIL"
+    }
+  ],
+  "overall": "FAIL",
+  "run_id": "provider_shadow_run_v1"
+}

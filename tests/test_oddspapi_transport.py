@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -30,7 +30,7 @@ def test_fixture_transport_uses_tennis_pregame_filters(monkeypatch):
     received_at, rows = oddspapi.fetch_oddspapi_tennis_fixtures(
         "secret-key",
         from_at=datetime(2026, 9, 21, tzinfo=UTC),
-        to_at=datetime(2026, 9, 24, tzinfo=UTC),
+        to_at=datetime(2026, 9, 22, 23, tzinfo=UTC),
         clock=lambda: datetime(2026, 9, 21, 1, tzinfo=UTC),
     )
     assert received_at == datetime(2026, 9, 21, 1, tzinfo=UTC)
@@ -41,6 +41,55 @@ def test_fixture_transport_uses_tennis_pregame_filters(monkeypatch):
     assert seen["params"]["hasOdds"] == "true"
     assert seen["params"]["bookmakers"] == "pinnacle+30"
     assert seen["params"]["apiKey"] == "secret-key"
+
+
+def test_fixture_transport_emits_historical_completed_status(monkeypatch):
+    seen = {}
+
+    def fake_get(url, params, timeout):
+        seen.update(url=url, params=params, timeout=timeout)
+        return _Response(200, [{"fixtureId": "f1"}])
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    oddspapi.fetch_oddspapi_tennis_fixtures(
+        "secret-key",
+        from_at=datetime(2026, 9, 10, tzinfo=UTC),
+        to_at=datetime(2026, 9, 11, tzinfo=UTC),
+        status_id=2,
+    )
+    assert seen["params"]["statusId"] == 2
+
+
+def test_fixture_transport_accepts_47_hour_sport_window(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(200, []),
+    )
+    oddspapi.fetch_oddspapi_tennis_fixtures(
+        "secret-key",
+        from_at=datetime(2026, 9, 10, tzinfo=UTC),
+        to_at=datetime(2026, 9, 10, tzinfo=UTC) + timedelta(hours=47),
+    )
+
+
+def test_fixture_transport_rejects_48_hour_sport_window():
+    with pytest.raises(ValueError, match="strictly under 48 hours"):
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "secret-key",
+            from_at=datetime(2026, 9, 10, tzinfo=UTC),
+            to_at=datetime(2026, 9, 12, tzinfo=UTC),
+        )
+
+
+def test_fixture_transport_rejects_unsupported_status_id():
+    with pytest.raises(ValueError, match="status_id"):
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "secret-key",
+            from_at=datetime(2026, 9, 10, tzinfo=UTC),
+            to_at=datetime(2026, 9, 11, tzinfo=UTC),
+            status_id=9,
+        )
 
 
 def test_tournament_odds_batches_all_ids_in_one_call(monkeypatch):
@@ -76,6 +125,29 @@ def test_transport_errors_never_include_api_key(monkeypatch):
             to_at=datetime(2026, 9, 22, tzinfo=UTC),
         )
     assert "super-secret-key" not in str(exc.value)
+
+
+def test_fixture_not_found_response_is_empty_fixture_list(monkeypatch):
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *a, **k: _Response(
+            404,
+            {
+                "error": {
+                    "code": "FIXTURE_NOT_FOUND",
+                    "message": "No fixtures found for the specified criteria.",
+                }
+            },
+        ),
+    )
+    _received_at, rows = oddspapi.fetch_oddspapi_tennis_fixtures(
+        "secret-key",
+        from_at=datetime(2026, 9, 10, tzinfo=UTC),
+        to_at=datetime(2026, 9, 11, tzinfo=UTC),
+        status_id=2,
+    )
+    assert rows == []
 
 
 def test_merge_board_prices_preserves_fixture_discovery_identity():
