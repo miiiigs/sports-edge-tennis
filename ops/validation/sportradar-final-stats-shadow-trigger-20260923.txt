@@ -1,0 +1,1 @@
+Read-only one-call Sportradar final-stats shadow trigger with Railway credential references.
