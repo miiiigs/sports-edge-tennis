@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m pip install . && python ops/validation/sportradar_stage1b_match_only_preview_20260923.py"
+startCommand = "python -m pip install . && python ops/validation/provider_cutover_rehearsal_20260922.py --skip-provider-fetch"
 restartPolicyType = "NEVER"
