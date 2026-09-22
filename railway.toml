@@ -3,6 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python -m sports_edge_tennis.live.batch --days 3"
-cronSchedule = "0 * * * *"
+startCommand = "python ops/validation/provider_cutover_rehearsal_20260922.py"
 restartPolicyType = "NEVER"

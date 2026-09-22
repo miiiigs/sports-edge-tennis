@@ -233,6 +233,14 @@ def _load_db_rehearsal_snapshot(
     """
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
+            conn.execute("SET default_transaction_read_only = on")
+            read_only = str(conn.execute("SHOW transaction_read_only").fetchone()[0])
+            if read_only.lower() != "on":
+                return {
+                    "available": False,
+                    "reason": "read_only_not_confirmed",
+                    "transaction_read_only": read_only,
+                }, []
             rows = conn.execute(query, (window_start, window_end)).fetchall()
     except Exception as exc:
         return {"available": False, "reason": type(exc).__name__}, []
@@ -289,6 +297,7 @@ def _load_db_rehearsal_snapshot(
     return (
         {
             "available": True,
+            "transaction_read_only": "on",
             "sporting_matches_found": total,
             "atp_count": atp,
             "challenger_count": challenger,
