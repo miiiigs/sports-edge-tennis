@@ -160,6 +160,28 @@ def refresh_sportradar_history_day(
 
         try:
             result = _parse_terminal_result(summary, fixture=fixture)
+            result_player_map = _validate_sportradar_player_map(
+                _sportradar_player_map(
+                    conn,
+                    provider_ids=(
+                        fixture.player_1_source_id,
+                        fixture.player_2_source_id,
+                    ),
+                ),
+                expected_player_ids=(
+                    ingested.player_1_id,
+                    ingested.player_2_id,
+                ),
+            )
+            result = _orient_result_to_canonical(
+                result,
+                fixture=fixture,
+                player_map=result_player_map,
+                canonical_player_ids=(
+                    ingested.player_1_id,
+                    ingested.player_2_id,
+                ),
+            )
         except ValueError as exc:
             result_rejections += 1
             errors.append(
@@ -227,12 +249,7 @@ def refresh_sportradar_history_day(
                         canonical_players: dict[str, int] | None = None
                         if stats is not None:
                             canonical_players = _validate_sportradar_player_map(
-                                _sportradar_player_map(
-                                    conn,
-                                    provider_ids=tuple(
-                                        stat.provider_player_id for stat in stats
-                                    ),
-                                ),
+                                result_player_map,
                                 expected_player_ids=(
                                     ingested.player_1_id,
                                     ingested.player_2_id,
@@ -545,6 +562,52 @@ def _parsed_stat(
         provider_player_id=provider_id,
         line=line,
         record_hash=digest,
+    )
+
+
+def _orient_result_to_canonical(
+    result: ParsedResult,
+    *,
+    fixture: SportradarFixtureCandidate,
+    player_map: Mapping[str, int],
+    canonical_player_ids: tuple[int, int],
+) -> ParsedResult:
+    try:
+        provider_first = int(player_map[fixture.player_1_source_id])
+        provider_second = int(player_map[fixture.player_2_source_id])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("sportradar_result_orientation_unresolved") from exc
+
+    direct = (provider_first, provider_second) == canonical_player_ids
+    reverse = (provider_second, provider_first) == canonical_player_ids
+    if direct == reverse:
+        raise ValueError("sportradar_result_orientation_conflict")
+    if direct:
+        return result
+
+    def _flip_side(side: int | None) -> int | None:
+        if side == 1:
+            return 2
+        if side == 2:
+            return 1
+        return side
+
+    sets_1 = result.sets_won_player_2
+    sets_2 = result.sets_won_player_1
+    scoreline = (
+        f"{sets_1}-{sets_2}"
+        if sets_1 is not None and sets_2 is not None
+        else None
+    )
+    return ParsedResult(
+        outcome_status=result.outcome_status,
+        winner_side=_flip_side(result.winner_side),
+        retired_side=_flip_side(result.retired_side),
+        sets_won_player_1=sets_1,
+        sets_won_player_2=sets_2,
+        games_won_player_1=result.games_won_player_2,
+        games_won_player_2=result.games_won_player_1,
+        scoreline_text=scoreline,
     )
 
 
