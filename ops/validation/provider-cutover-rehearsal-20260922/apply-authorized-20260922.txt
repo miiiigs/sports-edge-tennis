@@ -4,3 +4,4 @@ Eligible rows: 477
 Blocked rows: 3
 Focused hash regression test trigger
 Focused python-m-pytest trigger
+Post-hash-fix read-only DB preview trigger
