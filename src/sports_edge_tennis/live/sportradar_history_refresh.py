@@ -167,6 +167,21 @@ def refresh_sportradar_history_day(
             )
             continue
 
+        current_result = _latest_result_semantic_key(
+            conn,
+            match_id=ingested.match_id,
+        )
+        result_conflict = _terminal_result_conflict(current_result, result)
+        if result_conflict is not None:
+            result_rejections += 1
+            errors.append(
+                {
+                    "event_id": fixture.source_match_id,
+                    "reason": result_conflict,
+                }
+            )
+            continue
+
         stats: tuple[ParsedStat, ParsedStat] | None = None
         if result.outcome_status == "COMPLETED":
             try:
@@ -531,6 +546,38 @@ def _parsed_stat(
         line=line,
         record_hash=digest,
     )
+
+
+def _terminal_result_conflict(
+    current_result: tuple[object, ...] | None,
+    candidate: ParsedResult,
+) -> str | None:
+    if current_result is None:
+        return None
+
+    current_status = str(current_result[0])
+    if current_status not in _TERMINAL:
+        return None
+    if current_status != candidate.outcome_status:
+        return (
+            "terminal_outcome_conflict:"
+            f"{current_status}:{candidate.outcome_status}"
+        )
+
+    current_winner = current_result[1]
+    if current_winner != candidate.winner_side:
+        return (
+            "terminal_winner_conflict:"
+            f"{current_winner}:{candidate.winner_side}"
+        )
+
+    current_retired = current_result[2]
+    if current_status == "RETIRED" and current_retired != candidate.retired_side:
+        return (
+            "terminal_retired_side_conflict:"
+            f"{current_retired}:{candidate.retired_side}"
+        )
+    return None
 
 
 def _latest_result_semantic_key(
