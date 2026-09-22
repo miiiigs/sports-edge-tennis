@@ -4,10 +4,7 @@ import json
 from collections.abc import Mapping, Sequence
 
 from sports_edge_tennis.live.credentials import load_secret
-from sports_edge_tennis.live.sportradar import (
-    fetch_sport_event_summary,
-    fetch_sport_event_timeline,
-)
+from sports_edge_tennis.live.sportradar import fetch_sport_event_summary
 
 
 EVENT_ID = "sr:sport_event:74861362"
@@ -61,20 +58,16 @@ def main() -> int:
         raise RuntimeError("SPORTRADAR_TENNIS_API_KEY unavailable")
 
     summary_received_at, summary = fetch_sport_event_summary(api_key, EVENT_ID)
-    timeline_received_at, timeline = fetch_sport_event_timeline(api_key, EVENT_ID)
 
     result = {
         "status": "OK",
         "event_id": EVENT_ID,
-        "provider_requests": 2,
+        "provider_requests": 1,
         "writes": 0,
         "summary_received_at": summary_received_at.isoformat(),
-        "timeline_received_at": timeline_received_at.isoformat(),
         "summary_top_level_keys": sorted(summary.keys()),
         "summary_status": _status_view(summary),
         "summary_exception_nodes": _exception_nodes(summary),
-        "timeline_top_level_keys": sorted(timeline.keys()),
-        "timeline_exception_nodes": _exception_nodes(timeline),
     }
     print(
         "SPORTRADAR_RETIREMENT_DETAIL "
