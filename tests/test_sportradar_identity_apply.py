@@ -16,6 +16,19 @@ from sports_edge_tennis.validation.sportradar_identity_apply import (
 )
 
 
+def test_artifact_hash_is_stable_across_line_endings(tmp_path: Path):
+    lf = tmp_path / "lf.csv"
+    crlf = tmp_path / "crlf.csv"
+    no_terminal_newline = tmp_path / "no-terminal-newline.csv"
+
+    lf.write_bytes(b"a,b\n1,2\n")
+    crlf.write_bytes(b"a,b\r\n1,2\r\n")
+    no_terminal_newline.write_bytes(b"a,b\n1,2")
+
+    assert sha256_file(lf) == sha256_file(crlf)
+    assert sha256_file(lf) == sha256_file(no_terminal_newline)
+
+
 def test_reviewed_artifact_hash_and_plan_are_locked():
     assert DEFAULT_ARTIFACT.exists()
     assert sha256_file(DEFAULT_ARTIFACT) == EXPECTED_ARTIFACT_SHA256
