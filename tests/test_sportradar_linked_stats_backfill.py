@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from datetime import UTC, date, datetime, timedelta
 
 import pytest
@@ -228,4 +229,66 @@ def test_collect_keeps_fully_existing_candidate_in_reviewed_artifact(monkeypatch
     assert collection.counts["candidate_stat_rows"] == 2
     assert len(collection.candidates) == 1
     assert collection.artifact_sha256 == _artifact_hash((_candidate(),))
+
+
+class _RecordingConn:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, tuple[object, ...]]] = []
+
+    def execute(self, sql, params=None):
+        self.calls.append((str(sql), tuple(params or ())))
+        return self
+
+    def fetchone(self):
+        return None
+
+
+def test_repository_inserts_accept_explicit_ingested_at() -> None:
+    from sports_edge_tennis.data.repository import HistoricalRepository
+
+    received = RECEIVED + timedelta(minutes=5)
+
+    conn = _RecordingConn()
+    repository = HistoricalRepository(conn, 7)
+    assert repository.insert_match_result(
+        match_id=101,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        retired_side=None,
+        sets_won_player_1=2,
+        sets_won_player_2=0,
+        games_won_player_1=12,
+        games_won_player_2=7,
+        scoreline_text="2-0",
+        source_observed_at=received,
+        as_of=received,
+        ingested_at=received,
+    ) is True
+    result_sql = conn.calls[-1][0]
+    assert "ingested_at" in result_sql
+    assert "COALESCE(%s::timestamptz, CURRENT_TIMESTAMP)" in result_sql
+    assert conn.calls[-1][1][-2] == received
+
+    stat_conn = _RecordingConn()
+    stat_repository = HistoricalRepository(stat_conn, 7)
+    assert stat_repository.insert_match_stat(
+        match_id=101,
+        player_id=11,
+        source_system="SPORTRADAR",
+        source_record_id="sr:sport_event:1",
+        source_record_hash="hash-a",
+        line=_stat("sr:p1", "hash-a").line,
+        source_observed_at=received,
+        as_of=received,
+        ingested_at=received,
+    ) is True
+    stat_sql = stat_conn.calls[-1][0]
+    assert "ingested_at" in stat_sql
+    assert "COALESCE(%s::timestamptz, CURRENT_TIMESTAMP)" in stat_sql
+    assert stat_conn.calls[-1][1][-2] == received
+
+
+def test_backfill_anchors_ingested_at_to_provider_receive_time() -> None:
+    source = inspect.getsource(backfill.apply_linked_stats_backfill)
+    assert source.count("ingested_at=candidate.received_at") == 2
 

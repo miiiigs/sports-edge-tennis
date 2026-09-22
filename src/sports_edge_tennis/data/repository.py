@@ -595,6 +595,7 @@ class HistoricalRepository:
         scoreline_text: str | None,
         source_observed_at: datetime,
         as_of: datetime,
+        ingested_at: datetime | None = None,
     ) -> bool:
         existing = self.conn.execute(
             """
@@ -620,9 +621,13 @@ class HistoricalRepository:
                 scoreline_text,
                 source_observed_at,
                 as_of,
+                ingested_at,
                 ingest_run_id
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                COALESCE(%s::timestamptz, CURRENT_TIMESTAMP), %s
+            )
             """,
             (
                 match_id,
@@ -636,6 +641,7 @@ class HistoricalRepository:
                 scoreline_text,
                 source_observed_at,
                 as_of,
+                ingested_at,
                 self.ingest_run_id,
             ),
         )
@@ -652,6 +658,7 @@ class HistoricalRepository:
         line: MatchStatLine,
         source_observed_at: datetime,
         as_of: datetime,
+        ingested_at: datetime | None = None,
     ) -> bool:
         existing = None
         if source_record_id:
@@ -704,10 +711,12 @@ class HistoricalRepository:
                 break_points_faced,
                 source_observed_at,
                 as_of,
+                ingested_at,
                 ingest_run_id
             )
             VALUES (
-                %s, %s, %s, %s, %s, 'RAW_SOURCE', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, 'RAW_SOURCE', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                COALESCE(%s::timestamptz, CURRENT_TIMESTAMP), %s
             )
             """,
             (
@@ -727,6 +736,7 @@ class HistoricalRepository:
                 line.break_points_faced,
                 source_observed_at,
                 as_of,
+                ingested_at,
                 self.ingest_run_id,
             ),
         )

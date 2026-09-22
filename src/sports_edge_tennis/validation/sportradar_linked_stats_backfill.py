@@ -546,6 +546,7 @@ def apply_linked_stats_backfill(
                     scoreline_text=candidate.result.scoreline_text,
                     source_observed_at=candidate.received_at,
                     as_of=candidate.received_at,
+                    ingested_at=candidate.received_at,
                 )
                 result_inserted += int(inserted_result)
 
@@ -565,6 +566,7 @@ def apply_linked_stats_backfill(
                         line=stat.line,
                         source_observed_at=candidate.received_at,
                         as_of=candidate.received_at,
+                        ingested_at=candidate.received_at,
                     )
                     inserted_for_match += int(inserted)
                     stat_inserted += int(inserted)
