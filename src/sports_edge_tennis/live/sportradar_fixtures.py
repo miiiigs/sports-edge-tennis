@@ -16,6 +16,7 @@ SUPPORTED_STATUSES = {
     "postponed": "POSTPONED",
     "cancelled": "CANCELLED",
     "canceled": "CANCELLED",
+    "abandoned": "CANCELLED",
     "closed": "COMPLETED",
     "ended": "COMPLETED",
     "retired": "RETIRED",
@@ -176,7 +177,15 @@ def parse_summary(
             match_status = "RETIRED"
         elif detailed_status == "walkover":
             match_status = "WALKOVER"
-        elif detailed_status in {"cancelled", "canceled"}:
+        elif detailed_status in {
+            "defaulted",
+            "player_1_defaulted_player_2_won",
+            "player_2_defaulted_player_1_won",
+        }:
+            # Canonical settlement has no separate DEFAULTED outcome. Preserve
+            # the existing conservative void semantics used for retirement.
+            match_status = "RETIRED"
+        elif detailed_status in {"cancelled", "canceled", "abandoned"}:
             match_status = "CANCELLED"
 
     # winning_reason is a secondary terminal-exception signal. Keep it as a
