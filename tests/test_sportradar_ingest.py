@@ -125,6 +125,11 @@ def test_exact_overlap_persists_one_match(monkeypatch) -> None:
     )
     monkeypatch.setattr(
         ingest,
+        "_latest_terminal_outcome",
+        lambda *a, **k: None,
+    )
+    monkeypatch.setattr(
+        ingest,
         "_persist_fixture",
         lambda *a, **k: MatchLocator(
             match_id=10,
