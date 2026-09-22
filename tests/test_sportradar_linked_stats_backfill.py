@@ -21,8 +21,7 @@ from sports_edge_tennis.validation.sportradar_linked_stats_backfill import (
 )
 
 
-RECEIVED = datetime(2026, 9, 23, 1, 0, tzinfo=UTC)
-
+# Railway focused-validation snapshot trigger.\nRECEIVED = datetime(2026, 9, 23, 1, 0, tzinfo=UTC)\n
 
 def _fixture() -> SportradarFixtureCandidate:
     return SportradarFixtureCandidate(
