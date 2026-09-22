@@ -58,11 +58,17 @@ def event_key(value: str | None) -> str:
 
 
 def sha256_file(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """Hash the reviewed CSV in a checkout-independent canonical form.
+
+    Git may materialize the same reviewed CSV with LF or CRLF line endings
+    depending on the runner. Normalize only line endings and the terminal
+    newline before hashing so the content lock remains stable across checkouts.
+    """
+    raw = path.read_bytes()
+    normalized = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    normalized = normalized.rstrip(b"\n") + b"\n"
+    canonical = normalized.replace(b"\n", b"\r\n")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def load_candidates(path: Path) -> tuple[CandidateRow, ...]:
