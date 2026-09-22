@@ -3,5 +3,5 @@ builder = "RAILPACK"
 buildCommand = "python -m pip install ."
 
 [deploy]
-startCommand = "python ops/validation/provider_cutover_rehearsal_20260922.py"
+startCommand = "python -m pytest -q tests/test_sportradar_identity_apply.py tests/test_sportradar_canonical_link_audit.py"
 restartPolicyType = "NEVER"
