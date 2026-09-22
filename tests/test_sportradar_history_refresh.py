@@ -7,6 +7,7 @@ import pytest
 from sports_edge_tennis.live.sportradar_fixtures import parse_summary
 from sports_edge_tennis.live.sportradar_history_refresh import (
     ParsedResult,
+    _orient_result_to_canonical,
     _parse_final_stats,
     _parse_terminal_result,
     _terminal_result_conflict,
@@ -332,4 +333,62 @@ def test_terminal_result_conflict_allows_matching_terminal_truth() -> None:
     )
     current = ("RETIRED", 1, 2, 1, 0, 8, 8)
     assert _terminal_result_conflict(current, candidate) is None
+
+def test_result_orientation_flips_winner_and_score_for_reversed_canonical_players() -> None:
+    summary = _summary(
+        winner_id="sr:p1",
+        period_scores=_periods(),
+    )
+    fixture = parse_summary(summary, received_at=RECEIVED)
+    provider_result = _parse_terminal_result(summary, fixture=fixture)
+
+    canonical_result = _orient_result_to_canonical(
+        provider_result,
+        fixture=fixture,
+        player_map={"sr:p1": 202, "sr:p2": 101},
+        canonical_player_ids=(101, 202),
+    )
+
+    assert canonical_result.winner_side == 2
+    assert canonical_result.retired_side is None
+    assert canonical_result.sets_won_player_1 == 1
+    assert canonical_result.sets_won_player_2 == 2
+    assert canonical_result.games_won_player_1 == 15
+    assert canonical_result.games_won_player_2 == 16
+    assert canonical_result.scoreline_text == "1-2"
+
+
+def test_result_orientation_flips_retired_side_for_reversed_canonical_players() -> None:
+    summary = _summary(
+        winner_id="sr:p2",
+        winning_reason="retirement",
+        period_scores=_periods(),
+    )
+    fixture = parse_summary(summary, received_at=RECEIVED)
+    provider_result = _parse_terminal_result(summary, fixture=fixture)
+
+    canonical_result = _orient_result_to_canonical(
+        provider_result,
+        fixture=fixture,
+        player_map={"sr:p1": 202, "sr:p2": 101},
+        canonical_player_ids=(101, 202),
+    )
+
+    assert canonical_result.outcome_status == "RETIRED"
+    assert canonical_result.winner_side == 1
+    assert canonical_result.retired_side == 2
+
+
+def test_result_orientation_rejects_noncanonical_player_map() -> None:
+    summary = _summary(period_scores=_periods())
+    fixture = parse_summary(summary, received_at=RECEIVED)
+    provider_result = _parse_terminal_result(summary, fixture=fixture)
+
+    with pytest.raises(ValueError, match="orientation_conflict"):
+        _orient_result_to_canonical(
+            provider_result,
+            fixture=fixture,
+            player_map={"sr:p1": 101, "sr:p2": 999},
+            canonical_player_ids=(101, 202),
+        )
 
