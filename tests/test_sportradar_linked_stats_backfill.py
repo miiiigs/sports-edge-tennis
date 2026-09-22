@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 
+import sports_edge_tennis.validation.sportradar_linked_stats_backfill as backfill
 from sports_edge_tennis.data.contracts import MatchStatLine
 from sports_edge_tennis.live.sportradar_fixtures import SportradarFixtureCandidate
 from sports_edge_tennis.live.sportradar_history_refresh import ParsedResult, ParsedStat
@@ -177,3 +178,54 @@ def test_apply_requires_exact_authorization_and_reviewed_hash() -> None:
                 AUTH_ENV: AUTH_TOKEN,
             },
         )
+
+def test_collect_keeps_fully_existing_candidate_in_reviewed_artifact(monkeypatch) -> None:
+    fixture = _fixture()
+    stats = (_stat("sr:p1", "hash-a"), _stat("sr:p2", "hash-b"))
+
+    monkeypatch.setattr(backfill, "parse_summary", lambda *args, **kwargs: fixture)
+    monkeypatch.setattr(
+        backfill,
+        "_linked_match_context",
+        lambda *args, **kwargs: (101, 11, 22),
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_parse_terminal_result",
+        lambda *args, **kwargs: _result(),
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_sportradar_player_map",
+        lambda *args, **kwargs: {"sr:p1": 11, "sr:p2": 22},
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_latest_result_semantic_key",
+        lambda *args, **kwargs: ("COMPLETED", 1, None, 2, 0, 12, 7),
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_parse_final_stats",
+        lambda *args, **kwargs: stats,
+    )
+    monkeypatch.setattr(
+        backfill,
+        "_existing_stat_hashes",
+        lambda *args, **kwargs: {"hash-a", "hash-b"},
+    )
+
+    collection = backfill.collect_candidates(
+        object(),
+        api_key="unused",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 21),
+        fetch_rows=lambda *args, **kwargs: (RECEIVED, [{"summary": 1}]),
+    )
+
+    assert collection.counts["already_backfilled"] == 1
+    assert collection.counts["candidate_matches"] == 1
+    assert collection.counts["candidate_stat_rows"] == 2
+    assert len(collection.candidates) == 1
+    assert collection.artifact_sha256 == _artifact_hash((_candidate(),))
+
