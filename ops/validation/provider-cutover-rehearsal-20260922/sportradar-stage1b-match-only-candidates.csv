@@ -1,0 +1,23 @@
+canonical_match_id,tour_scope,canonical_player_1_id,canonical_player_1_name,player_1_sportradar_id,canonical_player_2_id,canonical_player_2_name,player_2_sportradar_id,sportradar_event_id,start_delta_minutes,evidence_type,orientation,candidate_count
+117926,CHALLENGER,4458,M. Sharipov,sr:competitor:620338,4292,I. Ivashka,sr:competitor:89320,sr:sport_event:74625610,20,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+117984,CHALLENGER,4468,F. Diaz Acosta,sr:competitor:371476,4445,M. Alcala Gurri,sr:competitor:422993,sr:sport_event:74628110,0,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130381,CHALLENGER,4443,O. Roca Batalla,sr:competitor:51100,4356,S. Napolitano,sr:competitor:42152,sr:sport_event:74533226,5,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130471,ATP_MAIN,4816,H. Chung,sr:competitor:83211,4809,D. Suresh,sr:competitor:283965,sr:sport_event:74791628,15,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130473,ATP_MAIN,4428,L. Neumayer,sr:competitor:675173,4308,G. Onclin,sr:competitor:289105,sr:sport_event:74796802,5,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130477,ATP_MAIN,4751,L. Draxl,sr:competitor:263917,4631,Q. Halys,sr:competitor:90798,sr:sport_event:74801002,15,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130532,ATP_MAIN,4780,D. Altmaier,sr:competitor:127208,4351,M. Dodig,sr:competitor:915153,sr:sport_event:74827016,20,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130533,ATP_MAIN,4841,T. Samuel,sr:competitor:603106,4393,A. Guillen Meza,sr:competitor:389114,sr:sport_event:74827816,15,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130542,ATP_MAIN,4472,B. Van De Zandschulp,sr:competitor:102339,4662,N. Mejia,sr:competitor:138528,sr:sport_event:74792416,5,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130545,ATP_MAIN,5180,A. Knaff,sr:competitor:214826,4758,F. Marozsan,sr:competitor:254383,sr:sport_event:74800514,30,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130546,ATP_MAIN,4620,C. Ruud,sr:competitor:119248,4288,J. Cui,sr:competitor:215492,sr:sport_event:74800504,10,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130547,ATP_MAIN,5997,L. Van Herck,sr:competitor:213200,4695,Z. Piros,sr:competitor:223714,sr:sport_event:74800528,5,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130548,ATP_MAIN,4302,N. Budkov Kjaer,sr:competitor:943619,5466,R. Te,sr:competitor:156664,sr:sport_event:74800506,5,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130550,ATP_MAIN,4717,E. Vasa,sr:competitor:165234,5998,L. Catarina,sr:competitor:126400,sr:sport_event:74801162,15,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130551,ATP_MAIN,4742,J. Fonseca,sr:competitor:863319,4618,S. Wawrinka,sr:competitor:14548,sr:sport_event:74801106,20,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130558,ATP_MAIN,4383,C. H. Tseng,sr:competitor:226036,5851,M. Dahlin,sr:competitor:840640,sr:sport_event:74818628,30,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130577,ATP_MAIN,4684,J. Watt,sr:competitor:973963,4390,R. Sakamoto,sr:competitor:893391,sr:sport_event:74808470,15,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130579,ATP_MAIN,4639,J. Duckworth,sr:competitor:39711,4455,M. Kasnikowski,sr:competitor:685469,sr:sport_event:74807986,10,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130581,ATP_MAIN,4804,M. Kecmanovic,sr:competitor:130398,4446,V. Gaubas,sr:competitor:604238,sr:sport_event:74825608,0,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130582,ATP_MAIN,4850,H. Medjedovic,sr:competitor:601146,4406,E. Butvilas,sr:competitor:809320,sr:sport_event:74825610,20,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130586,ATP_MAIN,4851,T. A. Tirante,sr:competitor:256875,4369,Y. Erel,sr:competitor:307112,sr:sport_event:74828806,10,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
+130587,ATP_MAIN,4293,Y. H. Hsu,sr:competitor:220588,6003,K. Friberg,sr:competitor:152726,sr:sport_event:74853976,10,EXACT_SPORTRADAR_NAME_TIME,DIRECT,1
