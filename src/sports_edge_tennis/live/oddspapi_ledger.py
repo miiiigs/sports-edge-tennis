@@ -61,7 +61,11 @@ def would_exceed_monthly(*, used: int, config: OddspapiLedgerConfig) -> bool:
 
 def month_to_date_count(conn, *, month: str) -> int:
     row = conn.execute(
-        f"SELECT count(*) FROM {LEDGER_TABLE} WHERE billing_month = %s",
+        f"""
+        SELECT count(*) FROM {LEDGER_TABLE}
+        WHERE billing_month = %s
+          AND classification <> 'DIAGNOSTIC'
+        """,
         (month,),
     ).fetchone()
     if row is None or row[0] is None:

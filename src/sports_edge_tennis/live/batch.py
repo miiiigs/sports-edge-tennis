@@ -43,6 +43,11 @@ from sports_edge_tennis.live.oddspapi_ledger import (
     OddspapiLedgerBinding,
     OddspapiLedgerConfig,
 )
+from sports_edge_tennis.live.oddspapi_identity_cache import (
+    OddspapiCachedIdentity,
+    partition_cached_identities,
+    upsert_cached_identity,
+)
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
@@ -277,6 +282,60 @@ def _manager_consensus_betradar_ids(
             text[len("sr:sport_event:") :] if text.startswith("sr:sport_event:") else text
         )
     return keys
+
+
+def _load_manager_consensus_context(
+    conn: psycopg.Connection,
+    prediction_run_ids: list[int],
+) -> list[dict[str, object]]:
+    if not prediction_run_ids:
+        return []
+    rows = conn.execute(
+        """
+        SELECT DISTINCT
+            mcr.match_id,
+            src.source_match_id,
+            mv.match_start_at
+        FROM manager_consensus_results mcr
+        LEFT JOIN LATERAL (
+            SELECT match_start_at
+            FROM match_versions
+            WHERE match_id = mcr.match_id
+            ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
+            LIMIT 1
+        ) mv ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT source_match_id
+            FROM match_source_ids
+            WHERE match_id = mcr.match_id
+              AND source_system = 'SPORTRADAR'
+            ORDER BY match_source_id DESC
+            LIMIT 1
+        ) src ON TRUE
+        WHERE mcr.prediction_run_id = ANY(%s)
+          AND mcr.manager_status = 'CONSENSUS'
+        """,
+        (list(prediction_run_ids),),
+    ).fetchall()
+    context: list[dict[str, object]] = []
+    for row in rows:
+        raw_event = str(row[1]) if row[1] is not None else None
+        betradar_id = None
+        if raw_event:
+            betradar_id = (
+                raw_event[len("sr:sport_event:") :]
+                if raw_event.startswith("sr:sport_event:")
+                else raw_event
+            )
+        context.append(
+            {
+                "match_id": int(row[0]),
+                "sportradar_event_id": raw_event,
+                "betradar_id": betradar_id,
+                "scheduled_start": row[2],
+            }
+        )
+    return context
 
 
 def main(
@@ -558,10 +617,10 @@ def main(
                             _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
                 elif provider_authority.odds_mode == TARGET_ODDS_MODE:
                     budget_policy = _oddspapi_budget_policy_from_env()
-                    consensus_match_ids = _load_manager_consensus_match_ids(
+                    consensus_context = _load_manager_consensus_context(
                         conn, prediction_run_ids
                     )
-                    if not consensus_match_ids:
+                    if not consensus_context:
                         # Rule A: no Manager consensus means no qualification
                         # odds spend.
                         _log(
@@ -586,33 +645,79 @@ def main(
                             correlation_id=correlation_id,
                         )
                         try:
-                            window_start = datetime.combine(
-                                args.start_date,
-                                datetime.min.time(),
-                                tzinfo=timezone.utc,
+                            now = market_as_of
+                            discovery_received_at = now
+                            discovery_rows: list[dict[str, Any]] = []
+                            warm, cold = partition_cached_identities(
+                                conn,
+                                candidates=[
+                                    (
+                                        item["match_id"],
+                                        item["sportradar_event_id"],
+                                        item["scheduled_start"],
+                                    )
+                                    for item in consensus_context
+                                ],
+                                now=now,
                             )
-                            window_end = window_start + timedelta(days=args.days)
-                            discovery_received_at, discovery_rows = (
-                                fetch_oddspapi_tennis_fixtures(
-                                    oddspapi_key,
-                                    from_at=window_start,
-                                    to_at=window_end,
-                                    bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
-                                    ledger=discovery_ledger,
+                            tournament_ids: list[int] = [
+                                ident.oddspapi_tournament_id for ident in warm.values()
+                            ]
+                            cold_by_betradar = {
+                                item["betradar_id"]: item
+                                for item in consensus_context
+                                if item["match_id"] in cold and item["betradar_id"]
+                            }
+                            if cold_by_betradar:
+                                window_start = datetime.combine(
+                                    args.start_date,
+                                    datetime.min.time(),
+                                    tzinfo=timezone.utc,
                                 )
-                            )
-                            totals["offered_requests"] += 1
-                            consensus_betradar = _manager_consensus_betradar_ids(
-                                conn, consensus_match_ids
-                            )
-                            tournament_ids: list[int] = []
-                            for payload in discovery_rows:
-                                try:
-                                    envelope = parse_oddspapi_tennis_fixture(payload)
-                                except ValueError:
-                                    continue
-                                if envelope.betradar_id and envelope.betradar_id in consensus_betradar:
+                                window_end = window_start + timedelta(days=args.days)
+                                discovery_received_at, discovery_rows = (
+                                    fetch_oddspapi_tennis_fixtures(
+                                        oddspapi_key,
+                                        from_at=window_start,
+                                        to_at=window_end,
+                                        bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+                                        ledger=discovery_ledger,
+                                    )
+                                )
+                                totals["offered_requests"] += 1
+                                for payload in discovery_rows:
+                                    try:
+                                        envelope = parse_oddspapi_tennis_fixture(payload)
+                                    except ValueError:
+                                        continue
+                                    item = (
+                                        cold_by_betradar.get(envelope.betradar_id)
+                                        if envelope.betradar_id
+                                        else None
+                                    )
+                                    if item is None:
+                                        continue
                                     tournament_ids.append(envelope.tournament_id)
+                                    upsert_cached_identity(
+                                        conn,
+                                        OddspapiCachedIdentity(
+                                            canonical_match_id=item["match_id"],
+                                            sportradar_event_id=item["sportradar_event_id"],
+                                            oddspapi_event_id=envelope.fixture_id,
+                                            betradar_id=envelope.betradar_id,
+                                            oddspapi_tournament_id=envelope.tournament_id,
+                                            player_orientation="DIRECT",
+                                            resolution_status="EXACT",
+                                            scheduled_start=item["scheduled_start"],
+                                            resolved_at=now,
+                                            last_verified_at=now,
+                                        ),
+                                    )
+                            _log(
+                                "ODDSPAPI_IDENTITY_CACHE "
+                                f"warm={len(warm)} cold={len(cold)} "
+                                f"cold_discovered={len(cold_by_betradar)}"
+                            )
 
                             plan = plan_oddspapi_qualification(
                                 tournament_ids=tournament_ids,
@@ -661,7 +766,7 @@ def main(
                                 f"provider=ODDSPAPI_TENNIS "
                                 f"requests={totals['offered_requests']} "
                                 f"planned={plan.total_requests} "
-                                f"consensus_matches={len(consensus_match_ids)} "
+                                f"consensus_matches={len(consensus_context)} "
                                 f"tournaments={len(plan.tournament_ids)} "
                                 f"events={oddspapi.provider_events_seen} "
                                 f"exact={oddspapi.exact_events} "
