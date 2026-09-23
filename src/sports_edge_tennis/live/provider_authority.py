@@ -15,6 +15,8 @@ DATA_MODE_ENV = "TENNIS_DATA_PROVIDER_MODE"
 ODDS_MODE_ENV = "TENNIS_ODDS_PROVIDER_MODE"
 CUTOVER_AUTH_ENV = "TENNIS_PROVIDER_CUTOVER_AUTHORIZATION"
 CUTOVER_AUTH_VALUE = "SPORTRADAR_ODDSPAPI_V1"
+DATA_FAILOVER_AUTH_ENV = "TENNIS_DATA_FAILOVER_AUTHORIZATION"
+DATA_FAILOVER_AUTH_VALUE = "SPORTRADAR_DATA_ONLY_V1"
 
 SPORTRADAR_REQUIRED_ENV = (
     "SPORTRADAR_TENNIS_API_KEY",
@@ -39,6 +41,11 @@ class ProviderAuthority:
     def full_target_requested(self) -> bool:
         return self.data_mode == TARGET_DATA_MODE and self.odds_mode == TARGET_ODDS_MODE
 
+    @property
+    def data_only(self) -> bool:
+        """Sportradar fixtures scored against the legacy odds authority."""
+        return self.data_mode == TARGET_DATA_MODE and self.odds_mode == LEGACY_ODDS_MODE
+
 
 @dataclass(frozen=True)
 class CutoverReadiness:
@@ -56,11 +63,13 @@ def load_provider_authority(env: Mapping[str, str]) -> ProviderAuthority:
     if odds_mode not in {LEGACY_ODDS_MODE, TARGET_ODDS_MODE}:
         raise ValueError(f"unsupported {ODDS_MODE_ENV}={odds_mode!r}")
 
-    # A half-cutover is forbidden. This avoids scoring a Sportradar fixture
-    # universe against the legacy odds identity universe, or vice versa.
-    if (data_mode == TARGET_DATA_MODE) != (odds_mode == TARGET_ODDS_MODE):
+    # An odds-only cutover is forbidden: scoring the legacy fixture universe
+    # against the target odds universe is unsafe. A data-only failover
+    # (Sportradar fixtures + legacy odds) is permitted and gated by its own
+    # explicit readiness check in evaluate_cutover_readiness.
+    if data_mode == LEGACY_DATA_MODE and odds_mode == TARGET_ODDS_MODE:
         raise ValueError(
-            "Tennis provider cutover must switch data and odds authority together"
+            "Odds-only provider cutover is forbidden; switch data authority with odds"
         )
     return ProviderAuthority(data_mode=data_mode, odds_mode=odds_mode)
 
@@ -75,6 +84,29 @@ def evaluate_cutover_readiness(
 
     if not authority.target_requested:
         return CutoverReadiness(authority=authority, ready=True, blockers=())
+
+    if authority.data_only:
+        # Emergency data-only failover: Sportradar fixtures scored against the
+        # legacy odds authority. Odds authority, Manager and model versions are
+        # unchanged; only fixture ingestion authority moves. Requires an
+        # explicit failover authorization so it can never activate silently.
+        if (
+            str(env.get(DATA_FAILOVER_AUTH_ENV) or "").strip()
+            != DATA_FAILOVER_AUTH_VALUE
+        ):
+            blockers.append("DATA_FAILOVER_AUTHORIZATION_MISSING")
+        for name in SPORTRADAR_REQUIRED_ENV:
+            if not str(env.get(name) or "").strip():
+                blockers.append(f"MISSING_ENV:{name}")
+        if not _core_schema_present(conn):
+            blockers.append("CORE_SCHEMA_INCOMPLETE")
+        if not _historical_corpus_present(conn):
+            blockers.append("HISTORICAL_CORPUS_EMPTY")
+        return CutoverReadiness(
+            authority=authority,
+            ready=not blockers,
+            blockers=tuple(blockers),
+        )
 
     if not TARGET_RUNTIME_READY:
         blockers.append("TARGET_RUNTIME_NOT_ACTIVATABLE")
@@ -221,6 +253,8 @@ __all__ = [
     "CUTOVER_AUTH_ENV",
     "CUTOVER_AUTH_VALUE",
     "CutoverReadiness",
+    "DATA_FAILOVER_AUTH_ENV",
+    "DATA_FAILOVER_AUTH_VALUE",
     "DATA_MODE_ENV",
     "ODDSPAPI_REQUIRED_ENV",
     "LEGACY_DATA_MODE",

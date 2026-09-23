@@ -67,11 +67,43 @@ def test_default_authority_keeps_current_production_path() -> None:
     assert value.target_requested is False
 
 
-def test_half_cutover_is_rejected() -> None:
-    with pytest.raises(ValueError, match="must switch data and odds authority together"):
+def test_odds_only_cutover_is_rejected() -> None:
+    with pytest.raises(ValueError, match="Odds-only provider cutover"):
         authority.load_provider_authority(
-            {authority.DATA_MODE_ENV: authority.TARGET_DATA_MODE}
+            {authority.ODDS_MODE_ENV: authority.TARGET_ODDS_MODE}
         )
+
+
+def test_data_only_failover_is_allowed_but_gated() -> None:
+    env = {authority.DATA_MODE_ENV: authority.TARGET_DATA_MODE}
+    value = authority.load_provider_authority(env)
+    assert value.data_mode == authority.TARGET_DATA_MODE
+    assert value.odds_mode == authority.LEGACY_ODDS_MODE
+    assert value.data_only is True
+    assert value.target_requested is True
+
+    result = authority.evaluate_cutover_readiness(_FakeConn(), env=env)
+    assert result.ready is False
+    assert "DATA_FAILOVER_AUTHORIZATION_MISSING" in result.blockers
+    assert "MISSING_ENV:SPORTRADAR_TENNIS_API_KEY" in result.blockers
+    # A data-only failover must not require the full cutover gate.
+    assert not any("ODDSPAPI" in blocker for blocker in result.blockers)
+    assert not any("MANAGER" in blocker for blocker in result.blockers)
+    assert "TARGET_RUNTIME_NOT_ACTIVATABLE" not in result.blockers
+
+
+def test_data_only_failover_ready_with_authorization_and_schema() -> None:
+    env = {
+        authority.DATA_MODE_ENV: authority.TARGET_DATA_MODE,
+        authority.DATA_FAILOVER_AUTH_ENV: authority.DATA_FAILOVER_AUTH_VALUE,
+        "SPORTRADAR_TENNIS_API_KEY": "sr-secret",
+        "SPORTRADAR_TENNIS_ACCESS_LEVEL": "trial",
+        "SPORTRADAR_TENNIS_LANGUAGE": "en",
+    }
+    assert authority.load_provider_authority(env).data_only is True
+    result = authority.evaluate_cutover_readiness(_FakeConn(), env=env)
+    assert result.ready is True
+    assert result.blockers == ()
 
 
 def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:

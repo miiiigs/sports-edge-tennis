@@ -262,6 +262,15 @@ def main(
     if provider_authority.odds_mode == TARGET_ODDS_MODE and not oddspapi_key:
         _log("BLOCKED_MISSING_ODDSPAPI_API_KEY")
         return 2
+    # The offered-odds leg of the legacy odds authority is served by API-Tennis,
+    # independently of which provider supplies fixtures. Load its key
+    # separately so a data-only failover never sends the Sportradar key to the
+    # legacy odds endpoint.
+    legacy_odds_key = (
+        load_secret("API_TENNIS_API_KEY")
+        if provider_authority.odds_mode == LEGACY_ODDS_MODE
+        else None
+    )
     totals = {
         "slates": 0,
         "failed_slates": 0,
@@ -440,33 +449,36 @@ def main(
 
             if candidate_match_ids:
                 if provider_authority.odds_mode == LEGACY_ODDS_MODE:
-                    try:
-                        odds_received_at, odds_result = fetch_api_tennis_odds(
-                            fixture_provider_key,
-                            args.start_date,
-                            args.start_date + timedelta(days=args.days - 1),
-                        )
-                        totals["offered_requests"] = 1
-                        offered_odds_result = dict(odds_result)
-                        offered = ingest_api_tennis_offered_odds(
-                            conn,
-                            odds_result=odds_result,
-                            received_at=odds_received_at,
-                            candidate_match_ids=candidate_match_ids,
-                        )
-                        totals["offered_quotes"] = offered.normalized_quotes
-                        market_as_of = max(market_as_of, odds_received_at)
-                        _log(
-                            "OFFERED_ODDS "
-                            f"provider=API_TENNIS "
-                            f"candidates={offered.candidate_matches} "
-                            f"events={offered.events_with_odds} "
-                            f"quotes={offered.normalized_quotes} "
-                            f"missing={offered.missing_events} "
-                            f"bookmakers={offered.bookmaker_count}"
-                        )
-                    except TransportError as exc:
-                        _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+                    if not legacy_odds_key:
+                        _log("OFFERED_ODDS_UNAVAILABLE kind=MISSING_LEGACY_ODDS_KEY")
+                    else:
+                        try:
+                            odds_received_at, odds_result = fetch_api_tennis_odds(
+                                legacy_odds_key,
+                                args.start_date,
+                                args.start_date + timedelta(days=args.days - 1),
+                            )
+                            totals["offered_requests"] = 1
+                            offered_odds_result = dict(odds_result)
+                            offered = ingest_api_tennis_offered_odds(
+                                conn,
+                                odds_result=odds_result,
+                                received_at=odds_received_at,
+                                candidate_match_ids=candidate_match_ids,
+                            )
+                            totals["offered_quotes"] = offered.normalized_quotes
+                            market_as_of = max(market_as_of, odds_received_at)
+                            _log(
+                                "OFFERED_ODDS "
+                                f"provider=API_TENNIS "
+                                f"candidates={offered.candidate_matches} "
+                                f"events={offered.events_with_odds} "
+                                f"quotes={offered.normalized_quotes} "
+                                f"missing={offered.missing_events} "
+                                f"bookmakers={offered.bookmaker_count}"
+                            )
+                        except TransportError as exc:
+                            _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
                 elif provider_authority.odds_mode == TARGET_ODDS_MODE:
                     try:
                         window_start = datetime.combine(
