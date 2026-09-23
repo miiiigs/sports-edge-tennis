@@ -16,15 +16,19 @@ class _FakeConn:
         history=True,
         sharp_mapping=True,
         offered_mapping=True,
+        ledger_schema=True,
     ):
         self.strict = strict
         self.schema = schema
         self.history = history
         self.sharp_mapping = sharp_mapping
         self.offered_mapping = offered_mapping
+        self.ledger_schema = ledger_schema
 
     def execute(self, sql, params=None):
         normalized = " ".join(sql.split()).lower()
+        if "oddspapi_request_ledger" in normalized and "oddspapi_event_identity_cache" in normalized:
+            return _Result((self.ledger_schema, self.ledger_schema))
         if "manager_policy_versions" in normalized and "policy_version = 'v2'" in normalized:
             row = (False, "0.080000", "0.500000") if self.strict else None
             return _Result(row)
@@ -51,12 +55,12 @@ def _target_env():
     return {
         authority.DATA_MODE_ENV: authority.TARGET_DATA_MODE,
         authority.ODDS_MODE_ENV: authority.TARGET_ODDS_MODE,
-        authority.CUTOVER_AUTH_ENV: authority.CUTOVER_AUTH_VALUE,
+        authority.DATA_FAILOVER_AUTH_ENV: authority.DATA_FAILOVER_AUTH_VALUE,
+        authority.ODDS_FAILOVER_AUTH_ENV: authority.ODDS_FAILOVER_AUTH_VALUE,
         "SPORTRADAR_TENNIS_API_KEY": "sr-secret",
         "SPORTRADAR_TENNIS_ACCESS_LEVEL": "production",
         "SPORTRADAR_TENNIS_LANGUAGE": "en",
         "ODDSPAPI_API_KEY": "odds-secret",
-        authority.MANAGER_POLICY_ENV: "v2",
     }
 
 
@@ -106,44 +110,48 @@ def test_data_only_failover_ready_with_authorization_and_schema() -> None:
     assert result.blockers == ()
 
 
-def test_target_cutover_requires_explicit_authorization_and_secrets() -> None:
+def test_provider_target_requires_explicit_authorizations_and_secrets() -> None:
     env = {
         authority.DATA_MODE_ENV: authority.TARGET_DATA_MODE,
         authority.ODDS_MODE_ENV: authority.TARGET_ODDS_MODE,
     }
     result = authority.evaluate_cutover_readiness(_FakeConn(), env=env)
     assert result.ready is False
-    assert "TARGET_RUNTIME_NOT_ACTIVATABLE" in result.blockers
-    assert "CUTOVER_AUTHORIZATION_MISSING" in result.blockers
-    assert "STRICT_MANAGER_V2_NOT_SELECTED" in result.blockers
+    assert "DATA_FAILOVER_AUTHORIZATION_MISSING" in result.blockers
+    assert "ODDS_FAILOVER_AUTHORIZATION_MISSING" in result.blockers
     assert "MISSING_ENV:SPORTRADAR_TENNIS_API_KEY" in result.blockers
     assert "MISSING_ENV:ODDSPAPI_API_KEY" in result.blockers
+    # Provider cutover must NOT be coupled to the Manager policy version.
+    assert not any("MANAGER" in blocker for blocker in result.blockers)
+    assert not any("TARGET_RUNTIME" in blocker for blocker in result.blockers)
 
 
-def test_target_cutover_requires_strict_manager_schema_history_and_mapping() -> None:
+def test_provider_target_is_ready_with_manager_v1() -> None:
+    # _target_env leaves TENNIS_MANAGER_POLICY_VERSION unset (production v1).
+    result = authority.evaluate_cutover_readiness(_FakeConn(), env=_target_env())
+    assert result.ready is True
+    assert result.blockers == ()
+    assert result.authority.full_target_requested is True
+
+
+def test_provider_target_requires_ledger_schema_history_and_mapping() -> None:
     result = authority.evaluate_cutover_readiness(
         _FakeConn(
-            strict=False,
             schema=False,
             history=False,
             sharp_mapping=False,
             offered_mapping=False,
+            ledger_schema=False,
         ),
         env=_target_env(),
     )
     assert result.ready is False
-    assert "STRICT_MANAGER_V2_NOT_MIGRATED" in result.blockers
+    assert "ODDSPAPI_LEDGER_SCHEMA_NOT_READY" in result.blockers
     assert "CORE_SCHEMA_INCOMPLETE" in result.blockers
     assert "HISTORICAL_CORPUS_EMPTY" in result.blockers
     assert "ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED" in result.blockers
     assert "ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED" in result.blockers
-
-
-def test_target_cutover_remains_blocked_until_runtime_write_path_is_complete() -> None:
-    result = authority.evaluate_cutover_readiness(_FakeConn(), env=_target_env())
-    assert result.ready is False
-    assert result.blockers == ("TARGET_RUNTIME_NOT_ACTIVATABLE",)
-    assert result.authority.full_target_requested is True
+    assert not any("MANAGER" in blocker for blocker in result.blockers)
 
 
 def test_target_cutover_requires_both_oddspapi_mapping_classes() -> None:

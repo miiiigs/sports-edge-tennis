@@ -17,6 +17,8 @@ CUTOVER_AUTH_ENV = "TENNIS_PROVIDER_CUTOVER_AUTHORIZATION"
 CUTOVER_AUTH_VALUE = "SPORTRADAR_ODDSPAPI_V1"
 DATA_FAILOVER_AUTH_ENV = "TENNIS_DATA_FAILOVER_AUTHORIZATION"
 DATA_FAILOVER_AUTH_VALUE = "SPORTRADAR_DATA_ONLY_V1"
+ODDS_FAILOVER_AUTH_ENV = "TENNIS_ODDS_FAILOVER_AUTHORIZATION"
+ODDS_FAILOVER_AUTH_VALUE = "ODDSPAPI_ODDS_V1"
 
 SPORTRADAR_REQUIRED_ENV = (
     "SPORTRADAR_TENNIS_API_KEY",
@@ -25,7 +27,6 @@ SPORTRADAR_REQUIRED_ENV = (
 )
 ODDSPAPI_REQUIRED_ENV = ("ODDSPAPI_API_KEY",)
 MANAGER_POLICY_ENV = "TENNIS_MANAGER_POLICY_VERSION"
-TARGET_RUNTIME_READY = False
 
 
 @dataclass(frozen=True)
@@ -85,65 +86,67 @@ def evaluate_cutover_readiness(
     if not authority.target_requested:
         return CutoverReadiness(authority=authority, ready=True, blockers=())
 
-    if authority.data_only:
-        # Emergency data-only failover: Sportradar fixtures scored against the
-        # legacy odds authority. Odds authority, Manager and model versions are
-        # unchanged; only fixture ingestion authority moves. Requires an
-        # explicit failover authorization so it can never activate silently.
-        if (
-            str(env.get(DATA_FAILOVER_AUTH_ENV) or "").strip()
-            != DATA_FAILOVER_AUTH_VALUE
-        ):
-            blockers.append("DATA_FAILOVER_AUTHORIZATION_MISSING")
-        for name in SPORTRADAR_REQUIRED_ENV:
-            if not str(env.get(name) or "").strip():
-                blockers.append(f"MISSING_ENV:{name}")
-        if not _core_schema_present(conn):
-            blockers.append("CORE_SCHEMA_INCOMPLETE")
-        if not _historical_corpus_present(conn):
-            blockers.append("HISTORICAL_CORPUS_EMPTY")
-        return CutoverReadiness(
-            authority=authority,
-            ready=not blockers,
-            blockers=tuple(blockers),
-        )
+    # Provider readiness is capability-specific. The Sportradar data failover and
+    # the OddsPapi odds failover are independent of the Manager policy version;
+    # Manager v2 / A3 v2 remain separate future switches and are never required
+    # to change a data or odds provider.
+    blockers.extend(_data_readiness_blockers(conn, env))
+    if authority.odds_mode == TARGET_ODDS_MODE:
+        blockers.extend(_odds_readiness_blockers(conn, env))
 
-    if not TARGET_RUNTIME_READY:
-        blockers.append("TARGET_RUNTIME_NOT_ACTIVATABLE")
-
-    if str(env.get(CUTOVER_AUTH_ENV) or "").strip() != CUTOVER_AUTH_VALUE:
-        blockers.append("CUTOVER_AUTHORIZATION_MISSING")
-
-    if str(env.get(MANAGER_POLICY_ENV) or "v1").strip().lower() != "v2":
-        blockers.append("STRICT_MANAGER_V2_NOT_SELECTED")
-
-    for name in (*SPORTRADAR_REQUIRED_ENV, *ODDSPAPI_REQUIRED_ENV):
-        if not str(env.get(name) or "").strip():
-            blockers.append(f"MISSING_ENV:{name}")
-
-    if not _strict_manager_v2_present(conn):
-        blockers.append("STRICT_MANAGER_V2_NOT_MIGRATED")
-
-    if not _core_schema_present(conn):
-        blockers.append("CORE_SCHEMA_INCOMPLETE")
-
-    if not _historical_corpus_present(conn):
-        blockers.append("HISTORICAL_CORPUS_EMPTY")
-
-    sharp_mapping, offered_mapping = _oddspapi_mapping_state(conn)
-    if not sharp_mapping:
-        blockers.append("ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED")
-    if not offered_mapping:
-        blockers.append("ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED")
-
-    # The adapters and schema can be prepared before cutover, but production
-    # authority remains locked until the purchased OddsPapi feed has been
-    # shadow-validated and its bookmaker identity mappings are persisted.
     return CutoverReadiness(
         authority=authority,
         ready=not blockers,
         blockers=tuple(blockers),
     )
+
+
+def _data_readiness_blockers(
+    conn: psycopg.Connection,
+    env: Mapping[str, str],
+) -> list[str]:
+    blockers: list[str] = []
+    if str(env.get(DATA_FAILOVER_AUTH_ENV) or "").strip() != DATA_FAILOVER_AUTH_VALUE:
+        blockers.append("DATA_FAILOVER_AUTHORIZATION_MISSING")
+    for name in SPORTRADAR_REQUIRED_ENV:
+        if not str(env.get(name) or "").strip():
+            blockers.append(f"MISSING_ENV:{name}")
+    if not _core_schema_present(conn):
+        blockers.append("CORE_SCHEMA_INCOMPLETE")
+    if not _historical_corpus_present(conn):
+        blockers.append("HISTORICAL_CORPUS_EMPTY")
+    return blockers
+
+
+def _odds_readiness_blockers(
+    conn: psycopg.Connection,
+    env: Mapping[str, str],
+) -> list[str]:
+    blockers: list[str] = []
+    if str(env.get(ODDS_FAILOVER_AUTH_ENV) or "").strip() != ODDS_FAILOVER_AUTH_VALUE:
+        blockers.append("ODDS_FAILOVER_AUTHORIZATION_MISSING")
+    for name in ODDSPAPI_REQUIRED_ENV:
+        if not str(env.get(name) or "").strip():
+            blockers.append(f"MISSING_ENV:{name}")
+    if not _oddspapi_ledger_schema_present(conn):
+        blockers.append("ODDSPAPI_LEDGER_SCHEMA_NOT_READY")
+    sharp_mapping, offered_mapping = _oddspapi_mapping_state(conn)
+    if not sharp_mapping:
+        blockers.append("ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED")
+    if not offered_mapping:
+        blockers.append("ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED")
+    return blockers
+
+
+def _oddspapi_ledger_schema_present(conn: psycopg.Connection) -> bool:
+    row = conn.execute(
+        """
+        SELECT
+            to_regclass('public.oddspapi_request_ledger') IS NOT NULL,
+            to_regclass('public.oddspapi_event_identity_cache') IS NOT NULL
+        """
+    ).fetchone()
+    return bool(row and row[0] and row[1])
 
 
 def assert_cutover_ready(
@@ -260,12 +263,13 @@ __all__ = [
     "LEGACY_DATA_MODE",
     "LEGACY_ODDS_MODE",
     "MANAGER_POLICY_ENV",
+    "ODDS_FAILOVER_AUTH_ENV",
+    "ODDS_FAILOVER_AUTH_VALUE",
     "ODDS_MODE_ENV",
     "ProviderAuthority",
     "SPORTRADAR_REQUIRED_ENV",
     "TARGET_DATA_MODE",
     "TARGET_ODDS_MODE",
-    "TARGET_RUNTIME_READY",
     "assert_cutover_ready",
     "evaluate_cutover_readiness",
     "load_provider_authority",
