@@ -113,6 +113,43 @@ def test_prune_inactive_keeps_window_and_state_affecting_observations() -> None:
     assert {observation.match_id for observation in kept} == {1, 3}
 
 
+def test_prediction_filter_preserves_window_predictions() -> None:
+    from dataclasses import replace as dc_replace
+
+    from sports_edge_tennis.data.agent2_history import replay_historical_predictions
+
+    def build(match_id: int, day: int) -> Agent2HistoricalMatch:
+        ts = datetime(2026, 9, day, 12, 0, tzinfo=UTC)
+        base = _observation(
+            match_id=match_id,
+            match_start_at=ts,
+            stat_rows=[
+                _stat_row(source_system="SPORTRADAR", player_id=11),
+                _stat_row(source_system="SPORTRADAR", player_id=22),
+            ],
+        )
+        return dc_replace(base, result_source_observed_at=ts, result_as_of=ts)
+
+    observations = [build(1, 10), build(2, 11), build(3, 20)]
+    full = {
+        record.observation.match_id: record.result
+        for record in replay_historical_predictions(observations).records
+    }
+    filtered = replay_historical_predictions(
+        observations,
+        prediction_filter=lambda observation: (
+            date(2026, 9, 20)
+            <= (observation.match_start_at or observation.result_source_observed_at).date()
+            <= date(2026, 9, 21)
+        ),
+    ).records
+    assert [record.observation.match_id for record in filtered] == [3]
+    for record in filtered:
+        reference = full[record.observation.match_id]
+        assert record.result.selection_side == reference.selection_side
+        assert record.result.win_probability == reference.win_probability
+
+
 @dataclass
 class _FakeResult:
     prediction_status: str

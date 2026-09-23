@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 import re
 
+from collections.abc import Callable
 import psycopg
 
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
@@ -1138,7 +1139,15 @@ def replay_historical_predictions(
     observations: list[Agent2HistoricalMatch] | tuple[Agent2HistoricalMatch, ...],
     *,
     config: Agent2Config = DEFAULT_CONFIG,
+    prediction_filter: Callable[[Agent2HistoricalMatch], bool] | None = None,
 ) -> HistoricalReplayResult:
+    """Replay in visibility order.
+
+    ``prediction_filter`` is an optional optimisation: when provided, only
+    observations it accepts produce a prediction, and cohorts with no accepted
+    observation skip the per-cohort snapshot copy. The probability state is
+    identical either way, so accepted predictions are unchanged.
+    """
     sorted_observations = sorted(
         observations,
         key=lambda item: (
@@ -1168,20 +1177,25 @@ def replay_historical_predictions(
                 item.player_2_id,
             ),
         )
-        frozen_snapshot = snapshot_history_state(deepcopy(players), deepcopy(population))
-        for observation in cohort:
-            request = build_prediction_request_from_snapshot(
-                observation,
-                frozen_snapshot,
-                prediction_as_of=visibility_cohort,
-            )
-            records.append(
-                HistoricalPredictionRecord(
-                    observation=observation,
-                    request=request,
-                    result=predict(request, config),
+        if prediction_filter is None:
+            to_predict = cohort
+        else:
+            to_predict = [item for item in cohort if prediction_filter(item)]
+        if to_predict:
+            frozen_snapshot = snapshot_history_state(deepcopy(players), deepcopy(population))
+            for observation in to_predict:
+                request = build_prediction_request_from_snapshot(
+                    observation,
+                    frozen_snapshot,
+                    prediction_as_of=visibility_cohort,
                 )
-            )
+                records.append(
+                    HistoricalPredictionRecord(
+                        observation=observation,
+                        request=request,
+                        result=predict(request, config),
+                    )
+                )
         for observation in cohort:
             apply_historical_match_in_place(players, population, observation)
 

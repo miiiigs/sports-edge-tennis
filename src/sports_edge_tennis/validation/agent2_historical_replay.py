@@ -179,8 +179,13 @@ def _run_variant(
 ) -> dict[str, object]:
     ordered = _as_retrospective(observations) if mode == MODE_RETROSPECTIVE else observations
     started = time.monotonic()
+
+    def _in_window(observation: Agent2HistoricalMatch) -> bool:
+        match_start = observation.match_start_at or observation.result_source_observed_at
+        return evaluation_start <= match_start.date() <= evaluation_end
+
     with heartbeat(f"agent2_replay mode={mode} observations={len(ordered)}"):
-        replay = replay_historical_predictions(ordered)
+        replay = replay_historical_predictions(ordered, prediction_filter=_in_window)
     replay_seconds = time.monotonic() - started
     return {
         "observation_count": len(ordered),
