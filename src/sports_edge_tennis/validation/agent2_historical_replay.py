@@ -65,15 +65,22 @@ def _load_observations_read_only(
 def _as_retrospective(
     observations: list[Agent2HistoricalMatch],
 ) -> list[Agent2HistoricalMatch]:
-    """Re-order visibility by real match chronology, in memory only."""
-    return [
-        replace(
-            observation,
-            result_source_observed_at=observation.match_start_at,
-            result_as_of=observation.match_start_at,
+    """Re-order visibility by real match chronology, in memory only.
+
+    A small number of canonical rows have no usable match start; those fall back
+    to their stored result visibility so they never produce a null ordering key.
+    """
+    ordered: list[Agent2HistoricalMatch] = []
+    for observation in observations:
+        anchor = observation.match_start_at or observation.result_source_observed_at
+        ordered.append(
+            replace(
+                observation,
+                result_source_observed_at=anchor,
+                result_as_of=anchor,
+            )
         )
-        for observation in observations
-    ]
+    return ordered
 
 
 def _without_sportradar_stats(
@@ -104,7 +111,9 @@ def _score(
     abstain_reasons: Counter[str] = Counter()
     for record in records:
         observation = record.observation
-        match_date = observation.match_start_at.date()
+        match_date = (
+            observation.match_start_at or observation.result_source_observed_at
+        ).date()
         if match_date < evaluation_start or match_date > evaluation_end:
             continue
         if observation.outcome_status != "COMPLETED" or observation.winner_side not in (1, 2):

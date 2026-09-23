@@ -72,6 +72,15 @@ def test_retrospective_mode_reorders_by_match_chronology() -> None:
     assert observation.result_source_observed_at == FETCH_TIME
 
 
+def test_retrospective_mode_handles_missing_match_start() -> None:
+    observation = _observation(match_id=1, match_start_at=None)
+    (reordered,) = _as_retrospective([observation])
+    # Falls back to the stored visibility so the ordering key is never null.
+    assert reordered.result_source_observed_at == FETCH_TIME
+    assert reordered.result_as_of == FETCH_TIME
+    assert reordered.visibility_cohort == FETCH_TIME
+
+
 def test_without_sportradar_stats_drops_only_sportradar_rows() -> None:
     observation = _observation(
         match_id=1,
