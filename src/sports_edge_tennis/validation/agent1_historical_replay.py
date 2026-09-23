@@ -98,6 +98,7 @@ def _replay(
     observations: list[HistoricalMatchObservation],
     *,
     mode: str,
+    prediction_filter=None,
 ) -> list[tuple[HistoricalMatchObservation, object]]:
     grouped: dict[datetime, list[HistoricalMatchObservation]] = defaultdict(list)
     for observation in observations:
@@ -107,8 +108,13 @@ def _replay(
     records: list[tuple[HistoricalMatchObservation, object]] = []
     for cohort_time in sorted(grouped):
         cohort = sorted(grouped[cohort_time], key=lambda item: item.match_id)
+        to_predict = (
+            cohort
+            if prediction_filter is None
+            else [item for item in cohort if prediction_filter(item)]
+        )
         predictions: list[tuple[HistoricalMatchObservation, object]] = []
-        for observation in cohort:
+        for observation in to_predict:
             target = build_prediction_target(
                 _to_validation(observation, anchor=cohort_time)
             )
@@ -176,7 +182,15 @@ def run_agent1_replay(
 ) -> dict[str, object]:
     started = time.monotonic()
     with heartbeat(f"agent1_replay mode={mode} observations={len(observations)}"):
-        records = _replay(observations, mode=mode)
+        records = _replay(
+            observations,
+            mode=mode,
+            prediction_filter=lambda observation: (
+                evaluation_start
+                <= (observation.match_start_at or observation.as_of).date()
+                <= evaluation_end
+            ),
+        )
     return {
         "observation_count": len(observations),
         "replayed_matches": len(records),

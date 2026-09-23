@@ -112,17 +112,28 @@ def main(argv: list[str] | None = None) -> int:
         agent2_obs = retro_agent2(agent2_obs)
         agent3_obs = retro_agent3(agent3_obs)
 
+    def _in_window(observation) -> bool:
+        match_start = (
+            getattr(observation, "match_start_at", None)
+            or getattr(observation, "result_source_observed_at", None)
+            or getattr(observation, "as_of", None)
+        )
+        return (
+            match_start is not None
+            and args.evaluation_start <= match_start.date() <= args.evaluation_end
+        )
+
     started = time.monotonic()
     with heartbeat(f"multi_agent1 mode={args.mode} observations={len(agent1_obs)}"):
-        a1_records = replay_agent1(agent1_obs, mode=args.mode)
+        a1_records = replay_agent1(agent1_obs, mode=args.mode, prediction_filter=_in_window)
     a1_seconds = time.monotonic() - started
     started = time.monotonic()
     with heartbeat(f"multi_agent2 mode={args.mode} observations={len(agent2_obs)}"):
-        a2_records = replay_agent2(agent2_obs).records
+        a2_records = replay_agent2(agent2_obs, prediction_filter=_in_window).records
     a2_seconds = time.monotonic() - started
     started = time.monotonic()
     with heartbeat(f"multi_agent3 mode={args.mode} observations={len(agent3_obs)}"):
-        a3_records = replay_agent3(agent3_obs).records
+        a3_records = replay_agent3(agent3_obs, prediction_filter=_in_window).records
     a3_seconds = time.monotonic() - started
 
     a1_by_match = {obs.match_id: result for obs, result in a1_records}

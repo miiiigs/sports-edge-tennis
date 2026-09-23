@@ -119,7 +119,14 @@ def _run_variant(
     ordered = _as_retrospective(observations) if mode == MODE_RETROSPECTIVE else observations
     started = time.monotonic()
     with heartbeat(f"agent3_replay mode={mode} observations={len(ordered)}"):
-        replay = replay_historical_predictions(ordered)
+        replay = replay_historical_predictions(
+            ordered,
+            prediction_filter=lambda observation: (
+                evaluation_start
+                <= (observation.match_start_at or observation.result_source_observed_at).date()
+                <= evaluation_end
+            ),
+        )
     replay_seconds = time.monotonic() - started
     return {
         "observation_count": len(ordered),

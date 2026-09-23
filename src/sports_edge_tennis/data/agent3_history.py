@@ -585,6 +585,7 @@ def _replay_updates(
     cutoff: datetime | None = None,
     include_predictions: bool,
     config: Agent3Config = DEFAULT_CONFIG,
+    prediction_filter=None,
 ) -> HistoricalReplayResult:
     grouped = _group_observations(observations)
     players: dict[int, _MutablePlayerAccumulator] = {}
@@ -599,7 +600,12 @@ def _replay_updates(
         expire_history_state(players, pairs, adjacency, cutoff=visibility_cohort, config=config)
         frozen_snapshot = snapshot_history_state(players, pairs, adjacency)
         if include_predictions:
-            for observation in cohort:
+            to_predict = (
+                cohort
+                if prediction_filter is None
+                else [item for item in cohort if prediction_filter(item)]
+            )
+            for observation in to_predict:
                 request = build_prediction_request_from_snapshot(
                     observation,
                     frozen_snapshot,
@@ -649,9 +655,11 @@ def replay_historical_predictions(
     observations: list[Agent3HistoricalMatch] | tuple[Agent3HistoricalMatch, ...],
     *,
     config: Agent3Config = DEFAULT_CONFIG,
+    prediction_filter=None,
 ) -> HistoricalReplayResult:
     return _replay_updates(
         observations,
         include_predictions=True,
         config=config,
+        prediction_filter=prediction_filter,
     )
