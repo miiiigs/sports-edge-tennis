@@ -33,6 +33,12 @@ from sports_edge_tennis.live.oddspapi import (
     merge_oddspapi_odds_books,
     parse_oddspapi_tennis_fixture,
 )
+from sports_edge_tennis.live.oddspapi_budget import (
+    OddspapiBudgetError,
+    OddspapiBudgetPolicy,
+    enforce_oddspapi_budget,
+    plan_oddspapi_qualification,
+)
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
@@ -200,6 +206,65 @@ def _format_fixture_rejection_reasons(reasons: tuple[tuple[str, int], ...]) -> s
     if not reasons:
         return "none"
     return ",".join(f"{reason}={count}" for reason, count in reasons)
+
+
+def _oddspapi_budget_policy_from_env() -> OddspapiBudgetPolicy:
+    def _int(name: str, default: int) -> int:
+        raw = os.environ.get(name)
+        if raw in (None, ""):
+            return default
+        try:
+            return int(raw)
+        except ValueError:
+            return default
+
+    return OddspapiBudgetPolicy(
+        monthly_limit=_int("ODDSPAPI_MONTHLY_LIMIT", 5000),
+        reserve=_int("ODDSPAPI_MONTHLY_RESERVE", 500),
+        per_cycle_limit=_int("ODDSPAPI_PER_CYCLE_LIMIT", 6),
+    )
+
+
+def _load_manager_consensus_match_ids(
+    conn: psycopg.Connection,
+    prediction_run_ids: list[int],
+) -> list[int]:
+    if not prediction_run_ids:
+        return []
+    rows = conn.execute(
+        """
+        SELECT DISTINCT match_id
+        FROM manager_consensus_results
+        WHERE prediction_run_id = ANY(%s)
+          AND manager_status = 'CONSENSUS'
+        """,
+        (list(prediction_run_ids),),
+    ).fetchall()
+    return [int(row[0]) for row in rows]
+
+
+def _manager_consensus_betradar_ids(
+    conn: psycopg.Connection,
+    match_ids: list[int],
+) -> set[str]:
+    if not match_ids:
+        return set()
+    rows = conn.execute(
+        """
+        SELECT source_match_id
+        FROM match_source_ids
+        WHERE source_system = 'SPORTRADAR'
+          AND match_id = ANY(%s)
+        """,
+        (list(match_ids),),
+    ).fetchall()
+    keys: set[str] = set()
+    for row in rows:
+        text = str(row[0])
+        keys.add(
+            text[len("sr:sport_event:") :] if text.startswith("sr:sport_event:") else text
+        )
+    return keys
 
 
 def main(
@@ -480,81 +545,108 @@ def main(
                         except TransportError as exc:
                             _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
                 elif provider_authority.odds_mode == TARGET_ODDS_MODE:
-                    try:
-                        window_start = datetime.combine(
-                            args.start_date,
-                            datetime.min.time(),
-                            tzinfo=timezone.utc,
-                        )
-                        window_end = window_start + timedelta(days=args.days)
-                        discovery_received_at, discovery_rows = (
-                            fetch_oddspapi_tennis_fixtures(
-                                oddspapi_key,
-                                from_at=window_start,
-                                to_at=window_end,
-                                bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
-                            )
-                        )
-                        totals["offered_requests"] += 1
-                        fixture_ids: set[str] = set()
-                        tournament_ids: list[int] = []
-                        for payload in discovery_rows:
-                            try:
-                                envelope = parse_oddspapi_tennis_fixture(payload)
-                            except ValueError:
-                                continue
-                            fixture_ids.add(envelope.fixture_id)
-                            tournament_ids.append(envelope.tournament_id)
-
-                        odds_received_at = discovery_received_at
-                        odds_rows: list[dict[str, Any]] = []
-                        if tournament_ids:
-                            (
-                                odds_received_at,
-                                board_rows,
-                                odds_requests,
-                            ) = fetch_oddspapi_tennis_odds_for_books(
-                                oddspapi_key,
-                                tournament_ids=tournament_ids,
-                                bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
-                            )
-                            totals["offered_requests"] += odds_requests
-                            odds_rows = merge_oddspapi_odds_books(
-                                discovery_rows,
-                                board_rows,
-                            )
-
-                        oddspapi = ingest_oddspapi_tennis_odds(
-                            conn,
-                            payload_rows=odds_rows,
-                            received_at=odds_received_at,
-                            candidate_match_ids=candidate_match_ids,
-                        )
-                        totals["offered_quotes"] = oddspapi.normalized_quotes
-                        totals["oddspapi_events"] = oddspapi.provider_events_seen
-                        totals["oddspapi_exact"] = (
-                            oddspapi.exact_events + oddspapi.existing_events
-                        )
-                        totals["oddspapi_ambiguous"] = oddspapi.ambiguous_events
-                        totals["oddspapi_conflict"] = oddspapi.conflict_events
-                        market_as_of = max(market_as_of, odds_received_at)
+                    budget_policy = _oddspapi_budget_policy_from_env()
+                    consensus_match_ids = _load_manager_consensus_match_ids(
+                        conn, prediction_run_ids
+                    )
+                    if not consensus_match_ids:
+                        # Rule A: no Manager consensus means no qualification
+                        # odds spend.
                         _log(
-                            "OFFERED_ODDS "
-                            f"provider=ODDSPAPI_TENNIS "
-                            f"requests={totals['offered_requests']} "
-                            f"candidates={oddspapi.candidate_matches} "
-                            f"events={oddspapi.provider_events_seen} "
-                            f"exact={oddspapi.exact_events} "
-                            f"existing={oddspapi.existing_events} "
-                            f"unmatched={oddspapi.unmatched_events} "
-                            f"ambiguous={oddspapi.ambiguous_events} "
-                            f"conflict={oddspapi.conflict_events} "
-                            f"quotes={oddspapi.normalized_quotes} "
-                            f"unknown_bookmaker={oddspapi.unknown_bookmaker_groups} "
-                            f"unknown_participant={oddspapi.unknown_participant_groups}"
+                            "ODDSPAPI_QUALIFICATION_SKIPPED "
+                            "reason=ZERO_CONSENSUS requests=0"
                         )
-                    except TransportError as exc:
-                        _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+                    else:
+                        try:
+                            window_start = datetime.combine(
+                                args.start_date,
+                                datetime.min.time(),
+                                tzinfo=timezone.utc,
+                            )
+                            window_end = window_start + timedelta(days=args.days)
+                            discovery_received_at, discovery_rows = (
+                                fetch_oddspapi_tennis_fixtures(
+                                    oddspapi_key,
+                                    from_at=window_start,
+                                    to_at=window_end,
+                                    bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+                                )
+                            )
+                            totals["offered_requests"] += 1
+                            consensus_betradar = _manager_consensus_betradar_ids(
+                                conn, consensus_match_ids
+                            )
+                            tournament_ids: list[int] = []
+                            for payload in discovery_rows:
+                                try:
+                                    envelope = parse_oddspapi_tennis_fixture(payload)
+                                except ValueError:
+                                    continue
+                                if envelope.betradar_id and envelope.betradar_id in consensus_betradar:
+                                    tournament_ids.append(envelope.tournament_id)
+
+                            plan = plan_oddspapi_qualification(
+                                tournament_ids=tournament_ids,
+                                books=ODDSPAPI_PLAN_BOOKMAKERS,
+                                discovery_book=ODDSPAPI_SHARP_BOOKMAKER,
+                                policy=budget_policy,
+                                include_discovery=False,
+                            )
+                            enforce_oddspapi_budget(plan, policy=budget_policy)
+
+                            odds_received_at = discovery_received_at
+                            odds_rows: list[dict[str, Any]] = []
+                            if plan.tournament_ids:
+                                (
+                                    odds_received_at,
+                                    board_rows,
+                                    odds_requests,
+                                ) = fetch_oddspapi_tennis_odds_for_books(
+                                    oddspapi_key,
+                                    tournament_ids=plan.tournament_ids,
+                                    bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
+                                )
+                                totals["offered_requests"] += odds_requests
+                                odds_rows = merge_oddspapi_odds_books(
+                                    discovery_rows,
+                                    board_rows,
+                                )
+
+                            oddspapi = ingest_oddspapi_tennis_odds(
+                                conn,
+                                payload_rows=odds_rows,
+                                received_at=odds_received_at,
+                                candidate_match_ids=candidate_match_ids,
+                            )
+                            totals["offered_quotes"] = oddspapi.normalized_quotes
+                            totals["oddspapi_events"] = oddspapi.provider_events_seen
+                            totals["oddspapi_exact"] = (
+                                oddspapi.exact_events + oddspapi.existing_events
+                            )
+                            totals["oddspapi_ambiguous"] = oddspapi.ambiguous_events
+                            totals["oddspapi_conflict"] = oddspapi.conflict_events
+                            market_as_of = max(market_as_of, odds_received_at)
+                            _log(
+                                "OFFERED_ODDS "
+                                f"provider=ODDSPAPI_TENNIS "
+                                f"requests={totals['offered_requests']} "
+                                f"planned={plan.total_requests} "
+                                f"consensus_matches={len(consensus_match_ids)} "
+                                f"tournaments={len(plan.tournament_ids)} "
+                                f"events={oddspapi.provider_events_seen} "
+                                f"exact={oddspapi.exact_events} "
+                                f"existing={oddspapi.existing_events} "
+                                f"unmatched={oddspapi.unmatched_events} "
+                                f"ambiguous={oddspapi.ambiguous_events} "
+                                f"conflict={oddspapi.conflict_events} "
+                                f"quotes={oddspapi.normalized_quotes} "
+                                f"unknown_bookmaker={oddspapi.unknown_bookmaker_groups} "
+                                f"unknown_participant={oddspapi.unknown_participant_groups}"
+                            )
+                        except OddspapiBudgetError as exc:
+                            _log(f"ODDSPAPI_BUDGET_BLOCKED {exc}")
+                        except TransportError as exc:
+                            _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
 
 
             policy = None
