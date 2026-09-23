@@ -1,5 +1,0 @@
-Manual one-off rehearsal deployment trigger for tennis-sportradar-terminal-probe.
-This file matches the service watch pattern so explicit operator deployments are
-not skipped as "No changes to watched files". It is not used by any code.
-
-run=oddspapi-request-plan-01
