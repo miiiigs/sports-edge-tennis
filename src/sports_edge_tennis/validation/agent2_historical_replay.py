@@ -33,6 +33,7 @@ from sports_edge_tennis.data.agent2_history import (
     load_agent2_history,
     replay_historical_predictions,
 )
+from sports_edge_tennis.validation.progress import heartbeat
 
 SPORTRADAR_SOURCE = "SPORTRADAR"
 MODE_STRICT = "strict"
@@ -153,7 +154,8 @@ def _run_variant(
 ) -> dict[str, object]:
     ordered = _as_retrospective(observations) if mode == MODE_RETROSPECTIVE else observations
     started = time.monotonic()
-    replay = replay_historical_predictions(ordered)
+    with heartbeat(f"agent2_replay mode={mode} observations={len(ordered)}"):
+        replay = replay_historical_predictions(ordered)
     replay_seconds = time.monotonic() - started
     return {
         "observation_count": len(ordered),
@@ -173,7 +175,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--evaluation-start", type=date.fromisoformat, default=date(2026, 9, 10))
     parser.add_argument("--evaluation-end", type=date.fromisoformat, default=date(2026, 9, 21))
     parser.add_argument("--year-start", type=int, default=2016)
-    parser.add_argument("--compare", action="store_true", help="also replay without Sportradar stats")
+    parser.add_argument("--variant", choices=["with", "without", "both"], default="with")
+    parser.add_argument("--compare", action="store_true", help="alias for --variant both")
     args = parser.parse_args(argv)
 
     dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
@@ -187,14 +190,19 @@ def main(argv: list[str] | None = None) -> int:
         year_start=args.year_start,
     )
 
-    with_sportradar = _run_variant(
-        observations,
-        mode=args.mode,
-        evaluation_start=args.evaluation_start,
-        evaluation_end=args.evaluation_end,
+    variant = "both" if args.compare else args.variant
+    with_sportradar = (
+        _run_variant(
+            observations,
+            mode=args.mode,
+            evaluation_start=args.evaluation_start,
+            evaluation_end=args.evaluation_end,
+        )
+        if variant in {"with", "both"}
+        else None
     )
     without_sportradar = None
-    if args.compare:
+    if variant in {"without", "both"}:
         without_sportradar = _run_variant(
             _without_sportradar_stats(observations),
             mode=args.mode,

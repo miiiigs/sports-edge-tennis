@@ -41,6 +41,7 @@ from sports_edge_tennis.validation.agent3_historical_replay import (
 )
 from sports_edge_tennis.validation.agent3_historical_replay import _score as score_agent3
 from sports_edge_tennis.validation.manager_v1_reconstruction import reconstruct_manager_v1
+from sports_edge_tennis.validation.progress import heartbeat
 
 MODE_STRICT = "strict"
 MODE_RETROSPECTIVE = "retrospective"
@@ -112,13 +113,16 @@ def main(argv: list[str] | None = None) -> int:
         agent3_obs = retro_agent3(agent3_obs)
 
     started = time.monotonic()
-    a1_records = replay_agent1(agent1_obs, mode=args.mode)
+    with heartbeat(f"multi_agent1 mode={args.mode} observations={len(agent1_obs)}"):
+        a1_records = replay_agent1(agent1_obs, mode=args.mode)
     a1_seconds = time.monotonic() - started
     started = time.monotonic()
-    a2_records = replay_agent2(agent2_obs).records
+    with heartbeat(f"multi_agent2 mode={args.mode} observations={len(agent2_obs)}"):
+        a2_records = replay_agent2(agent2_obs).records
     a2_seconds = time.monotonic() - started
     started = time.monotonic()
-    a3_records = replay_agent3(agent3_obs).records
+    with heartbeat(f"multi_agent3 mode={args.mode} observations={len(agent3_obs)}"):
+        a3_records = replay_agent3(agent3_obs).records
     a3_seconds = time.monotonic() - started
 
     a1_by_match = {obs.match_id: result for obs, result in a1_records}

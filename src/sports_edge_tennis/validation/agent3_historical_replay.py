@@ -27,6 +27,7 @@ from sports_edge_tennis.data.agent3_history import (
     load_agent3_history,
     replay_historical_predictions,
 )
+from sports_edge_tennis.validation.progress import heartbeat
 
 MODE_STRICT = "strict"
 MODE_RETROSPECTIVE = "retrospective"
@@ -117,7 +118,8 @@ def _run_variant(
 ) -> dict[str, object]:
     ordered = _as_retrospective(observations) if mode == MODE_RETROSPECTIVE else observations
     started = time.monotonic()
-    replay = replay_historical_predictions(ordered)
+    with heartbeat(f"agent3_replay mode={mode} observations={len(ordered)}"):
+        replay = replay_historical_predictions(ordered)
     replay_seconds = time.monotonic() - started
     return {
         "observation_count": len(ordered),

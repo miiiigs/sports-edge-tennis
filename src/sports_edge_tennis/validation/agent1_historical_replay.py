@@ -33,6 +33,7 @@ from sports_edge_tennis.validation.agent1_walk_forward import (
     build_prediction_target,
     predict_from_state,
 )
+from sports_edge_tennis.validation.progress import heartbeat
 
 MODE_STRICT = "strict"
 MODE_RETROSPECTIVE = "retrospective"
@@ -174,7 +175,8 @@ def run_agent1_replay(
     evaluation_end: date,
 ) -> dict[str, object]:
     started = time.monotonic()
-    records = _replay(observations, mode=mode)
+    with heartbeat(f"agent1_replay mode={mode} observations={len(observations)}"):
+        records = _replay(observations, mode=mode)
     return {
         "observation_count": len(observations),
         "replayed_matches": len(records),
