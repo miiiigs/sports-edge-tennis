@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Mapping, Sequence
@@ -13,6 +15,9 @@ ODDSPAPI_BASE_URL = "https://api.oddspapi.io/v4"
 ODDSPAPI_TENNIS_SPORT_ID = 12
 ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "unibet", "bet365")
 ODDSPAPI_SHARP_BOOKMAKER = "pinnacle+30"
+# /v4/odds-by-tournaments accepts exactly one `bookmaker` and at most five
+# `tournamentIds` per request.
+MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST = 5
 
 
 @dataclass(frozen=True)
@@ -77,7 +82,7 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     api_key: str,
     *,
     tournament_ids: Sequence[int],
-    bookmakers: Sequence[str] = ODDSPAPI_PLAN_BOOKMAKERS,
+    bookmaker: str = ODDSPAPI_SHARP_BOOKMAKER,
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
@@ -85,14 +90,22 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     ids = tuple(dict.fromkeys(int(value) for value in tournament_ids))
     if not ids:
         raise ValueError("OddsPapi tournament_ids must be non-empty")
+    if len(ids) > MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST:
+        raise ValueError(
+            "OddsPapi odds-by-tournaments accepts at most "
+            f"{MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST} tournament ids per request"
+        )
     key = str(api_key or "").strip()
     if not key:
         raise ValueError("OddsPapi API key must be non-empty")
+    book = str(bookmaker or "").strip()
+    if not book:
+        raise ValueError("OddsPapi bookmaker must be non-empty")
     clock = clock or _utc_now
     params = {
         "apiKey": key,
         "tournamentIds": ",".join(str(value) for value in ids),
-        "bookmakers": ",".join(_clean_bookmakers(bookmakers)),
+        "bookmaker": book,
         "language": "en",
         "verbosity": 3,
         "oddsFormat": "decimal",
@@ -105,6 +118,98 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     )
     received_at = clock()
     return received_at, _fixture_list(payload)
+
+
+def fetch_oddspapi_tennis_odds_for_books(
+    api_key: str,
+    *,
+    tournament_ids: Sequence[int],
+    bookmakers: Sequence[str] = ODDSPAPI_PLAN_BOOKMAKERS,
+    chunk_size: int = MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST,
+    timeout: float = DEFAULT_TIMEOUT,
+    base_url: str = ODDSPAPI_BASE_URL,
+    clock: callable | None = None,
+) -> tuple[datetime, list[dict[str, Any]], int]:
+    """Fetch odds-by-tournaments for several bookmakers within the endpoint limits.
+
+    Returns ``(received_at, rows, requests_used)``. The caller is responsible for
+    pacing between calls; this helper only enforces the per-request limits.
+    """
+    ids = tuple(dict.fromkeys(int(value) for value in tournament_ids))
+    if not ids:
+        raise ValueError("OddsPapi tournament_ids must be non-empty")
+    size = min(max(1, int(chunk_size)), MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST)
+    rows: list[dict[str, Any]] = []
+    requests_used = 0
+    received_at: datetime | None = None
+    first = True
+    for book in _clean_bookmakers(bookmakers):
+        for offset in range(0, len(ids), size):
+            if not first:
+                # OddsPapi enforces a short endpoint cooldown; pace explicitly.
+                time.sleep(1.0)
+            first = False
+            chunk = ids[offset : offset + size]
+            received_at, chunk_rows = fetch_oddspapi_tennis_odds_by_tournaments(
+                api_key,
+                tournament_ids=chunk,
+                bookmaker=book,
+                timeout=timeout,
+                base_url=base_url,
+                clock=clock,
+            )
+            requests_used += 1
+            rows.extend(chunk_rows)
+    return received_at or (clock or _utc_now)(), rows, requests_used
+
+
+def merge_oddspapi_odds_books(
+    fixture_rows: Sequence[Mapping[str, Any]],
+    odds_rows: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Combine per-book odds rows onto fixture-discovery identity.
+
+    ``odds-by-tournaments`` returns one row per (bookmaker, tournament) batch, so
+    the same fixture appears multiple times with different ``bookmakerOdds``.
+    Identity stays governed by discovery; book payloads are merged.
+    """
+    discovery: dict[str, dict[str, Any]] = {}
+    for row in fixture_rows:
+        fixture_id = str(row.get("fixtureId") or "").strip()
+        if fixture_id and fixture_id not in discovery:
+            discovery[fixture_id] = dict(row)
+
+    identity_keys = {
+        "fixtureId",
+        "sportId",
+        "tournamentId",
+        "participant1Id",
+        "participant1Name",
+        "participant2Id",
+        "participant2Name",
+        "startTime",
+        "externalProviders",
+    }
+    merged: dict[str, dict[str, Any]] = {}
+    for row in odds_rows:
+        fixture_id = str(row.get("fixtureId") or "").strip()
+        base = discovery.get(fixture_id)
+        if not fixture_id or base is None:
+            continue
+        target = merged.setdefault(fixture_id, dict(base))
+        for key, value in row.items():
+            if key == "bookmakerOdds" or key in identity_keys:
+                continue
+            target[key] = value
+        books = row.get("bookmakerOdds")
+        if isinstance(books, Mapping):
+            existing = target.get("bookmakerOdds")
+            if not isinstance(existing, dict):
+                existing = {}
+                target["bookmakerOdds"] = existing
+            for slug, book_payload in books.items():
+                existing[str(slug)] = book_payload
+    return list(merged.values())
 
 
 def merge_oddspapi_fixture_odds(
@@ -189,19 +294,62 @@ def parse_oddspapi_tennis_fixture(
     )
 
 
+_RATE_LIMIT_WAIT_RE = re.compile(r"wait\s+([0-9]*\.?[0-9]+)\s*second", re.IGNORECASE)
+
+
+def _rate_limit_wait(response: requests.Response) -> float:
+    headers = getattr(response, "headers", None)
+    retry_after = headers.get("Retry-After") if hasattr(headers, "get") else None
+    if retry_after:
+        try:
+            return max(0.0, min(5.0, float(retry_after)))
+        except ValueError:
+            pass
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+    details = ""
+    if isinstance(payload, Mapping):
+        error = payload.get("error")
+        if isinstance(error, Mapping):
+            details = str(error.get("details") or "")
+        else:
+            details = str(error or "")
+    match = _RATE_LIMIT_WAIT_RE.search(details)
+    if match:
+        try:
+            return max(0.0, min(5.0, float(match.group(1)) + 0.1))
+        except ValueError:
+            pass
+    return 1.1
+
+
 def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str) -> Any:
-    try:
-        response = requests.get(url, params=dict(params), timeout=timeout)
-    except requests.exceptions.Timeout as exc:
-        raise TransportError("TIMEOUT", f"{label} request timed out") from exc
-    except requests.exceptions.RequestException as exc:
-        raise TransportError("NETWORK", f"{label} request failed") from exc
-    if response.status_code != 200:
-        raise TransportError(f"HTTP_{response.status_code}", f"{label} returned a non-200 response")
-    try:
-        return response.json()
-    except ValueError as exc:
-        raise TransportError("PARSE", f"{label} response was not valid JSON") from exc
+    max_attempts = 3
+    for attempt in range(1, max_attempts + 1):
+        try:
+            response = requests.get(url, params=dict(params), timeout=timeout)
+        except requests.exceptions.Timeout as exc:
+            raise TransportError("TIMEOUT", f"{label} request timed out") from exc
+        except requests.exceptions.RequestException as exc:
+            raise TransportError("NETWORK", f"{label} request failed") from exc
+        if response.status_code == 200:
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise TransportError("PARSE", f"{label} response was not valid JSON") from exc
+        if attempt < max_attempts and (
+            response.status_code == 429 or 500 <= response.status_code < 600
+        ):
+            # OddsPapi enforces a short per-endpoint cooldown; honour it rather
+            # than failing the batch, but stay bounded.
+            time.sleep(_rate_limit_wait(response) if response.status_code == 429 else 1.0)
+            continue
+        raise TransportError(
+            f"HTTP_{response.status_code}", f"{label} returned a non-200 response"
+        )
+    raise TransportError("HTTP_RETRY_EXHAUSTED", f"{label} retries exhausted")
 
 
 def _fixture_list(payload: Any) -> list[dict[str, Any]]:

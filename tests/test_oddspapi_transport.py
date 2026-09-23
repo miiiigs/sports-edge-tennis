@@ -43,7 +43,7 @@ def test_fixture_transport_uses_tennis_pregame_filters(monkeypatch):
     assert seen["params"]["apiKey"] == "secret-key"
 
 
-def test_tournament_odds_batches_all_ids_in_one_call(monkeypatch):
+def test_tournament_odds_uses_single_bookmaker_and_enforces_limits(monkeypatch):
     calls = []
 
     def fake_get(url, params, timeout):
@@ -54,13 +54,93 @@ def test_tournament_odds_batches_all_ids_in_one_call(monkeypatch):
     oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
         "secret-key",
         tournament_ids=(3, 3, 7, 9),
+        bookmaker="pinnacle+30",
     )
     assert len(calls) == 1
     assert calls[0][1]["tournamentIds"] == "3,7,9"
-    assert (
-        calls[0][1]["bookmakers"]
-        == "pinnacle+30,1xbet,unibet,bet365"
+    assert calls[0][1]["bookmaker"] == "pinnacle+30"
+    assert "bookmakers" not in calls[0][1]
+
+    with pytest.raises(ValueError, match="at most"):
+        oddspapi.fetch_oddspapi_tennis_odds_by_tournaments(
+            "secret-key",
+            tournament_ids=tuple(range(6)),
+            bookmaker="pinnacle+30",
+        )
+
+
+def test_tournament_odds_for_books_loops_per_book_and_chunks(monkeypatch):
+    calls = []
+
+    def fake_get(url, params, timeout):
+        calls.append(params)
+        return _Response(200, [])
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    _received, _rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k",
+        tournament_ids=(1, 2, 3, 4, 5, 6),
+        bookmakers=("pinnacle+30", "1xbet"),
     )
+    # 6 ids / 5 per request => 2 chunks per book * 2 books = 4 requests.
+    assert used == 4
+    assert [call["bookmaker"] for call in calls] == [
+        "pinnacle+30",
+        "pinnacle+30",
+        "1xbet",
+        "1xbet",
+    ]
+
+
+def test_rate_limited_request_retries(monkeypatch):
+    attempts = {"n": 0}
+
+    class _RateResponse:
+        def __init__(self, status, payload):
+            self.status_code = status
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, params, timeout):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            return _RateResponse(
+                429,
+                {
+                    "error": {
+                        "message": "rate limited",
+                        "details": "Please wait 0.5 seconds before making another request",
+                    }
+                },
+            )
+        return _RateResponse(200, [{"fixtureId": "f1"}])
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    _received, rows = oddspapi.fetch_oddspapi_tennis_fixtures(
+        "k",
+        from_at=datetime(2026, 9, 21, tzinfo=UTC),
+        to_at=datetime(2026, 9, 22, tzinfo=UTC),
+    )
+    assert attempts["n"] == 2
+    assert rows == [{"fixtureId": "f1"}]
+
+
+def test_merge_odds_books_combines_book_payloads():
+    fixture = {
+        "fixtureId": "f1",
+        "sportId": 12,
+        "participant1Name": "A",
+        "participant2Name": "B",
+    }
+    row_a = {"fixtureId": "f1", "bookmakerOdds": {"pinnacle+30": {"markets": {}}}}
+    row_b = {"fixtureId": "f1", "bookmakerOdds": {"1xbet": {"markets": {}}}}
+    merged = oddspapi.merge_oddspapi_odds_books([fixture], [row_a, row_b])
+    assert len(merged) == 1
+    assert set(merged[0]["bookmakerOdds"]) == {"pinnacle+30", "1xbet"}
 
 
 def test_transport_errors_never_include_api_key(monkeypatch):

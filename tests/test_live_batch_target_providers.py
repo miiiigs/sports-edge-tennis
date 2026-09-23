@@ -117,11 +117,11 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
 
     def fake_board(key, **kwargs):
         board_calls.append((key, kwargs))
-        return odds_received, [_oddspapi_row()]
+        return odds_received, [_oddspapi_row()], 1
 
     monkeypatch.setattr(
         batch,
-        "fetch_oddspapi_tennis_odds_by_tournaments",
+        "fetch_oddspapi_tennis_odds_for_books",
         fake_board,
     )
 
