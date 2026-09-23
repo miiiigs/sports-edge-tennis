@@ -30,6 +30,7 @@ import psycopg
 
 from sports_edge_tennis.data.agent2_history import (
     Agent2HistoricalMatch,
+    historical_match_is_eligible_for_update,
     load_agent2_history,
     replay_historical_predictions,
 )
@@ -82,6 +83,30 @@ def _as_retrospective(
             )
         )
     return ordered
+
+
+def _prune_inactive(
+    observations: list[Agent2HistoricalMatch],
+    *,
+    evaluation_start: date,
+    evaluation_end: date,
+) -> list[Agent2HistoricalMatch]:
+    """Drop non-window observations that cannot change Agent 2 state.
+
+    ``apply_historical_match_in_place`` is a strict no-op unless
+    ``historical_match_is_eligible_for_update`` is true, so removing ineligible
+    non-window observations leaves every kept prediction identical while
+    collapsing the cohort count.
+    """
+    kept: list[Agent2HistoricalMatch] = []
+    for observation in observations:
+        match_start = observation.match_start_at or observation.result_source_observed_at
+        if evaluation_start <= match_start.date() <= evaluation_end:
+            kept.append(observation)
+            continue
+        if historical_match_is_eligible_for_update(observation):
+            kept.append(observation)
+    return kept
 
 
 def _without_sportradar_stats(
@@ -177,6 +202,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--year-start", type=int, default=2016)
     parser.add_argument("--variant", choices=["with", "without", "both"], default="with")
     parser.add_argument("--compare", action="store_true", help="alias for --variant both")
+    parser.add_argument(
+        "--prune-inactive",
+        action="store_true",
+        help="drop non-window observations that cannot change Agent 2 state",
+    )
     args = parser.parse_args(argv)
 
     dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
@@ -189,6 +219,12 @@ def main(argv: list[str] | None = None) -> int:
         cutoff=cutoff,
         year_start=args.year_start,
     )
+    if args.prune_inactive:
+        observations = _prune_inactive(
+            observations,
+            evaluation_start=args.evaluation_start,
+            evaluation_end=args.evaluation_end,
+        )
 
     variant = "both" if args.compare else args.variant
     with_sportradar = (

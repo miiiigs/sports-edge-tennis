@@ -13,6 +13,7 @@ from sports_edge_tennis.data.agent2_history import (
 from sports_edge_tennis.validation.agent2_historical_replay import (
     _as_retrospective,
     _load_observations_read_only,
+    _prune_inactive,
     _score,
     _without_sportradar_stats,
 )
@@ -91,6 +92,25 @@ def test_without_sportradar_stats_drops_only_sportradar_rows() -> None:
     )
     (stripped,) = _without_sportradar_stats([observation])
     assert [row.source_system for row in stripped.stat_rows] == ["API_TENNIS"]
+
+
+def test_prune_inactive_keeps_window_and_state_affecting_observations() -> None:
+    window = _observation(match_id=1, match_start_at=datetime(2026, 9, 15, 12, 0, tzinfo=UTC))
+    statless_nonwindow = _observation(match_id=2, match_start_at=datetime(2026, 9, 1, 12, 0, tzinfo=UTC))
+    eligible_nonwindow = _observation(
+        match_id=3,
+        match_start_at=datetime(2026, 9, 1, 12, 0, tzinfo=UTC),
+        stat_rows=[
+            _stat_row(source_system="SPORTRADAR", player_id=11),
+            _stat_row(source_system="SPORTRADAR", player_id=22),
+        ],
+    )
+    kept = _prune_inactive(
+        [window, statless_nonwindow, eligible_nonwindow],
+        evaluation_start=date(2026, 9, 10),
+        evaluation_end=date(2026, 9, 21),
+    )
+    assert {observation.match_id for observation in kept} == {1, 3}
 
 
 @dataclass
