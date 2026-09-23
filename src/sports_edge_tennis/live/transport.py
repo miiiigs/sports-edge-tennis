@@ -38,6 +38,32 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _api_tennis_error_message(data: Any) -> str | None:
+    """Return a sanitized API-Tennis provider error description, or None.
+
+    API-Tennis reports subscription/account failures as an HTTP 200 body such as
+    ``{"error": "1", "result": [{"cod": 1006, "msg": "Please make the payment
+    for your account!", "param": null}]}``. Surface the code and message so
+    operators see the real cause without exposing credentials. Message text is
+    bounded and newline-stripped.
+    """
+    if not isinstance(data, dict):
+        return None
+    result = data.get("result")
+    if isinstance(result, list) and result and isinstance(result[0], dict):
+        row = result[0]
+        code = row.get("cod")
+        message = row.get("msg")
+        if code is not None or message is not None:
+            safe_message = str(message or "").replace("\n", " ").strip()[:200]
+            return f"api-tennis provider error cod={code} msg={safe_message or 'unknown'}"
+    error_field = data.get("error")
+    if error_field not in (None, "", "0", 0, False):
+        return f"api-tennis provider error flag={str(error_field)[:40]}"
+    return None
+
+
+
 def fetch_api_tennis_fixtures(
     api_key: str,
     slate_date: date,
@@ -71,8 +97,13 @@ def fetch_api_tennis_fixtures(
     except ValueError as exc:
         raise TransportError("PARSE", "api-tennis response was not valid JSON") from exc
 
+    error_message = _api_tennis_error_message(data)
+    if error_message is not None:
+        raise TransportError("PROVIDER_ERROR", error_message)
     if not isinstance(data, dict) or data.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis provider reported failure")
+        raise TransportError(
+            "PROVIDER_ERROR", "api-tennis response did not report success"
+        )
 
     result = data.get("result")
     if not isinstance(result, list):
@@ -115,8 +146,11 @@ def fetch_api_tennis_draw(
     except ValueError as exc:
         raise TransportError("PARSE", "api-tennis draw response was not valid JSON") from exc
 
+    error_message = _api_tennis_error_message(data)
+    if error_message is not None:
+        raise TransportError("PROVIDER_ERROR", error_message)
     if not isinstance(data, dict) or data.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis draw provider reported failure")
+        raise TransportError("PROVIDER_ERROR", "api-tennis draw response did not report success")
 
     result = data.get("result")
     if not isinstance(result, dict):
@@ -169,8 +203,11 @@ def fetch_api_tennis_h2h(
     except ValueError as exc:
         raise TransportError("PARSE", "api-tennis H2H response was not valid JSON") from exc
 
+    error_message = _api_tennis_error_message(data)
+    if error_message is not None:
+        raise TransportError("PROVIDER_ERROR", error_message)
     if not isinstance(data, dict) or data.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis H2H provider reported failure")
+        raise TransportError("PROVIDER_ERROR", "api-tennis H2H response did not report success")
 
     result = data.get("result")
     if not isinstance(result, dict):
@@ -218,8 +255,11 @@ def fetch_api_tennis_odds(
     except ValueError as exc:
         raise TransportError("PARSE", "api-tennis odds response was not valid JSON") from exc
 
+    error_message = _api_tennis_error_message(data)
+    if error_message is not None:
+        raise TransportError("PROVIDER_ERROR", error_message)
     if not isinstance(data, dict) or data.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis odds provider reported failure")
+        raise TransportError("PROVIDER_ERROR", "api-tennis odds response did not report success")
 
     result = data.get("result")
     if result in (None, []):

@@ -165,3 +165,41 @@ def test_pinnapi_non_object_rejected(fake_get):
     with pytest.raises(TransportError) as exc_info:
         fetch_pinnapi_board("KEYXYZ")
     assert exc_info.value.kind == "PARSE"
+
+
+def test_api_tennis_payment_error_surfaces_provider_code(fake_get):
+    fake_get.response = FakeResponse(
+        json_data={
+            "error": "1",
+            "result": [
+                {"cod": 1006, "msg": "Please make the payment for your account!", "param": None}
+            ],
+        }
+    )
+    with pytest.raises(TransportError) as exc_info:
+        fetch_api_tennis_fixtures("KEY123", SLATE)
+    exc = exc_info.value
+    assert exc.kind == "PROVIDER_ERROR"
+    assert "cod=1006" in str(exc)
+    assert "Please make the payment" in str(exc)
+    assert "KEY123" not in str(exc)
+
+
+def test_api_tennis_payment_error_surfaces_on_draw(fake_get):
+    fake_get.response = FakeResponse(
+        json_data={
+            "error": "1",
+            "result": [{"cod": 1006, "msg": "Please make the payment for your account!"}],
+        }
+    )
+    with pytest.raises(TransportError) as exc_info:
+        fetch_api_tennis_draw("KEY123", "1214", 2026)
+    assert exc_info.value.kind == "PROVIDER_ERROR"
+    assert "cod=1006" in str(exc_info.value)
+
+
+def test_api_tennis_success_response_still_parsed(fake_get):
+    fake_get.response = FakeResponse(json_data={"success": 1, "result": FIXTURES})
+    received_at, fixtures = fetch_api_tennis_fixtures("KEY123", SLATE, clock=lambda: CLOCK)
+    assert received_at == CLOCK
+    assert fixtures == FIXTURES
