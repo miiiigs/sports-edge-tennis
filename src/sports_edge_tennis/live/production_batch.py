@@ -16,7 +16,7 @@ import psycopg
 
 from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
 from sports_edge_tennis.live.batch import main as live_batch_main
-from sports_edge_tennis.live.provider_authority import assert_cutover_ready
+from sports_edge_tennis.live.provider_authority import assert_cutover_ready, TARGET_ODDS_MODE
 from sports_edge_tennis.live.operational_health import (
     evaluate_live_operational_health,
     persist_live_operational_health,
@@ -31,6 +31,7 @@ from sports_edge_tennis.settlement import (
 _QUARTER_KELLY_MIGRATION = Path("db/migrations/0010_quarter_kelly_stake_v1.up.sql")
 _PUBLICATION_CONTROL_MIGRATION = Path("db/migrations/0012_publication_control_v1.up.sql")
 _STRICT_MANAGER_V2_MIGRATION = Path("db/migrations/0014_strict_three_manager_policy_v2.up.sql")
+_ODDSPAPI_LEDGER_MIGRATION = Path("db/migrations/0015_oddspapi_request_ledger_v1.up.sql")
 _PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
@@ -291,6 +292,27 @@ def _strict_manager_v2_schema_state(
     return True, valid
 
 
+def _ensure_oddspapi_ledger_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _ODDSPAPI_LEDGER_MIGRATION,
+) -> str:
+    """Apply migration 0015 once, then verify the ledger + identity-cache tables."""
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    row = conn.execute(
+        """
+        SELECT
+            to_regclass('public.oddspapi_request_ledger') IS NOT NULL,
+            to_regclass('public.oddspapi_event_identity_cache') IS NOT NULL
+        """
+    ).fetchone()
+    if not row or not row[0] or not row[1]:
+        raise RuntimeError("oddspapi ledger schema incomplete")
+    return "READY"
+
+
 def _ensure_strict_manager_v2_schema(
     conn: psycopg.Connection,
     *,
@@ -474,6 +496,9 @@ def main(argv: list[str] | None = None) -> int:
             publication_control_status = _ensure_publication_control_schema(conn)
             model_identity_bridge_status = ensure_model_identity_bridge_schema(conn)
             strict_manager_v2_status = _ensure_strict_manager_v2_schema(conn)
+            oddspapi_ledger_status = "SKIPPED_LEGACY_ODDS"
+            if provider_authority.odds_mode == TARGET_ODDS_MODE:
+                oddspapi_ledger_status = _ensure_oddspapi_ledger_schema(conn)
     except (psycopg.Error, OSError, RuntimeError) as exc:
         _log(f"SCHEMA_BOOTSTRAP_FAILED error_type={type(exc).__name__}")
         return 2
@@ -491,6 +516,7 @@ def main(argv: list[str] | None = None) -> int:
         "SCHEMA_STRICT_MANAGER_V2 "
         f"status={strict_manager_v2_status} migration=0014 selected={os.environ.get('TENNIS_MANAGER_POLICY_VERSION', 'v1')}"
     )
+    _log(f"SCHEMA_ODDSPAPI_LEDGER status={oddspapi_ledger_status} migration=0015")
 
     _live_batch_gap_cycle(
         dsn,

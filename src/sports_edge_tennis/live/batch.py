@@ -39,6 +39,10 @@ from sports_edge_tennis.live.oddspapi_budget import (
     enforce_oddspapi_budget,
     plan_oddspapi_qualification,
 )
+from sports_edge_tennis.live.oddspapi_ledger import (
+    OddspapiLedgerBinding,
+    OddspapiLedgerConfig,
+)
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
@@ -221,7 +225,15 @@ def _oddspapi_budget_policy_from_env() -> OddspapiBudgetPolicy:
     return OddspapiBudgetPolicy(
         monthly_limit=_int("ODDSPAPI_MONTHLY_LIMIT", 5000),
         reserve=_int("ODDSPAPI_MONTHLY_RESERVE", 500),
-        per_cycle_limit=_int("ODDSPAPI_PER_CYCLE_LIMIT", 6),
+        per_cycle_limit=_int("ODDSPAPI_PER_CYCLE_LIMIT", 5),
+    )
+
+
+def _oddspapi_ledger_config_from_env() -> OddspapiLedgerConfig:
+    policy = _oddspapi_budget_policy_from_env()
+    return OddspapiLedgerConfig(
+        monthly_limit=policy.monthly_limit,
+        reserve=policy.reserve,
     )
 
 
@@ -557,6 +569,22 @@ def main(
                             "reason=ZERO_CONSENSUS requests=0"
                         )
                     else:
+                        ledger_config = _oddspapi_ledger_config_from_env()
+                        correlation_id = f"live:{args.start_date.isoformat()}"
+                        discovery_ledger = OddspapiLedgerBinding(
+                            conn=conn,
+                            config=ledger_config,
+                            request_purpose="DISCOVERY",
+                            classification="PRODUCTION",
+                            correlation_id=correlation_id,
+                        )
+                        qualification_ledger = OddspapiLedgerBinding(
+                            conn=conn,
+                            config=ledger_config,
+                            request_purpose="QUALIFICATION",
+                            classification="PRODUCTION",
+                            correlation_id=correlation_id,
+                        )
                         try:
                             window_start = datetime.combine(
                                 args.start_date,
@@ -570,6 +598,7 @@ def main(
                                     from_at=window_start,
                                     to_at=window_end,
                                     bookmakers=(ODDSPAPI_SHARP_BOOKMAKER,),
+                                    ledger=discovery_ledger,
                                 )
                             )
                             totals["offered_requests"] += 1
@@ -605,6 +634,7 @@ def main(
                                     oddspapi_key,
                                     tournament_ids=plan.tournament_ids,
                                     bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
+                                    ledger=qualification_ledger,
                                 )
                                 totals["offered_requests"] += odds_requests
                                 odds_rows = merge_oddspapi_odds_books(

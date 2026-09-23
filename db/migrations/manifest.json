@@ -99,6 +99,13 @@
       "up": "db/migrations/0014_strict_three_manager_policy_v2.up.sql",
       "down": "db/migrations/0014_strict_three_manager_policy_v2.down.sql",
       "schema_snapshot": "db/schema/0014_strict_three_manager_policy_v2.sql"
+    },
+    {
+      "version": "0015",
+      "name": "oddspapi_request_ledger_v1",
+      "up": "db/migrations/0015_oddspapi_request_ledger_v1.up.sql",
+      "down": "db/migrations/0015_oddspapi_request_ledger_v1.down.sql",
+      "schema_snapshot": "db/schema/0015_oddspapi_request_ledger_v1.sql"
     }
   ]
 }

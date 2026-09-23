@@ -46,6 +46,7 @@ def fetch_oddspapi_tennis_fixtures(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
+    ledger: Any | None = None,
 ) -> tuple[datetime, list[dict[str, Any]]]:
     if from_at.tzinfo is None or to_at.tzinfo is None:
         raise ValueError("OddsPapi fixture window must be timezone-aware")
@@ -72,6 +73,7 @@ def fetch_oddspapi_tennis_fixtures(
         params=params,
         timeout=timeout,
         label="oddspapi fixtures",
+        ledger=ledger,
     )
     received_at = clock()
     rows = _fixture_list(payload)
@@ -86,6 +88,7 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
+    ledger: Any | None = None,
 ) -> tuple[datetime, list[dict[str, Any]]]:
     ids = tuple(dict.fromkeys(int(value) for value in tournament_ids))
     if not ids:
@@ -115,6 +118,9 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
         params=params,
         timeout=timeout,
         label="oddspapi tournament odds",
+        ledger=ledger,
+        bookmaker=book,
+        chunk_size=len(ids),
     )
     received_at = clock()
     return received_at, _fixture_list(payload)
@@ -129,6 +135,7 @@ def fetch_oddspapi_tennis_odds_for_books(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
+    ledger: Any | None = None,
 ) -> tuple[datetime, list[dict[str, Any]], int]:
     """Fetch odds-by-tournaments for several bookmakers within the endpoint limits.
 
@@ -157,6 +164,7 @@ def fetch_oddspapi_tennis_odds_for_books(
                 timeout=timeout,
                 base_url=base_url,
                 clock=clock,
+                ledger=ledger,
             )
             requests_used += 1
             rows.extend(chunk_rows)
@@ -325,16 +333,39 @@ def _rate_limit_wait(response: requests.Response) -> float:
     return 1.1
 
 
-def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str) -> Any:
+def _get_json(
+    url: str,
+    *,
+    params: Mapping[str, Any],
+    timeout: float,
+    label: str,
+    ledger: Any | None = None,
+    bookmaker: str | None = None,
+    chunk_size: int | None = None,
+) -> Any:
     max_attempts = 3
     for attempt in range(1, max_attempts + 1):
+        ledger_id: int | None = None
+        if ledger is not None:
+            ledger_id = ledger.reserve(
+                endpoint=label,
+                bookmaker=bookmaker,
+                chunk_size=chunk_size,
+                retry_sequence=attempt - 1,
+            )
         try:
             response = requests.get(url, params=dict(params), timeout=timeout)
         except requests.exceptions.Timeout as exc:
+            if ledger_id is not None:
+                ledger.record(ledger_id, success=False, error_kind="TIMEOUT", retry_sequence=attempt - 1)
             raise TransportError("TIMEOUT", f"{label} request timed out") from exc
         except requests.exceptions.RequestException as exc:
+            if ledger_id is not None:
+                ledger.record(ledger_id, success=False, error_kind="NETWORK", retry_sequence=attempt - 1)
             raise TransportError("NETWORK", f"{label} request failed") from exc
         if response.status_code == 200:
+            if ledger_id is not None:
+                ledger.record(ledger_id, success=True, http_status=200, retry_sequence=attempt - 1)
             try:
                 return response.json()
             except ValueError as exc:
@@ -343,9 +374,26 @@ def _get_json(url: str, *, params: Mapping[str, Any], timeout: float, label: str
             response.status_code == 429 or 500 <= response.status_code < 600
         ):
             # OddsPapi enforces a short per-endpoint cooldown; honour it rather
-            # than failing the batch, but stay bounded.
+            # than failing the batch, but stay bounded. Each retry is a billable
+            # attempt and is counted separately.
+            if ledger_id is not None:
+                ledger.record(
+                    ledger_id,
+                    success=False,
+                    http_status=response.status_code,
+                    error_kind=f"HTTP_{response.status_code}",
+                    retry_sequence=attempt - 1,
+                )
             time.sleep(_rate_limit_wait(response) if response.status_code == 429 else 1.0)
             continue
+        if ledger_id is not None:
+            ledger.record(
+                ledger_id,
+                success=False,
+                http_status=response.status_code,
+                error_kind=f"HTTP_{response.status_code}",
+                retry_sequence=attempt - 1,
+            )
         raise TransportError(
             f"HTTP_{response.status_code}", f"{label} returned a non-200 response"
         )

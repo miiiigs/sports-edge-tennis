@@ -98,3 +98,60 @@ def test_budget_refuses_when_projected_monthly_exceeds_limit() -> None:
     enforce_oddspapi_budget(plan, policy=policy, monthly_used_estimate=3000)
     with pytest.raises(OddspapiBudgetError, match="monthly_budget_exceeded"):
         enforce_oddspapi_budget(plan, policy=policy, monthly_used_estimate=4000)
+
+
+from datetime import UTC, datetime
+
+from sports_edge_tennis.live.oddspapi_budget import SchedulingItem, schedule_oddspapi_work
+
+
+def _scheduling_items(n: int, *, cached: bool = False):
+    return [
+        SchedulingItem(
+            match_id=i,
+            tournament_id=100 + i,
+            scheduled_start=datetime(2026, 9, 10 + i, tzinfo=UTC),
+            has_cached_identity=cached,
+        )
+        for i in range(1, n + 1)
+    ]
+
+
+def test_scheduler_prefers_cached_identity_then_earliest_start() -> None:
+    items = [
+        SchedulingItem(2, 200, datetime(2026, 9, 1, tzinfo=UTC), False),
+        SchedulingItem(1, 100, datetime(2026, 9, 9, tzinfo=UTC), True),
+    ]
+    out = schedule_oddspapi_work(items, books=("pinnacle+30",), policy=OddspapiBudgetPolicy())
+    assert out.scheduled_match_ids == (1, 2)
+
+
+def test_scheduler_defers_beyond_cycle_ceiling() -> None:
+    out = schedule_oddspapi_work(
+        _scheduling_items(6),
+        books=("pinnacle+30", "1xbet", "unibet", "bet365"),
+        policy=OddspapiBudgetPolicy(per_cycle_limit=5),
+    )
+    assert len(out.scheduled_tournament_ids) == 5
+    assert out.deferred_match_ids == (6,)
+    assert out.planned_requests <= 5
+
+
+def test_scheduler_cold_cache_uses_discovery() -> None:
+    out = schedule_oddspapi_work(
+        _scheduling_items(1),
+        books=("pinnacle+30", "1xbet", "unibet", "bet365"),
+        policy=OddspapiBudgetPolicy(),
+    )
+    assert out.needs_discovery is True
+    assert out.planned_requests == 5
+
+
+def test_scheduler_warm_cache_skips_discovery() -> None:
+    out = schedule_oddspapi_work(
+        _scheduling_items(1, cached=True),
+        books=("pinnacle+30", "1xbet", "unibet", "bet365"),
+        policy=OddspapiBudgetPolicy(),
+    )
+    assert out.needs_discovery is False
+    assert out.planned_requests == 4

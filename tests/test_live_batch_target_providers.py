@@ -19,6 +19,17 @@ class _Connect:
         return _Conn()
 
 
+class _NoopLedger:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def reserve(self, *args, **kwargs):
+        return 1
+
+    def record(self, *args, **kwargs):
+        return None
+
+
 def _live_result():
     return SimpleNamespace(
         slate_date="2026-09-19",
@@ -67,6 +78,7 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
         "PINNAPI_KEY": "legacy-pinnapi",
     }
     monkeypatch.setattr(batch, "load_secret", lambda name: secrets.get(name))
+    monkeypatch.setattr(batch, "OddspapiLedgerBinding", _NoopLedger)
 
     live_calls = []
 
@@ -238,6 +250,7 @@ def test_target_mode_zero_consensus_makes_no_oddspapi_calls(monkeypatch, tmp_pat
         "PINNAPI_KEY": "legacy-pinnapi",
     }
     monkeypatch.setattr(batch, "load_secret", lambda name: secrets.get(name))
+    monkeypatch.setattr(batch, "OddspapiLedgerBinding", _NoopLedger)
     monkeypatch.setattr(batch, "run_live_mvp", lambda **kwargs: _live_result())
     monkeypatch.setattr(batch, "_load_manager_reason_counts", lambda *a, **k: ())
     monkeypatch.setattr(
