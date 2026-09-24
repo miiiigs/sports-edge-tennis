@@ -720,60 +720,103 @@ def load_agent2_history(
             sv.result_source_observed_at,
             sv.result_as_of,
             sv.version_source_observed_at,
-            sv.version_as_of,
-            mso.match_stat_observation_id,
-            mso.player_id,
-            mso.source_system,
-            mso.source_observed_at,
-            mso.as_of,
-            mso.first_serve_points_won,
-            mso.second_serve_points_won,
-            mso.service_points_played,
-            mso.return_points_won
+            sv.version_as_of
         FROM selected_versions sv
-        LEFT JOIN match_stat_observations mso
-            ON mso.match_id = sv.match_id
-           AND mso.observation_kind = 'RAW_SOURCE'
-           AND mso.source_observed_at = sv.result_source_observed_at
-           AND mso.as_of = sv.result_as_of
         WHERE sv.version_rank = 1
         ORDER BY
             sv.result_as_of,
             sv.result_source_observed_at,
-            sv.match_id,
-            mso.player_id NULLS LAST,
-            mso.match_stat_observation_id NULLS LAST
+            sv.match_id
     """
 
     rows = conn.execute(query, params).fetchall()
-    grouped: dict[int, dict[str, object]] = {}
-    ordered_match_ids: list[int] = []
-    for row in rows:
-        match_id = int(row[0])
-        if match_id not in grouped:
-            grouped[match_id] = {
-                "base": row[:19],
-                "stats": [],
-            }
-            ordered_match_ids.append(match_id)
-        if row[19] is not None:
-            grouped[match_id]["stats"].append(
-                Agent2MatchStatRow(
-                    match_stat_observation_id=int(row[19]),
-                    player_id=int(row[20]),
-                    source_system=row[21],
-                    source_observed_at=row[22],
-                    as_of=row[23],
-                    first_serve_points_won=row[24],
-                    second_serve_points_won=row[25],
-                    service_points_played=row[26],
-                    return_points_won=row[27],
-                )
-            )
-    observations: list[Agent2HistoricalMatch] = []
-    for match_id in ordered_match_ids:
+
+    stat_query = """
+        WITH stat_cohort_candidates AS (
+            SELECT
+                match_id,
+                source_system,
+                source_observed_at,
+                as_of,
+                count(*) AS stat_row_count,
+                count(DISTINCT player_id) AS player_count,
+                array_agg(match_stat_observation_id ORDER BY player_id) AS stat_ids,
+                array_agg(player_id ORDER BY player_id) AS player_ids,
+                array_agg(first_serve_points_won ORDER BY player_id) AS first_serve_points_won,
+                array_agg(second_serve_points_won ORDER BY player_id) AS second_serve_points_won,
+                array_agg(service_points_played ORDER BY player_id) AS service_points_played,
+                array_agg(return_points_won ORDER BY player_id) AS return_points_won
+            FROM match_stat_observations
+            WHERE observation_kind = 'RAW_SOURCE'
+              AND source_observed_at <= %(cutoff)s
+              AND as_of <= %(cutoff)s
+            GROUP BY
+                match_id,
+                source_system,
+                source_observed_at,
+                as_of
+        ),
+        ranked_stat_cohorts AS (
+            SELECT
+                *,
+                ROW_NUMBER() OVER (
+                    PARTITION BY match_id
+                    ORDER BY
+                        as_of DESC,
+                        source_observed_at DESC,
+                        source_system DESC
+                ) AS cohort_rank
+            FROM stat_cohort_candidates
+            WHERE stat_row_count = 2
+              AND player_count = 2
+        )
+        SELECT
+            match_id,
+            source_system,
+            source_observed_at,
+            as_of,
+            player_ids,
+            stat_ids,
+            first_serve_points_won,
+            second_serve_points_won,
+            service_points_played,
+            return_points_won
+        FROM ranked_stat_cohorts
+        WHERE cohort_rank = 1
+    """
+    stats_by_match: dict[int, tuple[Agent2MatchStatRow, ...]] = {}
+    for stat_row in conn.execute(stat_query, {"cutoff": cutoff}).fetchall():
         (
-            _match_id,
+            match_id,
+            source_system,
+            stat_source_observed_at,
+            stat_as_of,
+            player_ids,
+            stat_ids,
+            first_serve_points_won,
+            second_serve_points_won,
+            service_points_played,
+            return_points_won,
+        ) = stat_row
+        stats_by_match[int(match_id)] = tuple(
+            Agent2MatchStatRow(
+                match_stat_observation_id=int(stat_ids[index]),
+                player_id=int(player_ids[index]),
+                source_system=source_system,
+                source_observed_at=stat_source_observed_at,
+                as_of=stat_as_of,
+                first_serve_points_won=first_serve_points_won[index],
+                second_serve_points_won=second_serve_points_won[index],
+                service_points_played=service_points_played[index],
+                return_points_won=return_points_won[index],
+            )
+            for index in range(len(player_ids))
+        )
+
+    observations: list[Agent2HistoricalMatch] = []
+    for row in rows:
+        (
+            match_id,
             player_1_id,
             player_2_id,
             match_start_at,
@@ -792,10 +835,18 @@ def load_agent2_history(
             result_as_of,
             version_source_observed_at,
             version_as_of,
-        ) = grouped[match_id]["base"]
+        ) = row
+        candidate_stats = stats_by_match.get(int(match_id), ())
+        if {stat.player_id for stat in candidate_stats} == {
+            int(player_1_id),
+            int(player_2_id),
+        }:
+            attached_stats = candidate_stats
+        else:
+            attached_stats = ()
         observations.append(
             Agent2HistoricalMatch(
-                match_id=match_id,
+                match_id=int(match_id),
                 player_1_id=int(player_1_id),
                 player_2_id=int(player_2_id),
                 match_start_at=match_start_at,
@@ -815,7 +866,7 @@ def load_agent2_history(
                 result_as_of=result_as_of,
                 version_source_observed_at=version_source_observed_at,
                 version_as_of=version_as_of,
-                stat_rows=tuple(grouped[match_id]["stats"]),
+                stat_rows=attached_stats,
             )
         )
     return observations
