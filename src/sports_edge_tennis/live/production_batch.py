@@ -17,6 +17,7 @@ import psycopg
 from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
 from sports_edge_tennis.live.batch import main as live_batch_main
 from sports_edge_tennis.live.provider_authority import assert_cutover_ready, TARGET_ODDS_MODE
+from sports_edge_tennis.live.validation import validation_mode_enabled
 from sports_edge_tennis.live.operational_health import (
     evaluate_live_operational_health,
     persist_live_operational_health,
@@ -556,6 +557,15 @@ def main(argv: list[str] | None = None) -> int:
     if live_status != 0:
         _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")
         return live_status
+
+    if validation_mode_enabled():
+        # Validation runs collect real evidence and rebuild model state but must
+        # never mutate settlement truth, publish shadow positions, or notify.
+        _log(
+            "VALIDATION_MODE "
+            "publication=blocked settlement=blocked shadow=blocked notifications=blocked"
+        )
+        return 0
 
     settled_at = datetime.now(timezone.utc)
     _pncl_concordance_cycle(dsn, captured_at=settled_at)
