@@ -133,6 +133,7 @@ def refresh_sportradar_history_day(
             SportradarFixtureCandidate,
             SportradarIngestedMatch,
             ParsedResult,
+            dict[str, int],
             tuple[ParsedStat, ParsedStat] | None,
         ]
     ] = []
@@ -216,13 +217,13 @@ def refresh_sportradar_history_day(
                         "reason": str(exc),
                     }
                 )
-        prepared.append((fixture, ingested, result, stats))
+        prepared.append((fixture, ingested, result, result_player_map, stats))
 
     if prepared:
         ingest_run_id = _start_ingest_run(conn, received_at=received_at)
         repository = HistoricalRepository(conn, ingest_run_id)
         try:
-            for fixture, ingested, result, stats in prepared:
+            for fixture, ingested, result, result_player_map, stats in prepared:
                 try:
                     with conn.transaction():
                         current_result = _latest_result_semantic_key(
