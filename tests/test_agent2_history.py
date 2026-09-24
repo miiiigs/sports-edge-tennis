@@ -180,6 +180,7 @@ def _insert_stat(
     second_serve_points_won: int,
     return_points_won: int | None = None,
     ingested_at: datetime | None = None,
+    source_system: str = "SACKMANN",
 ) -> int:
     return conn.execute(
         """
@@ -197,12 +198,13 @@ def _insert_stat(
             as_of,
             ingested_at
         )
-        VALUES (%s, %s, 'SACKMANN', %s, 'RAW_SOURCE', %s, %s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP))
+        VALUES (%s, %s, %s, %s, 'RAW_SOURCE', %s, %s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP))
         RETURNING match_stat_observation_id
         """,
         (
             match_id,
             player_id,
+            source_system,
             source_record_id,
             service_points_played,
             first_serve_points_won,
@@ -1027,6 +1029,269 @@ def test_hybrid_or_one_sided_stat_bundles_do_not_update_history(db: psycopg.Conn
     )
 
     observations = load_agent2_history(db, cutoff=_utc(2025, 3, 5, 0, 0))
+    assert len(observations) == 1
+    assert observations[0].stat_rows == ()
+    assert historical_match_is_eligible_for_update(observations[0]) is False
+
+
+def _seed_single_match(
+    db: psycopg.Connection,
+) -> tuple[int, int, int]:
+    player_1 = _insert_player(db, "Player One")
+    player_2 = _insert_player(db, "Player Two")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="ATP 250 Example",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 6, 10, 10, 0),
+        source_observed_at=_utc(2025, 6, 10, 10, 0),
+        as_of=_utc(2025, 6, 10, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 10, 23, 0),
+        as_of=_utc(2025, 6, 10, 23, 0),
+    )
+    return match_id, player_1, player_2
+
+
+def test_load_agent2_history_attaches_api_tennis_stats_with_distinct_result_timestamp(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    for player_id, source_record_id, service_points_played in (
+        (player_1, "api-1", 60),
+        (player_2, "api-2", 58),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=service_points_played,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert len(observation.stat_rows) == 2
+    assert {row.source_system for row in observation.stat_rows} == {"API_TENNIS"}
+    assert historical_match_is_eligible_for_update(observation) is True
+
+
+def test_load_agent2_history_keeps_api_stats_when_later_result_observation_arrives(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    for player_id, source_record_id, service_points_played in (
+        (player_1, "api-1", 60),
+        (player_2, "api-2", 58),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=service_points_played,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+    later_result_source = _utc(2025, 6, 20, 18, 0)
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=2,
+        source_observed_at=later_result_source,
+        as_of=later_result_source,
+    )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 21, 0, 0))
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert observation.result_source_observed_at == later_result_source
+    assert len(observation.stat_rows) == 2
+    assert {row.source_system for row in observation.stat_rows} == {"API_TENNIS"}
+    assert historical_match_is_eligible_for_update(observation) is True
+
+
+def test_load_agent2_history_prefers_latest_coherent_stat_provider_snapshot(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    for player_id, source_record_id, service_points_played in (
+        (player_1, "api-1", 60),
+        (player_2, "api-2", 58),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=service_points_played,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+    sportradar_source = _utc(2025, 6, 20, 18, 0)
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=2,
+        source_observed_at=sportradar_source,
+        as_of=sportradar_source,
+    )
+    for player_id, source_record_id, service_points_played in (
+        (player_1, "sr-1", 64),
+        (player_2, "sr-2", 63),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=sportradar_source,
+            as_of=sportradar_source,
+            service_points_played=service_points_played,
+            first_serve_points_won=32,
+            second_serve_points_won=16,
+            source_system="SPORTRADAR",
+        )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 21, 0, 0))
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert len(observation.stat_rows) == 2
+    assert {row.source_system for row in observation.stat_rows} == {"SPORTRADAR"}
+    assert {row.service_points_played for row in observation.stat_rows} == {63, 64}
+
+
+def test_load_agent2_history_does_not_mix_providers_for_partial_sportradar_snapshot(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    for player_id, source_record_id, service_points_played in (
+        (player_1, "api-1", 60),
+        (player_2, "api-2", 58),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=service_points_played,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+    _insert_stat(
+        db,
+        match_id=match_id,
+        player_id=player_1,
+        source_record_id="sr-partial-1",
+        source_observed_at=_utc(2025, 6, 20, 18, 0),
+        as_of=_utc(2025, 6, 20, 18, 0),
+        service_points_played=64,
+        first_serve_points_won=32,
+        second_serve_points_won=16,
+        source_system="SPORTRADAR",
+    )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 21, 0, 0))
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert len(observation.stat_rows) == 2
+    assert {row.source_system for row in observation.stat_rows} == {"API_TENNIS"}
+    assert {row.service_points_played for row in observation.stat_rows} == {58, 60}
+
+
+def test_load_agent2_history_ignores_stats_observed_after_cutoff(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    for player_id, source_record_id in ((player_1, "future-1"), (player_2, "future-2")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 25, 12, 0),
+            as_of=_utc(2025, 6, 25, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 20, 0, 0))
+
+    assert len(observations) == 1
+    assert observations[0].stat_rows == ()
+    assert historical_match_is_eligible_for_update(observations[0]) is False
+
+
+def test_load_agent2_history_fails_closed_when_stat_players_do_not_match_canonical(
+    db: psycopg.Connection,
+):
+    match_id, player_1, _ = _seed_single_match(db)
+    unrelated_player = _insert_player(db, "Unrelated Player")
+    for player_id, source_record_id in (
+        (player_1, "api-1"),
+        (unrelated_player, "api-2"),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+
     assert len(observations) == 1
     assert observations[0].stat_rows == ()
     assert historical_match_is_eligible_for_update(observations[0]) is False
