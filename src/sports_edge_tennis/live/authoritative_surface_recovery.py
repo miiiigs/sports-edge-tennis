@@ -64,14 +64,17 @@ def load_unresolved_editions(
     *,
     max_editions: int = DEFAULT_MAX_EDITIONS,
     player_ids: list[int] | tuple[int, ...] | None = None,
+    edition_ids: list[int] | tuple[int, ...] | None = None,
 ) -> list[UnresolvedEdition]:
     """Editions with a NULL surface that have an exact Sportradar competition id.
 
     Only editions that contain at least one match whose latest version surface is
     NULL are considered. If ``player_ids`` is given, only editions involving those
-    players are returned.
+    players are returned. If ``edition_ids`` is given, only those editions are
+    returned (explicit authoritative-recovery targeting).
     """
     player_filter = ""
+    edition_filter = ""
     params: dict[str, object] = {"max_editions": max_editions}
     if player_ids:
         player_filter = """
@@ -83,6 +86,9 @@ def load_unresolved_editions(
           )
         """
         params["player_ids"] = list(player_ids)
+    if edition_ids:
+        edition_filter = "AND te.tournament_edition_id = ANY(%(edition_ids)s)"
+        params["edition_ids"] = list(edition_ids)
 
     rows = conn.execute(
         f"""
@@ -107,6 +113,7 @@ def load_unresolved_editions(
          AND tsi.source_system = 'SPORTRADAR'
         WHERE te.surface IS NULL
           {player_filter}
+          {edition_filter}
         GROUP BY te.tournament_edition_id, te.tournament_id, t.canonical_name,
                  te.season_year, tsi.source_tournament_id
         ORDER BY te.season_year DESC, te.tournament_edition_id
@@ -218,11 +225,12 @@ def recover_authoritative_surfaces(
     max_requests: int = DEFAULT_MAX_REQUESTS,
     max_editions: int = DEFAULT_MAX_EDITIONS,
     player_ids: list[int] | tuple[int, ...] | None = None,
+    edition_ids: list[int] | tuple[int, ...] | None = None,
     fetch_seasons: Callable[..., tuple[datetime, dict[str, Any]]] = fetch_competition_seasons,
     fetch_info: Callable[..., tuple[datetime, dict[str, Any]]] = fetch_season_info,
 ) -> SurfaceRecoveryOutcome:
     editions = load_unresolved_editions(
-        conn, max_editions=max_editions, player_ids=player_ids
+        conn, max_editions=max_editions, player_ids=player_ids, edition_ids=edition_ids
     )
     requests = 0
     recovered = 0
@@ -343,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-requests", type=int, default=DEFAULT_MAX_REQUESTS)
     parser.add_argument("--max-editions", type=int, default=DEFAULT_MAX_EDITIONS)
     parser.add_argument("--player-ids", default=None, help="Comma-separated canonical player IDs to scope")
+    parser.add_argument("--edition-ids", default=None, help="Comma-separated tournament edition IDs to target")
     parser.add_argument("--dsn", default=_db_dsn())
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
@@ -360,6 +369,9 @@ def main(argv: list[str] | None = None) -> int:
     player_ids = None
     if args.player_ids:
         player_ids = [int(value) for value in str(args.player_ids).split(",") if value.strip()]
+    edition_ids = None
+    if args.edition_ids:
+        edition_ids = [int(value) for value in str(args.edition_ids).split(",") if value.strip()]
 
     with psycopg.connect(args.dsn, autocommit=False) as conn:
         outcome = recover_authoritative_surfaces(
@@ -370,6 +382,7 @@ def main(argv: list[str] | None = None) -> int:
             max_requests=0 if args.dry_run else args.max_requests,
             max_editions=args.max_editions,
             player_ids=player_ids,
+            edition_ids=edition_ids,
         )
         if not args.dry_run:
             conn.commit()
