@@ -53,7 +53,14 @@ def ingest_oddspapi_tennis_odds(
     seen_fixture_ids: set[str] = set()
 
     for payload in payload_rows:
-        envelope = parse_oddspapi_tennis_fixture(payload)
+        try:
+            envelope = parse_oddspapi_tennis_fixture(payload)
+        except ValueError:
+            # A qualified board row without complete provider identity must fail
+            # closed rather than abort the whole cycle; reconciliation never sees
+            # it, so it can never be persisted.
+            unmatched += 1
+            continue
         if envelope.fixture_id in seen_fixture_ids:
             continue
         seen_fixture_ids.add(envelope.fixture_id)

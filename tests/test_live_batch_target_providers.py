@@ -358,7 +358,12 @@ def test_target_mode_warm_identity_cache_skips_discovery(monkeypatch, tmp_path):
         batch,
         "partition_cached_identities",
         lambda conn, candidates, now: (
-            {1: SimpleNamespace(oddspapi_tournament_id=303)},
+            {
+                1: SimpleNamespace(
+                    oddspapi_tournament_id=303,
+                    oddspapi_event_id="id1200000000000001",
+                )
+            },
             [],
         ),
     )
@@ -376,6 +381,24 @@ def test_target_mode_warm_identity_cache_skips_discovery(monkeypatch, tmp_path):
         lambda *a, **k: board_calls.append(k)
         or (datetime(2026, 9, 19, 12, tzinfo=UTC), [_oddspapi_row()], 1),
     )
+    ingest_calls = []
+
+    def fake_oddspapi_ingest(conn, **kwargs):
+        ingest_calls.append(kwargs)
+        return SimpleNamespace(
+            candidate_matches=1,
+            provider_events_seen=1,
+            exact_events=0,
+            existing_events=1,
+            unmatched_events=0,
+            ambiguous_events=0,
+            conflict_events=0,
+            normalized_quotes=6,
+            unknown_bookmaker_groups=0,
+            unknown_participant_groups=0,
+        )
+
+    monkeypatch.setattr(batch, "ingest_oddspapi_tennis_odds", fake_oddspapi_ingest)
     monkeypatch.setattr(
         batch,
         "ensure_market_policy_version_v1",
@@ -418,3 +441,8 @@ def test_target_mode_warm_identity_cache_skips_discovery(monkeypatch, tmp_path):
     assert rc == 0
     assert discovery_calls == []
     assert board_calls[0]["tournament_ids"] == (303,)
+    # Warm-cache cycle: discovery is skipped, but the qualified board odds must
+    # still reach ingestion.
+    assert len(ingest_calls) == 1
+    assert ingest_calls[0]["payload_rows"], "warm-cache board rows were discarded"
+    assert ingest_calls[0]["payload_rows"][0]["fixtureId"] == "id1200000000000001"
