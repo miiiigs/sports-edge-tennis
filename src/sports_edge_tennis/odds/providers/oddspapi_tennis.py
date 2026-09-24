@@ -40,7 +40,6 @@ def build_oddspapi_tennis_observation(
 
     allowed = {str(value).strip() for value in allowed_bookmakers if str(value).strip()}
     markets: list[ProviderBookmakerMarket] = []
-    observed_times: list[datetime] = []
     books = event_payload.get("bookmakerOdds")
     if isinstance(books, Mapping):
         for slug, raw_book in books.items():
@@ -53,10 +52,9 @@ def build_oddspapi_tennis_observation(
             raw_market = raw_markets.get(ODDSPAPI_MATCH_WINNER_MARKET_ID)
             if not isinstance(raw_market, Mapping):
                 continue
-            selections, timestamps = _winner_selections(raw_market, p1_id=p1_id, p2_id=p2_id)
+            selections = _winner_selections(raw_market, p1_id=p1_id, p2_id=p2_id)
             if len(selections) != 2:
                 continue
-            observed_times.extend(timestamps)
             suspended = bool(raw_book.get("suspended")) or not bool(raw_market.get("marketActive", True))
             market_status = "SUSPENDED" if suspended else "OPEN"
             markets.append(
@@ -69,9 +67,15 @@ def build_oddspapi_tennis_observation(
                 )
             )
 
-    provider_observed_at = max(observed_times) if observed_times else _parse_timestamp(event_payload.get("updatedAt"))
-    if provider_observed_at is not None and provider_observed_at > received_at.astimezone(UTC):
-        provider_observed_at = None
+    # OddsPapi is polled once per decision cycle. Its per-outcome ``changedAt``
+    # and the fixture ``updatedAt`` mark when a price last changed, not when the
+    # market was observed. Treating a last-change time as the observation time
+    # makes a stable, still-offered price look stale, and the embedded timestamp
+    # also freezes snapshot deduplication on the first observation of a price.
+    # The response is therefore a RECEIVE_TIME observation, consistent with the
+    # other polled provider adapters. ``changedAt`` remains in the raw payload
+    # for audit only.
+    provider_observed_at = None
     raw_payload = dict(event_payload)
     if isinstance(books, Mapping):
         raw_payload["bookmakerOdds"] = {
@@ -118,19 +122,15 @@ def extract_oddspapi_match_winner_prices(event_payload: Mapping[str, Any], *, bo
     return prices[0], prices[1]
 
 
-def _winner_selections(raw_market: Mapping[str, Any], *, p1_id: str, p2_id: str):
+def _winner_selections(raw_market: Mapping[str, Any], *, p1_id: str, p2_id: str) -> list[ProviderSelection]:
     selections: list[ProviderSelection] = []
-    timestamps: list[datetime] = []
     for outcome_id, player_id in ((ODDSPAPI_PLAYER_1_OUTCOME_ID, p1_id), (ODDSPAPI_PLAYER_2_OUTCOME_ID, p2_id)):
         price_obj = _player_zero(raw_market, outcome_id)
         if price_obj is None or not bool(price_obj.get("active")):
-            return [], []
+            return []
         price = _decimal_price(price_obj.get("price"))
         if price is None:
-            return [], []
-        changed_at = _parse_timestamp(price_obj.get("changedAt")) or _parse_timestamp(price_obj.get("bookmakerChangedAt"))
-        if changed_at is not None:
-            timestamps.append(changed_at)
+            return []
         selections.append(
             ProviderSelection(
                 provider_player_id=player_id,
@@ -138,7 +138,7 @@ def _winner_selections(raw_market: Mapping[str, Any], *, p1_id: str, p2_id: str)
                 provider_selection_key=outcome_id,
             )
         )
-    return selections, timestamps
+    return selections
 
 
 def _player_zero(raw_market: Mapping[str, Any], outcome_id: str) -> Mapping[str, Any] | None:
@@ -163,21 +163,6 @@ def _decimal_price(value: Any) -> Decimal | None:
     if not price.is_finite() or price <= Decimal("1"):
         return None
     return price
-
-
-def _parse_timestamp(value: Any) -> datetime | None:
-    raw = str(value or "").strip()
-    if not raw:
-        return None
-    if raw.endswith("Z"):
-        raw = raw[:-1] + "+00:00"
-    try:
-        parsed = datetime.fromisoformat(raw)
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        return None
-    return parsed.astimezone(UTC)
 
 
 __all__ = [

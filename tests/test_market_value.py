@@ -473,6 +473,69 @@ def test_stale_reference_market():
     assert decision.reason_code == "STALE_MARKET"
 
 
+def _dt_130870(hour: int, minute: int, second: int = 0, microsecond: int = 0) -> datetime:
+    return datetime(2026, 9, 24, hour, minute, second, microsecond, tzinfo=timezone.utc)
+
+
+def test_match_130870_reaches_value_evaluation_after_observation_time_fix():
+    """Replay of the persisted match 130870 evidence.
+
+    The pinnacle quote was fetched at 08:07:40 but its last price change was
+    07:01:46. With the observation time corrected to receive time the sharp pair
+    is fresh and the decision must move past STALE_MARKET into value evaluation.
+    """
+    received_at = _dt_130870(8, 7, 40, 587438)
+    sharp_p1 = _snapshot(
+        odds_snapshot_id=86305,
+        selection_type="PLAYER_1",
+        price="2.020000",
+        bookmaker_code="PINNACLE",
+        source_snapshot_id="130870-pinnacle",
+        source_observed_at=received_at,
+    )
+    sharp_p2 = _snapshot(
+        odds_snapshot_id=86306,
+        selection_type="PLAYER_2",
+        price="1.854000",
+        bookmaker_code="PINNACLE",
+        source_snapshot_id="130870-pinnacle",
+        source_observed_at=received_at,
+    )
+    offered = [
+        _snapshot(odds_snapshot_id=86307, selection_type="PLAYER_1", price="1.890000", source_system="OFFERED", bookmaker_code="1XBET", source_snapshot_id="130870-1xbet", source_observed_at=received_at),
+        _snapshot(odds_snapshot_id=86308, selection_type="PLAYER_2", price="1.790000", source_system="OFFERED", bookmaker_code="1XBET", source_snapshot_id="130870-1xbet", source_observed_at=received_at),
+        _snapshot(odds_snapshot_id=86309, selection_type="PLAYER_1", price="1.900000", source_system="OFFERED", bookmaker_code="UNIBET", source_snapshot_id="130870-unibet", source_observed_at=received_at),
+        _snapshot(odds_snapshot_id=86310, selection_type="PLAYER_2", price="1.860000", source_system="OFFERED", bookmaker_code="UNIBET", source_snapshot_id="130870-unibet", source_observed_at=received_at),
+        _snapshot(odds_snapshot_id=86311, selection_type="PLAYER_1", price="1.870000", source_system="OFFERED", bookmaker_code="BET365", source_snapshot_id="130870-bet365", source_observed_at=received_at),
+        _snapshot(odds_snapshot_id=86312, selection_type="PLAYER_2", price="1.770000", source_system="OFFERED", bookmaker_code="BET365", source_snapshot_id="130870-bet365", source_observed_at=received_at),
+    ]
+
+    fixed = evaluate_market_match(
+        manager_row=_manager_row(side=2, prob="0.574155"),
+        policy=_policy(),
+        competition_tier="CHALLENGER",
+        sharp_reference=SHARP,
+        odds_snapshots=[sharp_p1, sharp_p2, *offered],
+        decision_as_of=received_at,
+    )
+    assert fixed.reason_code != "STALE_MARKET"
+    assert fixed.reason_code == "EDGE_BELOW_THRESHOLD"
+    assert fixed.market_decimal_price is None
+
+    changed_at = _dt_130870(7, 1, 46, 922000)
+    stale_p1 = _snapshot(odds_snapshot_id=86305, selection_type="PLAYER_1", price="2.020000", bookmaker_code="PINNACLE", source_snapshot_id="130870-pinnacle", source_observed_at=changed_at)
+    stale_p2 = _snapshot(odds_snapshot_id=86306, selection_type="PLAYER_2", price="1.854000", bookmaker_code="PINNACLE", source_snapshot_id="130870-pinnacle", source_observed_at=changed_at)
+    before_fix = evaluate_market_match(
+        manager_row=_manager_row(side=2, prob="0.574155"),
+        policy=_policy(),
+        competition_tier="CHALLENGER",
+        sharp_reference=SHARP,
+        odds_snapshots=[stale_p1, stale_p2, *offered],
+        decision_as_of=received_at,
+    )
+    assert before_fix.reason_code == "STALE_MARKET"
+
+
 def test_unsupported_tier():
     decision = evaluate_market_match(
         manager_row=_manager_row(side=1, prob="0.60"),
