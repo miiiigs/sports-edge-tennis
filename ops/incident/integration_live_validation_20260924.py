@@ -494,6 +494,9 @@ def main() -> int:
             readiness = _a2_readiness(conn, sorted(concrete_ids), slate["as_of"])
             not_ready_ids = readiness.pop("not_ready_ids", [])
             emit("INTEGRATION_A2_READINESS", readiness)
+            readiness_now = _a2_readiness(conn, sorted(concrete_ids), now)
+            readiness_now.pop("not_ready_ids", None)
+            emit("INTEGRATION_A2_READINESS_NOW", readiness_now)
             emit("INTEGRATION_BOOTSTRAP_EFFECT", _bootstrap_effect(conn, not_ready_ids))
         except Exception as exc:  # noqa: BLE001
             emit("INTEGRATION_SECTION_ERROR", {"section": "a2_readiness", "error": type(exc).__name__})
