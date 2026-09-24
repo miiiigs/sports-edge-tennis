@@ -251,11 +251,13 @@ def recover_authoritative_surfaces(
         seasons_payload = seasons_cache.get(edition.competition_id)
         if seasons_payload is None:
             unresolved += 1
+            _log_unresolved(edition, "NO_SEASONS")
             continue
 
         season_id = _select_season_by_year(seasons_payload[1], season_year=edition.season_year)
         if season_id is None:
             unresolved += 1
+            _log_unresolved(edition, "NO_SEASON_FOR_YEAR")
             continue
 
         if season_id not in info_cache:
@@ -272,16 +274,19 @@ def recover_authoritative_surfaces(
         info_payload = info_cache.get(season_id)
         if info_payload is None:
             unresolved += 1
+            _log_unresolved(edition, "NO_SEASON_INFO")
             continue
 
         raw_surface, canonical_surface = _season_surface(info_payload[1])
         if canonical_surface is None or canonical_surface not in ALLOWED_SURFACES:
             unresolved += 1
+            _log_unresolved(edition, "NO_SURFACE_IN_METADATA")
             continue
         if _edition_has_conflicting_surface(
             conn, edition_id=edition.tournament_edition_id, canonical_surface=canonical_surface
         ):
             unresolved += 1
+            _log_unresolved(edition, "CONFLICTING_VERSION_SURFACE")
             continue
 
         checked_at = datetime.now(UTC)
@@ -306,6 +311,7 @@ def recover_authoritative_surfaces(
                 )
             else:
                 unresolved += 1
+                _log_unresolved(edition, "UPDATE_NOOP")
 
     return SurfaceRecoveryOutcome(
         editions_considered=len(editions),
@@ -314,6 +320,15 @@ def recover_authoritative_surfaces(
         provider_requests=requests,
         surfaces_recovered=tuple(surfaces),
         stopped_reason=stopped_reason,
+    )
+
+
+def _log_unresolved(edition: UnresolvedEdition, reason: str) -> None:
+    print(
+        "AUTHORITATIVE_SURFACE_UNRESOLVED "
+        f"edition_id={edition.tournament_edition_id} competition_id={edition.competition_id} "
+        f"season={edition.season_year} reason={reason}",
+        flush=True,
     )
 
 
