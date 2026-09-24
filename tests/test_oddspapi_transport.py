@@ -213,6 +213,158 @@ def test_merge_repeated_board_snapshot_stays_single_row():
     assert set(rows[0]["bookmakerOdds"]) == {"pinnacle+30"}
 
 
+def _fallback_fake(routes):
+    calls = []
+
+    class _R:
+        def __init__(self, status, payload):
+            self.status_code = status
+            self._payload = payload
+            self.headers = {}
+            self.text = ""
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, params, timeout):
+        calls.append(dict(params))
+        key = (params.get("tournamentIds"), params.get("bookmaker"))
+        status, payload = routes.get(key, (404, {"error": {"message": "not found"}}))
+        return _R(status, payload)
+
+    return fake_get, calls
+
+
+def _rows(fixture_id):
+    return [{"fixtureId": fixture_id, "tournamentId": int(fixture_id)}]
+
+
+def test_odds_batch_200_does_not_fall_back(monkeypatch):
+    fake, calls = _fallback_fake({
+        ("1,2", "pinnacle+30"): (200, _rows("1")),
+    })
+    monkeypatch.setattr(oddspapi.requests, "get", fake)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    stats = {}
+    _recv, rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(1, 2), bookmakers=("pinnacle+30",), fallback_budget=5, fallback_stats=stats
+    )
+    assert used == 1
+    assert [row["fixtureId"] for row in rows] == ["1"]
+    assert stats["batch_404"] == 0
+    assert stats["fallback_requests"] == 0
+    assert len(calls) == 1
+
+
+def test_odds_batch_404_falls_back_and_retains_good_ids(monkeypatch):
+    fake, calls = _fallback_fake({
+        ("1,2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+        ("1", "pinnacle+30"): (200, _rows("1")),
+        ("2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+    })
+    monkeypatch.setattr(oddspapi.requests, "get", fake)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    stats = {}
+    _recv, rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(1, 2), bookmakers=("pinnacle+30",), fallback_budget=5, fallback_stats=stats
+    )
+    assert [row["fixtureId"] for row in rows] == ["1"]
+    assert used == 3
+    assert stats["batch_404"] == 1
+    assert stats["fallback_ok"] == 1
+    assert stats["fallback_404"] == 1
+
+
+def test_odds_batch_all_stale_returns_clean_empty(monkeypatch):
+    fake, _calls = _fallback_fake({
+        ("1,2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+        ("1", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+        ("2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+    })
+    monkeypatch.setattr(oddspapi.requests, "get", fake)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    stats = {}
+    _recv, rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(1, 2), bookmakers=("pinnacle+30",), fallback_budget=5, fallback_stats=stats
+    )
+    assert rows == []
+    assert used == 3
+    assert stats["fallback_404"] == 2
+
+
+def test_odds_fallback_respects_budget(monkeypatch):
+    fake, _calls = _fallback_fake({
+        ("1,2,3,4,5", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+        ("1", "pinnacle+30"): (200, _rows("1")),
+    })
+    monkeypatch.setattr(oddspapi.requests, "get", fake)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    stats = {}
+    _recv, rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(1, 2, 3, 4, 5), bookmakers=("pinnacle+30",), fallback_budget=1, fallback_stats=stats
+    )
+    assert [row["fixtureId"] for row in rows] == ["1"]
+    assert used == 2
+    assert stats["fallback_requests"] == 1
+    assert stats["fallback_budget_exhausted"] == 4
+
+
+def test_odds_fallback_single_id_429_then_success(monkeypatch):
+    attempts = {"n": 0}
+
+    class _R:
+        def __init__(self, status, payload):
+            self.status_code = status
+            self._payload = payload
+            self.headers = {}
+            self.text = ""
+
+        def json(self):
+            return self._payload
+
+    def fake_get(url, params, timeout):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            return _R(429, {"error": {"details": "Please wait 0.5 seconds before making another request"}})
+        return _R(200, _rows("7"))
+
+    monkeypatch.setattr(oddspapi.requests, "get", fake_get)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    _recv, rows, used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(7,), bookmakers=("pinnacle+30",)
+    )
+    assert [row["fixtureId"] for row in rows] == ["7"]
+    assert used == 1
+    assert attempts["n"] == 2
+
+
+def test_odds_fallback_rows_survive_warm_cache_merge(monkeypatch):
+    fixture = {
+        "fixtureId": "1",
+        "sportId": 12,
+        "tournamentId": 1,
+        "participant1Id": 101,
+        "participant1Name": "A",
+        "participant2Id": 202,
+        "participant2Name": "B",
+        "startTime": "2026-09-21T13:00:00Z",
+    }
+    board = {"fixtureId": "1", "tournamentId": 1, "bookmakerOdds": {"pinnacle+30": {"markets": {}}}}
+    fake, _calls = _fallback_fake({
+        ("1,2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+        ("1", "pinnacle+30"): (200, [board]),
+        ("2", "pinnacle+30"): (404, {"error": {"message": "not found"}}),
+    })
+    monkeypatch.setattr(oddspapi.requests, "get", fake)
+    monkeypatch.setattr(oddspapi.time, "sleep", lambda *_: None)
+    _recv, rows, _used = oddspapi.fetch_oddspapi_tennis_odds_for_books(
+        "k", tournament_ids=(1, 2), bookmakers=("pinnacle+30",), fallback_budget=5
+    )
+    merged = oddspapi.merge_oddspapi_odds_books([], rows, trusted_fixture_ids=("1",))
+    assert len(merged) == 1
+    assert merged[0]["fixtureId"] == "1"
+
+
 def test_merge_board_prices_preserves_fixture_discovery_identity():
     fixture = {
         "fixtureId": "f1",
