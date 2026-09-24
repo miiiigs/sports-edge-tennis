@@ -90,6 +90,8 @@ def ingest_sportradar_daily_summaries(
                         "PLAYER_IDENTITY_UNRESOLVED",
                         "AMBIGUOUS_EXISTING_MATCH",
                         "SOURCE_ID_CONFLICT",
+                        "TERMINAL_TRUTH_CONFLICT",
+                        "TOURNAMENT_EVIDENCE_CONFLICT",
                     }:
                         raise SportradarIngestError(
                             f"overlap_reconciliation:{overlap.status}"
@@ -269,6 +271,13 @@ def _persist_fixture(
             conn,
             tournament_id=tournament_id,
             provider_competition_id=fixture.competition_source_id,
+            ingest_run_id=ingest_run_id,
+        )
+        _attach_match_source(
+            conn,
+            match_id=match_id,
+            match_version_id=existing_version_id,
+            provider_event_id=fixture.source_match_id,
             ingest_run_id=ingest_run_id,
         )
         return repository.upsert_match_version(
@@ -457,6 +466,48 @@ def _attach_tournament_source(
             tournament_id,
             SOURCE_SYSTEM,
             provider_competition_id,
+            ingest_run_id,
+        ),
+    )
+
+
+def _attach_match_source(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    match_version_id: int,
+    provider_event_id: str,
+    ingest_run_id: int,
+) -> None:
+    row = conn.execute(
+        """
+        SELECT match_id
+        FROM match_source_ids
+        WHERE source_system = %s
+          AND source_match_id = %s
+        """,
+        (SOURCE_SYSTEM, provider_event_id),
+    ).fetchone()
+    if row is not None:
+        if int(row[0]) != match_id:
+            raise SportradarIngestError("match_source_id_conflict")
+        return
+    conn.execute(
+        """
+        INSERT INTO match_source_ids (
+            match_id,
+            match_version_id,
+            source_system,
+            source_match_id,
+            ingest_run_id
+        )
+        VALUES (%s, %s, %s, %s, %s)
+        """,
+        (
+            match_id,
+            match_version_id,
+            SOURCE_SYSTEM,
+            provider_event_id,
             ingest_run_id,
         ),
     )
