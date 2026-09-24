@@ -22,6 +22,7 @@ from sports_edge_tennis.agents.agent3_intransitivity import (
     summarize_player_bucket,
 )
 from sports_edge_tennis.data.model_identity import resolve_model_player_id
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 
 
 @dataclass(frozen=True)
@@ -133,7 +134,7 @@ def _resolve_history_player_ids(
     *,
     cutoff: datetime,
 ) -> dict[int, int]:
-    """Bridge only API-only rows, caching each player resolution once per load."""
+    """Bridge only live-provider-only rows, caching each player resolution once per load."""
     player_ids = sorted({int(row[1]) for row in rows} | {int(row[2]) for row in rows})
     if not player_ids:
         return {}
@@ -142,9 +143,9 @@ def _resolve_history_player_ids(
         SELECT DISTINCT player_id
         FROM player_source_ids
         WHERE player_id = ANY(%s)
-          AND source_system <> 'API_TENNIS'
+          AND source_system <> ALL(%s)
         """,
-        (player_ids,),
+        (player_ids, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
     ).fetchall()
     historical_ids = {int(row[0]) for row in historical_rows}
     mapping = {player_id: player_id for player_id in historical_ids}

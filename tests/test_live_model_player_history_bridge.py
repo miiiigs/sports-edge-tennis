@@ -5,6 +5,8 @@ from datetime import UTC, datetime, timedelta
 import psycopg
 import pytest
 
+from sports_edge_tennis.data.agent3_history import load_agent3_history
+from sports_edge_tennis.data.model_identity import has_historical_model_identity
 from sports_edge_tennis.data.repository import HistoricalRepository
 from sports_edge_tennis.runner.targets import (
     _resolve_model_player_id,
@@ -140,6 +142,24 @@ def _seed_completed_history(
         name=f"Historical Event {suffix}",
     )
     _completed_result(db, match_id=match_id, observed_at=observed_at)
+
+
+def _add_source_id(
+    db: psycopg.Connection,
+    *,
+    player_id: int,
+    source_system: str,
+    source_player_id: str,
+    observed_at: datetime,
+) -> None:
+    ingest_run_id = _ingest_run(db, source_system, observed_at)
+    db.execute(
+        """
+        INSERT INTO player_source_ids (player_id, source_system, source_player_id, ingest_run_id)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (player_id, source_system, source_player_id, ingest_run_id),
+    )
 
 
 def test_live_only_player_resolves_to_unique_historical_identity(db: psycopg.Connection):
@@ -492,3 +512,132 @@ def test_model_identity_bridge_events_are_append_only(db: psycopg.Connection):
             """,
             (event_id,),
         )
+
+
+def test_sportradar_live_identity_does_not_disable_historical_bridge(db: psycopg.Connection):
+    historical_at = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    prediction_as_of = datetime(2026, 9, 8, 10, 0, tzinfo=UTC)
+    historical_id = _player(
+        db,
+        source_system="SACKMANN",
+        source_player_id="hist-sportradar",
+        name="Shared Historical Name",
+        observed_at=historical_at,
+    )
+    _seed_completed_history(
+        db,
+        player_id=historical_id,
+        observed_at=historical_at,
+        suffix="sportradar",
+    )
+    live_id = _player(
+        db,
+        source_system="API_TENNIS",
+        source_player_id="api-sportradar",
+        name="Shared Historical Name",
+        observed_at=prediction_as_of - timedelta(minutes=2),
+    )
+    _add_source_id(
+        db,
+        player_id=live_id,
+        source_system="SPORTRADAR",
+        source_player_id="sr:competitor:shared",
+        observed_at=prediction_as_of - timedelta(minutes=1),
+    )
+
+    assert has_historical_model_identity(db, live_id) is False
+    assert has_historical_model_identity(db, historical_id) is True
+    assert (
+        _resolve_model_player_id(db, player_id=live_id, as_of=prediction_as_of)
+        == historical_id
+    )
+
+
+def test_sportradar_only_placeholder_identity_fails_closed(db: psycopg.Connection):
+    prediction_as_of = datetime(2026, 9, 8, 10, 0, tzinfo=UTC)
+    placeholder_id = _player(
+        db,
+        source_system="SPORTRADAR",
+        source_player_id="sr:competitor:placeholder",
+        name="WQF3",
+        observed_at=prediction_as_of - timedelta(minutes=1),
+    )
+
+    assert has_historical_model_identity(db, placeholder_id) is False
+    assert (
+        _resolve_model_player_id(db, player_id=placeholder_id, as_of=prediction_as_of)
+        == placeholder_id
+    )
+
+
+def test_agent3_history_bridges_live_sportradar_players_to_historical_identity(
+    db: psycopg.Connection,
+):
+    historical_at = datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
+    live_at = datetime(2026, 7, 1, 12, 0, tzinfo=UTC)
+    cutoff = datetime(2026, 7, 2, 0, 0, tzinfo=UTC)
+
+    hist_1 = _player(
+        db,
+        source_system="SACKMANN",
+        source_player_id="a3-hist-1",
+        name="A3 Alpha",
+        observed_at=historical_at,
+    )
+    hist_2 = _player(
+        db,
+        source_system="SACKMANN",
+        source_player_id="a3-hist-2",
+        name="A3 Beta",
+        observed_at=historical_at,
+    )
+    _seed_completed_history(db, player_id=hist_1, observed_at=historical_at, suffix="a3-1")
+    _seed_completed_history(db, player_id=hist_2, observed_at=historical_at, suffix="a3-2")
+
+    live_1 = _player(
+        db,
+        source_system="API_TENNIS",
+        source_player_id="a3-api-1",
+        name="A3 Alpha",
+        observed_at=live_at,
+    )
+    live_2 = _player(
+        db,
+        source_system="API_TENNIS",
+        source_player_id="a3-api-2",
+        name="A3 Beta",
+        observed_at=live_at,
+    )
+    _add_source_id(
+        db,
+        player_id=live_1,
+        source_system="SPORTRADAR",
+        source_player_id="sr:competitor:a3-1",
+        observed_at=live_at,
+    )
+    _add_source_id(
+        db,
+        player_id=live_2,
+        source_system="SPORTRADAR",
+        source_player_id="sr:competitor:a3-2",
+        observed_at=live_at,
+    )
+
+    match_id = _match(
+        db,
+        player_1_id=live_1,
+        player_2_id=live_2,
+        start_at=live_at,
+        status="COMPLETED",
+        observed_at=live_at,
+        name="A3 Live Event",
+    )
+    _completed_result(db, match_id=match_id, observed_at=live_at)
+
+    observations = load_agent3_history(db, cutoff=cutoff)
+    bridged = {
+        (observation.player_1_id, observation.player_2_id)
+        for observation in observations
+        if observation.match_id == match_id
+    }
+    assert bridged == {(hist_1, hist_2)}

@@ -4,7 +4,10 @@ from datetime import datetime
 
 import psycopg
 
-from sports_edge_tennis.data.model_identity_bridge import resolve_active_bridge
+from sports_edge_tennis.data.model_identity_bridge import (
+    LIVE_FIXTURE_SOURCE_SYSTEMS,
+    resolve_active_bridge,
+)
 from sports_edge_tennis.data.normalize import normalize_person_lookup, tennis_data_aliases
 from sports_edge_tennis.runner.contracts import (
     ResolvedTargetV1,
@@ -13,17 +16,22 @@ from sports_edge_tennis.runner.contracts import (
 
 
 def _has_non_api_source_identity(conn: psycopg.Connection, player_id: int) -> bool:
-    """Return True when this canonical player already belongs to historical identity truth."""
+    """Return True when this canonical player already belongs to historical identity truth.
+
+    Live fixture providers (API-Tennis and Sportradar) attach source IDs without
+    carrying the deep historical corpus identity, so they must not disable the
+    live-to-history model bridge.
+    """
     return (
         conn.execute(
             """
             SELECT 1
             FROM player_source_ids
             WHERE player_id = %s
-              AND source_system <> 'API_TENNIS'
+              AND source_system <> ALL(%s)
             LIMIT 1
             """,
-            (player_id,),
+            (player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
         ).fetchone()
         is not None
     )
@@ -91,7 +99,7 @@ def _resolve_model_player_id(
               SELECT 1
               FROM player_source_ids psi
               WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> 'API_TENNIS'
+                AND psi.source_system <> ALL(%s)
           )
           AND EXISTS (
               SELECT 1
@@ -107,7 +115,7 @@ def _resolve_model_player_id(
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, player_id, as_of, as_of),
+        (normalized_aliases, player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS), as_of, as_of),
     ).fetchall()
 
     if len(candidates) != 1:
@@ -167,11 +175,11 @@ def _model_identity_gap_diagnostic(
               SELECT 1
               FROM player_source_ids psi
               WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> 'API_TENNIS'
+                AND psi.source_system <> ALL(%s)
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, player_id),
+        (normalized_aliases, player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
     ).fetchall()
     alias_ids = tuple(int(candidate[0]) for candidate in alias_candidates)
     if not alias_ids:
@@ -188,7 +196,7 @@ def _model_identity_gap_diagnostic(
               SELECT 1
               FROM player_source_ids psi
               WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> 'API_TENNIS'
+                AND psi.source_system <> ALL(%s)
           )
           AND EXISTS (
               SELECT 1
@@ -204,7 +212,7 @@ def _model_identity_gap_diagnostic(
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, player_id, as_of, as_of),
+        (normalized_aliases, player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS), as_of, as_of),
     ).fetchall()
     pit_ids = tuple(int(candidate[0]) for candidate in pit_candidates)
     if not pit_ids:

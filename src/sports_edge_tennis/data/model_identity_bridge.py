@@ -15,6 +15,12 @@ import psycopg
 MIGRATION_PATH = Path("db/migrations/0013_model_identity_bridge_v1.up.sql")
 APPEND_ONLY_TRIGGER = "trg_model_identity_bridge_events_append_only_mutation"
 
+# Source systems that only ever identify live fixtures. Sportradar joined this set
+# during the live-provider cutover: it attaches provider IDs to live canonical
+# players but is not the deep historical corpus identity. A player carrying only
+# these identities is still eligible for the live-to-history model bridge.
+LIVE_FIXTURE_SOURCE_SYSTEMS = ("API_TENNIS", "SPORTRADAR")
+
 
 def schema_state(conn: psycopg.Connection) -> tuple[bool, bool]:
     table_present = bool(
@@ -83,7 +89,7 @@ def resolve_active_bridge(
                 SELECT 1
                 FROM player_source_ids psi
                 WHERE psi.player_id = e.historical_player_id
-                  AND psi.source_system <> 'API_TENNIS'
+                  AND psi.source_system <> ALL(%s)
             ) AS target_has_historical_identity
         FROM model_identity_bridge_events e
         WHERE e.live_player_id = %s
@@ -91,7 +97,7 @@ def resolve_active_bridge(
         ORDER BY e.activated_at DESC, e.model_identity_bridge_event_id DESC
         LIMIT 1
         """,
-        (live_player_id, as_of),
+        (list(LIVE_FIXTURE_SOURCE_SYSTEMS), live_player_id, as_of),
     ).fetchone()
     if row is None or str(row[0]) != "BRIDGE" or row[1] is None or not bool(row[2]):
         return None
