@@ -295,7 +295,72 @@ def _a2_readiness(conn, concrete_ids, as_of) -> dict:
         "players": len(player_ids),
         "ready_players": len(ready),
         "not_ready_players": len(not_ready),
+        "not_ready_ids": not_ready,
         "not_ready_exact_deficits": deficits,
+    }
+
+
+def _bootstrap_effect(conn, not_ready_ids: list[int]) -> dict:
+    inserted = conn.execute(
+        """
+        SELECT
+            (SELECT count(*) FROM match_result_observations WHERE ingested_at >= now() - interval '3 hours'),
+            (SELECT count(DISTINCT match_id) FROM match_result_observations WHERE ingested_at >= now() - interval '3 hours'),
+            (SELECT count(*) FROM match_stat_observations WHERE ingested_at >= now() - interval '3 hours'),
+            (SELECT count(DISTINCT match_id) FROM match_stat_observations WHERE ingested_at >= now() - interval '3 hours'),
+            (SELECT count(DISTINCT player_id) FROM match_stat_observations WHERE ingested_at >= now() - interval '3 hours')
+        """,
+    ).fetchone()
+    targeted = conn.execute(
+        """
+        SELECT player_id, count(DISTINCT match_id)
+        FROM match_stat_observations
+        WHERE ingested_at >= now() - interval '3 hours' AND player_id = ANY(%s)
+        GROUP BY player_id ORDER BY player_id
+        """,
+        (not_ready_ids or [0],),
+    ).fetchall()
+    per_player = []
+    for pid in not_ready_ids:
+        row = conn.execute(
+            """
+            WITH pv AS (
+                SELECT DISTINCT mv.match_id
+                FROM match_versions mv
+                WHERE (mv.player_1_id = %s OR mv.player_2_id = %s)
+                  AND mv.match_start_at IS NOT NULL
+                  AND mv.source_observed_at <= now()
+                  AND mv.as_of <= now()
+            )
+            SELECT
+                count(*) FILTER (
+                    WHERE EXISTS (
+                        SELECT 1 FROM match_result_observations r
+                        WHERE r.match_id = pv.match_id AND r.outcome_status = 'COMPLETED'
+                    )
+                ) AS completed_matches,
+                count(*) FILTER (
+                    WHERE EXISTS (
+                        SELECT 1 FROM match_stat_observations s WHERE s.match_id = pv.match_id
+                    )
+                ) AS statted_matches
+            FROM pv
+            """,
+            (pid, pid),
+        ).fetchone()
+        per_player.append(
+            {"player_id": pid, "completed_matches": int(row[0]), "statted_matches": int(row[1])}
+        )
+    return {
+        "inserted_results": int(inserted[0]),
+        "inserted_result_matches": int(inserted[1]),
+        "inserted_stats": int(inserted[2]),
+        "inserted_stat_matches": int(inserted[3]),
+        "inserted_stat_players": int(inserted[4]),
+        "inserted_stats_for_not_ready_players": [
+            {"player_id": int(r[0]), "matches": int(r[1])} for r in targeted
+        ],
+        "not_ready_player_coverage": per_player,
     }
 
 
@@ -426,7 +491,10 @@ def main() -> int:
             emit("INTEGRATION_SECTION_ERROR", {"section": "market", "error": type(exc).__name__})
 
         try:
-            emit("INTEGRATION_A2_READINESS", _a2_readiness(conn, sorted(concrete_ids), slate["as_of"]))
+            readiness = _a2_readiness(conn, sorted(concrete_ids), slate["as_of"])
+            not_ready_ids = readiness.pop("not_ready_ids", [])
+            emit("INTEGRATION_A2_READINESS", readiness)
+            emit("INTEGRATION_BOOTSTRAP_EFFECT", _bootstrap_effect(conn, not_ready_ids))
         except Exception as exc:  # noqa: BLE001
             emit("INTEGRATION_SECTION_ERROR", {"section": "a2_readiness", "error": type(exc).__name__})
 
