@@ -663,6 +663,13 @@ def main(
                             tournament_ids: list[int] = [
                                 ident.oddspapi_tournament_id for ident in warm.values()
                             ]
+                            # Warm identities are trusted, so qualified board odds
+                            # must still be usable even when discovery is skipped.
+                            trusted_fixture_ids: list[str] = [
+                                ident.oddspapi_event_id
+                                for ident in warm.values()
+                                if getattr(ident, "oddspapi_event_id", None)
+                            ]
                             cold_by_betradar = {
                                 item["betradar_id"]: item
                                 for item in consensus_context
@@ -745,6 +752,7 @@ def main(
                                 odds_rows = merge_oddspapi_odds_books(
                                     discovery_rows,
                                     board_rows,
+                                    trusted_fixture_ids=trusted_fixture_ids,
                                 )
 
                             oddspapi = ingest_oddspapi_tennis_odds(

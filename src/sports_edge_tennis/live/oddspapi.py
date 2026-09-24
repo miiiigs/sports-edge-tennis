@@ -174,18 +174,33 @@ def fetch_oddspapi_tennis_odds_for_books(
 def merge_oddspapi_odds_books(
     fixture_rows: Sequence[Mapping[str, Any]],
     odds_rows: Sequence[Mapping[str, Any]],
+    *,
+    trusted_fixture_ids: Sequence[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Combine per-book odds rows onto fixture-discovery identity.
 
     ``odds-by-tournaments`` returns one row per (bookmaker, tournament) batch, so
     the same fixture appears multiple times with different ``bookmakerOdds``.
     Identity stays governed by discovery; book payloads are merged.
+
+    When discovery is skipped because the identity cache is warm, the qualified
+    board rows still have to remain usable: any board row whose ``fixtureId`` is
+    a caller-supplied trusted (cached) identity is merged onto its own identity
+    fields. Downstream reconciliation validates that identity against the
+    persisted canonical mapping, so a board row is never the sole authority.
+    Rows without a trusted identity are dropped (fail closed).
     """
     discovery: dict[str, dict[str, Any]] = {}
     for row in fixture_rows:
         fixture_id = str(row.get("fixtureId") or "").strip()
         if fixture_id and fixture_id not in discovery:
             discovery[fixture_id] = dict(row)
+
+    trusted = {
+        str(value).strip()
+        for value in (trusted_fixture_ids or ())
+        if str(value).strip()
+    }
 
     identity_keys = {
         "fixtureId",
@@ -201,9 +216,13 @@ def merge_oddspapi_odds_books(
     merged: dict[str, dict[str, Any]] = {}
     for row in odds_rows:
         fixture_id = str(row.get("fixtureId") or "").strip()
-        base = discovery.get(fixture_id)
-        if not fixture_id or base is None:
+        if not fixture_id:
             continue
+        base = discovery.get(fixture_id)
+        if base is None:
+            if fixture_id not in trusted:
+                continue
+            base = dict(row)
         target = merged.setdefault(fixture_id, dict(base))
         for key, value in row.items():
             if key == "bookmakerOdds" or key in identity_keys:

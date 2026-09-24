@@ -158,6 +158,61 @@ def test_transport_errors_never_include_api_key(monkeypatch):
     assert "super-secret-key" not in str(exc.value)
 
 
+def _trusted_board_row(fixture_id: str = "f1") -> dict:
+    return {
+        "fixtureId": fixture_id,
+        "sportId": 12,
+        "tournamentId": 44,
+        "participant1Id": 101,
+        "participant1Name": "Player One",
+        "participant2Id": 202,
+        "participant2Name": "Player Two",
+        "startTime": "2026-09-21T13:00:00Z",
+        "bookmakerOdds": {"pinnacle+30": {"markets": {}}},
+    }
+
+
+def test_merge_retains_board_rows_for_trusted_cached_identity():
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [],
+        [_trusted_board_row("f1")],
+        trusted_fixture_ids=("f1",),
+    )
+    assert len(rows) == 1
+    assert rows[0]["fixtureId"] == "f1"
+    assert rows[0]["participant1Id"] == 101
+    assert rows[0]["participant2Id"] == 202
+    assert rows[0]["bookmakerOdds"] == {"pinnacle+30": {"markets": {}}}
+
+
+def test_merge_drops_board_rows_without_trusted_identity():
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [],
+        [_trusted_board_row("f1")],
+        trusted_fixture_ids=(),
+    )
+    assert rows == []
+
+
+def test_merge_trusted_identity_only_retains_known_fixtures():
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [],
+        [_trusted_board_row("f1"), _trusted_board_row("f2")],
+        trusted_fixture_ids=("f1",),
+    )
+    assert [row["fixtureId"] for row in rows] == ["f1"]
+
+
+def test_merge_repeated_board_snapshot_stays_single_row():
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [],
+        [_trusted_board_row("f1"), _trusted_board_row("f1")],
+        trusted_fixture_ids=("f1",),
+    )
+    assert len(rows) == 1
+    assert set(rows[0]["bookmakerOdds"]) == {"pinnacle+30"}
+
+
 def test_merge_board_prices_preserves_fixture_discovery_identity():
     fixture = {
         "fixtureId": "f1",
