@@ -12,6 +12,7 @@ canonical Sportradar history refresh path. Sanitized output only.
 import argparse
 import json
 import os
+import time
 from datetime import UTC, datetime
 
 import psycopg
@@ -120,16 +121,28 @@ def main() -> int:
                     continue
                 requested.add(key)
                 before_state = readiness[pid]
-                try:
-                    day = refresh_sportradar_history_day(
-                        conn, api_key=api_key, target_date=target_date
-                    )
-                except TransportError as exc:
+                day = None
+                error_kind = None
+                for attempt in range(3):
+                    try:
+                        # Paced to respect the trial endpoint cooldown; the live
+                        # runner shares the same provider allowance.
+                        time.sleep(20)
+                        day = refresh_sportradar_history_day(
+                            conn, api_key=api_key, target_date=target_date
+                        )
+                        break
+                    except TransportError as exc:
+                        error_kind = exc.kind
+                        if exc.kind != "HTTP_429":
+                            break
+                if day is None:
                     emit(
                         "TARGETED_A2_REQUEST",
-                        {"request": requests_used + 1, "date": key, "error": exc.kind},
+                        {"request": requests_used + 1, "date": key, "error": error_kind},
                     )
-                    stalled += 1
+                    if error_kind != "HTTP_429":
+                        stalled += 1
                     continue
                 requests_used += 1
                 readiness = snapshot_readiness(conn, player_ids=player_ids, cutoff=datetime.now(UTC))
