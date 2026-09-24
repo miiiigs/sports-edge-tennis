@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import re
 
 import psycopg
@@ -693,6 +693,273 @@ def _resolve_missing_match_surfaces(
     return resolved
 
 
+CANONICAL_START_DELTA_SECONDS = 3600
+_TERMINAL_OUTCOME_STATUSES = frozenset({"COMPLETED", "RETIRED", "WALKOVER"})
+
+
+@dataclass(frozen=True)
+class Agent2CanonicalCounterpart:
+    """A deterministic legacy counterpart for a Sportradar-sourced live match.
+
+    The live Sportradar ingestion attached results/stats to its own canonical
+    match while a pre-existing legacy match held the tournament/surface. These
+    two records describe one real event; this record lets the loader combine
+    their evidence without emitting both as separate usable matches.
+    """
+
+    duplicate_match_id: int
+    canonical_match_id: int
+    surface: str | None
+    tournament_id: int
+    version_source_observed_at: datetime
+    version_as_of: datetime
+
+
+def _agent2_stat_cohort_is_complete(observation: Agent2HistoricalMatch) -> bool:
+    if len(observation.stat_rows) != 2:
+        return False
+    return {row.player_id for row in observation.stat_rows} == {
+        observation.player_1_id,
+        observation.player_2_id,
+    }
+
+
+def _agent2_terminal_truth_compatible(
+    first: Agent2HistoricalMatch,
+    second: Agent2HistoricalMatch,
+) -> bool:
+    if (
+        first.outcome_status in _TERMINAL_OUTCOME_STATUSES
+        and second.outcome_status in _TERMINAL_OUTCOME_STATUSES
+    ):
+        if first.outcome_status != second.outcome_status:
+            return False
+        if (
+            first.winner_side is not None
+            and second.winner_side is not None
+            and first.winner_side != second.winner_side
+        ):
+            return False
+    return True
+
+
+def _agent2_select_canonical_primary(
+    duplicate: Agent2HistoricalMatch | None,
+    canonical: Agent2HistoricalMatch | None,
+) -> tuple[Agent2HistoricalMatch | None, Agent2HistoricalMatch | None]:
+    if canonical is not None and _agent2_stat_cohort_is_complete(canonical):
+        return canonical, duplicate
+    if duplicate is not None and _agent2_stat_cohort_is_complete(duplicate):
+        return duplicate, canonical
+    if canonical is not None:
+        return canonical, duplicate
+    return duplicate, canonical
+
+
+def _agent2_merge_canonical(
+    primary: Agent2HistoricalMatch,
+    secondary: Agent2HistoricalMatch | None,
+    counterpart: Agent2CanonicalCounterpart,
+) -> Agent2HistoricalMatch:
+    surface = primary.surface
+    version_source_observed_at = primary.version_source_observed_at
+    version_as_of = primary.version_as_of
+    if surface is None:
+        if secondary is not None and secondary.surface is not None:
+            surface = secondary.surface
+            version_source_observed_at = max(
+                version_source_observed_at, secondary.version_source_observed_at
+            )
+            version_as_of = max(version_as_of, secondary.version_as_of)
+        elif counterpart.surface is not None:
+            surface = counterpart.surface
+            version_source_observed_at = max(
+                version_source_observed_at, counterpart.version_source_observed_at
+            )
+            version_as_of = max(version_as_of, counterpart.version_as_of)
+
+    stat_rows = primary.stat_rows
+    if (
+        not _agent2_stat_cohort_is_complete(primary)
+        and secondary is not None
+        and _agent2_stat_cohort_is_complete(secondary)
+    ):
+        stat_rows = secondary.stat_rows
+
+    return replace(
+        primary,
+        surface=surface,
+        stat_rows=stat_rows,
+        version_source_observed_at=version_source_observed_at,
+        version_as_of=version_as_of,
+    )
+
+
+def canonicalize_agent2_observations(
+    observations: list[Agent2HistoricalMatch] | tuple[Agent2HistoricalMatch, ...],
+    counterparts: list[Agent2CanonicalCounterpart] | tuple[Agent2CanonicalCounterpart, ...],
+    *,
+    cutoff: datetime,
+) -> list[Agent2HistoricalMatch]:
+    """Collapse exact legacy/Sportradar pairs into one logical A2 observation.
+
+    Only deterministic one-to-one counterparts are accepted. CONFLICT/AMBIGUOUS
+    pairs (conflicting terminal truth, tournament, or provider source identity)
+    are never canonicalized and remain separate. Point-in-time visibility is
+    preserved: a counterpart whose version was observed at or after ``cutoff``
+    is ignored so its surface cannot leak backwards.
+    """
+    if not counterparts:
+        return list(observations)
+    by_id = {observation.match_id: observation for observation in observations}
+    groups: dict[int, list[Agent2CanonicalCounterpart]] = {}
+    canonical_counts: dict[int, set[int]] = {}
+    for counterpart in counterparts:
+        groups.setdefault(counterpart.canonical_match_id, []).append(counterpart)
+        canonical_counts.setdefault(counterpart.duplicate_match_id, set()).add(
+            counterpart.canonical_match_id
+        )
+
+    replacements: dict[int, Agent2HistoricalMatch] = {}
+    drop: set[int] = set()
+    for canonical_id, members in groups.items():
+        # A duplicate that maps to more than one canonical is ambiguous and must
+        # fail closed, exactly like a CONFLICT pair.
+        if any(len(canonical_counts[m.duplicate_match_id]) > 1 for m in members):
+            continue
+        visible = [
+            member
+            for member in members
+            if member.version_source_observed_at < cutoff and member.version_as_of < cutoff
+        ]
+        if not visible:
+            continue
+        visible.sort(key=lambda member: member.duplicate_match_id)
+        representative = visible[0]
+        duplicate = by_id.get(representative.duplicate_match_id)
+        canonical = by_id.get(canonical_id)
+        if duplicate is None and canonical is None:
+            continue
+        if duplicate is not None and canonical is not None:
+            if duplicate.tournament_id != canonical.tournament_id:
+                continue
+            if not _agent2_terminal_truth_compatible(duplicate, canonical):
+                continue
+        primary, secondary = _agent2_select_canonical_primary(duplicate, canonical)
+        if primary is None:
+            continue
+        replacements[primary.match_id] = _agent2_merge_canonical(
+            primary, secondary, representative
+        )
+        for member in visible:
+            drop.add(member.duplicate_match_id)
+        drop.add(canonical_id)
+        drop.discard(primary.match_id)
+
+    result: list[Agent2HistoricalMatch] = []
+    for observation in observations:
+        if observation.match_id in replacements:
+            result.append(replacements[observation.match_id])
+        elif observation.match_id in drop:
+            continue
+        else:
+            result.append(observation)
+    return result
+
+
+def _load_canonical_counterparts(
+    conn: psycopg.Connection,
+    *,
+    observations: list[Agent2HistoricalMatch],
+    cutoff: datetime,
+) -> list[Agent2CanonicalCounterpart]:
+    """Find deterministic legacy counterparts for Sportradar-sourced observations."""
+    if not observations:
+        return []
+    by_id = {observation.match_id: observation for observation in observations}
+    duplicate_ids = {
+        int(row[0])
+        for row in conn.execute(
+            """
+            SELECT DISTINCT match_id
+            FROM match_source_ids
+            WHERE source_system = 'SPORTRADAR' AND match_id = ANY(%s)
+            """,
+            (list(by_id),),
+        ).fetchall()
+    }
+    duplicates = [by_id[match_id] for match_id in duplicate_ids if match_id in by_id]
+    if not duplicates:
+        return []
+
+    starts = [observation.match_start_at for observation in duplicates]
+    window_start = min(starts) - timedelta(days=1)
+    window_end = max(starts) + timedelta(days=1)
+    rows = conn.execute(
+        """
+        SELECT mv.match_id, mv.player_1_id, mv.player_2_id, mv.match_start_at,
+               mv.surface::text, t.tournament_id,
+               mv.source_observed_at, mv.as_of
+        FROM match_versions mv
+        JOIN matches m ON m.match_id = mv.match_id
+        JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        WHERE mv.match_start_at IS NOT NULL
+          AND mv.match_start_at >= %s
+          AND mv.match_start_at <= %s
+          AND mv.surface IS NOT NULL
+          AND mv.source_observed_at <= %s
+          AND mv.as_of <= %s
+          AND NOT EXISTS (
+              SELECT 1 FROM match_source_ids s
+              WHERE s.match_id = mv.match_id AND s.source_system = 'SPORTRADAR'
+          )
+        ORDER BY mv.match_id, mv.as_of DESC, mv.source_observed_at DESC
+        """,
+        (window_start, window_end, cutoff, cutoff),
+    ).fetchall()
+    candidates: dict[int, tuple] = {}
+    for row in rows:
+        candidates.setdefault(int(row[0]), row)
+
+    counterparts: list[Agent2CanonicalCounterpart] = []
+    for duplicate in duplicates:
+        matches = []
+        for candidate in candidates.values():
+            match_id, player_1_id, player_2_id, start_at, surface, tournament_id, observed_at, as_of = candidate
+            if match_id == duplicate.match_id or match_id in duplicate_ids:
+                continue
+            if int(tournament_id) != duplicate.tournament_id:
+                continue
+            same_pair = (
+                int(player_1_id) == duplicate.player_1_id
+                and int(player_2_id) == duplicate.player_2_id
+            ) or (
+                int(player_1_id) == duplicate.player_2_id
+                and int(player_2_id) == duplicate.player_1_id
+            )
+            if not same_pair:
+                continue
+            if abs((start_at - duplicate.match_start_at).total_seconds()) > CANONICAL_START_DELTA_SECONDS:
+                continue
+            matches.append((int(match_id), str(surface), int(tournament_id), observed_at, as_of))
+        distinct = {match[0]: match for match in matches}
+        if len(distinct) != 1:
+            continue
+        match_id, surface, tournament_id, observed_at, as_of = next(iter(distinct.values()))
+        counterparts.append(
+            Agent2CanonicalCounterpart(
+                duplicate_match_id=duplicate.match_id,
+                canonical_match_id=match_id,
+                surface=surface,
+                tournament_id=tournament_id,
+                version_source_observed_at=observed_at,
+                version_as_of=as_of,
+            )
+        )
+    return counterparts
+
+
 def load_agent2_history(
     conn: psycopg.Connection,
     *,
@@ -972,6 +1239,13 @@ def load_agent2_history(
             else observation
             for observation in observations
         ]
+    counterparts = _load_canonical_counterparts(
+        conn, observations=observations, cutoff=cutoff
+    )
+    if counterparts:
+        observations = canonicalize_agent2_observations(
+            observations, counterparts, cutoff=cutoff
+        )
     return observations
 
 
