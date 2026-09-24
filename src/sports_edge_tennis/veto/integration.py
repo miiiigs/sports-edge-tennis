@@ -19,12 +19,25 @@ from sports_edge_tennis.market.persistence import (
     load_match_winner_odds,
     load_run_parent,
 )
+from sports_edge_tennis.live.validation import validation_mode_enabled
 from sports_edge_tennis.market.policy import validate_sharp_reference
 from sports_edge_tennis.publication import publish_new_bet_decision
 from sports_edge_tennis.veto.service import (
     evaluate_veto_for_decision,
     persist_veto_audit,
 )
+
+
+def publish_bet_decision_if_allowed(
+    conn: psycopg.Connection,
+    *,
+    decision_id: int,
+    published_at: datetime,
+) -> datetime | None:
+    """Publish a BET decision unless validation mode suppresses side effects."""
+    if validation_mode_enabled():
+        return None
+    return publish_new_bet_decision(conn, decision_id=decision_id, published_at=published_at)
 
 
 def _decision_key(decision) -> tuple[int, int, datetime, str]:
@@ -189,7 +202,7 @@ def evaluate_and_persist_market_slate_with_veto(
                     evaluation=evaluation,
                 )
             if decision.decision_status == "BET":
-                publish_new_bet_decision(
+                publish_bet_decision_if_allowed(
                     conn,
                     decision_id=decision_id,
                     published_at=market_execution_now,
