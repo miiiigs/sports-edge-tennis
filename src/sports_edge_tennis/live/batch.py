@@ -734,6 +734,12 @@ def main(
                                 include_discovery=False,
                             )
                             enforce_oddspapi_budget(plan, policy=budget_policy)
+                            # Extra requests allowed for 404 individual retries stay
+                            # inside the same per-cycle OddsPapi cap.
+                            fallback_budget = max(
+                                0, int(budget_policy.per_cycle_limit) - int(plan.total_requests)
+                            )
+                            fallback_stats: dict[str, int] = {}
 
                             odds_received_at = discovery_received_at
                             odds_rows: list[dict[str, Any]] = []
@@ -747,8 +753,20 @@ def main(
                                     tournament_ids=plan.tournament_ids,
                                     bookmakers=ODDSPAPI_PLAN_BOOKMAKERS,
                                     ledger=qualification_ledger,
+                                    fallback_budget=fallback_budget,
+                                    fallback_stats=fallback_stats,
                                 )
                                 totals["offered_requests"] += odds_requests
+                                if fallback_stats.get("batch_404") or fallback_stats.get(
+                                    "fallback_requests"
+                                ):
+                                    _log(
+                                        "ODDSPAPI_FALLBACK "
+                                        + " ".join(
+                                            f"{key}={value}"
+                                            for key, value in sorted(fallback_stats.items())
+                                        )
+                                    )
                                 odds_rows = merge_oddspapi_odds_books(
                                     discovery_rows,
                                     board_rows,

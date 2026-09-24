@@ -126,6 +126,16 @@ def fetch_oddspapi_tennis_odds_by_tournaments(
     return received_at, _fixture_list(payload)
 
 
+_FALLBACK_STAT_KEYS = (
+    "batch_requests",
+    "batch_404",
+    "fallback_requests",
+    "fallback_ok",
+    "fallback_404",
+    "fallback_budget_exhausted",
+)
+
+
 def fetch_oddspapi_tennis_odds_for_books(
     api_key: str,
     *,
@@ -136,38 +146,97 @@ def fetch_oddspapi_tennis_odds_for_books(
     base_url: str = ODDSPAPI_BASE_URL,
     clock: callable | None = None,
     ledger: Any | None = None,
+    fallback_budget: int = 0,
+    fallback_stats: dict[str, int] | None = None,
 ) -> tuple[datetime, list[dict[str, Any]], int]:
     """Fetch odds-by-tournaments for several bookmakers within the endpoint limits.
 
     Returns ``(received_at, rows, requests_used)``. The caller is responsible for
     pacing between calls; this helper only enforces the per-request limits.
+
+    ``odds-by-tournaments`` batches up to five tournament ids per request and
+    returns HTTP 404 when any id in the batch is unknown/stale, which would
+    otherwise discard the valid ids too. When a multi-id batch returns 404 the
+    chunk is retried one tournament id at a time, bounded by ``fallback_budget``
+    extra requests (counted against the OddsPapi per-cycle cap), preserving
+    pacing. Individual 404s are classified unavailable and skipped; valid rows
+    are retained. Non-404 failures still propagate. Every request (batch or
+    fallback) is recorded through the request ledger.
     """
     ids = tuple(dict.fromkeys(int(value) for value in tournament_ids))
     if not ids:
         raise ValueError("OddsPapi tournament_ids must be non-empty")
     size = min(max(1, int(chunk_size)), MAX_ODDSPAPI_TOURNAMENTS_PER_REQUEST)
+    stats = fallback_stats if fallback_stats is not None else {}
+    for key in _FALLBACK_STAT_KEYS:
+        stats.setdefault(key, 0)
+    budget = max(0, int(fallback_budget))
+    fallback_used = 0
     rows: list[dict[str, Any]] = []
     requests_used = 0
     received_at: datetime | None = None
     first = True
+
+    def _pace() -> None:
+        nonlocal first
+        if not first:
+            # OddsPapi enforces a short endpoint cooldown; pace explicitly.
+            time.sleep(1.0)
+        first = False
+
     for book in _clean_bookmakers(bookmakers):
         for offset in range(0, len(ids), size):
-            if not first:
-                # OddsPapi enforces a short endpoint cooldown; pace explicitly.
-                time.sleep(1.0)
-            first = False
+            _pace()
             chunk = ids[offset : offset + size]
-            received_at, chunk_rows = fetch_oddspapi_tennis_odds_by_tournaments(
-                api_key,
-                tournament_ids=chunk,
-                bookmaker=book,
-                timeout=timeout,
-                base_url=base_url,
-                clock=clock,
-                ledger=ledger,
-            )
-            requests_used += 1
-            rows.extend(chunk_rows)
+            try:
+                received_at, chunk_rows = fetch_oddspapi_tennis_odds_by_tournaments(
+                    api_key,
+                    tournament_ids=chunk,
+                    bookmaker=book,
+                    timeout=timeout,
+                    base_url=base_url,
+                    clock=clock,
+                    ledger=ledger,
+                )
+                requests_used += 1
+                stats["batch_requests"] += 1
+                rows.extend(chunk_rows)
+                continue
+            except TransportError as exc:
+                requests_used += 1
+                stats["batch_requests"] += 1
+                if exc.kind != "HTTP_404":
+                    raise
+                if len(chunk) <= 1:
+                    # A single stale id is unavailable, not fatal.
+                    continue
+                stats["batch_404"] += 1
+
+            for tournament_id in chunk:
+                if fallback_used >= budget:
+                    stats["fallback_budget_exhausted"] += 1
+                    continue
+                _pace()
+                fallback_used += 1
+                requests_used += 1
+                stats["fallback_requests"] += 1
+                try:
+                    received_at, chunk_rows = fetch_oddspapi_tennis_odds_by_tournaments(
+                        api_key,
+                        tournament_ids=(tournament_id,),
+                        bookmaker=book,
+                        timeout=timeout,
+                        base_url=base_url,
+                        clock=clock,
+                        ledger=ledger,
+                    )
+                    stats["fallback_ok"] += 1
+                    rows.extend(chunk_rows)
+                except TransportError as inner:
+                    if inner.kind == "HTTP_404":
+                        stats["fallback_404"] += 1
+                        continue
+                    raise
     return received_at or (clock or _utc_now)(), rows, requests_used
 
 
