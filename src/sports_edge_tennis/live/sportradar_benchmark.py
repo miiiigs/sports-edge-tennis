@@ -22,6 +22,7 @@ from typing import Any
 
 import psycopg
 
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 from sports_edge_tennis.data.normalize import normalize_person_lookup, tennis_data_aliases
 from sports_edge_tennis.runner.targets import (
     _model_identity_status,
@@ -128,11 +129,11 @@ def provider_name_identity_evidence(
               SELECT 1
               FROM player_source_ids psi
               WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> 'API_TENNIS'
+                AND psi.source_system <> ALL(%s)
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, live_player_id),
+        (normalized_aliases, live_player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
     ).fetchall()
     alias_ids = tuple(int(row[0]) for row in alias_rows)
     if not alias_ids:
@@ -149,7 +150,7 @@ def provider_name_identity_evidence(
               SELECT 1
               FROM player_source_ids psi
               WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> 'API_TENNIS'
+                AND psi.source_system <> ALL(%s)
           )
           AND EXISTS (
               SELECT 1
@@ -165,7 +166,13 @@ def provider_name_identity_evidence(
           )
         ORDER BY pa.player_id
         """,
-        (normalized_aliases, live_player_id, as_of, as_of),
+        (
+            normalized_aliases,
+            live_player_id,
+            list(LIVE_FIXTURE_SOURCE_SYSTEMS),
+            as_of,
+            as_of,
+        ),
     ).fetchall()
     pit_ids = tuple(int(row[0]) for row in pit_rows)
     if not pit_ids:
