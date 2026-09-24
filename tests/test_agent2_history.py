@@ -1297,6 +1297,97 @@ def test_load_agent2_history_fails_closed_when_stat_players_do_not_match_canonic
     assert historical_match_is_eligible_for_update(observations[0]) is False
 
 
+def test_load_agent2_history_recovers_surface_from_tournament_history(
+    db: psycopg.Connection,
+):
+    player_1 = _insert_player(db, "Player One")
+    player_2 = _insert_player(db, "Player Two")
+    match_id, tournament_id = _insert_match_shell(
+        db,
+        tournament_name="Surface Recovery Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface=None,
+        start_date="2025-05-01",
+        end_date="2025-05-07",
+    )
+    prior_edition_id = db.execute(
+        """
+        INSERT INTO tournament_editions (
+            tournament_id, season_year, edition_name, surface, start_date, end_date
+        )
+        VALUES (%s, 2024, 'Surface Recovery Open 2024', 'HARD', '2024-05-01', '2024-05-07')
+        RETURNING tournament_edition_id
+        """,
+        (tournament_id,),
+    ).fetchone()[0]
+    prior_match_id = db.execute(
+        "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
+        (prior_edition_id,),
+    ).fetchone()[0]
+    _insert_match_version(
+        db,
+        match_id=prior_match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2024, 5, 4, 10, 0),
+        source_observed_at=_utc(2024, 5, 4, 10, 0),
+        as_of=_utc(2024, 5, 4, 10, 0),
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_1,
+        player_2_id=player_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface=None,
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 5, 4, 10, 0),
+        source_observed_at=_utc(2025, 5, 4, 10, 0),
+        as_of=_utc(2025, 5, 4, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 5, 4, 23, 0),
+        as_of=_utc(2025, 5, 4, 23, 0),
+    )
+    for player_id, source_record_id in ((player_1, "sr-1"), (player_2, "sr-2")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 5, 4, 23, 0),
+            as_of=_utc(2025, 5, 4, 23, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observations = load_agent2_history(db, cutoff=_utc(2025, 5, 5, 0, 0))
+
+    assert len(observations) == 1
+    observation = observations[0]
+    assert observation.surface == "HARD"
+    assert historical_match_is_eligible_for_update(observation) is True
+
+
 def test_build_history_snapshot_counts_each_sporting_match_once_and_derives_serve_return_points():
     source_time = _utc(2025, 4, 10, 23, 0)
     observation = _historical_match(

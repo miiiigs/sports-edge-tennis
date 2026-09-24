@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime
 import re
 
@@ -606,6 +606,93 @@ def _unsupported_rule(
     )
 
 
+def _resolve_missing_match_surfaces(
+    conn: psycopg.Connection,
+    *,
+    match_ids: list[int],
+    cutoff: datetime,
+) -> dict[int, str]:
+    """Resolve a missing match-version surface from deterministic tournament evidence.
+
+    Mirrors the live target resolver semantics in ``runner.targets``: a stored
+    current-edition surface is authoritative, otherwise the unique surface of the
+    latest point-in-time-visible prior season for the same canonical tournament
+    identity is used. Missing or conflicting evidence fails closed. This adds no
+    database writes; it only fills a NULL surface for in-memory A2 eligibility.
+    """
+    if not match_ids:
+        return {}
+    query = """
+        WITH target AS (
+            SELECT DISTINCT
+                m.match_id,
+                te.tournament_id,
+                t.canonical_name,
+                t.tour_scope::text AS tour_scope,
+                te.season_year,
+                te.surface::text AS edition_surface
+            FROM matches m
+            JOIN tournament_editions te
+                ON te.tournament_edition_id = m.tournament_edition_id
+            JOIN tournaments t
+                ON t.tournament_id = te.tournament_id
+            WHERE m.match_id = ANY(%(match_ids)s)
+        ),
+        historical AS (
+            SELECT
+                target.match_id,
+                te_hist.season_year,
+                mv.surface::text AS surface
+            FROM target
+            JOIN tournaments t_hist
+                ON t_hist.tournament_id = target.tournament_id
+                OR (
+                    t_hist.canonical_name = target.canonical_name
+                    AND t_hist.tour_scope::text = target.tour_scope
+                )
+            JOIN tournament_editions te_hist
+                ON te_hist.tournament_id = t_hist.tournament_id
+            JOIN matches m_hist
+                ON m_hist.tournament_edition_id = te_hist.tournament_edition_id
+            JOIN match_versions mv
+                ON mv.match_id = m_hist.match_id
+            WHERE mv.surface IS NOT NULL
+              AND mv.source_observed_at <= %(cutoff)s
+              AND mv.as_of <= %(cutoff)s
+              AND te_hist.season_year <= target.season_year
+        ),
+        latest_year AS (
+            SELECT match_id, max(season_year) AS season_year
+            FROM historical
+            GROUP BY match_id
+        )
+        SELECT
+            target.match_id,
+            COALESCE(
+                target.edition_surface,
+                CASE
+                    WHEN count(DISTINCT historical.surface) = 1
+                    THEN min(historical.surface)
+                    ELSE NULL
+                END
+            ) AS resolved_surface
+        FROM target
+        LEFT JOIN latest_year
+            ON latest_year.match_id = target.match_id
+        LEFT JOIN historical
+            ON historical.match_id = target.match_id
+           AND historical.season_year = latest_year.season_year
+        GROUP BY target.match_id, target.edition_surface
+    """
+    resolved: dict[int, str] = {}
+    for match_id, surface in conn.execute(
+        query, {"match_ids": list(match_ids), "cutoff": cutoff}
+    ).fetchall():
+        if surface is not None:
+            resolved[int(match_id)] = str(surface)
+    return resolved
+
+
 def load_agent2_history(
     conn: psycopg.Connection,
     *,
@@ -869,6 +956,22 @@ def load_agent2_history(
                 stat_rows=attached_stats,
             )
         )
+
+    surface_missing_match_ids = [
+        observation.match_id
+        for observation in observations
+        if observation.surface is None and len(observation.stat_rows) == 2
+    ]
+    resolved_surfaces = _resolve_missing_match_surfaces(
+        conn, match_ids=surface_missing_match_ids, cutoff=cutoff
+    )
+    if resolved_surfaces:
+        observations = [
+            replace(observation, surface=resolved_surfaces[observation.match_id])
+            if observation.match_id in resolved_surfaces
+            else observation
+            for observation in observations
+        ]
     return observations
 
 
