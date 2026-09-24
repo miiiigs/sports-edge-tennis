@@ -179,6 +179,50 @@ def test_recover_refuses_conflicting_existing_version_surface(db: psycopg.Connec
     assert outcome.editions_recovered == 0
 
 
+def test_load_unresolved_editions_filters_by_edition_ids(db: psycopg.Connection) -> None:
+    p1 = _player(db, "Alpha, One")
+    p2 = _player(db, "Beta, Two")
+    _t1, edition_a, _m1 = _edition(
+        db, name="Target Open", season=2026, competition_id="sr:competition:7", p1=p1, p2=p2
+    )
+    _t2, edition_b, _m2 = _edition(
+        db, name="Other Open", season=2026, competition_id="sr:competition:8", p1=p1, p2=p2
+    )
+
+    editions = load_unresolved_editions(db, edition_ids=[edition_a])
+    ids = {e.tournament_edition_id for e in editions}
+
+    assert ids == {edition_a}
+    assert edition_b not in ids
+
+
+def test_recover_by_edition_ids_only_targets_listed(db: psycopg.Connection) -> None:
+    p1 = _player(db, "Alpha, One")
+    p2 = _player(db, "Beta, Two")
+    _t1, edition_a, _m1 = _edition(
+        db, name="Target Open", season=2026, competition_id="sr:competition:7", p1=p1, p2=p2
+    )
+    _t2, edition_b, _m2 = _edition(
+        db, name="Other Open", season=2026, competition_id="sr:competition:8", p1=p1, p2=p2
+    )
+    fetch_seasons, fetch_info, calls = _providers("Grass")
+
+    outcome = recover_authoritative_surfaces(
+        db, api_key="k", edition_ids=[edition_a], fetch_seasons=fetch_seasons, fetch_info=fetch_info
+    )
+
+    surfaces = {
+        r[0]
+        for r in db.execute(
+            "SELECT surface::text FROM tournament_editions WHERE tournament_edition_id IN (%s, %s)",
+            (edition_a, edition_b),
+        ).fetchall()
+    }
+    assert surfaces == {"GRASS", None}
+    assert outcome.editions_recovered == 1
+    assert calls == {"seasons": 1, "info": 1}
+
+
 def test_load_unresolved_editions_requires_null_version_surface(db: psycopg.Connection) -> None:
     p1 = _player(db, "Alpha, One")
     p2 = _player(db, "Beta, Two")
