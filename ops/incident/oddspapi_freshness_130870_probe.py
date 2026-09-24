@@ -436,6 +436,62 @@ def main() -> int:
                         },
                     )
 
+        # Every OddsPapi observation for the linked event, including the ones
+        # that were deduplicated and therefore produced no new snapshot.
+        event_id = cache[0][2] if cache else None
+        if event_id is None and raw_rows:
+            event_id = raw_rows[0][2]
+        if event_id:
+            all_obs = conn.execute(
+                """
+                SELECT r.raw_odds_observation_id, r.received_at, r.provider_observed_at,
+                       r.observation_time, r.observation_time_basis::text,
+                       (SELECT count(*) FROM odds_snapshots os
+                        WHERE os.raw_odds_observation_id = r.raw_odds_observation_id) AS snap_rows
+                FROM raw_odds_observations r
+                WHERE r.provider_code = 'ODDSPAPI'
+                  AND r.provider_event_id = %s
+                ORDER BY r.received_at DESC, r.raw_odds_observation_id DESC
+                LIMIT 40
+                """,
+                (event_id,),
+            ).fetchall()
+            for o in all_obs:
+                payload_row = conn.execute(
+                    "SELECT payload_json FROM raw_odds_observations WHERE raw_odds_observation_id = %s",
+                    (o[0],),
+                ).fetchone()
+                payload = payload_row[0] if payload_row else None
+                if isinstance(payload, str):
+                    try:
+                        payload = json.loads(payload)
+                    except ValueError:
+                        payload = None
+                sanitized = _sanitize_payload(payload) if isinstance(payload, dict) else {"books": {}}
+                books_summary = {}
+                for slug, book in sanitized.get("books", {}).items():
+                    outs = book.get("outcomes", {})
+                    books_summary[slug] = {
+                        "p1": outs.get("121", {}).get("price"),
+                        "p1_changed_at": outs.get("121", {}).get("changedAt"),
+                        "p2": outs.get("122", {}).get("price"),
+                        "p2_changed_at": outs.get("122", {}).get("changedAt"),
+                        "suspended": book.get("suspended"),
+                    }
+                _emit(
+                    "FRESHNESS_130870_ALL_ODDSPAPI_OBS",
+                    {
+                        "raw_odds_observation_id": o[0],
+                        "received_at": o[1],
+                        "provider_observed_at": o[2],
+                        "observation_time": o[3],
+                        "observation_time_basis": o[4],
+                        "snapshot_rows": int(o[5]),
+                        "fixture_updated_at": sanitized.get("updatedAt"),
+                        "books": books_summary,
+                    },
+                )
+
         # Request ledger around the decision cycle.
         ledger = conn.execute(
             """
