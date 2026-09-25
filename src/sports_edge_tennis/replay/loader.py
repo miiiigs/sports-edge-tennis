@@ -18,7 +18,7 @@ truth.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Sequence
 
 import psycopg
@@ -540,19 +540,23 @@ def derive_run_specs_from_match_days(
     window_as_of = window_as_of or datetime.now(timezone.utc)
 
     by_day: dict[date, list[int]] = {}
+    starts: dict[int, datetime] = {}
     for match_id in match_ids:
         match_start_at = _load_match_start_at(conn, match_id=match_id, as_of=window_as_of)
         if match_start_at is None:
             continue
+        starts[match_id] = match_start_at
         by_day.setdefault(match_start_at.astimezone(timezone.utc).date(), []).append(match_id)
 
     specs: list[ReplayRunSpec] = []
     for sequence, day in enumerate(sorted(by_day), start=1):
         day_matches = sorted(by_day[day])
-        day_start = datetime.combine(day, time(0, 0), tzinfo=timezone.utc)
-        # A single coherent hourly-style pass per slate day, at the median lead.
-        prediction_as_of = day_start + timedelta(hours=12) - policy.prediction_lead
-        market_as_of = day_start + timedelta(hours=12) - policy.market_lead
+        # Cutoffs must precede every match on the slate day or the match version is
+        # already COMPLETED at the decision time. Anchor to the day's earliest start
+        # so all same-day targets are still SCHEDULED at the blind cutoff.
+        earliest_start = min(starts[match_id] for match_id in day_matches)
+        prediction_as_of = earliest_start - policy.prediction_lead
+        market_as_of = earliest_start - policy.market_lead
         specs.append(
             ReplayRunSpec(
                 run_id=f"replay-{day.isoformat()}",
