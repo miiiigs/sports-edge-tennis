@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
-from decimal import Decimal
 import gzip
 import hashlib
 import json
+from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal
 
 import psycopg
 
@@ -13,16 +13,20 @@ from sports_edge_tennis.agents.agent3_intransitivity import (
     Agent3HistorySnapshot,
     OutcomeObservation,
     PairHistorySnapshot,
-    PlayerHistorySnapshot as Agent3PlayerHistorySnapshot,
     ResidualObservation,
+)
+from sports_edge_tennis.agents.agent3_intransitivity import (
+    PlayerHistorySnapshot as Agent3PlayerHistorySnapshot,
 )
 from sports_edge_tennis.data.agent2_history import (
     Agent2HistorySnapshot,
-    PlayerHistorySnapshot as Agent2PlayerHistorySnapshot,
     PopulationHistorySnapshot,
     SurfacePointSnapshot,
 )
-
+from sports_edge_tennis.data.agent2_history import (
+    PlayerHistorySnapshot as Agent2PlayerHistorySnapshot,
+)
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 
 CACHE_SCHEMA_VERSION = "live_model_state_v1"
 AGENT2_CACHE_KEY = "AGENT_2_HIERARCHICAL_MARKOV"
@@ -129,7 +133,11 @@ def save_checkpoint(
 ) -> None:
     ensure_live_model_checkpoint_table(conn)
     digest = hashlib.sha256(payload).hexdigest()
-    conn.execute(
+    # Monotonic guard: a checkpoint write may never regress the persisted cutoff.
+    # This makes every writer compare-and-swap on cutoff, so a stale or slower
+    # concurrent batch (or an older-cutoff validation run) cannot overwrite a
+    # newer valid checkpoint with an older state.
+    cursor = conn.execute(
         """
         INSERT INTO live_model_state_checkpoints (
             checkpoint_key,
@@ -156,6 +164,7 @@ def save_checkpoint(
             payload_sha256 = EXCLUDED.payload_sha256,
             payload_bytes = EXCLUDED.payload_bytes,
             updated_at = CURRENT_TIMESTAMP
+        WHERE EXCLUDED.checkpoint_cutoff >= live_model_state_checkpoints.checkpoint_cutoff
         """,
         (
             checkpoint_key,
@@ -169,6 +178,14 @@ def save_checkpoint(
             len(payload),
         ),
     )
+    if cursor.rowcount == 0:
+        print(
+            "MODEL_CACHE_SAVE_REJECTED "
+            f"key={checkpoint_key} reason=CUTOFF_REGRESSION "
+            f"attempted_cutoff={checkpoint_cutoff.isoformat()}",
+            flush=True,
+        )
+        return
     print(
         "MODEL_CACHE_SAVED "
         f"key={checkpoint_key} cutoff={checkpoint_cutoff.isoformat()} "
@@ -185,6 +202,24 @@ def checkpoint_requires_rebuild(
     include_match_stats: bool,
 ) -> str | None:
     """Detect cache-invalidating late backfills/corrections without changing PIT truth."""
+    # A newly attached non-live (historical) source identity can change
+    # live->historical player normalization, which changes the player-id key
+    # space of the cached snapshot. Live/odds provider ids cannot, so they do
+    # not force a rebuild.
+    identity_change = conn.execute(
+        """
+        SELECT EXISTS (
+            SELECT 1
+            FROM player_source_ids psi
+            WHERE psi.created_at > %s
+              AND psi.source_system <> ALL(%s)
+        )
+        """,
+        (checkpoint.checkpoint_created_at, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
+    ).fetchone()[0]
+    if identity_change:
+        return "IDENTITY_SOURCE_CHANGE"
+
     late_result = conn.execute(
         """
         SELECT EXISTS (
