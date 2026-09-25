@@ -18,7 +18,7 @@ truth.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Sequence
 
 import psycopg
@@ -44,6 +44,7 @@ from sports_edge_tennis.replay.contracts import (
     PitInputProof,
     ReplayActualResult,
     ReplayDecisionTime,
+    ReplayExclusion,
     ReplayMatchInput,
     ReplayRunInput,
 )
@@ -476,9 +477,10 @@ def load_replay_inputs(
         snapshot_ids.extend((a1_id, a2_id, a3_id))
 
         matches: list[ReplayMatchInput] = []
+        loader_exclusions: list[ReplayExclusion] = []
         for match_id in spec.match_ids:
-            matches.append(
-                _load_match_input(
+            try:
+                match_input = _load_match_input(
                     conn,
                     match_id=match_id,
                     prediction_as_of=spec.prediction_as_of,
@@ -486,7 +488,23 @@ def load_replay_inputs(
                     result_as_of=request.result_as_of,
                     sharp_reference=request.sharp_reference,
                 )
-            )
+            except ReplayLoadError as exc:
+                detail = str(exc)
+                reason = (
+                    "NO_SCHEDULED_PIT_VERSION"
+                    if "PIT-visible" in detail or "not SCHEDULED" in detail
+                    else "TARGET_RESOLUTION_FAILED"
+                )
+                loader_exclusions.append(
+                    ReplayExclusion(
+                        sporting_match_id=match_id,
+                        reason=reason,  # type: ignore[arg-type]
+                        detail=detail[:300],
+                        run_id=spec.run_id,
+                    )
+                )
+                continue
+            matches.append(match_input)
 
         runs.append(
             ReplayRunInput(
@@ -507,6 +525,7 @@ def load_replay_inputs(
                 agent1_snapshot_sha256=a1_id,
                 agent2_snapshot_sha256=a2_id,
                 agent3_snapshot_sha256=a3_id,
+                loader_exclusions=tuple(loader_exclusions),
                 veto_context_factory=_make_veto_factory(
                     conn,
                     prediction_as_of=spec.prediction_as_of,
@@ -540,19 +559,23 @@ def derive_run_specs_from_match_days(
     window_as_of = window_as_of or datetime.now(timezone.utc)
 
     by_day: dict[date, list[int]] = {}
+    starts: dict[int, datetime] = {}
     for match_id in match_ids:
         match_start_at = _load_match_start_at(conn, match_id=match_id, as_of=window_as_of)
         if match_start_at is None:
             continue
+        starts[match_id] = match_start_at
         by_day.setdefault(match_start_at.astimezone(timezone.utc).date(), []).append(match_id)
 
     specs: list[ReplayRunSpec] = []
     for sequence, day in enumerate(sorted(by_day), start=1):
         day_matches = sorted(by_day[day])
-        day_start = datetime.combine(day, time(0, 0), tzinfo=timezone.utc)
-        # A single coherent hourly-style pass per slate day, at the median lead.
-        prediction_as_of = day_start + timedelta(hours=12) - policy.prediction_lead
-        market_as_of = day_start + timedelta(hours=12) - policy.market_lead
+        # Cutoffs must precede every match on the slate day or the match version is
+        # already COMPLETED at the decision time. Anchor to the day's earliest start
+        # so all same-day targets are still SCHEDULED at the blind cutoff.
+        earliest_start = min(starts[match_id] for match_id in day_matches)
+        prediction_as_of = earliest_start - policy.prediction_lead
+        market_as_of = earliest_start - policy.market_lead
         specs.append(
             ReplayRunSpec(
                 run_id=f"replay-{day.isoformat()}",
