@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import psycopg
@@ -14,27 +14,31 @@ from fastapi.templating import Jinja2Templates
 
 from sports_edge_tennis.clv import ClvSummary, load_clv_summary
 from sports_edge_tennis.dashboard import presentation as pres
-from sports_edge_tennis.dashboard.demo import build_demo_market_decisions, build_demo_state
+from sports_edge_tennis.dashboard.demo import (
+    build_demo_market_decisions,
+    build_demo_state,
+)
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
 from sports_edge_tennis.dashboard.picks import (
-    build_today_picks,
     BLOCKED,
     MODEL_PICK,
     VALUE_BET,
-)
-from sports_edge_tennis.performance.regimes import (
-    load_regime_cohorts,
-    resolve_current_regime,
+    build_today_picks,
 )
 from sports_edge_tennis.dashboard.read_model import (
     LiveHealthView,
     RunState,
     get_history,
+    get_issued_day_state,
+    get_issued_market_decisions,
     get_latest_activity,
     get_latest_live_operational_health,
-    get_run_for_date,
 )
 from sports_edge_tennis.dashboard.upcoming import get_upcoming_matches
+from sports_edge_tennis.performance.regimes import (
+    load_regime_cohorts,
+    resolve_current_regime,
+)
 
 _BASE_DIR = Path(__file__).resolve().parent
 
@@ -90,7 +94,7 @@ def _connect() -> psycopg.Connection | None:
 
 
 def _now_utc() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _now_utc_date() -> date:
@@ -113,7 +117,20 @@ def _load_state(requested_date: date) -> RunState:
     if conn is None:
         return RunState(kind="DB_ERROR", run_date=requested_date, as_of=None, prediction_run_id=None, run_status=None)
     try:
-        return get_run_for_date(conn, requested_date)
+        return get_issued_day_state(conn, requested_date)
+    finally:
+        conn.close()
+
+
+def _load_issued_market_overlay(requested_date: date):
+    """First issued BET decision per sporting match for the day (Value Bet ledger)."""
+    if DEMO_MODE:
+        return build_demo_market_decisions()
+    conn = _connect()
+    if conn is None:
+        return {}
+    try:
+        return get_issued_market_decisions(conn, requested_date)
     finally:
         conn.close()
 
@@ -267,7 +284,7 @@ def today(request: Request, date: str | None = Query(default=None)):
         return HTMLResponse("Invalid date", status_code=400)
 
     state = _load_state(requested_date)
-    market_by_match = _load_market_overlay(state.prediction_run_id)
+    market_by_match = _load_issued_market_overlay(requested_date)
     today_picks = build_today_picks(state.matches, market_by_match)
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
@@ -296,7 +313,7 @@ def value(request: Request, date: str | None = Query(default=None)):
         return HTMLResponse("Invalid date", status_code=400)
 
     state = _load_state(requested_date)
-    market_by_match = _load_market_overlay(state.prediction_run_id)
+    market_by_match = _load_issued_market_overlay(requested_date)
     today_picks = build_today_picks(state.matches, market_by_match)
     return templates.TemplateResponse(
         request,
@@ -357,7 +374,7 @@ def api_today(date: str | None = Query(default=None)):
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
     state = _load_state(requested_date)
-    market_by_match = _load_market_overlay(state.prediction_run_id)
+    market_by_match = _load_issued_market_overlay(requested_date)
     upcoming = _load_upcoming()
     operational_health = _load_live_health()
     today_picks = build_today_picks(state.matches, market_by_match)
@@ -370,6 +387,9 @@ def api_today(date: str | None = Query(default=None)):
             "model_picks": today_picks.model_pick_count,
             "blocked": today_picks.blocked_count,
             "evaluated": today_picks.evaluated_count,
+            "qualified_model_picks": today_picks.qualified_model_pick_count,
+            "wide_spread_model_picks": today_picks.wide_spread_model_pick_count,
+            "total_model_picks": today_picks.total_model_pick_count,
         },
         "operational_health": (
             {
@@ -477,7 +497,7 @@ def api_value(date: str | None = Query(default=None)):
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
     state = _load_state(requested_date)
-    market_by_match = _load_market_overlay(state.prediction_run_id)
+    market_by_match = _load_issued_market_overlay(requested_date)
     today_picks = build_today_picks(state.matches, market_by_match)
     return JSONResponse(
         {

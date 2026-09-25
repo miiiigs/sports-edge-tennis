@@ -180,6 +180,24 @@ class TodayPicks:
         total = self.total
         return "1 pick today" if total == 1 else f"{total} picks today"
 
+    @property
+    def qualified_model_pick_count(self) -> int:
+        """Issued Manager-qualified Model Picks (includes those that became Value Bets)."""
+        return sum(
+            1
+            for card in self.picks
+            if card.kind in (MODEL_PICK, VALUE_BET) and not card.is_wide_spread
+        )
+
+    @property
+    def wide_spread_model_pick_count(self) -> int:
+        return sum(1 for card in self.picks if card.is_wide_spread)
+
+    @property
+    def total_model_pick_count(self) -> int:
+        """Unique Model Picks: qualified issued picks plus additive Wide-Spread tracking."""
+        return self.qualified_model_pick_count + self.wide_spread_model_pick_count
+
 
 def pick_kind(classification: str) -> str | None:
     """Map an internal classification to a client concept.
@@ -347,10 +365,10 @@ __all__ = [
     "KIND_LABELS",
     "KIND_SUMMARIES",
     "MODEL_PICK",
-    "PickCard",
-    "TodayPicks",
     "VALUE_BET",
     "WIDE_SPREAD_CLASSIFICATION",
+    "PickCard",
+    "TodayPicks",
     "build_pick_card",
     "build_today_picks",
     "build_value_opportunities",
