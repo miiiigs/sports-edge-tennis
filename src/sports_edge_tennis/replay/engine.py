@@ -274,15 +274,20 @@ def _evaluate_match(
             ),
         )
 
-    if match.surface_status == "AMBIGUOUS_HISTORY":
+    if match.surface_status not in ("RESOLVED", "SURFACE_KNOWN_AT_T"):
+        reason = (
+            "SURFACE_CONFLICT_AT_T"
+            if match.surface_status == "SURFACE_CONFLICT_AT_T"
+            else "SURFACE_NOT_AVAILABLE_PIT"
+        )
         return (
             None,
             None,
             (
                 ReplayExclusion(
                     sporting_match_id=target.match_id,
-                    reason="SURFACE_BLOCKED",
-                    detail="surface history is ambiguous",
+                    reason=reason,
+                    detail=f"surface not provably available at T ({match.surface_status})",
                     run_id=run.run_id,
                 ),
             ),

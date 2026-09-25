@@ -49,7 +49,7 @@ def test_selftest_exercises_the_full_funnel():
     exclusion_reasons = {exclusion.reason for exclusion in result.exclusions}
     assert {
         "IDENTITY_NOT_AVAILABLE_PIT",
-        "SURFACE_BLOCKED",
+        "SURFACE_NOT_AVAILABLE_PIT",
         "MISSING_MARKET_ODDS",
     }.issubset(exclusion_reasons)
 
