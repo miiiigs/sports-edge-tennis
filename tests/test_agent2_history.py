@@ -9,10 +9,10 @@ from sports_edge_tennis.agents.agent2_hierarchical_markov import (
     ScoringRuleVersion,
 )
 from sports_edge_tennis.data.agent2_history import (
-    Agent2HistoricalMatch,
-    Agent2MatchStatRow,
     ORDINARY_ATP_TOURNAMENT_ALIASES_V1,
     TRUE_QUALIFYING_ROUND_CODES,
+    Agent2HistoricalMatch,
+    Agent2MatchStatRow,
     build_history_snapshot,
     build_prediction_request_from_snapshot,
     historical_match_is_eligible_for_update,
@@ -22,6 +22,7 @@ from sports_edge_tennis.data.agent2_history import (
     replay_historical_predictions,
     resolve_scoring_rule,
 )
+from sports_edge_tennis.data.normalize import normalize_person_lookup
 
 
 def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0, second: int = 0) -> datetime:
@@ -33,6 +34,38 @@ def _insert_player(conn: psycopg.Connection, name: str) -> int:
         "INSERT INTO players (canonical_name, status) VALUES (%s, 'ACTIVE') RETURNING player_id",
         (name,),
     ).fetchone()[0]
+
+
+def _insert_source_id(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    source_system: str,
+    source_player_id: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO player_source_ids (player_id, source_system, source_player_id)
+        VALUES (%s, %s, %s)
+        """,
+        (player_id, source_system, source_player_id),
+    )
+
+
+def _insert_alias(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    source_system: str,
+    alias: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO player_aliases (player_id, source_system, alias, normalized_alias)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (player_id, source_system, alias, normalize_person_lookup(alias)),
+    )
 
 
 def _insert_match_shell(
@@ -1074,6 +1107,462 @@ def _seed_single_match(
         as_of=_utc(2025, 6, 10, 23, 0),
     )
     return match_id, player_1, player_2
+
+
+def _seed_bridgeable_historical_player(
+    db: psycopg.Connection,
+    *,
+    name: str,
+    source_player_id: str,
+    observed_at: datetime,
+) -> int:
+    player_id = _insert_player(db, name)
+    _insert_source_id(
+        db,
+        player_id=player_id,
+        source_system="SACKMANN",
+        source_player_id=source_player_id,
+    )
+    _insert_alias(db, player_id=player_id, source_system="TENNIS_DATA", alias=name)
+    opponent = _insert_player(db, f"{name} Historical Opponent")
+    _insert_source_id(
+        db,
+        player_id=opponent,
+        source_system="SACKMANN",
+        source_player_id=f"{source_player_id}-opp",
+    )
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name=f"{name} History Open",
+        season_year=observed_at.year,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date=observed_at.date().isoformat(),
+        end_date=observed_at.date().isoformat(),
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=player_id,
+        player_2_id=opponent,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=observed_at,
+        source_observed_at=observed_at,
+        as_of=observed_at,
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=observed_at,
+        as_of=observed_at,
+    )
+    return player_id
+
+
+def test_load_agent2_history_bridges_live_stats_to_historical_model_identity(
+    db: psycopg.Connection,
+):
+    historical_at = _utc(2025, 1, 1, 12, 0)
+    live_at = _utc(2025, 6, 10, 10, 0)
+    cutoff = _utc(2025, 6, 16, 0, 0)
+    hist_1 = _seed_bridgeable_historical_player(
+        db,
+        name="Bridge Alpha",
+        source_player_id="hist-bridge-alpha",
+        observed_at=historical_at,
+    )
+    hist_2 = _seed_bridgeable_historical_player(
+        db,
+        name="Bridge Beta",
+        source_player_id="hist-bridge-beta",
+        observed_at=historical_at,
+    )
+    live_1 = _insert_player(db, "Bridge Alpha")
+    live_2 = _insert_player(db, "Bridge Beta")
+    _insert_source_id(db, player_id=live_1, source_system="API_TENNIS", source_player_id="api-alpha")
+    _insert_source_id(db, player_id=live_2, source_system="SPORTRADAR", source_player_id="sr:beta")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Live Bridge Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=live_1,
+        player_2_id=live_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=live_at,
+        source_observed_at=live_at,
+        as_of=live_at,
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 15, 12, 0),
+        as_of=_utc(2025, 6, 15, 12, 0),
+    )
+    for player_id, source_record_id, service_points_played in (
+        (live_1, "api-alpha-stat", 60),
+        (live_2, "api-beta-stat", 58),
+    ):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=service_points_played,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observations = load_agent2_history(db, cutoff=cutoff)
+    bridged = next(observation for observation in observations if observation.match_id == match_id)
+    snapshot = build_history_snapshot((bridged,), cutoff=cutoff)
+
+    assert (bridged.player_1_id, bridged.player_2_id) == (hist_1, hist_2)
+    assert {row.player_id for row in bridged.stat_rows} == {hist_1, hist_2}
+    assert {row.source_system for row in bridged.stat_rows} == {"API_TENNIS"}
+    assert snapshot.players[hist_1].prior_usable_matches == 1
+    assert snapshot.players[hist_2].prior_usable_matches == 1
+
+
+def test_load_agent2_history_preserves_existing_historical_ids(
+    db: psycopg.Connection,
+):
+    match_id, player_1, player_2 = _seed_single_match(db)
+    _insert_source_id(db, player_id=player_1, source_system="SACKMANN", source_player_id="hist-p1")
+    _insert_source_id(db, player_id=player_2, source_system="SACKMANN", source_player_id="hist-p2")
+    for player_id, source_record_id in ((player_1, "hist-stat-1"), (player_2, "hist-stat-2")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+        )
+
+    observation = load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))[0]
+
+    assert (observation.player_1_id, observation.player_2_id) == (player_1, player_2)
+    assert {row.player_id for row in observation.stat_rows} == {player_1, player_2}
+
+
+def test_load_agent2_history_fails_closed_on_ambiguous_live_bridge(
+    db: psycopg.Connection,
+):
+    historical_at = _utc(2025, 1, 1, 12, 0)
+    first = _seed_bridgeable_historical_player(
+        db,
+        name="Ambiguous Player",
+        source_player_id="hist-ambiguous-1",
+        observed_at=historical_at,
+    )
+    _seed_bridgeable_historical_player(
+        db,
+        name="Ambiguous Player",
+        source_player_id="hist-ambiguous-2",
+        observed_at=historical_at,
+    )
+    live = _insert_player(db, "Ambiguous Player")
+    _insert_source_id(db, player_id=live, source_system="API_TENNIS", source_player_id="api-ambiguous")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Ambiguous Bridge Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=live,
+        player_2_id=first,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 6, 10, 10, 0),
+        source_observed_at=_utc(2025, 6, 10, 10, 0),
+        as_of=_utc(2025, 6, 10, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 15, 12, 0),
+        as_of=_utc(2025, 6, 15, 12, 0),
+    )
+    for player_id, source_record_id in ((live, "api-live"), (first, "api-hist")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observation = next(
+        row for row in load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+        if row.match_id == match_id
+    )
+
+    assert observation.player_1_id == live
+    assert observation.player_2_id == first
+    assert {row.player_id for row in observation.stat_rows} == {live, first}
+
+
+def test_load_agent2_history_drops_match_when_live_players_collapse_to_one_model_id(
+    db: psycopg.Connection,
+):
+    historical_at = _utc(2025, 1, 1, 12, 0)
+    hist = _seed_bridgeable_historical_player(
+        db,
+        name="Collision Player",
+        source_player_id="hist-collision",
+        observed_at=historical_at,
+    )
+    live_1 = _insert_player(db, "Collision Player")
+    live_2 = _insert_player(db, "Collision Player")
+    _insert_source_id(db, player_id=live_1, source_system="API_TENNIS", source_player_id="api-collision-1")
+    _insert_source_id(db, player_id=live_2, source_system="SPORTRADAR", source_player_id="sr:collision-2")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Collision Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=live_1,
+        player_2_id=live_2,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 6, 10, 10, 0),
+        source_observed_at=_utc(2025, 6, 10, 10, 0),
+        as_of=_utc(2025, 6, 10, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 15, 12, 0),
+        as_of=_utc(2025, 6, 15, 12, 0),
+    )
+    for player_id, source_record_id in ((live_1, "collision-1"), (live_2, "collision-2")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observation = next(
+        row for row in load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+        if row.match_id == match_id
+    )
+    snapshot = build_history_snapshot((observation,), cutoff=_utc(2025, 6, 16, 0, 0))
+
+    assert observation.player_1_id == hist
+    assert observation.player_2_id == hist
+    assert observation.stat_rows == ()
+    assert hist not in snapshot.players
+
+
+def test_load_agent2_history_does_not_double_count_collapsed_stat_rows(
+    db: psycopg.Connection,
+):
+    historical_at = _utc(2025, 1, 1, 12, 0)
+    hist = _seed_bridgeable_historical_player(
+        db,
+        name="Duplicate Guard",
+        source_player_id="hist-duplicate-guard",
+        observed_at=historical_at,
+    )
+    opponent = _seed_bridgeable_historical_player(
+        db,
+        name="Duplicate Opponent",
+        source_player_id="hist-duplicate-opponent",
+        observed_at=historical_at,
+    )
+    live = _insert_player(db, "Duplicate Guard")
+    _insert_source_id(db, player_id=live, source_system="API_TENNIS", source_player_id="api-duplicate")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Duplicate Guard Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=live,
+        player_2_id=opponent,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 6, 10, 10, 0),
+        source_observed_at=_utc(2025, 6, 10, 10, 0),
+        as_of=_utc(2025, 6, 10, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 15, 12, 0),
+        as_of=_utc(2025, 6, 15, 12, 0),
+    )
+    for player_id, source_record_id in ((live, "dup-live"), (hist, "dup-hist")):
+        _insert_stat(
+            db,
+            match_id=match_id,
+            player_id=player_id,
+            source_record_id=source_record_id,
+            source_observed_at=_utc(2025, 6, 15, 12, 0),
+            as_of=_utc(2025, 6, 15, 12, 0),
+            service_points_played=60,
+            first_serve_points_won=30,
+            second_serve_points_won=15,
+            source_system="API_TENNIS",
+        )
+
+    observation = next(
+        row for row in load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+        if row.match_id == match_id
+    )
+    snapshot = build_history_snapshot((observation,), cutoff=_utc(2025, 6, 16, 0, 0))
+
+    assert observation.stat_rows == ()
+    assert snapshot.players == {}
+
+
+def test_load_agent2_history_honors_pit_cutoff_for_live_identity_bridge(
+    db: psycopg.Connection,
+):
+    historical_at = _utc(2025, 7, 1, 12, 0)
+    hist = _seed_bridgeable_historical_player(
+        db,
+        name="Future Bridge",
+        source_player_id="hist-future-bridge",
+        observed_at=historical_at,
+    )
+    live = _insert_player(db, "Future Bridge")
+    opponent = _insert_player(db, "Future Opponent")
+    _insert_source_id(db, player_id=live, source_system="API_TENNIS", source_player_id="api-future")
+    _insert_source_id(db, player_id=opponent, source_system="SACKMANN", source_player_id="hist-future-opp")
+    match_id, _ = _insert_match_shell(
+        db,
+        tournament_name="Future Bridge Open",
+        season_year=2025,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        start_date="2025-06-08",
+        end_date="2025-06-16",
+    )
+    _insert_match_version(
+        db,
+        match_id=match_id,
+        player_1_id=live,
+        player_2_id=opponent,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_250",
+        surface="HARD",
+        round_code="R32",
+        best_of_sets=3,
+        qualifying_flag=False,
+        match_status="COMPLETED",
+        match_start_at=_utc(2025, 6, 10, 10, 0),
+        source_observed_at=_utc(2025, 6, 10, 10, 0),
+        as_of=_utc(2025, 6, 10, 10, 0),
+    )
+    _insert_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        source_observed_at=_utc(2025, 6, 15, 12, 0),
+        as_of=_utc(2025, 6, 15, 12, 0),
+    )
+
+    before = next(
+        row for row in load_agent2_history(db, cutoff=_utc(2025, 6, 16, 0, 0))
+        if row.match_id == match_id
+    )
+    after = next(
+        row for row in load_agent2_history(db, cutoff=_utc(2025, 7, 2, 0, 0))
+        if row.match_id == match_id
+    )
+
+    assert before.player_1_id == live
+    assert after.player_1_id == hist
 
 
 def test_load_agent2_history_attaches_api_tennis_stats_with_distinct_result_timestamp(
