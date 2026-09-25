@@ -58,8 +58,13 @@
         <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }}</p>
       </div>
       <div class="pick-probability">
+        {% if pick.is_wide_spread %}
+        <span class="prob-value">{{ pick.primary_a1_probability_text }} / {{ pick.primary_a2_probability_text }}</span>
+        <span class="prob-label">A1 / A2 confidence</span>
+        {% else %}
         <span class="prob-value">{{ pick.probability_text }}</span>
         <span class="prob-label">Win probability</span>
+        {% endif %}
       </div>
     </div>
 
@@ -67,6 +72,23 @@
       <span class="badge badge-{{ 'value' if pick.kind == 'VALUE_BET' else ('blocked' if pick.kind == 'BLOCKED' else 'model') }}">{{ pick.kind_label }}</span>
       <p class="pick-summary">{{ pick.kind_summary }}</p>
     </div>
+
+    {% if pick.is_wide_spread %}
+    <div class="metric-row">
+      <div class="metric">
+        <span class="metric-label">Confidence spread</span>
+        <span class="metric-value">{{ pick.primary_probability_spread_text }}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Manager gate</span>
+        <span class="metric-value">≤ 6.00%</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">Bet status</span>
+        <span class="metric-value">Not market-qualified</span>
+      </div>
+    </div>
+    {% endif %}
 
     {% if pick.is_actionable_bet %}
     <div class="metric-row">
@@ -101,12 +123,13 @@
 {% endif %}
 {% endif %}
 
-{% if no_bet_matches %}
+{% set display_no_bet_matches = no_bet_matches | rejectattr('reason_code', 'equalto', 'AGENT3_ABSTENTION_SPREAD_EXCEEDED') | list %}
+{% if display_no_bet_matches %}
 <details class="no-bet-disclosure section">
   <summary class="no-bet-toggle">
     <span class="no-bet-toggle-copy">
       <span class="no-bet-toggle-title">Show no-bet matches</span>
-      <span class="no-bet-toggle-subtitle">{{ no_bet_matches|length }} evaluated match{{ '' if no_bet_matches|length == 1 else 'es' }} did not become a pick</span>
+      <span class="no-bet-toggle-subtitle">{{ display_no_bet_matches|length }} evaluated match{{ '' if display_no_bet_matches|length == 1 else 'es' }} did not become a pick</span>
     </span>
     <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
   </summary>
@@ -114,7 +137,7 @@
   <div class="no-bet-panel">
     <p class="no-bet-intro">These matches were evaluated, but the models did not reach the required pick criteria. They are shown here for reference only.</p>
     <div class="no-bet-list">
-      {% for match in no_bet_matches %}
+      {% for match in display_no_bet_matches %}
       <article class="no-bet-card">
         <div class="no-bet-card-main">
           <h3 class="no-bet-match">{{ match.player_1 }} <span>vs</span> {{ match.player_2 }}</h3>

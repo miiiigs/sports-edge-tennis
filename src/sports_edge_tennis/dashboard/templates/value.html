@@ -118,7 +118,8 @@
 </section>
 {% endif %}
 
-{% if model_only_picks %}
+{% set qualified_model_only_picks = model_only_picks | rejectattr('is_wide_spread') | list %}
+{% if qualified_model_only_picks %}
 <section class="section" aria-label="Model picks without current value">
   <h2 class="section-title">Model picks without current value</h2>
   <p class="section-note">
@@ -136,7 +137,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for pick in model_only_picks %}
+        {% for pick in qualified_model_only_picks %}
         <tr>
           <th scope="row">{{ pick.player }}</th>
           <td class="wrap">{{ pick.opponent }}</td>

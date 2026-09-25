@@ -8,16 +8,18 @@ That requires collapsing the internal lifecycle into two concepts a reader can
 hold in their head, without letting the underlying states blur together:
 
 ``MODEL PICK``
-    The sporting models selected a winner. Agents 1-3 agreed and the Manager
-    produced a consensus. This is *not* a statement about price.
+    The sporting models selected a winner. This includes Manager-qualified
+    consensus picks and a clearly labelled tracking-only case where A1 and A2
+    select the same player but A3 abstains and the A1/A2 confidence spread is
+    wider than the Manager gate. The latter never becomes market-qualified.
 
 ``VALUE BET``
-    The model pick also cleared the Market value rules at the current offered
-    price, and is a genuine actionable bet.
+    A Manager-qualified model pick also cleared the Market value rules at the
+    current offered price, and is a genuine actionable bet.
 
-Everything that never reached a Manager consensus is not a pick at all and is
-excluded from the client view entirely. A pick blocked by the kill-only Veto is
-shown, but never as an executable bet and never with a stake.
+Other Manager NO_BET states are excluded from the main pick list. A qualified
+pick blocked by the kill-only Veto is shown, but never as an executable bet and
+never with a stake.
 """
 
 from __future__ import annotations
@@ -27,12 +29,18 @@ from datetime import datetime
 from decimal import Decimal
 
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.runner.contracts import AGENT_1, AGENT_2, AGENT_3
 
 # Internal classifications from pres.recommendation_classification, grouped into
 # the two client-facing concepts plus the blocked state.
 VALUE_BET = "VALUE_BET"
 MODEL_PICK = "MODEL_PICK"
 BLOCKED = "BLOCKED"
+WIDE_SPREAD_CLASSIFICATION = "WIDE_CONFIDENCE_SPREAD"
+WIDE_SPREAD_SUMMARY = (
+    "Primary models agreed, but confidence spread was too wide. "
+    "This is a model pick for tracking only and is not Manager-qualified for betting."
+)
 
 KIND_LABELS = {
     VALUE_BET: "VALUE BET",
@@ -74,13 +82,24 @@ class PickCard:
     sharp_reference_price: Decimal | None = None
     market_reason_code: str | None = None
     published_at: datetime | None = None
+    primary_a1_probability: Decimal | None = None
+    primary_a2_probability: Decimal | None = None
+    primary_probability_spread: Decimal | None = None
+
+    @property
+    def is_wide_spread(self) -> bool:
+        return self.classification == WIDE_SPREAD_CLASSIFICATION
 
     @property
     def kind_label(self) -> str:
+        if self.is_wide_spread:
+            return "MODEL PICK · WIDE SPREAD"
         return KIND_LABELS.get(self.kind, self.kind)
 
     @property
     def kind_summary(self) -> str:
+        if self.is_wide_spread:
+            return WIDE_SPREAD_SUMMARY
         return KIND_SUMMARIES.get(self.kind, "")
 
     @property
@@ -91,6 +110,20 @@ class PickCard:
     @property
     def probability_text(self) -> str:
         return pres.percent(self.win_probability)
+
+    @property
+    def primary_a1_probability_text(self) -> str:
+        return pres.percent(self.primary_a1_probability)
+
+    @property
+    def primary_a2_probability_text(self) -> str:
+        return pres.percent(self.primary_a2_probability)
+
+    @property
+    def primary_probability_spread_text(self) -> str | None:
+        if self.primary_probability_spread is None:
+            return None
+        return f"{float(self.primary_probability_spread) * 100:.2f}%"
 
     @property
     def stake_text(self) -> str | None:
@@ -175,12 +208,77 @@ def _sort_key(card: PickCard) -> tuple[int, float, str]:
     return (order.get(card.kind, 3), start, card.player)
 
 
+def _wide_spread_primary_details(
+    match,
+) -> tuple[int, Decimal, Decimal, Decimal] | None:
+    """Return same-side A1/A2 details for the A3-abstention spread rejection.
+
+    This is presentation-only. It does not alter Manager eligibility or create
+    a market decision. The Manager reason is treated as necessary but not
+    sufficient: persisted A1/A2 predictions must also independently prove the
+    same selected side, and A3 must be persisted as ABSTAINED.
+    """
+    if (
+        match.manager_status != "NO_BET"
+        or match.reason_code != "AGENT3_ABSTENTION_SPREAD_EXCEEDED"
+    ):
+        return None
+
+    a1 = match.agents.get(AGENT_1)
+    a2 = match.agents.get(AGENT_2)
+    a3 = match.agents.get(AGENT_3)
+    if (
+        a1 is None
+        or a2 is None
+        or a3 is None
+        or a1.status != "PREDICTED"
+        or a2.status != "PREDICTED"
+        or a3.status != "ABSTAINED"
+        or a1.selection not in (1, 2)
+        or a2.selection != a1.selection
+        or a1.probability is None
+        or a2.probability is None
+    ):
+        return None
+
+    a1_probability = Decimal(a1.probability)
+    a2_probability = Decimal(a2.probability)
+    return (
+        int(a1.selection),
+        a1_probability,
+        a2_probability,
+        abs(a1_probability - a2_probability),
+    )
+
+
 def build_pick_card(match, decision) -> PickCard | None:
     """Build one card, or ``None`` when the match is not a client-visible pick.
 
     ``match`` is a ``read_model.MatchView``; ``decision`` is an optional
     ``market_overlay.MarketDecisionView`` for the same match.
     """
+    wide_details = _wide_spread_primary_details(match)
+    if wide_details is not None:
+        selected_side, a1_probability, a2_probability, spread = wide_details
+        player = pres.side_name(selected_side, match.player_1, match.player_2)
+        if not player:
+            return None
+        opponent = match.player_2 if player == match.player_1 else match.player_1
+        return PickCard(
+            match_id=match.match_id,
+            kind=MODEL_PICK,
+            classification=WIDE_SPREAD_CLASSIFICATION,
+            player=player,
+            opponent=opponent,
+            win_probability=None,
+            tournament=match.tournament,
+            competition_tier=match.competition_tier,
+            scheduled_start=match.scheduled_start,
+            primary_a1_probability=a1_probability,
+            primary_a2_probability=a2_probability,
+            primary_probability_spread=spread,
+        )
+
     decision_status = decision.decision_status if decision is not None else None
     classification = pres.recommendation_classification(
         match.manager_status, decision_status
@@ -218,8 +316,9 @@ def build_pick_card(match, decision) -> PickCard | None:
 def build_today_picks(matches, market_by_match) -> TodayPicks:
     """Filter an evaluated slate down to the client-visible picks.
 
-    ``matches`` is every evaluated target in the run. Only records that reached
-    a Manager consensus survive; the rest are counted but never rendered.
+    ``matches`` is every evaluated target in the run. Manager consensus picks
+    survive, plus the explicit A1+A2 same-side / A3-abstain wide-spread tracking
+    case. All other Manager NO_BET records remain off the primary pick list.
     """
     cards: list[PickCard] = []
     for match in matches:
@@ -251,6 +350,7 @@ __all__ = [
     "PickCard",
     "TodayPicks",
     "VALUE_BET",
+    "WIDE_SPREAD_CLASSIFICATION",
     "build_pick_card",
     "build_today_picks",
     "build_value_opportunities",
