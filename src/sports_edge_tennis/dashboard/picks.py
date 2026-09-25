@@ -8,16 +8,18 @@ That requires collapsing the internal lifecycle into two concepts a reader can
 hold in their head, without letting the underlying states blur together:
 
 ``MODEL PICK``
-    The sporting models selected a winner. Agents 1-3 agreed and the Manager
-    produced a consensus. This is *not* a statement about price.
+    The sporting models selected a winner. This includes Manager-qualified
+    consensus picks and a clearly labelled tracking-only case where A1 and A2
+    select the same player but A3 abstains and the A1/A2 confidence spread is
+    wider than the Manager gate. The latter never becomes market-qualified.
 
 ``VALUE BET``
-    The model pick also cleared the Market value rules at the current offered
-    price, and is a genuine actionable bet.
+    A Manager-qualified model pick also cleared the Market value rules at the
+    current offered price, and is a genuine actionable bet.
 
-Everything that never reached a Manager consensus is not a pick at all and is
-excluded from the client view entirely. A pick blocked by the kill-only Veto is
-shown, but never as an executable bet and never with a stake.
+Other Manager NO_BET states are excluded from the main pick list. A qualified
+pick blocked by the kill-only Veto is shown, but never as an executable bet and
+never with a stake.
 """
 
 from __future__ import annotations
@@ -314,8 +316,9 @@ def build_pick_card(match, decision) -> PickCard | None:
 def build_today_picks(matches, market_by_match) -> TodayPicks:
     """Filter an evaluated slate down to the client-visible picks.
 
-    ``matches`` is every evaluated target in the run. Only records that reached
-    a Manager consensus survive; the rest are counted but never rendered.
+    ``matches`` is every evaluated target in the run. Manager consensus picks
+    survive, plus the explicit A1+A2 same-side / A3-abstain wide-spread tracking
+    case. All other Manager NO_BET records remain off the primary pick list.
     """
     cards: list[PickCard] = []
     for match in matches:
