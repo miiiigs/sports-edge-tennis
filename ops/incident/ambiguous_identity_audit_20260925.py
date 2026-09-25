@@ -100,12 +100,12 @@ def _bridge_evidence(conn, provider_player_id: str):
             live_player_id,
             action,
             historical_player_id,
-            provider_player_name,
-            resolution_status
+            evidence_provider_name,
+            evidence_status
         FROM model_identity_bridge_events
-        WHERE provider_source_system = 'SPORTRADAR'
-          AND provider_player_id = %s
-        ORDER BY observed_at DESC, model_identity_bridge_event_id DESC
+        WHERE evidence_source_system = 'SPORTRADAR'
+          AND evidence_provider_player_id = %s
+        ORDER BY evidence_as_of DESC, model_identity_bridge_event_id DESC
         LIMIT 5
         """,
         (provider_player_id,),
