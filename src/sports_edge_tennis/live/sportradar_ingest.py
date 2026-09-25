@@ -13,6 +13,7 @@ from sports_edge_tennis.live.sportradar_fixtures import (
     ADAPTER_VERSION,
     SOURCE_SYSTEM,
     SportradarFixtureCandidate,
+    is_placeholder_name,
     parse_daily_summaries,
 )
 from sports_edge_tennis.live.sportradar_reconciliation import (
@@ -256,17 +257,33 @@ def _persist_fixture(
             existing_version_id,
             canonical_p1,
             canonical_p2,
+            canonical_p1_name,
+            canonical_p2_name,
             edition_id,
             tournament_id,
         ) = existing
 
         direct = canonical_p1 == p1_id and canonical_p2 == p2_id
         reverse = canonical_p1 == p2_id and canonical_p2 == p1_id
-        if direct == reverse:
-            raise SportradarIngestError("existing_match_player_conflict")
-        oriented_p1, oriented_p2 = (
-            (p1_id, p2_id) if direct else (p2_id, p1_id)
-        )
+        if direct:
+            oriented_p1, oriented_p2 = p1_id, p2_id
+        elif reverse:
+            oriented_p1, oriented_p2 = p2_id, p1_id
+        else:
+            promoted = _oriented_participants_after_provider_resolution(
+                overlap_status=overlap.status,
+                canonical_p1=canonical_p1,
+                canonical_p1_name=canonical_p1_name,
+                canonical_p2=canonical_p2,
+                canonical_p2_name=canonical_p2_name,
+                incoming_p1=p1_id,
+                incoming_p1_name=fixture.player_1_name,
+                incoming_p2=p2_id,
+                incoming_p2_name=fixture.player_2_name,
+            )
+            if promoted is None:
+                raise SportradarIngestError("existing_match_player_conflict")
+            oriented_p1, oriented_p2 = promoted
         _attach_tournament_source(
             conn,
             tournament_id=tournament_id,
@@ -412,6 +429,8 @@ def _existing_match_context(
             mv.match_version_id,
             mv.player_1_id,
             mv.player_2_id,
+            p1.canonical_name,
+            p2.canonical_name,
             m.tournament_edition_id,
             te.tournament_id
         FROM matches m
@@ -426,10 +445,72 @@ def _existing_match_context(
             ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
             LIMIT 1
         ) mv ON TRUE
+        JOIN players p1 ON p1.player_id = mv.player_1_id
+        JOIN players p2 ON p2.player_id = mv.player_2_id
         WHERE m.match_id = %s
         """,
         (as_of, as_of, match_id),
     ).fetchone()
+
+
+def _oriented_participants_after_provider_resolution(
+    *,
+    overlap_status: str,
+    canonical_p1: int,
+    canonical_p1_name: str,
+    canonical_p2: int,
+    canonical_p2_name: str,
+    incoming_p1: int,
+    incoming_p1_name: str,
+    incoming_p2: int,
+    incoming_p2_name: str,
+) -> tuple[int, int] | None:
+    """Resolve a deterministic draw-placeholder -> real-participant promotion.
+
+    Only an event already attached to this canonical match by provider event id
+    (``SOURCE_ID_RESOLVED``) may promote participants. Every stored participant
+    the provider no longer lists must be a placeholder, and every incoming
+    participant replacing one must be concrete. Anything else fails closed, so a
+    genuine participant substitution or an ambiguous update never overwrites a
+    real pair. Historical versions are never rewritten: the caller appends a new
+    match version only.
+    """
+    if overlap_status != "SOURCE_ID_RESOLVED":
+        return None
+
+    stored = (
+        (int(canonical_p1), canonical_p1_name),
+        (int(canonical_p2), canonical_p2_name),
+    )
+    incoming = (
+        (int(incoming_p1), incoming_p1_name),
+        (int(incoming_p2), incoming_p2_name),
+    )
+    incoming_ids = {int(incoming_p1), int(incoming_p2)}
+    canonical_ids = {int(canonical_p1), int(canonical_p2)}
+
+    retained = [(pid, name) for pid, name in stored if pid in incoming_ids]
+    dropped = [(pid, name) for pid, name in stored if pid not in incoming_ids]
+    if not dropped:
+        return None
+    if not all(is_placeholder_name(name) for _pid, name in dropped):
+        return None
+
+    replacements = [
+        (pid, name) for pid, name in incoming if pid not in canonical_ids
+    ]
+    if not replacements:
+        return None
+    if any(is_placeholder_name(name) for _pid, name in replacements):
+        return None
+
+    if len(retained) == 1:
+        anchor_id = retained[0][0]
+        other_id = incoming_p2 if int(incoming_p1) == anchor_id else incoming_p1
+        if anchor_id == int(canonical_p1):
+            return (anchor_id, int(other_id))
+        return (int(other_id), anchor_id)
+    return (int(incoming_p1), int(incoming_p2))
 
 
 def _attach_tournament_source(
