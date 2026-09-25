@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime
-import re
 
 import psycopg
 
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
+    DEFAULT_CONFIG,
     AbstainReason,
     Agent2Config,
     CompetitionTier,
-    DEFAULT_CONFIG,
     PlayerServeReturnState,
     PopulationPriorState,
     PredictionRequest,
@@ -21,7 +21,7 @@ from sports_edge_tennis.agents.agent2_hierarchical_markov import (
     TourScope,
     predict,
 )
-
+from sports_edge_tennis.data.model_identity import resolve_model_player_ids
 
 TRUE_QUALIFYING_ROUND_CODES = frozenset({"Q1", "Q2", "Q3"})
 REVIEWED_ROUND_VOCABULARY = frozenset(
@@ -276,6 +276,15 @@ class _MutablePopulationAccumulator:
     surface_service_points: dict[Surface, list[int]] = field(default_factory=dict)
     global_service_points_won: int = 0
     global_service_points_played: int = 0
+
+
+def _a2_identity_diagnostic(match_id: int, reason: str, *, detail: str = "") -> None:
+    safe_detail = " ".join(detail.replace("\n", " ").replace("\r", " ").split())[:160]
+    suffix = f" detail={safe_detail}" if safe_detail else ""
+    print(
+        f"A2_MODEL_IDENTITY_NORMALIZATION_DROP match_id={match_id} reason={reason}{suffix}",
+        flush=True,
+    )
 
 
 def normalize_tournament_alias(name: str) -> str:
@@ -693,6 +702,82 @@ def _resolve_missing_match_surfaces(
     return resolved
 
 
+def _resolve_history_player_ids(
+    conn: psycopg.Connection,
+    player_ids: set[int],
+    *,
+    cutoff: datetime,
+) -> dict[int, int]:
+    """Bridge live-provider-only A2 history IDs into the model namespace.
+
+    Delegates to the shared set-based resolver so the number of SQL statements is
+    bounded rather than proportional to the number of players (no N+1).
+    """
+    return resolve_model_player_ids(conn, player_ids=player_ids, as_of=cutoff)
+
+
+def _normalized_stat_rows(
+    *,
+    match_id: int,
+    stat_rows: tuple[Agent2MatchStatRow, ...],
+    model_player_ids: dict[int, int],
+) -> tuple[Agent2MatchStatRow, ...]:
+    normalized_rows: list[Agent2MatchStatRow] = []
+    seen_model_ids: set[int] = set()
+    for stat_row in stat_rows:
+        model_player_id = model_player_ids.get(stat_row.player_id, stat_row.player_id)
+        if model_player_id in seen_model_ids:
+            _a2_identity_diagnostic(
+                match_id,
+                "STAT_PLAYER_COLLISION",
+                detail=f"raw_player_id={stat_row.player_id} model_player_id={model_player_id}",
+            )
+            return ()
+        seen_model_ids.add(model_player_id)
+        normalized_rows.append(replace(stat_row, player_id=model_player_id))
+    return tuple(normalized_rows)
+
+
+def _attach_normalized_stats(
+    *,
+    match_id: int,
+    raw_player_1_id: int,
+    raw_player_2_id: int,
+    candidate_stats: tuple[Agent2MatchStatRow, ...],
+    model_player_ids: dict[int, int],
+) -> tuple[int, int, tuple[Agent2MatchStatRow, ...]]:
+    player_1_id = model_player_ids.get(raw_player_1_id, raw_player_1_id)
+    player_2_id = model_player_ids.get(raw_player_2_id, raw_player_2_id)
+    if player_1_id == player_2_id:
+        _a2_identity_diagnostic(
+            match_id,
+            "MATCH_PLAYER_COLLISION",
+            detail=(
+                f"raw_player_1_id={raw_player_1_id} raw_player_2_id={raw_player_2_id} "
+                f"model_player_id={player_1_id}"
+            ),
+        )
+        return player_1_id, player_2_id, ()
+
+    normalized_stats = _normalized_stat_rows(
+        match_id=match_id,
+        stat_rows=candidate_stats,
+        model_player_ids=model_player_ids,
+    )
+    if {stat.player_id for stat in normalized_stats} == {player_1_id, player_2_id}:
+        return player_1_id, player_2_id, normalized_stats
+    if candidate_stats:
+        _a2_identity_diagnostic(
+            match_id,
+            "STAT_PLAYERS_DO_NOT_MATCH_PARTICIPANTS",
+            detail=(
+                f"participant_ids={player_1_id},{player_2_id} "
+                f"stat_ids={','.join(str(stat.player_id) for stat in normalized_stats) or '-'}"
+            ),
+        )
+    return player_1_id, player_2_id, ()
+
+
 def load_agent2_history(
     conn: psycopg.Connection,
     *,
@@ -900,6 +985,23 @@ def load_agent2_history(
             for index in range(len(player_ids))
         )
 
+    player_ids_to_resolve = {
+        int(row[1])
+        for row in rows
+    } | {
+        int(row[2])
+        for row in rows
+    } | {
+        stat.player_id
+        for stat_rows in stats_by_match.values()
+        for stat in stat_rows
+    }
+    model_player_ids = _resolve_history_player_ids(
+        conn,
+        player_ids_to_resolve,
+        cutoff=cutoff,
+    )
+
     observations: list[Agent2HistoricalMatch] = []
     for row in rows:
         (
@@ -924,18 +1026,18 @@ def load_agent2_history(
             version_as_of,
         ) = row
         candidate_stats = stats_by_match.get(int(match_id), ())
-        if {stat.player_id for stat in candidate_stats} == {
-            int(player_1_id),
-            int(player_2_id),
-        }:
-            attached_stats = candidate_stats
-        else:
-            attached_stats = ()
+        model_player_1_id, model_player_2_id, attached_stats = _attach_normalized_stats(
+            match_id=int(match_id),
+            raw_player_1_id=int(player_1_id),
+            raw_player_2_id=int(player_2_id),
+            candidate_stats=candidate_stats,
+            model_player_ids=model_player_ids,
+        )
         observations.append(
             Agent2HistoricalMatch(
                 match_id=int(match_id),
-                player_1_id=int(player_1_id),
-                player_2_id=int(player_2_id),
+                player_1_id=model_player_1_id,
+                player_2_id=model_player_2_id,
                 match_start_at=match_start_at,
                 surface=surface,
                 tour_scope=tour_scope,
