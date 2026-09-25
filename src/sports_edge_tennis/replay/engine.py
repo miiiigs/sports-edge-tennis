@@ -636,8 +636,16 @@ def run_replay_run(
     runner = agent_runner or _adapt_agent_results
     model_picks: list[ModelPickLedgerRow] = []
     value_bets: list[ValueBetLedgerRow] = []
-    exclusions: list[ReplayExclusion] = []
-    opportunities: list[OpportunityRecord] = []
+    exclusions: list[ReplayExclusion] = list(run.loader_exclusions)
+    opportunities: list[OpportunityRecord] = [
+        OpportunityRecord(
+            sporting_match_id=exclusion.sporting_match_id,
+            run_id=run.run_id,
+            outcome="DATA_NOT_AVAILABLE_PIT",
+            detail=exclusion.reason,
+        )
+        for exclusion in run.loader_exclusions
+    ]
 
     for match in run.matches:
         model_pick, value_bet, match_exclusions, opportunity = _evaluate_match(run, match, runner)

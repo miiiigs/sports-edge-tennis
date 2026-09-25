@@ -44,6 +44,7 @@ from sports_edge_tennis.replay.contracts import (
     PitInputProof,
     ReplayActualResult,
     ReplayDecisionTime,
+    ReplayExclusion,
     ReplayMatchInput,
     ReplayRunInput,
 )
@@ -476,9 +477,10 @@ def load_replay_inputs(
         snapshot_ids.extend((a1_id, a2_id, a3_id))
 
         matches: list[ReplayMatchInput] = []
+        loader_exclusions: list[ReplayExclusion] = []
         for match_id in spec.match_ids:
-            matches.append(
-                _load_match_input(
+            try:
+                match_input = _load_match_input(
                     conn,
                     match_id=match_id,
                     prediction_as_of=spec.prediction_as_of,
@@ -486,7 +488,23 @@ def load_replay_inputs(
                     result_as_of=request.result_as_of,
                     sharp_reference=request.sharp_reference,
                 )
-            )
+            except ReplayLoadError as exc:
+                detail = str(exc)
+                reason = (
+                    "NO_SCHEDULED_PIT_VERSION"
+                    if "PIT-visible" in detail or "not SCHEDULED" in detail
+                    else "TARGET_RESOLUTION_FAILED"
+                )
+                loader_exclusions.append(
+                    ReplayExclusion(
+                        sporting_match_id=match_id,
+                        reason=reason,  # type: ignore[arg-type]
+                        detail=detail[:300],
+                        run_id=spec.run_id,
+                    )
+                )
+                continue
+            matches.append(match_input)
 
         runs.append(
             ReplayRunInput(
@@ -507,6 +525,7 @@ def load_replay_inputs(
                 agent1_snapshot_sha256=a1_id,
                 agent2_snapshot_sha256=a2_id,
                 agent3_snapshot_sha256=a3_id,
+                loader_exclusions=tuple(loader_exclusions),
                 veto_context_factory=_make_veto_factory(
                     conn,
                     prediction_as_of=spec.prediction_as_of,

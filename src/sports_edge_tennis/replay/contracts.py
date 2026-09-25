@@ -157,6 +157,9 @@ class ReplayRunInput:
     agent1_snapshot_sha256: str | None = None
     agent2_snapshot_sha256: str | None = None
     agent3_snapshot_sha256: str | None = None
+    #: Per-match exclusions discovered at load time (e.g. no PIT-visible
+    #: scheduled version), so one unresolvable match cannot abort the run.
+    loader_exclusions: tuple["ReplayExclusion", ...] = ()
     #: Optional PIT loader hook invoked only for an otherwise-qualified BET,
     #: because Veto context depends on the market-selected side and reference
     #: price. The pure engine never performs database reads itself.
