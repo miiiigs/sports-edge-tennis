@@ -9,8 +9,14 @@ WON/LOST; ``RETIRED`` and ``WALKOVER`` are VOID; ``CANCELLED`` is CANCELLED.
 This avoids inventing bookmaker-specific grading rules we do not possess.
 
 ``decision_settlements`` is append-only, so this service inserts only final rows.
-If later result truth differs from already-settled evidence, the service fails
-closed with an explicit conflict instead of rewriting historical settlement.
+
+Canonical result lineage can legitimately re-observe the *same* sporting outcome
+as a new ``match_result_observations`` row (a new ``as_of`` or source
+observation). When the derived settlement status is unchanged, that is an
+equivalent-result reconciliation: the committed settlement is preserved as
+historical truth and downstream work continues. Only a genuinely different
+derived settlement status is treated as a conflict, and that fails closed with
+explicit telemetry instead of rewriting historical settlement.
 """
 
 from __future__ import annotations
@@ -35,6 +41,7 @@ class SettlementOutcome:
     pending_results: int = 0
     inserted: int = 0
     existing: int = 0
+    reconciled: int = 0
     won: int = 0
     lost: int = 0
     void: int = 0
@@ -46,6 +53,15 @@ class _ResultTruth:
     observation_id: int
     outcome_status: str
     winner_side: int | None
+
+
+@dataclass(frozen=True)
+class _ExistingSettlement:
+    observation_id: int | None
+    settlement_status: str
+    observation_match_id: int | None
+    observation_outcome_status: str | None
+    observation_winner_side: int | None
 
 
 def classify_match_winner_settlement(
@@ -103,33 +119,88 @@ def _settlement_notes(result: _ResultTruth, status: SettlementStatus) -> str:
     )
 
 
-def _verify_existing(
+def _log(message: str) -> None:
+    print(message, flush=True)
+
+
+def _load_existing_settlement(
     conn: psycopg.Connection,
     *,
     decision_id: int,
-    result: _ResultTruth,
-    expected_status: SettlementStatus,
-) -> bool:
+) -> _ExistingSettlement | None:
     row = conn.execute(
         """
-        SELECT match_result_observation_id, settlement_status::text
-        FROM decision_settlements
-        WHERE decision_id = %s
+        SELECT
+            ds.match_result_observation_id,
+            ds.settlement_status::text,
+            mro.match_id,
+            mro.outcome_status::text,
+            mro.winner_side
+        FROM decision_settlements ds
+        LEFT JOIN match_result_observations mro
+          ON mro.match_result_observation_id = ds.match_result_observation_id
+        WHERE ds.decision_id = %s
         """,
         (decision_id,),
     ).fetchone()
     if row is None:
-        return False
-    existing_result_id = int(row[0]) if row[0] is not None else None
-    existing_status = str(row[1])
-    if existing_result_id != result.observation_id or existing_status != expected_status:
+        return None
+    return _ExistingSettlement(
+        observation_id=int(row[0]) if row[0] is not None else None,
+        settlement_status=str(row[1]),
+        observation_match_id=int(row[2]) if row[2] is not None else None,
+        observation_outcome_status=str(row[3]) if row[3] is not None else None,
+        observation_winner_side=int(row[4]) if row[4] is not None else None,
+    )
+
+
+def _reconcile_existing(
+    conn: psycopg.Connection,
+    *,
+    decision_id: int,
+    match_id: int,
+    result: _ResultTruth,
+    expected_status: SettlementStatus,
+) -> Literal["EXISTING", "RECONCILED"] | None:
+    """Compare committed settlement truth against latest canonical result truth.
+
+    Returns ``None`` when no settlement exists, ``"EXISTING"`` when the committed
+    row already matches the latest result observation exactly, and
+    ``"RECONCILED"`` when the same derived settlement status is evidenced by a
+    different canonical result observation row (equivalent-result lineage).
+    Raises ``SettlementEvidenceConflict`` for a genuinely different outcome.
+    """
+    existing = _load_existing_settlement(conn, decision_id=decision_id)
+    if existing is None:
+        return None
+    if existing.settlement_status != expected_status:
         raise SettlementEvidenceConflict(
             "immutable settlement conflicts with latest canonical result truth "
-            f"decision_id={decision_id} existing_result_id={existing_result_id} "
-            f"latest_result_id={result.observation_id} existing_status={existing_status} "
-            f"expected_status={expected_status}"
+            f"decision_id={decision_id} existing_result_id={existing.observation_id} "
+            f"latest_result_id={result.observation_id} existing_status={existing.settlement_status} "
+            f"existing_outcome={existing.observation_outcome_status} "
+            f"latest_outcome={result.outcome_status} expected_status={expected_status}"
         )
-    return True
+    if existing.observation_id == result.observation_id:
+        return "EXISTING"
+    if existing.observation_id is None or existing.observation_match_id != match_id:
+        raise SettlementEvidenceConflict(
+            "settlement lineage references a different canonical match "
+            f"decision_id={decision_id} match_id={match_id} "
+            f"existing_result_id={existing.observation_id} "
+            f"existing_result_match_id={existing.observation_match_id} "
+            f"latest_result_id={result.observation_id}"
+        )
+    _log(
+        "SETTLEMENT_EQUIVALENT_RESULT "
+        f"decision_id={decision_id} match_id={match_id} "
+        f"settlement_status={existing.settlement_status} "
+        f"existing_result_id={existing.observation_id} "
+        f"latest_result_id={result.observation_id} "
+        f"existing_outcome={existing.observation_outcome_status} "
+        f"latest_outcome={result.outcome_status}"
+    )
+    return "RECONCILED"
 
 
 def settle_type_a_match_winner_decisions(
@@ -156,6 +227,7 @@ def settle_type_a_match_winner_decisions(
     pending_results = 0
     inserted = 0
     existing = 0
+    reconciled = 0
     won = 0
     lost = 0
     void = 0
@@ -175,13 +247,17 @@ def settle_type_a_match_winner_decisions(
             winner_side=result.winner_side,
             selection_side=selection_side,
         )
-        if _verify_existing(
+        existing_state = _reconcile_existing(
             conn,
             decision_id=decision_id,
+            match_id=match_id,
             result=result,
             expected_status=status,
-        ):
+        )
+        if existing_state == "EXISTING":
             existing += 1
+        elif existing_state == "RECONCILED":
+            reconciled += 1
         else:
             created = conn.execute(
                 """
@@ -205,16 +281,21 @@ def settle_type_a_match_winner_decisions(
                 ),
             ).fetchone()
             if created is None:
-                # A concurrent settlement worker won the insert race. Verify its
-                # immutable truth rather than treating that as a failure.
-                if not _verify_existing(
+                # A concurrent settlement worker won the insert race. Reconcile
+                # its immutable truth rather than treating that as a failure.
+                concurrent_state = _reconcile_existing(
                     conn,
                     decision_id=decision_id,
+                    match_id=match_id,
                     result=result,
                     expected_status=status,
-                ):
+                )
+                if concurrent_state == "RECONCILED":
+                    reconciled += 1
+                elif concurrent_state == "EXISTING":
+                    existing += 1
+                else:
                     raise AssertionError("settlement conflict row disappeared after ON CONFLICT")
-                existing += 1
             else:
                 inserted += 1
 
@@ -232,6 +313,7 @@ def settle_type_a_match_winner_decisions(
         pending_results=pending_results,
         inserted=inserted,
         existing=existing,
+        reconciled=reconciled,
         won=won,
         lost=lost,
         void=void,

@@ -20,6 +20,7 @@ from typing import Any, Callable
 import psycopg
 
 from sports_edge_tennis.clv import activation_from_env, finalize_closing_evidence
+from sports_edge_tennis.live import production_lock
 from sports_edge_tennis.live.api_tennis_fixture_compat import (
     ingest_api_tennis_source_a_fixtures_with_upcoming_status,
 )
@@ -350,6 +351,47 @@ def main(
     parser.add_argument("--artifacts-dir", default="artifacts/live_mvp")
     args = parser.parse_args(argv)
 
+    if args.days < 1 or args.days > 7:
+        _log("BLOCKED_INVALID_HORIZON: --days must be between 1 and 7")
+        return 2
+    if not args.dsn:
+        _log("BLOCKED_NO_LIVE_MVP_DATABASE: no DSN configured")
+        return 2
+
+    # Exactly one production batch per environment. Acquire the authoritative
+    # ownership lock before schema work, provider calls, or run creation. A
+    # refused invocation exits immediately without touching providers.
+    try:
+        lock_info = production_lock.acquire_production_batch_lock(args.dsn)
+    except psycopg.Error as exc:
+        _log(f"PRODUCTION_LOCK_UNAVAILABLE error_type={type(exc).__name__}")
+        return 2
+    if lock_info is None:
+        _log(
+            "LIVE_BATCH_SKIPPED "
+            f"status={production_lock.SKIPPED_ALREADY_RUNNING} "
+            f"environment={production_lock.default_environment()} "
+            f"owner={production_lock.default_owner()}"
+        )
+        if summary_sink is not None:
+            summary_sink({"skipped_already_running": 1})
+        return 0
+    _log(
+        "PRODUCTION_LOCK_ACQUIRED "
+        f"environment={lock_info.environment} owner={lock_info.owner} "
+        f"reentrant={int(lock_info.reentrant)}"
+    )
+    try:
+        return _run_batch(args, summary_sink)
+    finally:
+        production_lock.release_production_batch_lock(lock_info)
+        _log(
+            "PRODUCTION_LOCK_RELEASED "
+            f"environment={lock_info.environment} owner={lock_info.owner}"
+        )
+
+
+def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> int:
     try:
         provider_authority = load_provider_authority(os.environ)
     except ValueError as exc:
@@ -363,13 +405,6 @@ def main(
         f"odds_provider={provider_authority.odds_mode} "
         f"pinnapi_configured={bool(load_secret('PINNAPI_KEY'))}"
     )
-
-    if args.days < 1 or args.days > 7:
-        _log("BLOCKED_INVALID_HORIZON: --days must be between 1 and 7")
-        return 2
-    if not args.dsn:
-        _log("BLOCKED_NO_LIVE_MVP_DATABASE: no DSN configured")
-        return 2
 
     if provider_authority.data_mode == LEGACY_DATA_MODE:
         fixture_provider_key = load_secret("API_TENNIS_API_KEY")
