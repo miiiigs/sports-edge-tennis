@@ -15,6 +15,7 @@ from pathlib import Path
 import psycopg
 
 from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
+from sports_edge_tennis.live import production_lock
 from sports_edge_tennis.live.batch import main as live_batch_main
 from sports_edge_tennis.live.provider_authority import assert_cutover_ready, TARGET_ODDS_MODE
 from sports_edge_tennis.live.validation import validation_mode_enabled
@@ -391,7 +392,8 @@ def _shadow_cycle(
     except Exception as exc:
         _log(
             "SHADOW_LANE_FAILED "
-            f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__}"
+            f"strategy={SHADOW_STRATEGY_CODE} error_type={type(exc).__name__} "
+            f"reason={str(exc).replace(' ', '_').replace(chr(10), '_')}"
         )
         return
 
@@ -401,6 +403,7 @@ def _shadow_cycle(
         f"strategy={SHADOW_STRATEGY_CODE} "
         f"eligible={settlement.eligible} pending={settlement.pending} "
         f"inserted={settlement.inserted} existing={settlement.existing} "
+        f"reconciled={settlement.reconciled} "
         f"won={settlement.won} lost={settlement.lost} "
         f"void={settlement.void} cancelled={settlement.cancelled}"
     )
@@ -474,6 +477,39 @@ def main(argv: list[str] | None = None) -> int:
         _log("SCHEMA_BLOCKED reason=NO_DATABASE")
         return 2
 
+    # Same ownership rule as the scheduled cron entrypoint: acquire the single
+    # authoritative environment lock before schema work or provider calls. A
+    # second concurrent invocation exits before doing any production work.
+    try:
+        lock_info = production_lock.acquire_production_batch_lock(dsn)
+    except psycopg.Error as exc:
+        _log(f"PRODUCTION_LOCK_UNAVAILABLE error_type={type(exc).__name__}")
+        return 2
+    if lock_info is None:
+        _log(
+            "PRODUCTION_BATCH_SKIPPED "
+            f"status={production_lock.SKIPPED_ALREADY_RUNNING} "
+            f"environment={production_lock.default_environment()} "
+            f"owner={production_lock.default_owner()}"
+        )
+        return 0
+    _log(
+        "PRODUCTION_LOCK_ACQUIRED "
+        f"entrypoint=production_batch environment={lock_info.environment} "
+        f"owner={lock_info.owner} reentrant={int(lock_info.reentrant)}"
+    )
+    try:
+        return _run_batch(dsn, argv)
+    finally:
+        production_lock.release_production_batch_lock(lock_info)
+        _log(
+            "PRODUCTION_LOCK_RELEASED "
+            f"entrypoint=production_batch environment={lock_info.environment} "
+            f"owner={lock_info.owner}"
+        )
+
+
+def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     shadow_cycle_started_at = datetime.now(timezone.utc)
 
     try:
@@ -588,6 +624,7 @@ def main(argv: list[str] | None = None) -> int:
         f"eligible={outcome.eligible_decisions} "
         f"pending_results={outcome.pending_results} "
         f"inserted={outcome.inserted} existing={outcome.existing} "
+        f"reconciled={outcome.reconciled} "
         f"won={outcome.won} lost={outcome.lost} "
         f"void={outcome.void} cancelled={outcome.cancelled}"
     )

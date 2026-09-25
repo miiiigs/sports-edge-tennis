@@ -95,6 +95,30 @@ def _reset_db(conn: psycopg.Connection) -> None:
     )
 
 
+@pytest.fixture(autouse=True)
+def _stub_production_lock(request, monkeypatch):
+    """Keep unit tests off a live database unless they opt into the real lock."""
+    if request.node.get_closest_marker("real_production_lock"):
+        return
+    from sports_edge_tennis.live import production_lock
+
+    def fake_acquire(dsn, *, environment=None, owner=None, connect=None):
+        return production_lock.ProductionLockInfo(
+            environment=environment or "test",
+            owner=owner or "test",
+            reentrant=False,
+            lock_namespace=production_lock.PRODUCTION_BATCH_LOCK_NAMESPACE,
+            lock_object=0,
+        )
+
+    monkeypatch.setattr(
+        production_lock, "acquire_production_batch_lock", fake_acquire
+    )
+    monkeypatch.setattr(
+        production_lock, "release_production_batch_lock", lambda info: None
+    )
+
+
 @pytest.fixture(scope="session")
 def postgres_dsn() -> str:
     if not POSTGRES_DSN:

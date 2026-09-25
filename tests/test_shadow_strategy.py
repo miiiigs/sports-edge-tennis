@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
+import pytest
+
 from sports_edge_tennis.performance import shadow_strategy as shadow
 
 
@@ -110,6 +112,73 @@ def test_shadow_tables_are_separate_from_production_decisions():
     assert "create table if not exists shadow_strategy_clv" in sql
     assert "alter table decisions" not in sql
     assert "insert into decisions" not in sql
+
+
+class _SettlementConn:
+    """Minimal fake for the shadow settlement query sequence."""
+
+    def __init__(self, *, positions, results, priors):
+        self.positions = positions
+        self.results = results
+        self.priors = priors
+        self.inserted = []
+
+    def execute(self, sql, params=()):
+        normalized = " ".join(sql.split())
+        if "CREATE TABLE" in normalized or "DO $$" in normalized:
+            return _Result()
+        if "FROM shadow_strategy_settlements" in normalized:
+            return _Result(one=self.priors.get(params[0]))
+        if "FROM match_result_observations" in normalized:
+            return _Result(one=self.results.get(params[0]))
+        if "FROM shadow_strategy_positions" in normalized:
+            return _Result(all_rows=self.positions)
+        if "INSERT INTO shadow_strategy_settlements" in normalized:
+            self.inserted.append(params)
+            return _Result(one=(params[0],))
+        raise AssertionError(f"unexpected SQL: {normalized}")
+
+
+def _settled_at():
+    return datetime(2026, 9, 20, 12, 0, tzinfo=timezone.utc)
+
+
+def test_shadow_settlement_reconciles_equivalent_new_result_row():
+    conn = _SettlementConn(
+        positions=[(1, 55, 1)],
+        results={55: (900, "COMPLETED", 1)},
+        priors={1: (700, "WON", 55)},
+    )
+
+    outcome = shadow.settle_shadow_positions(conn, settled_at=_settled_at())
+
+    assert outcome.reconciled == 1
+    assert outcome.existing == 0
+    assert outcome.inserted == 0
+    assert outcome.won == 1
+    assert conn.inserted == []
+
+
+def test_shadow_settlement_actual_contradiction_fails_closed():
+    conn = _SettlementConn(
+        positions=[(1, 55, 1)],
+        results={55: (900, "COMPLETED", 2)},
+        priors={1: (700, "WON", 55)},
+    )
+
+    with pytest.raises(shadow.ShadowSettlementConflict):
+        shadow.settle_shadow_positions(conn, settled_at=_settled_at())
+
+
+def test_shadow_settlement_different_match_lineage_fails_closed():
+    conn = _SettlementConn(
+        positions=[(1, 55, 1)],
+        results={55: (900, "COMPLETED", 1)},
+        priors={1: (700, "WON", 99)},
+    )
+
+    with pytest.raises(shadow.ShadowSettlementConflict):
+        shadow.settle_shadow_positions(conn, settled_at=_settled_at())
 
 
 def test_shadow_schema_bootstraps_on_postgres(db):

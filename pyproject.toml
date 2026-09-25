@@ -36,3 +36,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "real_production_lock: exercise the real PostgreSQL advisory production lock",
+]

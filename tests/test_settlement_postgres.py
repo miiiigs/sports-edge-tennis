@@ -323,3 +323,112 @@ def test_later_conflicting_result_truth_fails_closed(db):
     )
     with pytest.raises(SettlementEvidenceConflict):
         settle_type_a_match_winner_decisions(db, settled_at=_dt(15, 1))
+
+
+def _persisted_settlement(db: psycopg.Connection, decision_id: int):
+    return db.execute(
+        """
+        SELECT match_result_observation_id, settlement_status::text
+        FROM decision_settlements
+        WHERE decision_id = %s
+        """,
+        (decision_id,),
+    ).fetchone()
+
+
+def test_same_outcome_new_result_row_reconciles_without_rewrite(db):
+    """decision_id=90 style: same sporting outcome re-observed as a new row.
+
+    The committed settlement must be preserved and the tail must not abort.
+    """
+    match_id = _seed_match(db)
+    decision_id = _seed_bet(db, match_id=match_id)
+
+    original_result = _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        observed_at=_dt(14),
+    )
+    first = settle_type_a_match_winner_decisions(db, settled_at=_dt(14, 1))
+    assert first.inserted == 1
+    assert first.won == 1
+
+    latest_result = _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        observed_at=_dt(15),
+    )
+    assert latest_result != original_result
+
+    second = settle_type_a_match_winner_decisions(db, settled_at=_dt(15, 1))
+    assert second.reconciled == 1
+    assert second.inserted == 0
+    assert second.existing == 0
+    assert second.won == 1
+
+    persisted = _persisted_settlement(db, decision_id)
+    assert int(persisted[0]) == original_result
+    assert persisted[1] == "WON"
+
+    third = settle_type_a_match_winner_decisions(db, settled_at=_dt(16))
+    assert third.reconciled == 1
+    assert third.won == 1
+
+
+def test_duplicate_same_outcome_result_evidence_is_idempotent(db):
+    match_id = _seed_match(db)
+    decision_id = _seed_bet(db, match_id=match_id)
+
+    _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        observed_at=_dt(14),
+    )
+    latest_result = _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="COMPLETED",
+        winner_side=1,
+        observed_at=_dt(15),
+    )
+
+    first = settle_type_a_match_winner_decisions(db, settled_at=_dt(15, 1))
+    assert first.inserted == 1
+    assert first.reconciled == 0
+    persisted = _persisted_settlement(db, decision_id)
+    assert int(persisted[0]) == latest_result
+
+    repeat = settle_type_a_match_winner_decisions(db, settled_at=_dt(15, 2))
+    assert repeat.existing == 1
+    assert repeat.inserted == 0
+
+
+def test_equivalent_void_result_does_not_abort(db):
+    match_id = _seed_match(db)
+    decision_id = _seed_bet(db, match_id=match_id)
+    _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="RETIRED",
+        winner_side=1,
+        observed_at=_dt(14),
+    )
+    settle_type_a_match_winner_decisions(db, settled_at=_dt(14, 1))
+
+    _seed_result(
+        db,
+        match_id=match_id,
+        outcome_status="WALKOVER",
+        winner_side=1,
+        observed_at=_dt(15),
+    )
+    reconciled = settle_type_a_match_winner_decisions(db, settled_at=_dt(15, 1))
+    assert reconciled.reconciled == 1
+    assert reconciled.void == 1
+    assert _persisted_settlement(db, decision_id)[1] == "VOID"

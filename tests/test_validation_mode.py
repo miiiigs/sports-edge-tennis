@@ -130,6 +130,7 @@ def test_validation_mode_disabled_runs_settlement(monkeypatch):
             pending_results=0,
             inserted=0,
             existing=0,
+            reconciled=0,
             won=0,
             lost=0,
             void=0,
@@ -148,3 +149,26 @@ def test_validation_mode_disabled_runs_settlement(monkeypatch):
     assert production_batch.main([]) == 0
     assert called["settlement"] is True
     assert called["shadow"] is True
+
+
+def test_genuine_settlement_conflict_fails_closed_and_skips_shadow(monkeypatch, capsys):
+    from sports_edge_tennis.settlement import SettlementEvidenceConflict
+
+    _wire_validation_main(monkeypatch)
+    monkeypatch.setattr(production_batch, "validation_mode_enabled", lambda: False)
+
+    def conflict(conn, *, settled_at):
+        raise SettlementEvidenceConflict(
+            "immutable settlement conflicts with latest canonical result truth"
+        )
+
+    shadow_called = []
+    monkeypatch.setattr(production_batch, "settle_type_a_match_winner_decisions", conflict)
+    monkeypatch.setattr(
+        production_batch, "_shadow_cycle", lambda *a, **k: shadow_called.append(1)
+    )
+
+    assert production_batch.main([]) == 2
+    out = capsys.readouterr().out
+    assert "SETTLEMENT_CONFLICT" in out
+    assert shadow_called == []

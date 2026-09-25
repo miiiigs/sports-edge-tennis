@@ -269,6 +269,7 @@ class ShadowSettlementOutcome:
     pending: int
     inserted: int
     existing: int
+    reconciled: int
     won: int
     lost: int
     void: int
@@ -826,7 +827,7 @@ def settle_shadow_positions(
         (STRATEGY_CODE,),
     ).fetchall()
 
-    pending = inserted = existing = won = lost = void = cancelled = 0
+    pending = inserted = existing = reconciled = won = lost = void = cancelled = 0
     for row in rows:
         position_id, match_id, side = int(row[0]), int(row[1]), int(row[2])
         result = _latest_terminal_result(conn, match_id)
@@ -843,19 +844,47 @@ def settle_shadow_positions(
         )
         prior = conn.execute(
             """
-            SELECT match_result_observation_id, settlement_status
-            FROM shadow_strategy_settlements
-            WHERE shadow_position_id = %s
+            SELECT
+                s.match_result_observation_id,
+                s.settlement_status,
+                mro.match_id
+            FROM shadow_strategy_settlements s
+            LEFT JOIN match_result_observations mro
+              ON mro.match_result_observation_id = s.match_result_observation_id
+            WHERE s.shadow_position_id = %s
             """,
             (position_id,),
         ).fetchone()
         if prior is not None:
-            if int(prior[0]) != result_id or str(prior[1]) != status:
+            prior_result_id = int(prior[0]) if prior[0] is not None else None
+            prior_status = str(prior[1])
+            prior_match_id = int(prior[2]) if prior[2] is not None else None
+            if prior_status != status:
                 raise ShadowSettlementConflict(
                     "immutable shadow settlement conflicts with latest canonical result "
-                    f"position={position_id}"
+                    f"position={position_id} match_id={match_id} "
+                    f"existing_result_id={prior_result_id} latest_result_id={result_id} "
+                    f"existing_status={prior_status} expected_status={status}"
                 )
-            existing += 1
+            if prior_result_id != result_id:
+                if prior_result_id is None or prior_match_id != match_id:
+                    raise ShadowSettlementConflict(
+                        "shadow settlement lineage references a different canonical match "
+                        f"position={position_id} match_id={match_id} "
+                        f"existing_result_id={prior_result_id} "
+                        f"existing_result_match_id={prior_match_id} "
+                        f"latest_result_id={result_id}"
+                    )
+                reconciled += 1
+                print(
+                    "SHADOW_SETTLEMENT_EQUIVALENT_RESULT "
+                    f"position={position_id} match_id={match_id} "
+                    f"settlement_status={prior_status} "
+                    f"existing_result_id={prior_result_id} latest_result_id={result_id}",
+                    flush=True,
+                )
+            else:
+                existing += 1
         else:
             created = conn.execute(
                 """
@@ -876,8 +905,24 @@ def settle_shadow_positions(
                 ),
             ).fetchone()
             if created is None:
-                raise ShadowSettlementConflict("concurrent shadow settlement could not be verified")
-            inserted += 1
+                concurrent = conn.execute(
+                    """
+                    SELECT match_result_observation_id, settlement_status
+                    FROM shadow_strategy_settlements
+                    WHERE shadow_position_id = %s
+                    """,
+                    (position_id,),
+                ).fetchone()
+                if concurrent is None or str(concurrent[1]) != status:
+                    raise ShadowSettlementConflict(
+                        "concurrent shadow settlement could not be verified"
+                    )
+                if int(concurrent[0]) != result_id:
+                    reconciled += 1
+                else:
+                    existing += 1
+            else:
+                inserted += 1
 
         won += int(status == "WON")
         lost += int(status == "LOST")
@@ -889,6 +934,7 @@ def settle_shadow_positions(
         pending=pending,
         inserted=inserted,
         existing=existing,
+        reconciled=reconciled,
         won=won,
         lost=lost,
         void=void,
