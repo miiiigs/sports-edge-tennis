@@ -235,3 +235,117 @@ def test_parse_rejections_remain_accounted_for_in_dry_run(monkeypatch) -> None:
     assert result.rows_ingested == 0
     assert result.rows_rejected == 3
     assert result.status == "FAILED"
+
+
+def _promote(**kwargs):
+    return ingest._oriented_participants_after_provider_resolution(
+        overlap_status="SOURCE_ID_RESOLVED", **kwargs
+    )
+
+
+def test_both_placeholder_slots_promote_to_provider_orientation() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Qf1",
+        canonical_p2=20,
+        canonical_p2_name="Qf2",
+        incoming_p1=101,
+        incoming_p1_name="Real One",
+        incoming_p2=202,
+        incoming_p2_name="Real Two",
+    ) == (101, 202)
+
+
+def test_retained_real_player_keeps_its_canonical_side_when_side_two() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Qf1",
+        canonical_p2=20,
+        canonical_p2_name="Real Two",
+        incoming_p1=303,
+        incoming_p1_name="Real New",
+        incoming_p2=20,
+        incoming_p2_name="Real Two",
+    ) == (303, 20)
+
+
+def test_retained_real_player_keeps_its_canonical_side_when_side_one() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Real One",
+        canonical_p2=20,
+        canonical_p2_name="Qf2",
+        incoming_p1=10,
+        incoming_p1_name="Real One",
+        incoming_p2=404,
+        incoming_p2_name="Real New",
+    ) == (10, 404)
+
+
+def test_retained_placeholder_side_is_preserved() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Qf1",
+        canonical_p2=20,
+        canonical_p2_name="Qf2",
+        incoming_p1=10,
+        incoming_p1_name="Qf1",
+        incoming_p2=505,
+        incoming_p2_name="Real New",
+    ) == (10, 505)
+
+
+def test_real_participant_substitution_fails_closed() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Real One",
+        canonical_p2=20,
+        canonical_p2_name="Real Two",
+        incoming_p1=10,
+        incoming_p1_name="Real One",
+        incoming_p2=606,
+        incoming_p2_name="Real Three",
+    ) is None
+
+
+def test_incoming_placeholder_does_not_promote() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Qf1",
+        canonical_p2=20,
+        canonical_p2_name="Qf2",
+        incoming_p1=707,
+        incoming_p1_name="Real New",
+        incoming_p2=808,
+        incoming_p2_name="Qf9",
+    ) is None
+
+
+def test_no_promotion_without_stable_provider_event_identity() -> None:
+    assert (
+        ingest._oriented_participants_after_provider_resolution(
+            overlap_status="EXACT_EXISTING_MATCH",
+            canonical_p1=10,
+            canonical_p1_name="Qf1",
+            canonical_p2=20,
+            canonical_p2_name="Qf2",
+            incoming_p1=707,
+            incoming_p1_name="Real New",
+            incoming_p2=808,
+            incoming_p2_name="Real Two",
+        )
+        is None
+    )
+
+
+def test_identical_participant_pair_is_not_a_promotion() -> None:
+    assert _promote(
+        canonical_p1=10,
+        canonical_p1_name="Qf1",
+        canonical_p2=20,
+        canonical_p2_name="Qf2",
+        incoming_p1=10,
+        incoming_p1_name="Qf1",
+        incoming_p2=20,
+        incoming_p2_name="Qf2",
+    ) is None

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Mapping, Sequence
@@ -9,6 +10,17 @@ from sports_edge_tennis.live.sportradar_probe import normalize_sportradar_surfac
 
 SOURCE_SYSTEM = "SPORTRADAR"
 ADAPTER_VERSION = "SPORTRADAR_TENNIS_DAILY_SUMMARY_V1"
+
+# Sportradar emits draw/qualification slot labels in place of a player name until
+# the bracket resolves. These are not legitimate participants and must never be
+# modeled; they are only ever replaced by a deterministic participant update.
+_PLACEHOLDER_NAME_PATTERN = re.compile(
+    r"^(R\d+P\d+|Qf\d+|WQF\d+)$", re.IGNORECASE
+)
+
+
+def is_placeholder_name(name: str | None) -> bool:
+    return bool(_PLACEHOLDER_NAME_PATTERN.match((name or "").strip()))
 
 SUPPORTED_STATUSES = {
     "not_started": "SCHEDULED",
@@ -344,6 +356,7 @@ __all__ = [
     "SportradarFixtureError",
     "SportradarFixtureParseOutcome",
     "classify_competition",
+    "is_placeholder_name",
     "parse_daily_summaries",
     "parse_summary",
 ]
