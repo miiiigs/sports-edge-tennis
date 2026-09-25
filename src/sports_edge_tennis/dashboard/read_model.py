@@ -13,6 +13,7 @@ from decimal import Decimal
 import psycopg
 
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.dashboard.market_overlay import MarketDecisionView
 
 
 @dataclass(frozen=True)
@@ -245,6 +246,155 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
         run_status=None,
         matches=[],
     )
+
+
+# ---------------------------------------------------------------------------
+# Issued daily pick ledger.
+#
+# The client page must show what was *issued* during the sporting day, not the
+# newest re-evaluation. A later degraded run (e.g. the run-616 A2 regression)
+# must never erase a Qualified Model Pick or a Value Bet that was already
+# issued earlier the same day. This is a read-model selection rule; no
+# prediction, Manager, decision, or settlement row is ever mutated.
+# ---------------------------------------------------------------------------
+
+_DAY_RUNS_SQL = """
+    SELECT pr.prediction_run_id, pr.as_of
+    FROM prediction_runs pr
+    WHERE pr.run_status = 'COMPLETED'
+      AND EXISTS (
+          SELECT 1
+          FROM prediction_run_targets prt
+          JOIN LATERAL (
+              SELECT mv.match_start_at
+              FROM match_versions mv
+              WHERE mv.match_id = prt.match_id
+                AND mv.as_of <= pr.as_of
+                AND mv.source_observed_at <= pr.as_of
+              ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
+              LIMIT 1
+          ) target_mv ON TRUE
+          WHERE prt.prediction_run_id = pr.prediction_run_id
+            AND (target_mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+      )
+    ORDER BY pr.as_of ASC, pr.prediction_run_id ASC
+"""
+
+
+def completed_day_run_rows(conn: psycopg.Connection, run_date: date) -> list[tuple[int, datetime]]:
+    """Completed prediction runs that target ``run_date``, earliest first."""
+    return [
+        (int(row[0]), row[1]) for row in conn.execute(_DAY_RUNS_SQL, (run_date,)).fetchall()
+    ]
+
+
+def get_issued_day_state(conn: psycopg.Connection, run_date: date) -> RunState:
+    """Return the issued daily Model Pick ledger for ``run_date``.
+
+    Qualified Model Picks are the *earliest* Manager CONSENSUS per sporting
+    match across every completed run that day. Wide-Spread tracking picks are
+    taken from the latest completed evaluation, excluding any match that already
+    has an issued qualified pick (qualified always wins for a match).
+    """
+    runs = completed_day_run_rows(conn, run_date)
+    if not runs:
+        return get_run_for_date(conn, run_date)
+
+    run_ids = [run_id for run_id, _ in runs]
+    latest_run_id, latest_as_of = runs[-1]
+
+    qualified_rows = conn.execute(
+        """
+        SELECT DISTINCT ON (mcr.match_id)
+            mcr.match_id,
+            mcr.prediction_run_id
+        FROM manager_consensus_results mcr
+        WHERE mcr.manager_status = 'CONSENSUS'
+          AND mcr.prediction_run_id = ANY(%s)
+        ORDER BY mcr.match_id, mcr.as_of ASC, mcr.prediction_run_id ASC
+        """,
+        (run_ids,),
+    ).fetchall()
+
+    matches_by_run: dict[int, set[int]] = {}
+    for match_id, run_id in qualified_rows:
+        matches_by_run.setdefault(int(run_id), set()).add(int(match_id))
+
+    issued: dict[int, MatchView] = {}
+    for run_id, wanted in matches_by_run.items():
+        for match in load_run_matches(conn, run_id):
+            if match.match_id in wanted and match.match_id not in issued:
+                issued[match.match_id] = match
+
+    # Additive latest-evaluation Wide-Spread tracking picks, never overriding an
+    # issued qualified pick for the same sporting match.
+    for match in load_run_matches(conn, latest_run_id):
+        if match.match_id in issued:
+            continue
+        if match.manager_status == "NO_BET" and match.reason_code == "AGENT3_ABSTENTION_SPREAD_EXCEEDED":
+            issued[match.match_id] = match
+
+    return RunState(
+        kind="POPULATED",
+        run_date=run_date,
+        as_of=latest_as_of,
+        prediction_run_id=latest_run_id,
+        run_status="COMPLETED",
+        matches=list(issued.values()),
+    )
+
+
+def get_issued_market_decisions(
+    conn: psycopg.Connection,
+    run_date: date,
+) -> dict[int, MarketDecisionView]:
+    """First actually-issued BET decision per sporting match for the day.
+
+    Uses the earliest published BET per match across the day's completed runs so
+    a Value Bet keeps its issued bookmaker, price, edge, and stake even after a
+    later re-evaluation or market refresh. Never recalculates old value bets.
+    """
+    runs = completed_day_run_rows(conn, run_date)
+    if not runs:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT DISTINCT ON (d.match_id)
+            d.match_id,
+            d.decision_status::text,
+            d.reason_code::text,
+            d.selection_side,
+            d.market_decimal_price,
+            d.sharp_reference_price,
+            d.price_bookmaker_code,
+            d.edge_pct,
+            d.min_acceptable_odds,
+            d.suggested_stake_fraction,
+            d.published_at
+        FROM decisions d
+        WHERE d.prediction_run_id = ANY(%s)
+          AND d.decision_status = 'BET'
+          AND d.manager_consensus_result_id IS NOT NULL
+        ORDER BY d.match_id, COALESCE(d.published_at, d.as_of) ASC, d.decision_id ASC
+        """,
+        ([run_id for run_id, _ in runs],),
+    ).fetchall()
+    return {
+        int(row[0]): MarketDecisionView(
+            match_id=int(row[0]),
+            decision_status=str(row[1]),
+            reason_code=str(row[2]),
+            selected_side=row[3],
+            market_decimal_price=row[4],
+            sharp_reference_price=row[5],
+            price_bookmaker_code=row[6],
+            edge_pct=row[7],
+            min_acceptable_odds=row[8],
+            suggested_stake_fraction=row[9],
+            published_at=row[10],
+        )
+        for row in rows
+    }
 
 
 def load_run_matches(conn: psycopg.Connection, prediction_run_id: int) -> list[MatchView]:
