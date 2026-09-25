@@ -17,7 +17,7 @@ truth.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Sequence
 
@@ -65,10 +65,13 @@ from sports_edge_tennis.runner.agent3_live_snapshot import (
     build_live_agent3_history_snapshot,
 )
 from sports_edge_tennis.runner.contracts import ResolvedTargetV1, TargetResolutionError
-from sports_edge_tennis.runner.targets import (
-    _has_non_api_source_identity,
-    resolve_target,
+from sports_edge_tennis.replay.identity_pit import (
+    STATUS_BRIDGED,
+    STATUS_HISTORICAL,
+    STATUS_LIVE_UNRESOLVED,
+    resolve_model_player_id_pit,
 )
+from sports_edge_tennis.runner.targets import resolve_target
 from sports_edge_tennis.veto.contracts import VetoContext
 from sports_edge_tennis.veto.service import (
     VETO_POLICY_VERSION,
@@ -231,27 +234,47 @@ def _load_actual_result(
     )
 
 
-def _identity_status(
+def _resolve_identity_pit(
     conn: psycopg.Connection,
     *,
     target: ResolvedTargetV1,
     match_version_id: int,
-) -> str:
+    as_of: datetime,
+) -> tuple[ResolvedTargetV1, str]:
+    """Resolve model player identity using only evidence available at ``as_of``.
+
+    ``resolve_target`` bridges using current canonical identity. That is correct
+    for live execution but would leak later reconciliation into a historical
+    replay, so the replay overrides both model player ids with a PIT-validated
+    resolution and fails closed when either side is not provably available.
+    """
+
     row = conn.execute(
         "SELECT player_1_id, player_2_id FROM match_versions WHERE match_version_id = %s",
         (match_version_id,),
     ).fetchone()
     if row is None:
-        return "LIVE_UNRESOLVED"
-    live_ids = (int(row[0]), int(row[1]))
-    model_ids = (target.player_1_id, target.player_2_id)
-    if model_ids != live_ids:
-        return "BRIDGED"
-    if _has_non_api_source_identity(conn, live_ids[0]) and _has_non_api_source_identity(
-        conn, live_ids[1]
-    ):
-        return "HISTORICAL"
-    return "LIVE_UNRESOLVED"
+        return target, STATUS_LIVE_UNRESOLVED
+    live_p1, live_p2 = int(row[0]), int(row[1])
+
+    resolution_p1 = resolve_model_player_id_pit(conn, live_player_id=live_p1, as_of=as_of)
+    resolution_p2 = resolve_model_player_id_pit(conn, live_player_id=live_p2, as_of=as_of)
+
+    model_p1 = resolution_p1.model_player_id
+    model_p2 = resolution_p2.model_player_id
+
+    if model_p1 == model_p2:
+        return replace(target, player_1_id=live_p1, player_2_id=live_p2), STATUS_LIVE_UNRESOLVED
+
+    statuses = {resolution_p1.status, resolution_p2.status}
+    if STATUS_LIVE_UNRESOLVED in statuses:
+        status = STATUS_LIVE_UNRESOLVED
+    elif STATUS_BRIDGED in statuses:
+        status = STATUS_BRIDGED
+    else:
+        status = STATUS_HISTORICAL
+
+    return replace(target, player_1_id=model_p1, player_2_id=model_p2), status
 
 
 def _odds_proof(
@@ -391,8 +414,11 @@ def _load_match_input(
         raise ReplayLoadError(str(exc)) from exc
 
     surface_status = "RESOLVED" if target.surface is not None else "AMBIGUOUS_HISTORY"
-    identity_status = _identity_status(
-        conn, target=target, match_version_id=target.match_version_id
+    target, identity_status = _resolve_identity_pit(
+        conn,
+        target=target,
+        match_version_id=target.match_version_id,
+        as_of=prediction_as_of,
     )
 
     competition_tier = load_competition_tier(

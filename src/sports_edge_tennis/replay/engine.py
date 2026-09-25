@@ -261,8 +261,8 @@ def _evaluate_match(
             (
                 ReplayExclusion(
                     sporting_match_id=target.match_id,
-                    reason="IDENTITY_BLOCKED",
-                    detail="live identity could not be bridged to historical model identity",
+                    reason="IDENTITY_NOT_AVAILABLE_PIT",
+                    detail="identity evidence was not provably available at the replay cutoff",
                     run_id=run.run_id,
                 ),
             ),

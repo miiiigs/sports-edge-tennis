@@ -31,6 +31,8 @@ class ReplayVersionSet:
     market_policy_version: str
     veto_policy_version: str
     staking_rule_version: str
+    identity_pit_policy_version: str = "identity_pit_v1"
+    surface_pit_policy_version: str = "surface_pit_v1"
 
 
 @dataclass(frozen=True)
@@ -58,6 +60,8 @@ class ReplayManifest:
     market_version: str
     veto_version: str
     staking_version: str
+    identity_pit_policy_version: str
+    surface_pit_policy_version: str
     run_count: int
     matches_considered: int
     matches_excluded: int
@@ -104,7 +108,9 @@ def build_manifest(
     missing_odds = exclusion_counts["MISSING_MARKET_ODDS"] + exclusion_counts[
         "SHARP_REFERENCE_UNAVAILABLE_PIT"
     ]
-    identity_failures = exclusion_counts["IDENTITY_BLOCKED"]
+    identity_failures = exclusion_counts["IDENTITY_BLOCKED"] + exclusion_counts[
+        "IDENTITY_NOT_AVAILABLE_PIT"
+    ]
     surface_failures = exclusion_counts["SURFACE_BLOCKED"]
 
     ledger_payload = {
@@ -130,6 +136,8 @@ def build_manifest(
         market_version=versions.market_policy_version,
         veto_version=versions.veto_policy_version,
         staking_version=versions.staking_rule_version,
+        identity_pit_policy_version=versions.identity_pit_policy_version,
+        surface_pit_policy_version=versions.surface_pit_policy_version,
         run_count=len(result.runs),
         matches_considered=len(_distinct_matches(result)),
         matches_excluded=len({exclusion.sporting_match_id for exclusion in result.exclusions}),

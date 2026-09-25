@@ -47,9 +47,11 @@ def test_selftest_exercises_the_full_funnel():
     }.issubset(outcomes)
 
     exclusion_reasons = {exclusion.reason for exclusion in result.exclusions}
-    assert {"IDENTITY_BLOCKED", "SURFACE_BLOCKED", "MISSING_MARKET_ODDS"}.issubset(
-        exclusion_reasons
-    )
+    assert {
+        "IDENTITY_NOT_AVAILABLE_PIT",
+        "SURFACE_BLOCKED",
+        "MISSING_MARKET_ODDS",
+    }.issubset(exclusion_reasons)
 
     classifications = {pick.classification for pick in result.model_picks}
     assert "A1_A2_AGREE_WIDE_SPREAD_NOT_MANAGER_QUALIFIED" in classifications

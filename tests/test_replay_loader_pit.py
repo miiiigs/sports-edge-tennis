@@ -42,12 +42,18 @@ def _insert_player(conn, name: str, *, historical: bool = True) -> int:
         conn, "INSERT INTO players (canonical_name) VALUES (%s) RETURNING player_id", (name,)
     )
     if historical:
+        # created_at is set before the replay cutoff so the historical mapping is
+        # provably PIT-available at PREDICTION.
         conn.execute(
             """
-            INSERT INTO player_source_ids (player_id, source_system, source_player_id)
-            VALUES (%s, 'SACKMANN', %s)
+            INSERT INTO player_source_ids (player_id, source_system, source_player_id, created_at)
+            VALUES (%s, 'SACKMANN', %s, %s)
             """,
-            (player_id, f"sack-{player_id}"),
+            (
+                player_id,
+                f"sack-{player_id}",
+                PREDICTION - timedelta(days=30),
+            ),
         )
     return player_id
 
@@ -213,7 +219,7 @@ def test_loader_marks_identity_blocked_without_historical_identity(db: psycopg.C
 
     result = run_replay(loaded.runs)
     reasons = {exclusion.reason for exclusion in result.exclusions}
-    assert "IDENTITY_BLOCKED" in reasons
+    assert "IDENTITY_NOT_AVAILABLE_PIT" in reasons
     assert result.model_picks == ()
 
 
