@@ -23,22 +23,9 @@ from typing import Sequence
 
 import psycopg
 
-from sports_edge_tennis.agents.agent1_surface_elo import (
-    DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
-    replay_history as replay_agent1_history,
-)
-from sports_edge_tennis.agents.agent2_hierarchical_markov import (
-    DEFAULT_CONFIG as AGENT2_DEFAULT_CONFIG,
-)
 from sports_edge_tennis.agents.agent3_intransitivity import (
     DEFAULT_CONFIG as AGENT3_DEFAULT_CONFIG,
 )
-from sports_edge_tennis.data.agent1_history import load_agent1_history
-from sports_edge_tennis.data.agent2_history import (
-    build_history_snapshot as build_agent2_snapshot,
-    load_agent2_history,
-)
-from sports_edge_tennis.data.agent3_history import load_agent3_history
 from sports_edge_tennis.manager.contracts import ManagerPolicyV1
 from sports_edge_tennis.market.contracts import (
     MARKET_POLICY_KEY,
@@ -60,10 +47,9 @@ from sports_edge_tennis.replay.contracts import (
     ReplayMatchInput,
     ReplayRunInput,
 )
+from sports_edge_tennis.replay.history_cache import ReplayHistoryCache
 from sports_edge_tennis.replay.serde import payload_sha256
-from sports_edge_tennis.runner.agent3_live_snapshot import (
-    build_live_agent3_history_snapshot,
-)
+from sports_edge_tennis.replay.surface_pit import resolve_surface_pit
 from sports_edge_tennis.runner.contracts import ResolvedTargetV1, TargetResolutionError
 from sports_edge_tennis.replay.identity_pit import (
     STATUS_BRIDGED,
@@ -136,6 +122,7 @@ class ReplayLoadRequest:
 class LoadedReplayInputs:
     runs: tuple[ReplayRunInput, ...]
     input_snapshot_ids: tuple[str, ...]
+    history_mode: str = "BASELINE_PER_CUTOFF"
 
 
 def load_manager_policy(conn: psycopg.Connection, *, policy_version: str) -> ManagerPolicyV1:
@@ -413,7 +400,17 @@ def _load_match_input(
     except TargetResolutionError as exc:
         raise ReplayLoadError(str(exc)) from exc
 
-    surface_status = "RESOLVED" if target.surface is not None else "AMBIGUOUS_HISTORY"
+    surface_resolution = resolve_surface_pit(
+        conn,
+        match_id=match_id,
+        as_of=prediction_as_of,
+        canonical_name=target.canonical_tournament_name,
+        tour_scope=target.tour_scope,
+        season_year=target.season_year,
+    )
+    target = replace(target, surface=surface_resolution.surface)
+    surface_status = surface_resolution.status
+
     target, identity_status = _resolve_identity_pit(
         conn,
         target=target,
@@ -446,12 +443,6 @@ def _load_match_input(
     )
 
 
-def _snapshot_cutoff(observations, attribute: str) -> datetime | None:
-    values = [getattr(observation, attribute) for observation in observations]
-    values = [value for value in values if value is not None]
-    return max(values) if values else None
-
-
 def load_replay_inputs(
     conn: psycopg.Connection,
     request: ReplayLoadRequest,
@@ -468,51 +459,20 @@ def load_replay_inputs(
     runs: list[ReplayRunInput] = []
     snapshot_ids: list[str] = []
 
+    history_cache = ReplayHistoryCache(
+        conn,
+        cutoffs=[spec.prediction_as_of for spec in request.run_specs],
+        a3_lookback_days=AGENT3_DEFAULT_CONFIG.lookback_days,
+    )
+
     for spec in request.run_specs:
-        agent1_observations = load_agent1_history(conn, cutoff=spec.prediction_as_of)
-        agent1_replay = replay_agent1_history(
-            agent1_observations, spec.prediction_as_of, AGENT1_DEFAULT_CONFIG
-        )
-
-        agent2_observations = load_agent2_history(conn, cutoff=spec.prediction_as_of)
-        agent2_snapshot = build_agent2_snapshot(
-            agent2_observations, cutoff=spec.prediction_as_of
-        )
-
-        agent3_days = (AGENT3_DEFAULT_CONFIG.lookback_days * 2) + 2
-        agent3_observations = load_agent3_history(
-            conn,
-            cutoff=spec.prediction_as_of,
-            date_start=(spec.prediction_as_of - timedelta(days=agent3_days)).date(),
-        )
-        agent3_snapshot = build_live_agent3_history_snapshot(
-            agent3_observations, cutoff=spec.prediction_as_of
-        )
-
-        a1_id = payload_sha256(
-            {
-                "kind": "AGENT_1",
-                "cutoff": spec.prediction_as_of,
-                "count": len(agent1_observations),
-                "max_observed": _snapshot_cutoff(agent1_observations, "source_observed_at"),
-            }
-        )
-        a2_id = payload_sha256(
-            {
-                "kind": "AGENT_2",
-                "cutoff": spec.prediction_as_of,
-                "count": len(agent2_observations),
-                "max_visible": _snapshot_cutoff(agent2_observations, "result_as_of"),
-            }
-        )
-        a3_id = payload_sha256(
-            {
-                "kind": "AGENT_3",
-                "cutoff": spec.prediction_as_of,
-                "count": len(agent3_observations),
-                "max_visible": _snapshot_cutoff(agent3_observations, "result_as_of"),
-            }
-        )
+        history = history_cache.history_for(spec.prediction_as_of)
+        agent1_replay = history.agent1_replay
+        agent2_snapshot = history.agent2_snapshot
+        agent3_snapshot = history.agent3_snapshot
+        a1_id = history.agent1_snapshot_id
+        a2_id = history.agent2_snapshot_id
+        a3_id = history.agent3_snapshot_id
         snapshot_ids.extend((a1_id, a2_id, a3_id))
 
         matches: list[ReplayMatchInput] = []
@@ -556,7 +516,11 @@ def load_replay_inputs(
             )
         )
 
-    return LoadedReplayInputs(runs=tuple(runs), input_snapshot_ids=tuple(snapshot_ids))
+    return LoadedReplayInputs(
+        runs=tuple(runs),
+        input_snapshot_ids=tuple(snapshot_ids),
+        history_mode=history_cache.mode,
+    )
 
 
 def derive_run_specs_from_match_days(
@@ -614,7 +578,5 @@ __all__ = [
     "derive_run_specs_from_match_days",
     "VETO_POLICY_VERSION",
     "STAKING_RULE_VERSION",
-    "AGENT1_DEFAULT_CONFIG",
-    "AGENT2_DEFAULT_CONFIG",
     "AGENT3_DEFAULT_CONFIG",
 ]

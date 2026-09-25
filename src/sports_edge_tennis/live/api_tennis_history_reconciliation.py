@@ -1105,6 +1105,30 @@ def apply_candidate_links(
     )
 
 
+def count_shared_opponent_pairs(opponents_by_player: Mapping[int, set[int]]) -> int:
+    """Count unordered player pairs that share at least one common opponent.
+
+    Uses an inverted ``opponent -> players`` index so only actual co-occurring
+    pairs are enumerated. This is mathematically equivalent to the previous
+    all-pairs scan but avoids O(players^2) set intersections.
+    """
+    opponent_to_players: dict[int, set[int]] = {}
+    for player_id, opponents in opponents_by_player.items():
+        for opponent_id in opponents:
+            opponent_to_players.setdefault(opponent_id, set()).add(player_id)
+
+    shared_pairs: set[tuple[int, int]] = set()
+    for players in opponent_to_players.values():
+        if len(players) < 2:
+            continue
+        ordered = sorted(players)
+        for left_index in range(len(ordered) - 1):
+            left = ordered[left_index]
+            for right in ordered[left_index + 1 :]:
+                shared_pairs.add((left, right))
+    return len(shared_pairs)
+
+
 def measure_history_coverage(
     conn: psycopg.Connection,
     *,
@@ -1162,12 +1186,7 @@ def measure_history_coverage(
         a3_opponents.setdefault(observation.player_1_id, set()).add(observation.player_2_id)
         a3_opponents.setdefault(observation.player_2_id, set()).add(observation.player_1_id)
     a3_players_with_direct_support = sum(1 for value in a3_opponents.values() if value)
-    shared_opponent_pairs = 0
-    opponent_sets = list(a3_opponents.items())
-    for index, (player_a, opponents_a) in enumerate(opponent_sets):
-        for player_b, opponents_b in opponent_sets[index + 1 :]:
-            if opponents_a & opponents_b:
-                shared_opponent_pairs += 1
+    shared_opponent_pairs = count_shared_opponent_pairs(a3_opponents)
 
     return {
         "canonical_matches": canonical_matches,

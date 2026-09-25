@@ -111,7 +111,11 @@ def build_manifest(
     identity_failures = exclusion_counts["IDENTITY_BLOCKED"] + exclusion_counts[
         "IDENTITY_NOT_AVAILABLE_PIT"
     ]
-    surface_failures = exclusion_counts["SURFACE_BLOCKED"]
+    surface_failures = (
+        exclusion_counts["SURFACE_BLOCKED"]
+        + exclusion_counts["SURFACE_NOT_AVAILABLE_PIT"]
+        + exclusion_counts["SURFACE_CONFLICT_AT_T"]
+    )
 
     ledger_payload = {
         "model_picks": result.model_picks,
