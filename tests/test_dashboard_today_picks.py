@@ -25,7 +25,8 @@ from sports_edge_tennis.dashboard.picks import (
     pick_kind,
 )
 from sports_edge_tennis.dashboard.production_app import app
-from sports_edge_tennis.dashboard.read_model import MatchView
+from sports_edge_tennis.dashboard.read_model import AgentView, MatchView
+from sports_edge_tennis.runner.contracts import AGENT_1, AGENT_2, AGENT_3
 
 
 START = datetime(2026, 9, 7, 14, 30, tzinfo=timezone.utc)
@@ -39,6 +40,9 @@ def _match(
     probability: str | None = "0.68",
     player_1: str = "Carlos Alcaraz",
     player_2: str = "Jannik Sinner",
+    reason_code: str | None = None,
+    agents: dict[str, AgentView] | None = None,
+    abstaining_agent_count: int = 0,
 ) -> MatchView:
     return MatchView(
         match_id=match_id,
@@ -47,13 +51,14 @@ def _match(
         tournament="ATP Tokyo",
         competition_tier="ATP_500",
         scheduled_start=START,
-        agents={},
+        agents=agents or {},
         manager_status=manager_status,
         selected_side=selected_side,
         consensus_probability=Decimal(probability) if probability else None,
-        reason_code="NONE" if manager_status == "CONSENSUS" else "DIRECTIONAL_DISAGREEMENT",
-        active_agent_count=3,
-        abstaining_agent_count=0,
+        reason_code=reason_code
+        or ("NONE" if manager_status == "CONSENSUS" else "DIRECTIONAL_DISAGREEMENT"),
+        active_agent_count=3 - abstaining_agent_count,
+        abstaining_agent_count=abstaining_agent_count,
         player_1_price=Decimal("1.60"),
         player_2_price=Decimal("2.35"),
         sharp_source_observed_at=START,
@@ -124,6 +129,51 @@ def test_no_bet_events_never_appear_as_picks() -> None:
 def test_consensus_without_a_resolvable_side_is_not_rendered() -> None:
     matches = [_match(1, manager_status="CONSENSUS", selected_side=None)]
     assert build_today_picks(matches, {}).is_empty
+
+
+def test_primary_models_same_side_wide_spread_is_visible_model_pick() -> None:
+    agents = {
+        AGENT_1: AgentView(
+            code=AGENT_1,
+            status="PREDICTED",
+            selection=1,
+            probability=Decimal("0.639556"),
+        ),
+        AGENT_2: AgentView(
+            code=AGENT_2,
+            status="PREDICTED",
+            selection=1,
+            probability=Decimal("0.542955"),
+        ),
+        AGENT_3: AgentView(
+            code=AGENT_3,
+            status="ABSTAINED",
+            selection=None,
+            probability=None,
+        ),
+    }
+    match = _match(
+        1,
+        manager_status="NO_BET",
+        selected_side=None,
+        probability=None,
+        reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+        agents=agents,
+        abstaining_agent_count=1,
+    )
+
+    (pick,) = build_today_picks([match], {}).picks
+
+    assert pick.kind == MODEL_PICK
+    assert pick.classification == "WIDE_CONFIDENCE_SPREAD"
+    assert pick.player == "Carlos Alcaraz"
+    assert pick.is_wide_spread is True
+    assert pick.kind_label == "MODEL PICK · WIDE SPREAD"
+    assert pick.primary_a1_probability_text == "64%"
+    assert pick.primary_a2_probability_text == "54%"
+    assert pick.primary_probability_spread_text == "9.66%"
+    assert pick.is_actionable_bet is False
+    assert pick.stake_text is None
 
 
 # ------------------------------------------------- model pick vs value bet
@@ -252,6 +302,26 @@ def test_value_opportunities_contain_only_qualified_bets() -> None:
 
     assert [o.match_id for o in opportunities] == [2]
     assert all(o.kind == VALUE_BET for o in opportunities)
+
+
+def test_wide_spread_model_pick_never_enters_value_opportunities() -> None:
+    agents = {
+        AGENT_1: AgentView(AGENT_1, "PREDICTED", 1, Decimal("0.64")),
+        AGENT_2: AgentView(AGENT_2, "PREDICTED", 1, Decimal("0.54")),
+        AGENT_3: AgentView(AGENT_3, "ABSTAINED", None, None),
+    }
+    wide = _match(
+        4,
+        manager_status="NO_BET",
+        selected_side=None,
+        probability=None,
+        reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+        agents=agents,
+        abstaining_agent_count=1,
+    )
+
+    assert build_today_picks([wide], {}).total == 1
+    assert build_value_opportunities([wide], {}) == ()
 
 
 # ----------------------------------------------------------------- rendering
