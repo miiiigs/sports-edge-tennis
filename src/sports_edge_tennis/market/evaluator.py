@@ -10,6 +10,7 @@ from sports_edge_tennis.market.contracts import (
     CANONICAL_ROLE_ORDER,
     MARKET_FEATURE_VERSION,
     MARKET_MODEL_VERSION,
+    MARKET_POLICY_VERSION_V2,
     MIN_BET_MODEL_PROBABILITY,
     SUPPORTED_TIERS,
     MarketDecisionV1,
@@ -273,7 +274,10 @@ def evaluate_market_match(
     # Current live betting rule: a price edge can never turn a sub-60% model
     # selection into an actionable bet. Keep the Manager pick available for
     # model tracking, but fail closed at the Market layer before value/staking.
-    if p_model < MIN_BET_MODEL_PROBABILITY:
+    if (
+        policy.policy_version == MARKET_POLICY_VERSION_V2
+        and p_model < MIN_BET_MODEL_PROBABILITY
+    ):
         return no_bet("PROBABILITY_FLOOR", sharp.lineage)
 
     if policy.default_devig_method != "POWER":
