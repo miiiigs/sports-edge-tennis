@@ -357,6 +357,51 @@ def test_manager_no_bet_is_never_qualified():
     assert decision.lineage == ()
 
 
+def test_sub_60_probability_is_never_a_bet_even_with_value_available():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="2.20",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.599999"),
+        policy=_policy(),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.decision_status == "NO_BET"
+    assert decision.reason_code == "PROBABILITY_FLOOR"
+    assert decision.suggested_stake_fraction is None
+
+
+def test_exact_60_probability_remains_eligible_for_market_value():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="1.85",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.600000"),
+        policy=_policy(),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.decision_status == "BET"
+    assert decision.reason_code == "NONE"
+
+
 def test_no_model_edge_vs_sharp():
     ref_p1, ref_p2 = _fair_reference_pair()
     decision = evaluate_market_match(
@@ -519,7 +564,7 @@ def test_match_130870_reaches_value_evaluation_after_observation_time_fix():
         decision_as_of=received_at,
     )
     assert fixed.reason_code != "STALE_MARKET"
-    assert fixed.reason_code == "EDGE_BELOW_THRESHOLD"
+    assert fixed.reason_code == "PROBABILITY_FLOOR"
     assert fixed.market_decimal_price is None
 
     changed_at = _dt_130870(7, 1, 46, 922000)
