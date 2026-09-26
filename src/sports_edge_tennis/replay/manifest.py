@@ -16,7 +16,7 @@ from typing import Mapping
 
 from sports_edge_tennis.replay.contracts import ReplayResult
 from sports_edge_tennis.replay.first_qualified import (
-    first_qualified_model_picks,
+    first_current_rule_model_picks,
     first_qualified_value_bets,
 )
 from sports_edge_tennis.replay.serde import canonical_json, payload_sha256, sha256_hex
@@ -98,7 +98,7 @@ def build_manifest(
     exclusion_counts = Counter(exclusion.reason for exclusion in result.exclusions)
 
     model_pick_count = len(result.model_picks)
-    first_model_picks = first_qualified_model_picks(result.model_picks)
+    first_model_picks = first_current_rule_model_picks(result.model_picks)
     value_bet_count = len(result.value_bets)
     first_value_bets = first_qualified_value_bets(result.value_bets)
 
