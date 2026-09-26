@@ -7,7 +7,10 @@ from fastapi.testclient import TestClient
 
 import sports_edge_tennis.dashboard.daily_history as daily_history
 import sports_edge_tennis.dashboard.model_pick_history as model_pick_history
-from sports_edge_tennis.dashboard.daily_bets import DailyBetSummary
+from sports_edge_tennis.dashboard.daily_bets import (
+    DailyBetSummary,
+    load_aligned_daily_bet_summaries,
+)
 from sports_edge_tennis.dashboard.model_pick_history import (
     DailyModelPickSummary,
     ModelPickResultsView,
@@ -152,3 +155,37 @@ def test_aligned_model_pick_cte_includes_only_60_percent_normal_or_wide_spread()
     assert "a2.selection_side = a1.selection_side" in sql
     assert "((a1.win_probability + a2.win_probability) / 2.0) >= 0.600000" in sql
     assert "DISTINCT ON (match_id)" in sql
+
+
+
+class _EmptyRows:
+    def fetchall(self):
+        return []
+
+
+class _CaptureConn:
+    def __init__(self):
+        self.sql = None
+        self.params = None
+
+    def execute(self, sql, params=()):
+        self.sql = sql
+        self.params = params
+        return _EmptyRows()
+
+
+def test_aligned_value_bet_query_filters_before_first_per_match_selection():
+    conn = _CaptureConn()
+
+    assert load_aligned_daily_bet_summaries(
+        conn,
+        start_date=date(2026, 9, 10),
+        min_consensus_probability=Decimal("0.600000"),
+    ) == ()
+
+    assert "aligned_first_bets AS" in conn.sql
+    assert "SELECT DISTINCT ON (d.match_id)" in conn.sql
+    assert "d.consensus_probability >= %s" in conn.sql
+    assert "ORDER BY" in conn.sql
+    assert conn.params[0] == Decimal("0.600000")
+    assert conn.params[1] == date(2026, 9, 10)
