@@ -15,6 +15,8 @@ MARKET_FEATURE_VERSION = "type_a"
 _PRICE_QUANTIZER = Decimal("0.000001")
 _PROBABILITY_QUANTIZER = Decimal("0.000001")
 
+MIN_BET_MODEL_PROBABILITY = Decimal("0.600000")
+
 MarketDecisionStatus = Literal["BET", "NO_BET", "VETOED"]
 
 MarketReasonCode = Literal[
@@ -28,6 +30,7 @@ MarketReasonCode = Literal[
     "INVALID_PRICE",
     "NO_MODEL_EDGE_VS_SHARP",
     "EDGE_BELOW_THRESHOLD",
+    "PROBABILITY_FLOOR",
     "UNSUPPORTED_TIER",
     "MISSING_SHARP_REFERENCE",
     "VETO_TRIGGERED",
