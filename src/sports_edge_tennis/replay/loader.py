@@ -542,6 +542,117 @@ def load_replay_inputs(
     )
 
 
+def _floor_hour(value: datetime) -> datetime:
+    return value.replace(minute=0, second=0, microsecond=0)
+
+
+def _load_match_visibility(
+    conn: psycopg.Connection,
+    *,
+    match_ids: tuple[int, ...],
+) -> dict[int, tuple[datetime, datetime]]:
+    """Return ``{match_id: (first_visible, latest_start)}`` for each match.
+
+    ``first_visible`` is the earliest instant any match version was PIT-visible
+    (``min(max(source_observed_at, as_of))``); ``latest_start`` is the scheduled
+    start from the newest version.
+    """
+    if not match_ids:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT
+            match_id,
+            min(GREATEST(source_observed_at, as_of)) AS first_visible,
+            (array_agg(
+                match_start_at
+                ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
+            ))[1] AS latest_start
+        FROM match_versions
+        WHERE match_id = ANY(%s)
+        GROUP BY match_id
+        """,
+        (list(match_ids),),
+    ).fetchall()
+    result: dict[int, tuple[datetime, datetime]] = {}
+    for match_id, first_visible, latest_start in rows:
+        if first_visible is None or latest_start is None:
+            continue
+        result[int(match_id)] = (first_visible, latest_start)
+    return result
+
+
+def derive_run_specs_pit_safe(
+    conn: psycopg.Connection,
+    *,
+    match_ids: tuple[int, ...],
+    policy: ReplayDecisionTimePolicy = ReplayDecisionTimePolicy(),
+) -> tuple[ReplayRunSpec, ...]:
+    """Plan per-match PIT-safe cutoffs on production hourly-run boundaries.
+
+    Production evaluates a match on an hourly run at/after the fixture became
+    visible and before the match starts. This planner picks, for each match, the
+    **latest** hourly boundary strictly before ``match_start`` that is still at or
+    after ``first_visible``, then groups matches that share the same boundary.
+    That stabs every recoverable interval with a small number of runs, so a daily
+    cutoff no longer excludes later-ingested same-day fixtures.
+
+    Matches whose fixture first became visible at/after their own start are not
+    recoverable and are never assigned a valid prediction cutoff; they are
+    attached to the earliest run so they fail closed as an exclusion instead of
+    being silently dropped.
+    """
+
+    visibility = _load_match_visibility(conn, match_ids=match_ids)
+    ordered = sorted(visibility.items(), key=lambda item: item[1][1])
+    groups: dict[datetime, list[int]] = {}
+    unrecoverable: list[int] = []
+    last_cutoff: datetime | None = None
+    for match_id, (first_visible, start) in ordered:
+        if last_cutoff is not None and first_visible <= last_cutoff < start:
+            groups[last_cutoff].append(match_id)
+            continue
+        candidate = _floor_hour(start - timedelta(seconds=1))
+        if candidate < first_visible:
+            unrecoverable.append(match_id)
+            continue
+        last_cutoff = candidate
+        groups.setdefault(candidate, []).append(match_id)
+
+    specs: list[ReplayRunSpec] = []
+    for sequence, cutoff in enumerate(sorted(groups), start=1):
+        specs.append(
+            ReplayRunSpec(
+                run_id=f"replay-{cutoff.isoformat()}",
+                run_sequence=sequence,
+                prediction_as_of=cutoff,
+                market_as_of=cutoff,
+                match_ids=tuple(sorted(groups[cutoff])),
+            )
+        )
+    if unrecoverable:
+        if specs:
+            specs[0] = ReplayRunSpec(
+                run_id=specs[0].run_id,
+                run_sequence=specs[0].run_sequence,
+                prediction_as_of=specs[0].prediction_as_of,
+                market_as_of=specs[0].market_as_of,
+                match_ids=tuple(sorted(set(specs[0].match_ids) | set(unrecoverable))),
+            )
+        else:
+            fallback = _floor_hour(datetime.now(timezone.utc))
+            specs.append(
+                ReplayRunSpec(
+                    run_id=f"replay-{fallback.isoformat()}",
+                    run_sequence=1,
+                    prediction_as_of=fallback,
+                    market_as_of=fallback,
+                    match_ids=tuple(sorted(unrecoverable)),
+                )
+            )
+    return tuple(specs)
+
+
 def derive_run_specs_from_match_days(
     conn: psycopg.Connection,
     *,
