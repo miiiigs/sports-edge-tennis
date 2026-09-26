@@ -1,3 +1,0 @@
-P2B exact frozen-population audit trigger. Ephemeral ops branch only. 2026-09-26.
-retry: install package at runtime before exact audit.
-retry: identify frozen population hash serialization only.\nrun: exact P2B classification on verified CRLF frozen population.\n
