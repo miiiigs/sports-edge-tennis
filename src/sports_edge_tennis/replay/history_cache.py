@@ -169,12 +169,23 @@ def cache_correction_boundaries(
     stat_cohorts_by_match: dict[int, list[datetime]] = {}
     for match_id, vc in stat_rows:
         stat_cohorts_by_match.setdefault(int(match_id), []).append(vc)
-    for values in stat_cohorts_by_match.values():
-        # A2 attaches the latest complete stat cohort during the history load.
-        # Unlike result visibility, stat visibility is not re-checked by the
-        # snapshot builder, so even the *first* stat cohort must split a segment.
-        for vc in sorted(set(values)):
-            if first < vc <= final:
+    for match_id, values in stat_cohorts_by_match.items():
+        ordered_stats = sorted(set(values))
+        first_result_visibility = min(by_match.get(match_id, ()), default=None)
+        for stat_index, vc in enumerate(ordered_stats):
+            if not (first < vc <= final):
+                continue
+            # A later complete stat cohort can replace the cohort attached by
+            # the segment-final history load, so every correction is a hard
+            # boundary. The first stat cohort only needs a boundary when the
+            # match result was already visible earlier. If first result and
+            # first stats become visible together, the entire history row is
+            # absent before that instant, so the snapshot cutoff filter already
+            # prevents leakage and no extra segment is necessary.
+            if stat_index > 0 or (
+                first_result_visibility is not None
+                and first_result_visibility < vc
+            ):
                 boundaries.add(vc)
 
     bridge_rows = conn.execute(
