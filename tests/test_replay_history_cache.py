@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import psycopg
 
+import sports_edge_tennis.replay.history_cache as history_cache
 from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as A1_CONFIG,
     replay_history as replay_agent1_history,
@@ -167,3 +168,151 @@ def test_cache_falls_back_to_baseline_when_observation_straddles_cutoff(db: psyc
         baseline_a2 = load_agent2_history(db, cutoff=cutoff)
         baseline_snap2 = build_agent2_snapshot(baseline_a2, cutoff=cutoff)
         assert _a2_projection(cached.agent2_snapshot) == _a2_projection(baseline_snap2)
+
+
+
+def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
+    db: psycopg.Connection,
+    monkeypatch,
+):
+    _seed(db)
+    calls = {
+        "a2_build": 0,
+        "a2_advance": 0,
+        "a3_build": 0,
+        "a3_advance": 0,
+    }
+
+    original_a2_build = history_cache.build_agent2_snapshot
+    original_a2_advance = history_cache.advance_agent2_history_snapshot
+    original_a3_build = history_cache.build_live_agent3_history_snapshot
+    original_a3_advance = history_cache.advance_live_agent3_history_snapshot
+
+    def a2_build(*args, **kwargs):
+        calls["a2_build"] += 1
+        return original_a2_build(*args, **kwargs)
+
+    def a2_advance(*args, **kwargs):
+        calls["a2_advance"] += 1
+        return original_a2_advance(*args, **kwargs)
+
+    def a3_build(*args, **kwargs):
+        calls["a3_build"] += 1
+        return original_a3_build(*args, **kwargs)
+
+    def a3_advance(*args, **kwargs):
+        calls["a3_advance"] += 1
+        return original_a3_advance(*args, **kwargs)
+
+    monkeypatch.setattr(history_cache, "build_agent2_snapshot", a2_build)
+    monkeypatch.setattr(history_cache, "advance_agent2_history_snapshot", a2_advance)
+    monkeypatch.setattr(history_cache, "build_live_agent3_history_snapshot", a3_build)
+    monkeypatch.setattr(history_cache, "advance_live_agent3_history_snapshot", a3_advance)
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+
+    # Requesting T2 first must still build T1 as the chronological bootstrap,
+    # then advance exactly once to T2.
+    result = cache.history_for(T2)
+    assert result.cutoff == T2
+    assert calls == {
+        "a2_build": 1,
+        "a2_advance": 1,
+        "a3_build": 1,
+        "a3_advance": 1,
+    }
+
+    # Re-reading either cutoff must be a pure cache hit.
+    cache.history_for(T1)
+    cache.history_for(T2)
+    assert calls == {
+        "a2_build": 1,
+        "a2_advance": 1,
+        "a3_build": 1,
+        "a3_advance": 1,
+    }
+
+
+
+def test_cache_guard_checks_entire_correction_chain_not_only_latest_two(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    match_one = _fetchval(db, "SELECT min(match_id) FROM matches")
+    correction_1 = T1 + timedelta(hours=1)
+    correction_2 = T1 + timedelta(hours=2)
+
+    for observed in (correction_1, correction_2):
+        db.execute(
+            """
+            INSERT INTO match_result_observations (
+                match_id, outcome_status, winner_side, source_observed_at, as_of
+            )
+            VALUES (%s, 'COMPLETED', 1, %s, %s)
+            """,
+            (match_one, observed, observed),
+        )
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+
+    # The latest two corrections are both after T1, so a guard that inspects
+    # only those two would miss the older R1 -> correction_1 transition that
+    # changes what was knowable at T1.
+    assert cache.mode == MODE_BASELINE_PER_CUTOFF
+
+
+
+def test_cache_falls_back_when_complete_stat_cohort_changes_across_cutoff(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    match_one = _fetchval(db, "SELECT min(match_id) FROM matches")
+    p1, p2 = db.execute(
+        """
+        SELECT player_1_id, player_2_id
+        FROM match_versions
+        WHERE match_id = %s
+        ORDER BY match_version_id DESC
+        LIMIT 1
+        """,
+        (match_one,),
+    ).fetchone()
+    corrected_at = T1 + timedelta(hours=1)
+
+    for player_id in (p1, p2):
+        db.execute(
+            """
+            INSERT INTO match_stat_observations (
+                match_id, player_id, source_system, source_record_id, observation_kind,
+                first_serves_in, first_serve_points_won, second_serve_points_won,
+                service_points_played, return_points_won, aces, double_faults,
+                break_points_saved, break_points_faced, source_observed_at, as_of
+            )
+            VALUES (
+                %s, %s, 'API_TENNIS', %s, 'RAW_SOURCE',
+                11, 8, 3, 21, 9, 3, 1, 4, 6, %s, %s
+            )
+            """,
+            (
+                match_one,
+                player_id,
+                f"stat-correction-{match_one}-{player_id}",
+                corrected_at,
+                corrected_at,
+            ),
+        )
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+    assert cache.mode == MODE_BASELINE_PER_CUTOFF
