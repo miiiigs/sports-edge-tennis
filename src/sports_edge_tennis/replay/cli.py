@@ -124,15 +124,16 @@ def main(argv: list[str] | None = None) -> int:
             market_policy_version=args.market_policy_version,
         )
         loaded = load_replay_inputs(conn, request)
-
-    result = run_replay(
-        loaded.runs,
-        replay_id=REPLAY_ID,
-        provisional=provisional,
-        provisional_label=(
-            PROVISIONAL_HISTORICAL_RECOVERY_NOT_FROZEN if provisional else None
-        ),
-    )
+        # Keep the connection open through run_replay: the per-match veto-context
+        # factory reads PIT evidence lazily for otherwise-qualified BETs.
+        result = run_replay(
+            loaded.runs,
+            replay_id=REPLAY_ID,
+            provisional=provisional,
+            provisional_label=(
+                PROVISIONAL_HISTORICAL_RECOVERY_NOT_FROZEN if provisional else None
+            ),
+        )
 
     versions = ReplayVersionSet(
         a1_config_version=A1_CONFIG.config_version,
