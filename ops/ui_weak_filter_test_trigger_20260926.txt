@@ -1,2 +1,2 @@
 Trigger focused dashboard tests for the weak-pick filter branch.
-Runtime dependency install retry.
+Install project plus test dependencies in runtime environment.
