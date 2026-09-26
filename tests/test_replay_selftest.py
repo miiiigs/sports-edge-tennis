@@ -75,7 +75,10 @@ def test_selftest_manifest_counts():
     result = build_selftest_result()
     manifest = build_selftest_manifest(result)
 
-    assert manifest.first_qualified_model_picks == 6
+    # One synthetic Manager consensus is deliberately below the current 60%
+    # Model Pick floor. Raw/generic replay still sees six Manager-qualified
+    # rows, while current-rule manifest accounting correctly retains five.
+    assert manifest.first_qualified_model_picks == 5
     assert manifest.first_qualified_value_bets == 3
     assert manifest.identity_failures == 1
     assert manifest.surface_failures == 1

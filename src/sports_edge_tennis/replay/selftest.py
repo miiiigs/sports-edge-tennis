@@ -90,7 +90,7 @@ _SYNTHETIC_PROFILES = {
     2: "consensus",
     3: "wide_spread",
     4: "consensus",
-    5: "consensus",
+    5: "sub60_consensus",
     7: "consensus",
     8: "consensus",
     9: "consensus",
@@ -139,10 +139,16 @@ def _agent_runner(run: ReplayRunInput, match: ReplayMatchInput):
             A2: _agent(A2, 1, "0.50", AGENT2_RAW_PROBABILITY_V1, as_of),
             A3: _abstained(A3, as_of),
         }
+    if profile == "sub60_consensus":
+        return {
+            A1: _agent(A1, 1, "0.55", AGENT1_RAW_PROBABILITY_V1, as_of),
+            A2: _agent(A2, 1, "0.56", AGENT2_RAW_PROBABILITY_V1, as_of),
+            A3: _agent(A3, 1, "0.54", AGENT3_RAW_PROBABILITY_V1, as_of),
+        }
     return {
-        A1: _agent(A1, 1, "0.55", AGENT1_RAW_PROBABILITY_V1, as_of),
-        A2: _agent(A2, 1, "0.56", AGENT2_RAW_PROBABILITY_V1, as_of),
-        A3: _agent(A3, 1, "0.54", AGENT3_RAW_PROBABILITY_V1, as_of),
+        A1: _agent(A1, 1, "0.65", AGENT1_RAW_PROBABILITY_V1, as_of),
+        A2: _agent(A2, 1, "0.66", AGENT2_RAW_PROBABILITY_V1, as_of),
+        A3: _agent(A3, 1, "0.64", AGENT3_RAW_PROBABILITY_V1, as_of),
     }
 
 
