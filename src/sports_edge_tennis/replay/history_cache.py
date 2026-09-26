@@ -4,17 +4,16 @@ The baseline replay loader re-reads the entire multi-year A2/A3 history from
 PostgreSQL for every replay cutoff. Profiling showed that repeated full-history
 DB loading is the dominant cost (A2 ~64s / 130k rows; A3 far worse per row).
 
-This cache loads the required history **once** at the final cutoff. The first
-replay cutoff is built with the exact baseline constructors; subsequent A2/A3
-cutoffs advance chronologically with the same incremental primitives used by
-live production. Agent 1 remains a deterministic in-memory replay over the
-single preloaded history set. Point-in-time visibility is preserved at every
-cutoff.
+The cache partitions replay cutoffs into point-in-time-stable chronological
+segments. Each segment performs one exact database re-baseline at its final
+cutoff, bootstraps A2/A3 once at the segment's first cutoff, then advances
+chronologically with the same incremental primitives used by live production.
+Agent 1 remains a deterministic in-memory replay over the segment load.
 
-A conservative PIT-stability guard disables the cache (falling back to the
-baseline per-cutoff DB loads) whenever a match has two result/stat observations
-whose visibility straddles a replay cutoff, because a single final load would
-otherwise collapse the earlier observation.
+Segment boundaries are created by corrected result cohorts, corrected complete
+A2 stat cohorts, and persisted model-identity bridge activations. This preserves
+the exact historical state on both sides of corrections without paying the cost
+of a full A2/A3 rebuild for every replay cutoff.
 """
 
 from __future__ import annotations
