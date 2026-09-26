@@ -170,10 +170,12 @@ def cache_correction_boundaries(
     for match_id, vc in stat_rows:
         stat_cohorts_by_match.setdefault(int(match_id), []).append(vc)
     for values in stat_cohorts_by_match.values():
-        ordered_values = sorted(set(values))
-        for _vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
-            if first < vc_new <= final:
-                boundaries.add(vc_new)
+        # A2 attaches the latest complete stat cohort during the history load.
+        # Unlike result visibility, stat visibility is not re-checked by the
+        # snapshot builder, so even the *first* stat cohort must split a segment.
+        for vc in sorted(set(values)):
+            if first < vc <= final:
+                boundaries.add(vc)
 
     bridge_rows = conn.execute(
         """
