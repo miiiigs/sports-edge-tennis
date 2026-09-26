@@ -164,6 +164,7 @@ def load_daily_bet_summaries(
     *,
     limit: int = 5000,
     regime_key: str | None = None,
+    min_consensus_probability: Decimal | None = None,
 ) -> tuple[DailyBetSummary, ...]:
     """Return one aggregate row per UTC scheduled match day, newest first.
 
@@ -176,6 +177,11 @@ def load_daily_bet_summaries(
     *after* the first-bet-per-match selection, never inside it: filtering first
     would let a later duplicate bet on the same match become that match's
     "first" bet within the cohort and inflate the sample.
+
+    ``min_consensus_probability`` is also applied only after the immutable
+    first-bet-per-match ledger is chosen. It is used by the Sep-10 current-rule
+    alignment to exclude bets whose issued model probability was below 60%
+    without rewriting or promoting historical decisions.
     """
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
@@ -233,12 +239,22 @@ def load_daily_bet_summaries(
             ) AS one_unit_profit
         FROM dated_bets d
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        WHERE %s::text IS NULL OR d.regime_key = %s::text
+        WHERE (%s::text IS NULL OR d.regime_key = %s::text)
+          AND (
+              %s::numeric IS NULL
+              OR d.consensus_probability >= %s::numeric
+          )
         GROUP BY d.match_date
         ORDER BY d.match_date DESC
         LIMIT %s
         """,
-        (regime_key, regime_key, limit),
+        (
+            regime_key,
+            regime_key,
+            min_consensus_probability,
+            min_consensus_probability,
+            limit,
+        ),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
