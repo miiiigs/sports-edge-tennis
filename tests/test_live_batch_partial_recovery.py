@@ -46,7 +46,7 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
     monkeypatch.setattr(batch, "_load_market_reason_counts", lambda conn, run_id: ())
     monkeypatch.setattr(
         batch,
-        "ensure_market_policy_version_v1",
+        "ensure_market_policy_version_v2",
         lambda conn: SimpleNamespace(market_policy_version_id=77),
     )
 

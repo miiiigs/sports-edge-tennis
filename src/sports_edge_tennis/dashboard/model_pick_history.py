@@ -20,12 +20,14 @@ from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect, _latest_activity, templates
 from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_LIVE_HISTORY_START,
+    ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
 )
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
     ModelRegimeIdentity,
     current_model_regime_started_at,
+    PRODUCTION_RUN_PREDICATE,
     first_production_bets_cte,
     first_production_model_picks_cte,
     load_model_regime_cohorts,
@@ -79,6 +81,7 @@ class ModelPickRow:
 @dataclass(frozen=True)
 class ModelPickResultsView:
     all_summaries: tuple[DailyModelPickSummary, ...] = ()
+    aligned_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_regime: ModelRegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -175,6 +178,175 @@ def build_model_pick_windows(
         ),
         "all_time": aggregate_model_pick_summaries(rows, end_date=as_of_date),
     }
+
+
+def aligned_production_model_picks_cte() -> str:
+    """Current-rule Sep-10 model-pick ledger over immutable live evidence.
+
+    A qualifying aligned Model Pick is the earliest production evaluation per
+    sporting match that satisfies either:
+    1) Manager CONSENSUS with probability >= 60%; or
+    2) A1+A2 same-side, A3 abstained, Manager rejected only because the A1/A2
+       spread exceeded the abstention gate, with A1/A2 arithmetic mean >= 60%.
+
+    The second case is tracking-only and never becomes a Value Bet.
+    """
+    floor = str(ALIGNED_MIN_MODEL_PROBABILITY)
+    return f"""
+        aligned_model_candidates AS (
+            SELECT
+                mcr.manager_consensus_result_id,
+                mcr.prediction_run_id,
+                mcr.match_id,
+                mcr.as_of AS picked_at,
+                mcr.selected_side,
+                mcr.consensus_probability AS aligned_probability,
+                'MANAGER_CONSENSUS'::text AS aligned_pick_type
+            FROM manager_consensus_results mcr
+            JOIN prediction_runs pr
+              ON pr.prediction_run_id = mcr.prediction_run_id
+            WHERE mcr.manager_status = 'CONSENSUS'
+              AND mcr.selected_side IN (1, 2)
+              AND mcr.consensus_probability >= {floor}
+              AND {PRODUCTION_RUN_PREDICATE}
+
+            UNION ALL
+
+            SELECT
+                mcr.manager_consensus_result_id,
+                mcr.prediction_run_id,
+                mcr.match_id,
+                mcr.as_of AS picked_at,
+                a1.selection_side AS selected_side,
+                ((a1.win_probability + a2.win_probability) / 2.0) AS aligned_probability,
+                'A1_A2_WIDE_SPREAD'::text AS aligned_pick_type
+            FROM manager_consensus_results mcr
+            JOIN prediction_runs pr
+              ON pr.prediction_run_id = mcr.prediction_run_id
+            JOIN predictions a1
+              ON a1.prediction_run_id = mcr.prediction_run_id
+             AND a1.match_id = mcr.match_id
+             AND a1.agent_code = 'AGENT_1_SURFACE_ELO'
+            JOIN predictions a2
+              ON a2.prediction_run_id = mcr.prediction_run_id
+             AND a2.match_id = mcr.match_id
+             AND a2.agent_code = 'AGENT_2_HIERARCHICAL_MARKOV'
+            JOIN predictions a3
+              ON a3.prediction_run_id = mcr.prediction_run_id
+             AND a3.match_id = mcr.match_id
+             AND a3.agent_code = 'AGENT_3_INTRANSITIVITY'
+            WHERE mcr.manager_status = 'NO_BET'
+              AND mcr.reason_code = 'AGENT3_ABSTENTION_SPREAD_EXCEEDED'
+              AND a1.prediction_status = 'PREDICTED'
+              AND a2.prediction_status = 'PREDICTED'
+              AND a3.prediction_status = 'ABSTAINED'
+              AND a1.selection_side IN (1, 2)
+              AND a2.selection_side = a1.selection_side
+              AND a1.win_probability IS NOT NULL
+              AND a2.win_probability IS NOT NULL
+              AND ((a1.win_probability + a2.win_probability) / 2.0) >= {floor}
+              AND {PRODUCTION_RUN_PREDICATE}
+        ),
+        aligned_model_picks AS (
+            SELECT DISTINCT ON (match_id)
+                manager_consensus_result_id,
+                prediction_run_id,
+                match_id,
+                picked_at,
+                selected_side,
+                aligned_probability,
+                aligned_pick_type
+            FROM aligned_model_candidates
+            ORDER BY
+                match_id,
+                picked_at,
+                manager_consensus_result_id,
+                aligned_pick_type
+        )
+    """
+
+
+def load_aligned_daily_model_pick_summaries(
+    conn: psycopg.Connection,
+    *,
+    limit: int = 5000,
+) -> tuple[DailyModelPickSummary, ...]:
+    """Daily current-rule aligned picks from Sep 10 live production evidence."""
+    if limit < 1 or limit > 5000:
+        raise ValueError("limit must be between 1 and 5000")
+
+    rows = conn.execute(
+        f"""
+        WITH {aligned_production_model_picks_cte()},
+        dated AS (
+            SELECT
+                p.*,
+                COALESCE(
+                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
+                    (p.picked_at AT TIME ZONE 'UTC')::date
+                ) AS match_date
+            FROM aligned_model_picks p
+            LEFT JOIN LATERAL (
+                SELECT mv0.match_start_at
+                FROM match_versions mv0
+                WHERE mv0.match_id = p.match_id
+                  AND mv0.as_of <= p.picked_at
+                  AND mv0.source_observed_at <= p.picked_at
+                ORDER BY mv0.as_of DESC,
+                         mv0.source_observed_at DESC,
+                         mv0.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
+        ),
+        with_results AS (
+            SELECT
+                d.*,
+                r.outcome_status,
+                r.winner_side
+            FROM dated d
+            LEFT JOIN LATERAL (
+                SELECT
+                    mro.outcome_status::text AS outcome_status,
+                    mro.winner_side
+                FROM match_result_observations mro
+                WHERE mro.match_id = d.match_id
+                  AND mro.outcome_status IN (
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  )
+                ORDER BY mro.as_of DESC,
+                         mro.source_observed_at DESC,
+                         mro.match_result_observation_id DESC
+                LIMIT 1
+            ) r ON TRUE
+        )
+        SELECT
+            match_date,
+            count(*)::int AS picks,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
+            )::int AS scored,
+            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+            )::int AS voids,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED'
+                  AND winner_side = selected_side
+            )::int AS wins,
+            count(*) FILTER (
+                WHERE outcome_status = 'COMPLETED'
+                  AND winner_side IN (1, 2)
+                  AND winner_side <> selected_side
+            )::int AS losses
+        FROM with_results
+        WHERE match_date >= %s
+        GROUP BY match_date
+        ORDER BY match_date DESC
+        LIMIT %s
+        """,
+        (ALIGNED_LIVE_HISTORY_START, limit),
+    ).fetchall()
+    return tuple(_summary_from_row(row) for row in rows)
 
 
 def load_daily_model_pick_summaries(
@@ -377,6 +549,7 @@ def _load_history(requested_date: date | None) -> ModelPickResultsView:
         return ModelPickResultsView(selected_date=requested_date, failed=True)
     try:
         summaries = load_daily_model_pick_summaries(conn)
+        aligned_summaries = load_aligned_daily_model_pick_summaries(conn)
         current_regime = resolve_current_model_regime(conn)
         current_summaries: tuple[DailyModelPickSummary, ...] = ()
         started_at = None
@@ -410,6 +583,7 @@ def _load_history(requested_date: date | None) -> ModelPickResultsView:
         )
         return ModelPickResultsView(
             all_summaries=summaries,
+            aligned_summaries=aligned_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -445,7 +619,7 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
 
     view = _load_history(requested_date)
     as_of_date = datetime.now(UTC).date()
-    aligned_summaries = since_aligned_start(view.all_summaries)
+    aligned_summaries = since_aligned_start(view.aligned_summaries)
     return templates.TemplateResponse(
         request,
         "model_pick_results.html",
@@ -506,7 +680,9 @@ def api_model_pick_results(date: str | None = Query(default=None)):
             "as_of_date": as_of_date.isoformat(),
             "aligned_live_history": {
                 "start_date": ALIGNED_LIVE_HISTORY_START.isoformat(),
-                "scope": "ACTUAL_LIVE_FIRST_MANAGER_QUALIFIED_PICK_PER_MATCH",
+                "scope": "SEP10_LIVE_MODEL_PICKS_ALIGNED_TO_CURRENT_60_PERCENT_RULE",
+                "min_model_probability": str(ALIGNED_MIN_MODEL_PROBABILITY),
+                "includes_a1_a2_wide_spread_tracking": True,
                 "is_replay": False,
                 "performance": {
                     key: _period_json(value) for key, value in aligned_windows.items()
@@ -605,6 +781,8 @@ __all__ = [
     "aggregate_model_pick_summaries",
     "api_model_pick_results",
     "build_model_pick_windows",
+    "aligned_production_model_picks_cte",
+    "load_aligned_daily_model_pick_summaries",
     "load_daily_model_pick_summaries",
     "load_daily_model_picks",
     "model_pick_results",

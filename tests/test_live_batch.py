@@ -199,7 +199,7 @@ def test_batch_fetches_full_slate_odds_and_evaluates_type_a_and_type_b(monkeypat
         ),
     )
     policy = SimpleNamespace(market_policy_version_id=77)
-    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v2", lambda conn: policy)
 
     def fake_market(conn, **kwargs):
         market_runs.append(kwargs["prediction_run_id"])
@@ -309,7 +309,7 @@ def test_type_b_scans_even_when_manager_has_zero_consensus(monkeypatch, tmp_path
         ),
     )
     policy = SimpleNamespace(market_policy_version_id=77)
-    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v2", lambda conn: policy)
     monkeypatch.setattr(
         batch,
         "evaluate_and_persist_market_slate",
@@ -398,7 +398,7 @@ def test_type_b_runs_without_any_model_prediction_run(monkeypatch, tmp_path, cap
         ),
     )
     policy = SimpleNamespace(market_policy_version_id=77)
-    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v2", lambda conn: policy)
     monkeypatch.setattr(
         batch,
         "scan_type_b_value_signals",
@@ -483,7 +483,7 @@ def test_batch_emits_volume_alert_after_seven_zero_type_b_days(monkeypatch, tmp_
         ),
     )
     policy = SimpleNamespace(market_policy_version_id=77)
-    monkeypatch.setattr(batch, "ensure_market_policy_version_v1", lambda conn: policy)
+    monkeypatch.setattr(batch, "ensure_market_policy_version_v2", lambda conn: policy)
     monkeypatch.setattr(
         batch,
         "evaluate_and_persist_market_slate",

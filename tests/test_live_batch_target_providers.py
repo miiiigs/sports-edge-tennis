@@ -180,7 +180,7 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(
         batch,
-        "ensure_market_policy_version_v1",
+        "ensure_market_policy_version_v2",
         lambda conn: SimpleNamespace(
             market_policy_version_id=77,
             odds_max_staleness_minutes=15,
@@ -279,7 +279,7 @@ def test_target_mode_zero_consensus_makes_no_oddspapi_calls(monkeypatch, tmp_pat
     )
     monkeypatch.setattr(
         batch,
-        "ensure_market_policy_version_v1",
+        "ensure_market_policy_version_v2",
         lambda conn: SimpleNamespace(
             market_policy_version_id=77, odds_max_staleness_minutes=15
         ),
@@ -401,7 +401,7 @@ def test_target_mode_warm_identity_cache_skips_discovery(monkeypatch, tmp_path):
     monkeypatch.setattr(batch, "ingest_oddspapi_tennis_odds", fake_oddspapi_ingest)
     monkeypatch.setattr(
         batch,
-        "ensure_market_policy_version_v1",
+        "ensure_market_policy_version_v2",
         lambda conn: SimpleNamespace(
             market_policy_version_id=77, odds_max_staleness_minutes=15
         ),

@@ -5,8 +5,10 @@ from datetime import datetime
 import psycopg
 
 from sports_edge_tennis.market.contracts import (
+    MARKET_POLICY_CURRENT_VERSION,
     MARKET_POLICY_KEY,
     MARKET_POLICY_VERSION,
+    MARKET_POLICY_VERSION_V2,
     MarketPolicyError,
     MarketPolicyV1,
     OddsSnapshotV1,
@@ -87,6 +89,56 @@ def ensure_market_policy_version_v1(conn: psycopg.Connection) -> MarketPolicyV1:
     ).fetchone()
     if row is None:
         raise MarketPolicyError("failed to resolve the v1 Market policy version")
+    return MarketPolicyV1(*row)
+
+
+def ensure_market_policy_version_v2(conn: psycopg.Connection) -> MarketPolicyV1:
+    """Resolve the current Market v2 policy with the 60% betting floor.
+
+    The database row intentionally retains the same price/edge parameters as
+    v1. The policy-version identity records the behavioral cutover so production
+    performance cannot mix pre-floor and post-floor bets into one regime.
+    """
+    conn.execute(
+        """
+        INSERT INTO market_policy_versions (
+            policy_key,
+            policy_version,
+            atp_main_min_edge_pct,
+            challenger_min_edge_pct,
+            long_price_threshold,
+            long_price_min_edge_pct,
+            default_devig_method,
+            sharp_reference_policy_code,
+            odds_max_staleness_minutes,
+            type_b_enabled
+        )
+        VALUES (%s, %s, 0.050000, 0.080000, 4.000000, 0.080000, 'POWER', 'PINNACLE_SHARP', 15, FALSE)
+        ON CONFLICT (policy_key, policy_version) DO NOTHING
+        """,
+        (MARKET_POLICY_KEY, MARKET_POLICY_VERSION_V2),
+    )
+    row = conn.execute(
+        """
+        SELECT
+            market_policy_version_id,
+            policy_key,
+            policy_version,
+            atp_main_min_edge_pct,
+            challenger_min_edge_pct,
+            long_price_threshold,
+            long_price_min_edge_pct,
+            default_devig_method,
+            sharp_reference_policy_code,
+            odds_max_staleness_minutes,
+            type_b_enabled
+        FROM market_policy_versions
+        WHERE policy_key = %s AND policy_version = %s
+        """,
+        (MARKET_POLICY_KEY, MARKET_POLICY_CURRENT_VERSION),
+    ).fetchone()
+    if row is None:
+        raise MarketPolicyError("failed to resolve the current v2 Market policy version")
     return MarketPolicyV1(*row)
 
 

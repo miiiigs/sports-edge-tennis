@@ -15,6 +15,7 @@ from sports_edge_tennis.market import (
     SharpReferenceSpec,
     evaluate_and_persist_market_slate,
     ensure_market_policy_version_v1,
+    ensure_market_policy_version_v2,
     snapshot_lineage_hash,
 )
 from sports_edge_tennis.market.contracts import (
@@ -206,6 +207,17 @@ def _agreeing(*, side: int = 1, prob: str = "0.60") -> dict:
 
 def _manager_policy_id(conn: psycopg.Connection) -> int:
     return ensure_manager_policy_version_v1(conn).manager_policy_version_id
+
+
+def test_market_v2_has_distinct_persisted_policy_identity(db: psycopg.Connection):
+    v1 = ensure_market_policy_version_v1(db)
+    v2 = ensure_market_policy_version_v2(db)
+
+    assert v1.policy_version == "v1"
+    assert v2.policy_version == "v2"
+    assert v1.market_policy_version_id != v2.market_policy_version_id
+    assert v1.atp_main_min_edge_pct == v2.atp_main_min_edge_pct
+    assert v1.challenger_min_edge_pct == v2.challenger_min_edge_pct
 
 
 def _market_policy_id(conn: psycopg.Connection) -> int:

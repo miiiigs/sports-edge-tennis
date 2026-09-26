@@ -14,12 +14,14 @@ from sports_edge_tennis.dashboard.daily_bets import (
     DailyBetSummary,
     PeriodBetSummary,
     build_performance_windows,
+    load_aligned_daily_bet_summaries,
     load_daily_bet_summaries,
     load_daily_bets,
 )
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_LIVE_HISTORY_START,
+    ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
 )
 from sports_edge_tennis.performance.regimes import (
@@ -80,6 +82,7 @@ class ResultsView:
     """
 
     all_summaries: tuple[DailyBetSummary, ...] = ()
+    aligned_summaries: tuple[DailyBetSummary, ...] = ()
     current_summaries: tuple[DailyBetSummary, ...] = ()
     current_regime: RegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -102,6 +105,11 @@ def _load_history(requested_date: date | None) -> ResultsView:
         return ResultsView(selected_date=requested_date, failed=True)
     try:
         summaries = load_daily_bet_summaries(conn)
+        aligned_summaries = load_aligned_daily_bet_summaries(
+            conn,
+            start_date=ALIGNED_LIVE_HISTORY_START,
+            min_consensus_probability=ALIGNED_MIN_MODEL_PROBABILITY,
+        )
         current_regime = resolve_current_regime(conn)
         current_summaries: tuple[DailyBetSummary, ...] = ()
         started_at = None
@@ -125,6 +133,7 @@ def _load_history(requested_date: date | None) -> ResultsView:
             bets = load_daily_bets(conn, decision_date=selected_date)
         return ResultsView(
             all_summaries=summaries,
+            aligned_summaries=aligned_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -148,7 +157,7 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
 
     view = _load_history(requested_date)
     as_of_date = datetime.now(UTC).date()
-    aligned_summaries = since_aligned_start(view.all_summaries)
+    aligned_summaries = since_aligned_start(view.aligned_summaries)
     return templates.TemplateResponse(
         request,
         "bet_history.html",
@@ -203,7 +212,7 @@ def api_bet_history(date: str | None = Query(default=None)):
     bets = view.bets
     as_of_date = datetime.now(UTC).date()
     performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
-    aligned_summaries = since_aligned_start(summaries)
+    aligned_summaries = since_aligned_start(view.aligned_summaries)
     aligned_windows = build_performance_windows(
         aligned_summaries, as_of_date=as_of_date
     )
@@ -218,7 +227,8 @@ def api_bet_history(date: str | None = Query(default=None)):
             "performance_windows": {key: _period_json(value) for key, value in performance_windows.items()},
             "aligned_live_history": {
                 "start_date": ALIGNED_LIVE_HISTORY_START.isoformat(),
-                "scope": "ACTUAL_LIVE_FIRST_PUBLISHED_VALUE_BET_PER_MATCH",
+                "scope": "SEP10_LIVE_VALUE_BETS_ALIGNED_TO_CURRENT_60_PERCENT_FLOOR",
+                "min_model_probability": str(ALIGNED_MIN_MODEL_PROBABILITY),
                 "is_replay": False,
                 "performance": {
                     key: _period_json(value) for key, value in aligned_windows.items()

@@ -21,6 +21,7 @@ from sports_edge_tennis.market.contracts import (
 from sports_edge_tennis.market.evaluator import evaluate_market_match
 from sports_edge_tennis.market.persistence import (
     ensure_market_policy_version_v1,
+    ensure_market_policy_version_v2,
     load_market_policy_version,
 )
 from sports_edge_tennis.market.pricing import (
@@ -68,6 +69,7 @@ __all__ = [
     "booksum",
     "edge_pct",
     "ensure_market_policy_version_v1",
+    "ensure_market_policy_version_v2",
     "evaluate_and_persist_market_slate",
     "evaluate_market_match",
     "is_fresh",

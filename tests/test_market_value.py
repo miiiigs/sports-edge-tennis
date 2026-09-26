@@ -357,6 +357,73 @@ def test_manager_no_bet_is_never_qualified():
     assert decision.lineage == ()
 
 
+def test_sub_60_probability_is_never_a_bet_even_with_value_available():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="2.20",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.599999"),
+        policy=_policy(policy_version="v2"),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.decision_status == "NO_BET"
+    assert decision.reason_code == "PROBABILITY_FLOOR"
+    assert decision.suggested_stake_fraction is None
+
+
+def test_exact_60_probability_remains_eligible_for_market_value():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="1.85",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.600000"),
+        policy=_policy(policy_version="v2"),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.decision_status == "BET"
+    assert decision.reason_code == "NONE"
+
+
+def test_market_v1_preserves_pre_floor_behavior_for_historical_replay():
+    ref_p1, ref_p2 = _fair_reference_pair()
+    offered = _snapshot(
+        odds_snapshot_id=12,
+        selection_type="PLAYER_1",
+        price="2.20",
+        source_system="SOFT",
+        bookmaker_code="BOOK_A",
+        source_snapshot_id="s2",
+    )
+    decision = evaluate_market_match(
+        manager_row=_manager_row(side=1, prob="0.59"),
+        policy=_policy(policy_version="v1"),
+        competition_tier="ATP_250",
+        sharp_reference=SHARP,
+        odds_snapshots=[ref_p1, ref_p2, offered],
+        decision_as_of=_utc(10, 5),
+    )
+    assert decision.decision_status == "BET"
+    assert decision.reason_code == "NONE"
+
+
 def test_no_model_edge_vs_sharp():
     ref_p1, ref_p2 = _fair_reference_pair()
     decision = evaluate_market_match(
