@@ -56,6 +56,7 @@ def _completed_match(
     observed,
     winner=1,
     stats_observed=None,
+    surface="HARD",
 ):
     match_id = _fetchval(
         conn,
@@ -69,9 +70,9 @@ def _completed_match(
             surface, round_code, best_of_sets, qualifying_flag, match_status,
             source_observed_at, as_of
         )
-        VALUES (%s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE, 'COMPLETED', %s, %s)
+        VALUES (%s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, 'R32', 3, FALSE, 'COMPLETED', %s, %s)
         """,
-        (match_id, p1, p2, observed, observed),
+        (match_id, p1, p2, surface, observed, observed),
     )
     conn.execute(
         """
@@ -550,6 +551,79 @@ def test_first_complete_stat_cohort_splits_segment_before_a2_can_use_it(
 
     boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
     assert stats_visible in boundaries
+    assert cache_cutoff_segments(db, cutoffs=[T1, T2]) == ((T1,), (T2,))
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+    assert cache.mode == MODE_CACHE_SEGMENTED
+
+    for cutoff in (T1, T2):
+        cached = cache.history_for(cutoff)
+        baseline_a2 = load_agent2_history(db, cutoff=cutoff)
+        baseline_snap2 = build_agent2_snapshot(baseline_a2, cutoff=cutoff)
+        assert _a2_projection(cached.agent2_snapshot) == _a2_projection(baseline_snap2)
+
+
+
+def test_a2_surface_recovery_evidence_creates_segment_boundary(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    tournament = _fetchval(
+        db,
+        """
+        INSERT INTO tournaments (canonical_name, tour_scope, competition_tier)
+        VALUES ('Surface Recovery Open', 'ATP_MAIN', 'ATP_250')
+        RETURNING tournament_id
+        """,
+    )
+    current_edition = _fetchval(
+        db,
+        """
+        INSERT INTO tournament_editions (tournament_id, season_year, edition_name)
+        VALUES (%s, 2026, 'Surface Recovery 2026')
+        RETURNING tournament_edition_id
+        """,
+        (tournament,),
+    )
+    prior_edition = _fetchval(
+        db,
+        """
+        INSERT INTO tournament_editions (tournament_id, season_year, edition_name)
+        VALUES (%s, 2025, 'Surface Recovery 2025')
+        RETURNING tournament_edition_id
+        """,
+        (tournament,),
+    )
+
+    p1 = _player(db, "Surface Missing One")
+    p2 = _player(db, "Surface Missing Two")
+    _completed_match(
+        db,
+        current_edition,
+        p1,
+        p2,
+        observed=R1,
+        surface=None,
+    )
+
+    p3 = _player(db, "Surface Evidence One")
+    p4 = _player(db, "Surface Evidence Two")
+    surface_visible = T1 + timedelta(hours=12)
+    _completed_match(
+        db,
+        prior_edition,
+        p3,
+        p4,
+        observed=surface_visible,
+        surface="CLAY",
+    )
+
+    boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
+    assert surface_visible in boundaries
     assert cache_cutoff_segments(db, cutoffs=[T1, T2]) == ((T1,), (T2,))
 
     cache = ReplayHistoryCache(
