@@ -45,6 +45,7 @@ MARKET_REASON_EXPLANATIONS = {
     "NO_MODEL_EDGE_VS_SHARP": "The model pick remains valid, but the sharp market does not currently confirm a positive price edge.",
     "MISSING_MARKET": "The model pick remains valid, but no fresh offered bookmaker price is available yet.",
     "EDGE_BELOW_THRESHOLD": "The model pick remains valid, but the current offered price is below the stricter value-bet threshold.",
+    "PROBABILITY_FLOOR": "The model pick remains valid, but bets require at least 60% model win probability.",
     "VETO_TRIGGERED": "The pick qualified on model and price, but a safety-veto condition blocked publication.",
     "NONE": None,
 }
