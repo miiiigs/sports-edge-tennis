@@ -134,3 +134,54 @@ def test_v1_1_later_match_can_be_visible_at_own_cutoff(db: psycopg.Connection):
     assert later_spec.prediction_as_of == datetime(2026, 9, 12, 12, 0, tzinfo=UTC)
     assert later_spec.prediction_as_of > datetime(2026, 9, 12, 10, 0, tzinfo=UTC)
 
+def test_v1_1_planning_window_ignores_future_fixture_revision(db: psycopg.Connection):
+    original_start = datetime(2026, 9, 12, 18, 0, tzinfo=UTC)
+    match_id = _insert_match(
+        db,
+        original_start,
+        observed=datetime(2026, 9, 11, 12, 0, tzinfo=UTC),
+    )
+    original = db.execute(
+        """
+        SELECT player_1_id, player_2_id, tour_scope, competition_tier, surface,
+               round_code, best_of_sets, qualifying_flag
+        FROM match_versions
+        WHERE match_id = %s
+        ORDER BY match_version_id
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope,
+            competition_tier, surface, round_code, best_of_sets, qualifying_flag,
+            match_status, source_observed_at, as_of
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'SCHEDULED', %s, %s)
+        """,
+        (
+            match_id,
+            original[0],
+            original[1],
+            datetime(2026, 9, 12, 20, 0, tzinfo=UTC),
+            original[2],
+            original[3],
+            original[4],
+            original[5],
+            original[6],
+            original[7],
+            datetime(2026, 9, 13, 1, 0, tzinfo=UTC),
+            datetime(2026, 9, 13, 1, 0, tzinfo=UTC),
+        ),
+    )
+
+    specs = derive_run_specs_from_match_cutoffs(
+        db,
+        match_ids=(match_id,),
+        window_as_of=datetime(2026, 9, 12, 23, 59, 59, tzinfo=UTC),
+    )
+
+    assert len(specs) == 1
+    assert specs[0].prediction_as_of == original_start - timedelta(hours=6)
+
