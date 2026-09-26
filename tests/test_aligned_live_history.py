@@ -138,7 +138,7 @@ def test_results_pages_label_aligned_history_as_actual_live_not_replay(monkeypat
     assert "at least 60%" in bets_page
     assert "original live ledger remains unchanged" in bets_page.lower()
     assert "Aligned live history · since 10 Sep 2026" in picks_page
-    assert "A1+A2 arithmetic mean" in picks_page
+    assert "A1/A2 arithmetic mean" in picks_page
     assert "at least 60%" in picks_page
     assert "never Value Bets" in picks_page
 
