@@ -14,6 +14,7 @@ from sports_edge_tennis.dashboard.daily_bets import (
     DailyBetSummary,
     PeriodBetSummary,
     build_performance_windows,
+    load_aligned_daily_bet_summaries,
     load_daily_bet_summaries,
     load_daily_bets,
 )
@@ -104,8 +105,9 @@ def _load_history(requested_date: date | None) -> ResultsView:
         return ResultsView(selected_date=requested_date, failed=True)
     try:
         summaries = load_daily_bet_summaries(conn)
-        aligned_summaries = load_daily_bet_summaries(
+        aligned_summaries = load_aligned_daily_bet_summaries(
             conn,
+            start_date=ALIGNED_LIVE_HISTORY_START,
             min_consensus_probability=ALIGNED_MIN_MODEL_PROBABILITY,
         )
         current_regime = resolve_current_regime(conn)
