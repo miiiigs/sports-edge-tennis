@@ -286,6 +286,10 @@ def test_wide_spread_tracking_pick_uses_a1_a2_average_for_weak_filter() -> None:
     assert strong.kind == MODEL_PICK
     assert strong.is_actionable_bet is False
 
+    payload = dashboard_app._pick_payload(strong)
+    assert payload["tracking_probability"] == "64%"
+    assert payload["probability_basis"] == "A1_A2_TRACKING_AVERAGE"
+
 
 def test_model_pick_and_value_bet_are_distinguishable_without_colour() -> None:
     """The two states must read differently in text alone."""
