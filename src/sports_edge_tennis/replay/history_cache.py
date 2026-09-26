@@ -4,11 +4,12 @@ The baseline replay loader re-reads the entire multi-year A2/A3 history from
 PostgreSQL for every replay cutoff. Profiling showed that repeated full-history
 DB loading is the dominant cost (A2 ~64s / 130k rows; A3 far worse per row).
 
-This cache loads the required history **once** at the final cutoff and rebuilds
-each earlier cutoff in memory using the exact same baseline constructors
-(``replay_history``, ``build_history_snapshot``,
-``build_live_agent3_history_snapshot``). Point-in-time visibility is preserved
-because those constructors filter observations by their own cutoff.
+This cache loads the required history **once** at the final cutoff. The first
+replay cutoff is built with the exact baseline constructors; subsequent A2/A3
+cutoffs advance chronologically with the same incremental primitives used by
+live production. Agent 1 remains a deterministic in-memory replay over the
+single preloaded history set. Point-in-time visibility is preserved at every
+cutoff.
 
 A conservative PIT-stability guard disables the cache (falling back to the
 baseline per-cutoff DB loads) whenever a match has two result/stat observations
@@ -117,18 +118,12 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
 
     result_rows = conn.execute(
         """
-        SELECT match_id, vc FROM (
-            SELECT
-                match_id,
-                GREATEST(source_observed_at, as_of) AS vc,
-                row_number() OVER (
-                    PARTITION BY match_id
-                    ORDER BY GREATEST(source_observed_at, as_of) DESC, match_result_observation_id DESC
-                ) AS rn
-            FROM match_result_observations
-            WHERE GREATEST(source_observed_at, as_of) <= %s
-        ) ranked
-        WHERE rn <= 2
+        SELECT
+            match_id,
+            GREATEST(source_observed_at, as_of) AS vc
+        FROM match_result_observations
+        WHERE GREATEST(source_observed_at, as_of) <= %s
+        ORDER BY match_id, vc, match_result_observation_id
         """,
         (final,),
     ).fetchall()
@@ -136,25 +131,21 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
     for match_id, vc in result_rows:
         by_match.setdefault(int(match_id), []).append(vc)
     for values in by_match.values():
-        if len(values) == 2 and _straddles_any_cutoff(values[0], values[1], ordered):
-            return False
+        ordered_values = sorted(set(values))
+        for vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
+            if _straddles_any_cutoff(vc_new, vc_old, ordered):
+                return False
 
     stat_rows = conn.execute(
         """
-        SELECT match_id, player_id, vc FROM (
-            SELECT
-                match_id,
-                player_id,
-                GREATEST(source_observed_at, as_of) AS vc,
-                row_number() OVER (
-                    PARTITION BY match_id, player_id
-                    ORDER BY GREATEST(source_observed_at, as_of) DESC, match_stat_observation_id DESC
-                ) AS rn
-            FROM match_stat_observations
-            WHERE observation_kind = 'RAW_SOURCE'
-              AND GREATEST(source_observed_at, as_of) <= %s
-        ) ranked
-        WHERE rn <= 2
+        SELECT
+            match_id,
+            player_id,
+            GREATEST(source_observed_at, as_of) AS vc
+        FROM match_stat_observations
+        WHERE observation_kind = 'RAW_SOURCE'
+          AND GREATEST(source_observed_at, as_of) <= %s
+        ORDER BY match_id, player_id, vc, match_stat_observation_id
         """,
         (final,),
     ).fetchall()
@@ -162,8 +153,10 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
     for match_id, player_id, vc in stat_rows:
         by_key.setdefault((int(match_id), int(player_id)), []).append(vc)
     for values in by_key.values():
-        if len(values) == 2 and _straddles_any_cutoff(values[0], values[1], ordered):
-            return False
+        ordered_values = sorted(set(values))
+        for vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
+            if _straddles_any_cutoff(vc_new, vc_old, ordered):
+                return False
 
     return True
 
