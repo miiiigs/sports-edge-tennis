@@ -33,7 +33,10 @@ from sports_edge_tennis.replay.contracts import (
     ValueBetLedgerRow,
 )
 from sports_edge_tennis.replay.engine import run_replay
-from sports_edge_tennis.replay.first_qualified import first_qualified_model_picks
+from sports_edge_tennis.replay.first_qualified import (
+    first_current_rule_model_picks,
+    first_qualified_model_picks,
+)
 
 __all__ = [
     "DATA_NOT_AVAILABLE_PIT",
@@ -49,5 +52,6 @@ __all__ = [
     "ReplayRunResult",
     "ValueBetLedgerRow",
     "run_replay",
+    "first_current_rule_model_picks",
     "first_qualified_model_picks",
 ]
