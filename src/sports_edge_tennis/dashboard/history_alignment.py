@@ -9,9 +9,11 @@ ledgers for Model Picks and Value Bets.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from typing import Iterable, TypeVar
 
 ALIGNED_LIVE_HISTORY_START = date(2026, 9, 10)
+ALIGNED_MIN_MODEL_PROBABILITY = Decimal("0.600000")
 
 T = TypeVar("T")
 
@@ -25,4 +27,8 @@ def since_aligned_start(rows: Iterable[T]) -> tuple[T, ...]:
     )
 
 
-__all__ = ["ALIGNED_LIVE_HISTORY_START", "since_aligned_start"]
+__all__ = [
+    "ALIGNED_LIVE_HISTORY_START",
+    "ALIGNED_MIN_MODEL_PROBABILITY",
+    "since_aligned_start",
+]
