@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import psycopg
 
+import sports_edge_tennis.replay.history_cache as history_cache
 from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as A1_CONFIG,
     replay_history as replay_agent1_history,
@@ -167,3 +168,70 @@ def test_cache_falls_back_to_baseline_when_observation_straddles_cutoff(db: psyc
         baseline_a2 = load_agent2_history(db, cutoff=cutoff)
         baseline_snap2 = build_agent2_snapshot(baseline_a2, cutoff=cutoff)
         assert _a2_projection(cached.agent2_snapshot) == _a2_projection(baseline_snap2)
+
+
+
+def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
+    db: psycopg.Connection,
+    monkeypatch,
+):
+    _seed(db)
+    calls = {
+        "a2_build": 0,
+        "a2_advance": 0,
+        "a3_build": 0,
+        "a3_advance": 0,
+    }
+
+    original_a2_build = history_cache.build_agent2_snapshot
+    original_a2_advance = history_cache.advance_agent2_history_snapshot
+    original_a3_build = history_cache.build_live_agent3_history_snapshot
+    original_a3_advance = history_cache.advance_live_agent3_history_snapshot
+
+    def a2_build(*args, **kwargs):
+        calls["a2_build"] += 1
+        return original_a2_build(*args, **kwargs)
+
+    def a2_advance(*args, **kwargs):
+        calls["a2_advance"] += 1
+        return original_a2_advance(*args, **kwargs)
+
+    def a3_build(*args, **kwargs):
+        calls["a3_build"] += 1
+        return original_a3_build(*args, **kwargs)
+
+    def a3_advance(*args, **kwargs):
+        calls["a3_advance"] += 1
+        return original_a3_advance(*args, **kwargs)
+
+    monkeypatch.setattr(history_cache, "build_agent2_snapshot", a2_build)
+    monkeypatch.setattr(history_cache, "advance_agent2_history_snapshot", a2_advance)
+    monkeypatch.setattr(history_cache, "build_live_agent3_history_snapshot", a3_build)
+    monkeypatch.setattr(history_cache, "advance_live_agent3_history_snapshot", a3_advance)
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+
+    # Requesting T2 first must still build T1 as the chronological bootstrap,
+    # then advance exactly once to T2.
+    result = cache.history_for(T2)
+    assert result.cutoff == T2
+    assert calls == {
+        "a2_build": 1,
+        "a2_advance": 1,
+        "a3_build": 1,
+        "a3_advance": 1,
+    }
+
+    # Re-reading either cutoff must be a pure cache hit.
+    cache.history_for(T1)
+    cache.history_for(T2)
+    assert calls == {
+        "a2_build": 1,
+        "a2_advance": 1,
+        "a3_build": 1,
+        "a3_advance": 1,
+    }
