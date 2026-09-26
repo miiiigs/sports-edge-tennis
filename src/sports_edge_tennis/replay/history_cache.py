@@ -498,26 +498,18 @@ class ReplayHistoryCache:
             delta2 = a2[a2_start:a2_end]
             delta3 = a3[a3_start:a3_end]
 
-            # Elo can be appended incrementally only when newly visible rows
-            # belong after the previous replay boundary in canonical A1 order.
-            # Late-arriving history is rebuilt from PIT-visible rows rather than
-            # being appended out of order.
-            if all(item.as_of >= previous_cutoff for item in delta1):
-                agent1_replay = advance_agent1_replay_history(
-                    previous.agent1_replay,
-                    delta1,
-                    previous_prediction_as_of=previous_cutoff,
-                    prediction_as_of=cutoff,
-                    config=AGENT1_DEFAULT_CONFIG,
-                )
-                a1_mode = "incremental"
-            else:
-                agent1_replay = replay_agent1_history(
-                    visible1,
-                    cutoff,
-                    AGENT1_DEFAULT_CONFIG,
-                )
-                a1_mode = "rebaseline_late_history"
+            # HistoricalMatchObservation enforces source_observed_at <= as_of.
+            # Because A1 visibility is therefore exactly its as_of boundary,
+            # every row entering this delta is chronologically appendable after
+            # the previous cutoff. Result corrections are already isolated by
+            # cache segments and re-bootstrap instead of advancing in place.
+            agent1_replay = advance_agent1_replay_history(
+                previous.agent1_replay,
+                delta1,
+                previous_prediction_as_of=previous_cutoff,
+                prediction_as_of=cutoff,
+                config=AGENT1_DEFAULT_CONFIG,
+            )
 
             agent2_snapshot = advance_agent2_history_snapshot(
                 previous.agent2_snapshot,
@@ -534,7 +526,7 @@ class ReplayHistoryCache:
                 "REPLAY_HISTORY_CACHE_INCREMENTAL "
                 f"segment={segment_index + 1}/{len(self._segments)} "
                 f"previous={previous_cutoff.isoformat()} cutoff={cutoff.isoformat()} "
-                f"a1_mode={a1_mode} a1_delta={len(delta1)} "
+                f"a1_mode=incremental a1_delta={len(delta1)} "
                 f"a2_delta={len(delta2)} a3_delta={len(delta3)}",
                 flush=True,
             )
