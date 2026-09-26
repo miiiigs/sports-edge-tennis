@@ -33,7 +33,7 @@ from sports_edge_tennis.replay.contracts import (
 )
 from sports_edge_tennis.replay.engine import run_replay
 from sports_edge_tennis.replay.first_qualified import (
-    first_qualified_model_picks,
+    first_current_rule_model_picks,
     first_qualified_value_bets,
     model_pick_metrics,
     value_bet_metrics,
@@ -199,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     paths = write_replay_artifact(args.artifacts_root, result=result, manifest=manifest)
 
-    picks = first_qualified_model_picks(result.model_picks)
+    picks = first_current_rule_model_picks(result.model_picks)
     bets = first_qualified_value_bets(result.value_bets)
     pick_metrics = model_pick_metrics(picks)
     bet_metrics = value_bet_metrics(bets)
