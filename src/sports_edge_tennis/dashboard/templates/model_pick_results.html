@@ -29,10 +29,14 @@
 <section class="section" aria-label="Aligned live model-pick history" style="margin-top: 0;">
   <h2 class="section-title">Aligned live history · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
   <p class="section-note">
-    One actual production Model Pick per sporting match, always using the first
-    Manager-qualified live pick for that match. This removes hourly duplicates
-    and applies one accounting rule across the September record. It is live-issued
-    history, not a replay of today's model configuration.
+    Current-rule alignment over persisted live evidence since 10 Sep. A match
+    enters this record at its first qualifying live evaluation with at least 60%
+    model probability. Normal Manager consensus uses the Manager probability.
+    When A3 abstained and A1+A2 agreed but failed only the wide-spread gate, the
+    A1/A2 arithmetic mean is used and the pick is included when that mean is at
+    least 60%. Wide-spread entries remain tracking-only and are never Value Bets.
+    The original historical model ledger remains unchanged below. This is not an
+    exact replay of today's agent configuration.
   </p>
 
   <div class="stat-grid">
