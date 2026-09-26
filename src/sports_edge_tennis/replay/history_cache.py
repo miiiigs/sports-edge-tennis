@@ -18,6 +18,7 @@ otherwise collapse the earlier observation.
 
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -34,7 +35,11 @@ from sports_edge_tennis.data.agent2_history import (
 )
 from sports_edge_tennis.data.agent3_history import load_agent3_history
 from sports_edge_tennis.replay.serde import payload_sha256
+from sports_edge_tennis.runner.agent2_live_snapshot import (
+    advance_agent2_history_snapshot,
+)
 from sports_edge_tennis.runner.agent3_live_snapshot import (
+    advance_live_agent3_history_snapshot,
     build_live_agent3_history_snapshot,
 )
 
@@ -188,19 +193,42 @@ class ReplayHistoryCache:
         self._a1_all = None
         self._a2_all = None
         self._a3_all = None
+        self._a1_visibility: list[datetime] = []
+        self._a2_visibility: list[datetime] = []
+        self._a3_visibility: list[datetime] = []
         if self.mode == MODE_CACHE_LOAD_ONCE:
             self._preload()
 
     def _preload(self) -> None:
         final = self._cutoffs[-1]
         first = self._cutoffs[0]
-        self._a1_all = load_agent1_history(self._conn, cutoff=final)
-        self._a2_all = load_agent2_history(self._conn, cutoff=final)
+        self._a1_all = sorted(
+            load_agent1_history(self._conn, cutoff=final),
+            key=lambda item: max(item.source_observed_at, item.as_of),
+        )
+        self._a2_all = sorted(
+            load_agent2_history(self._conn, cutoff=final),
+            key=lambda item: item.visibility_cohort,
+        )
         a3_days = (self._a3_lookback_days * 2) + 2
-        self._a3_all = load_agent3_history(
-            self._conn,
-            cutoff=final,
-            date_start=(first - timedelta(days=a3_days)).date(),
+        self._a3_all = sorted(
+            load_agent3_history(
+                self._conn,
+                cutoff=final,
+                date_start=(first - timedelta(days=a3_days)).date(),
+            ),
+            key=lambda item: item.visibility_cohort,
+        )
+        self._a1_visibility = [
+            max(item.source_observed_at, item.as_of) for item in self._a1_all
+        ]
+        self._a2_visibility = [item.visibility_cohort for item in self._a2_all]
+        self._a3_visibility = [item.visibility_cohort for item in self._a3_all]
+        print(
+            "REPLAY_HISTORY_CACHE_READY "
+            f"mode={self.mode} cutoffs={len(self._cutoffs)} "
+            f"a1={len(self._a1_all)} a2={len(self._a2_all)} a3={len(self._a3_all)}",
+            flush=True,
         )
 
     def _baseline_set(self, cutoff: datetime) -> ReplayHistorySet:
@@ -227,23 +255,54 @@ class ReplayHistoryCache:
         a1 = self._a1_all
         a2 = self._a2_all
         a3 = self._a3_all
-        # Snapshot ids mirror the baseline per-cutoff load's visible row set.
-        visible1 = [item for item in a1 if item.source_observed_at <= cutoff and item.as_of <= cutoff]
-        visible2 = [
-            item
-            for item in a2
-            if item.result_source_observed_at < cutoff and item.result_as_of < cutoff
-        ]
-        visible3 = [
-            item
-            for item in a3
-            if item.result_source_observed_at < cutoff and item.result_as_of < cutoff
-        ]
+
+        a1_end = bisect_right(self._a1_visibility, cutoff)
+        a2_end = bisect_left(self._a2_visibility, cutoff)
+        a3_end = bisect_left(self._a3_visibility, cutoff)
+        visible1 = a1[:a1_end]
+        visible2 = a2[:a2_end]
+        visible3 = a3[:a3_end]
+
+        previous_cutoffs = [value for value in self._cache if value < cutoff]
+        if previous_cutoffs:
+            previous_cutoff = max(previous_cutoffs)
+            previous = self._cache[previous_cutoff]
+            a2_start = bisect_left(self._a2_visibility, previous_cutoff)
+            a3_start = bisect_left(self._a3_visibility, previous_cutoff)
+            delta2 = a2[a2_start:a2_end]
+            delta3 = a3[a3_start:a3_end]
+            agent2_snapshot = advance_agent2_history_snapshot(
+                previous.agent2_snapshot,
+                delta2,
+                cutoff=cutoff,
+            )
+            agent3_snapshot = advance_live_agent3_history_snapshot(
+                previous.agent3_snapshot,
+                delta3,
+                previous_cutoff=previous_cutoff,
+                cutoff=cutoff,
+            )
+            print(
+                "REPLAY_HISTORY_CACHE_INCREMENTAL "
+                f"previous={previous_cutoff.isoformat()} cutoff={cutoff.isoformat()} "
+                f"a2_delta={len(delta2)} a3_delta={len(delta3)}",
+                flush=True,
+            )
+        else:
+            agent2_snapshot = build_agent2_snapshot(a2, cutoff=cutoff)
+            agent3_snapshot = build_live_agent3_history_snapshot(a3, cutoff=cutoff)
+            print(
+                "REPLAY_HISTORY_CACHE_BOOTSTRAP "
+                f"cutoff={cutoff.isoformat()} a2_visible={len(visible2)} "
+                f"a3_visible={len(visible3)}",
+                flush=True,
+            )
+
         return ReplayHistorySet(
             cutoff=cutoff,
             agent1_replay=replay_agent1_history(a1, cutoff, AGENT1_DEFAULT_CONFIG),
-            agent2_snapshot=build_agent2_snapshot(a2, cutoff=cutoff),
-            agent3_snapshot=build_live_agent3_history_snapshot(a3, cutoff=cutoff),
+            agent2_snapshot=agent2_snapshot,
+            agent3_snapshot=agent3_snapshot,
             agent1_snapshot_id=_agent1_snapshot_id(visible1, cutoff),
             agent2_snapshot_id=_agent2_snapshot_id(visible2, cutoff),
             agent3_snapshot_id=_agent3_snapshot_id(visible3, cutoff),
@@ -251,11 +310,23 @@ class ReplayHistoryCache:
         )
 
     def history_for(self, cutoff: datetime) -> ReplayHistorySet:
-        if cutoff not in self._cache:
-            if self.mode == MODE_CACHE_LOAD_ONCE:
+        if cutoff in self._cache:
+            return self._cache[cutoff]
+
+        if self.mode == MODE_CACHE_LOAD_ONCE:
+            # Build planned cutoffs chronologically even when callers request a
+            # later cutoff first. This guarantees every snapshot is advanced
+            # from its immediate predecessor rather than silently rebuilding
+            # the full A2/A3 history.
+            for planned_cutoff in self._cutoffs:
+                if planned_cutoff > cutoff:
+                    break
+                if planned_cutoff not in self._cache:
+                    self._cache[planned_cutoff] = self._cached_set(planned_cutoff)
+            if cutoff not in self._cache:
                 self._cache[cutoff] = self._cached_set(cutoff)
-            else:
-                self._cache[cutoff] = self._baseline_set(cutoff)
+        else:
+            self._cache[cutoff] = self._baseline_set(cutoff)
         return self._cache[cutoff]
 
 
