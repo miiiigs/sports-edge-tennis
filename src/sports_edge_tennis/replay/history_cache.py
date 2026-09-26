@@ -34,6 +34,7 @@ from sports_edge_tennis.data.agent2_history import (
     load_agent2_history,
 )
 from sports_edge_tennis.data.agent3_history import load_agent3_history
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 from sports_edge_tennis.replay.serde import payload_sha256
 from sports_edge_tennis.runner.agent2_live_snapshot import (
     advance_agent2_history_snapshot,
@@ -185,6 +186,50 @@ def cache_correction_boundaries(
         (first, final),
     ).fetchall()
     boundaries.update(row[0] for row in bridge_rows if row[0] is not None)
+
+    # The fallback alias resolver can change a live-only player's model identity
+    # when a candidate historical player gets its first PIT-visible completed
+    # result. Since player aliases/source IDs are reference identity data, that
+    # first completed-result visibility is the temporal fact that makes the
+    # candidate usable by resolve_model_player_ids.
+    alias_evidence_rows = conn.execute(
+        """
+        WITH candidate_players AS (
+            SELECT DISTINCT pa.player_id
+            FROM player_aliases pa
+            WHERE pa.source_system = 'TENNIS_DATA'
+              AND EXISTS (
+                  SELECT 1
+                  FROM player_source_ids psi
+                  WHERE psi.player_id = pa.player_id
+                    AND psi.source_system <> ALL(%s)
+              )
+        ),
+        candidate_evidence AS (
+            SELECT
+                cp.player_id,
+                GREATEST(mro.source_observed_at, mro.as_of) AS visible_at
+            FROM candidate_players cp
+            JOIN match_versions mv
+              ON mv.player_1_id = cp.player_id
+              OR mv.player_2_id = cp.player_id
+            JOIN match_result_observations mro
+              ON mro.match_id = mv.match_id
+             AND mro.outcome_status = 'COMPLETED'
+             AND mv.source_observed_at <= mro.source_observed_at
+             AND mv.as_of <= mro.as_of
+            WHERE GREATEST(mro.source_observed_at, mro.as_of) <= %s
+        )
+        SELECT player_id, min(visible_at) AS first_visible_at
+        FROM candidate_evidence
+        GROUP BY player_id
+        HAVING min(visible_at) > %s
+           AND min(visible_at) <= %s
+        ORDER BY first_visible_at, player_id
+        """,
+        (list(LIVE_FIXTURE_SOURCE_SYSTEMS), final, first, final),
+    ).fetchall()
+    boundaries.update(row[1] for row in alias_evidence_rows if row[1] is not None)
 
     return tuple(sorted(boundaries))
 
