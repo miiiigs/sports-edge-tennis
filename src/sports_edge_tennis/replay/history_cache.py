@@ -26,6 +26,7 @@ import psycopg
 
 from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
+    advance_replay_history as advance_agent1_replay_history,
     replay_history as replay_agent1_history,
 )
 from sports_edge_tennis.data.agent1_history import load_agent1_history
@@ -490,10 +491,26 @@ class ReplayHistoryCache:
         if previous_cutoffs:
             previous_cutoff = max(previous_cutoffs)
             previous = self._cache[previous_cutoff]
+            a1_start = bisect_right(self._a1_visibility, previous_cutoff)
             a2_start = bisect_left(self._a2_visibility, previous_cutoff)
             a3_start = bisect_left(self._a3_visibility, previous_cutoff)
+            delta1 = a1[a1_start:a1_end]
             delta2 = a2[a2_start:a2_end]
             delta3 = a3[a3_start:a3_end]
+
+            # HistoricalMatchObservation enforces source_observed_at <= as_of.
+            # Because A1 visibility is therefore exactly its as_of boundary,
+            # every row entering this delta is chronologically appendable after
+            # the previous cutoff. Result corrections are already isolated by
+            # cache segments and re-bootstrap instead of advancing in place.
+            agent1_replay = advance_agent1_replay_history(
+                previous.agent1_replay,
+                delta1,
+                previous_prediction_as_of=previous_cutoff,
+                prediction_as_of=cutoff,
+                config=AGENT1_DEFAULT_CONFIG,
+            )
+
             agent2_snapshot = advance_agent2_history_snapshot(
                 previous.agent2_snapshot,
                 delta2,
@@ -509,23 +526,32 @@ class ReplayHistoryCache:
                 "REPLAY_HISTORY_CACHE_INCREMENTAL "
                 f"segment={segment_index + 1}/{len(self._segments)} "
                 f"previous={previous_cutoff.isoformat()} cutoff={cutoff.isoformat()} "
+                f"a1_mode=incremental a1_delta={len(delta1)} "
                 f"a2_delta={len(delta2)} a3_delta={len(delta3)}",
                 flush=True,
             )
         else:
+            # Use only PIT-visible A1 rows. Passing the segment-final A1 load
+            # would preserve ratings but incorrectly inflate A1's
+            # skipped_future_observation_count versus a true per-cutoff load.
+            agent1_replay = replay_agent1_history(
+                visible1,
+                cutoff,
+                AGENT1_DEFAULT_CONFIG,
+            )
             agent2_snapshot = build_agent2_snapshot(a2, cutoff=cutoff)
             agent3_snapshot = build_live_agent3_history_snapshot(a3, cutoff=cutoff)
             print(
                 "REPLAY_HISTORY_CACHE_BOOTSTRAP "
                 f"segment={segment_index + 1}/{len(self._segments)} "
-                f"cutoff={cutoff.isoformat()} a2_visible={len(visible2)} "
-                f"a3_visible={len(visible3)}",
+                f"cutoff={cutoff.isoformat()} a1_visible={len(visible1)} "
+                f"a2_visible={len(visible2)} a3_visible={len(visible3)}",
                 flush=True,
             )
 
         return ReplayHistorySet(
             cutoff=cutoff,
-            agent1_replay=replay_agent1_history(a1, cutoff, AGENT1_DEFAULT_CONFIG),
+            agent1_replay=agent1_replay,
             agent2_snapshot=agent2_snapshot,
             agent3_snapshot=agent3_snapshot,
             agent1_snapshot_id=_agent1_snapshot_id(visible1, cutoff),

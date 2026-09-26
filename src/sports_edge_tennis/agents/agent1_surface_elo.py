@@ -636,6 +636,77 @@ def replay_history(
     )
 
 
+def advance_replay_history(
+    replay: ReplayResult,
+    observations: list[HistoricalMatchObservation] | tuple[HistoricalMatchObservation, ...],
+    *,
+    previous_prediction_as_of: datetime,
+    prediction_as_of: datetime,
+    config: SurfaceEloConfig = DEFAULT_CONFIG,
+) -> ReplayResult:
+    """Advance an Agent 1 replay with newly PIT-visible chronological history.
+
+    Incremental Elo is only equivalent to a full replay when every newly visible
+    observation belongs at or after the prior replay boundary in Agent 1's
+    canonical history order. A late-arriving row whose as_of predates the
+    previous boundary must be handled by a full replay instead.
+    """
+    if prediction_as_of < previous_prediction_as_of:
+        raise SurfaceEloValidationError(
+            "prediction_as_of must not precede previous_prediction_as_of"
+        )
+    if replay.skipped_future_observation_count != 0:
+        raise SurfaceEloValidationError(
+            "incremental Agent 1 replay requires a PIT-visible baseline with no future rows"
+        )
+
+    ordered = sorted(observations, key=_history_sort_key)
+    for observation in ordered:
+        if (
+            observation.source_observed_at > prediction_as_of
+            or observation.as_of > prediction_as_of
+        ):
+            raise SurfaceEloValidationError(
+                "incremental Agent 1 observations must already be PIT-visible"
+            )
+        if observation.as_of < previous_prediction_as_of:
+            raise SurfaceEloValidationError(
+                "late Agent 1 history requires a full replay"
+            )
+
+    player_states = dict(replay.player_states)
+    eligible_count = replay.eligible_history_match_count
+    retired = replay.skipped_retired_match_count
+    walkover = replay.skipped_walkover_match_count
+    cancelled = replay.skipped_cancelled_match_count
+    postponed = replay.skipped_postponed_match_count
+
+    for observation in ordered:
+        if not _status_is_eligible(observation.outcome_status, config):
+            if observation.outcome_status == "RETIRED":
+                retired += 1
+            elif observation.outcome_status == "WALKOVER":
+                walkover += 1
+            elif observation.outcome_status == "CANCELLED":
+                cancelled += 1
+            elif observation.outcome_status == "POSTPONED":
+                postponed += 1
+            continue
+
+        eligible_count += 1
+        _apply_historical_observation_in_place(player_states, observation, config)
+
+    return ReplayResult(
+        player_states=player_states,
+        eligible_history_match_count=eligible_count,
+        skipped_future_observation_count=0,
+        skipped_retired_match_count=retired,
+        skipped_walkover_match_count=walkover,
+        skipped_cancelled_match_count=cancelled,
+        skipped_postponed_match_count=postponed,
+    )
+
+
 def predict_from_replay(
     request: PredictionRequest,
     replay: ReplayResult,
