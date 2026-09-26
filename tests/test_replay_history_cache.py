@@ -235,3 +235,35 @@ def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
         "a3_build": 1,
         "a3_advance": 1,
     }
+
+
+
+def test_cache_guard_checks_entire_correction_chain_not_only_latest_two(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    match_one = _fetchval(db, "SELECT min(match_id) FROM matches")
+    correction_1 = T1 + timedelta(hours=1)
+    correction_2 = T1 + timedelta(hours=2)
+
+    for observed in (correction_1, correction_2):
+        db.execute(
+            """
+            INSERT INTO match_result_observations (
+                match_id, outcome_status, winner_side, source_observed_at, as_of
+            )
+            VALUES (%s, 'COMPLETED', 1, %s, %s)
+            """,
+            (match_one, observed, observed),
+        )
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+
+    # The latest two corrections are both after T1, so a guard that inspects
+    # only those two would miss the older R1 -> correction_1 transition that
+    # changes what was knowable at T1.
+    assert cache.mode == MODE_BASELINE_PER_CUTOFF
