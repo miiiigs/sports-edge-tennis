@@ -140,19 +140,21 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
         """
         SELECT
             match_id,
-            player_id,
             GREATEST(source_observed_at, as_of) AS vc
         FROM match_stat_observations
         WHERE observation_kind = 'RAW_SOURCE'
           AND GREATEST(source_observed_at, as_of) <= %s
-        ORDER BY match_id, player_id, vc, match_stat_observation_id
+        GROUP BY match_id, source_system, source_observed_at, as_of
+        HAVING count(*) = 2
+           AND count(DISTINCT player_id) = 2
+        ORDER BY match_id, vc
         """,
         (final,),
     ).fetchall()
-    by_key: dict[tuple[int, int], list[datetime]] = {}
-    for match_id, player_id, vc in stat_rows:
-        by_key.setdefault((int(match_id), int(player_id)), []).append(vc)
-    for values in by_key.values():
+    stat_cohorts_by_match: dict[int, list[datetime]] = {}
+    for match_id, vc in stat_rows:
+        stat_cohorts_by_match.setdefault(int(match_id), []).append(vc)
+    for values in stat_cohorts_by_match.values():
         ordered_values = sorted(set(values))
         for vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
             if _straddles_any_cutoff(vc_new, vc_old, ordered):
