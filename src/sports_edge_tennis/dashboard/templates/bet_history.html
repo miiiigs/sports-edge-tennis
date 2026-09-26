@@ -29,10 +29,12 @@
 <section class="section" aria-label="Aligned live value-bet history" style="margin-top: 0;">
   <h2 class="section-title">Aligned live history · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
   <p class="section-note">
-    One actual published Value Bet per sporting match, always using the first
-    qualifying live bet for that match. This removes hourly duplicates and keeps
-    the same accounting rule across the full September record. It is live-issued
-    history, not a backtest or replay.
+    Current-rule alignment over the actual live record since 10 Sep: one first
+    published Value Bet per sporting match is retained only when its issued model
+    win probability was at least 60%. Later hourly duplicates are never promoted
+    to replace an earlier sub-60% bet. The original live ledger remains unchanged
+    below. This is historical re-accounting from persisted live evidence, not a
+    backtest or replay of today's agent configuration.
   </p>
 
   <div class="stat-grid">
