@@ -171,7 +171,9 @@ def test_primary_models_same_side_wide_spread_is_visible_model_pick() -> None:
     assert pick.kind_label == "MODEL PICK · WIDE SPREAD"
     assert pick.primary_a1_probability_text == "64%"
     assert pick.primary_a2_probability_text == "54%"
+    assert pick.primary_average_probability_text == "59%"
     assert pick.primary_probability_spread_text == "9.66%"
+    assert pick.is_weak is True
     assert pick.is_actionable_bet is False
     assert pick.stake_text is None
 
@@ -233,13 +235,19 @@ def test_weak_flag_is_display_only_and_uses_manager_probability_band() -> None:
     assert strong_model.weak_reason is None
 
 
-def test_wide_spread_tracking_pick_is_weak_without_becoming_a_bet() -> None:
-    agents = {
+def test_wide_spread_tracking_pick_uses_a1_a2_average_for_weak_filter() -> None:
+    weak_agents = {
         AGENT_1: AgentView(AGENT_1, "PREDICTED", 1, Decimal("0.64")),
         AGENT_2: AgentView(AGENT_2, "PREDICTED", 1, Decimal("0.54")),
         AGENT_3: AgentView(AGENT_3, "ABSTAINED", None, None),
     }
-    pick = build_today_picks(
+    strong_agents = {
+        AGENT_1: AgentView(AGENT_1, "PREDICTED", 1, Decimal("0.68")),
+        AGENT_2: AgentView(AGENT_2, "PREDICTED", 1, Decimal("0.61")),
+        AGENT_3: AgentView(AGENT_3, "ABSTAINED", None, None),
+    }
+
+    weak = build_today_picks(
         [
             _match(
                 5,
@@ -247,16 +255,36 @@ def test_wide_spread_tracking_pick_is_weak_without_becoming_a_bet() -> None:
                 selected_side=None,
                 probability=None,
                 reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
-                agents=agents,
+                agents=weak_agents,
+                abstaining_agent_count=1,
+            )
+        ],
+        {},
+    ).picks[0]
+    strong = build_today_picks(
+        [
+            _match(
+                6,
+                manager_status="NO_BET",
+                selected_side=None,
+                probability=None,
+                reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+                agents=strong_agents,
                 abstaining_agent_count=1,
             )
         ],
         {},
     ).picks[0]
 
-    assert pick.is_weak is True
-    assert pick.kind == MODEL_PICK
-    assert pick.is_actionable_bet is False
+    assert weak.primary_average_probability == Decimal("0.59")
+    assert weak.is_weak is True
+    assert weak.weak_reason == "A1/A2 tracking probability is below 60%."
+
+    assert strong.primary_average_probability == Decimal("0.645")
+    assert strong.is_weak is False
+    assert strong.weak_reason is None
+    assert strong.kind == MODEL_PICK
+    assert strong.is_actionable_bet is False
 
 
 def test_model_pick_and_value_bet_are_distinguishable_without_colour() -> None:
@@ -420,6 +448,7 @@ def test_today_page_has_weak_pick_toggle(demo_client) -> None:
     assert "Filter weak bets:" in body
     assert 'id="weak-filter-state">Disabled<' in body
     assert "below 60% Manager win probability" in body
+    assert "below 60% A1/A2 tracking average" in body
     assert 'data-weak="' in body
 
 
