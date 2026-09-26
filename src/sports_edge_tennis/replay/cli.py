@@ -42,6 +42,7 @@ from sports_edge_tennis.replay.loader import (
     ReplayDecisionTimePolicy,
     ReplayLoadRequest,
     derive_run_specs_from_match_days,
+    derive_run_specs_pit_safe,
     load_replay_inputs,
 )
 from sports_edge_tennis.replay.manifest import (
@@ -53,11 +54,36 @@ from sports_edge_tennis.veto.service import VETO_POLICY_VERSION
 from sports_edge_tennis.market.staking import STAKING_RULE_VERSION
 
 
+#: Explicit override so a packaged/deployed replay can record the exact code
+#: revision it is executing without relying on a git checkout or process cwd.
+GIT_SHA_ENV = "TENNIS_REPLAY_GIT_SHA"
+
+
+def _source_repo_root() -> Path | None:
+    """Return the repository root that contains this source file, if any.
+
+    ``cli.py`` lives at ``<root>/src/sports_edge_tennis/replay/cli.py``. The git
+    SHA must be resolved from *that* root (the code actually executing), never
+    from whatever directory the process happens to run in.
+    """
+    candidate = Path(__file__).resolve().parents[3]
+    return candidate if (candidate / ".git").exists() else None
+
+
 def _git_sha() -> str:
+    override = (os.environ.get(GIT_SHA_ENV) or "").strip()
+    if override:
+        return override
+    repo_root = _source_repo_root()
+    if repo_root is None:
+        return "UNKNOWN"
     try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        resolved = subprocess.check_output(
+            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
+        return resolved or "UNKNOWN"
     except Exception:
         return "UNKNOWN"
 
@@ -85,6 +111,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manager-policy-version", default="v1")
     parser.add_argument("--market-policy-version", default="v1")
     parser.add_argument("--artifacts-root", type=Path, default=Path("artifacts/replay"))
+    parser.add_argument("--replay-id", default=REPLAY_ID)
+    parser.add_argument(
+        "--run-planner",
+        choices=("pit_safe", "daily_earliest"),
+        default="pit_safe",
+        help="pit_safe = per-match hourly stabbing cutoffs (default); "
+        "daily_earliest = legacy one-cutoff-per-day planner",
+    )
     parser.add_argument(
         "--label",
         choices=("provisional", "official"),
@@ -112,11 +146,18 @@ def main(argv: list[str] | None = None) -> int:
 
     provisional = args.label == "provisional"
     with psycopg.connect(args.database_url, autocommit=True) as conn:
-        specs = derive_run_specs_from_match_days(
-            conn,
-            match_ids=tuple(match_ids),
-            policy=ReplayDecisionTimePolicy(),
-        )
+        if args.run_planner == "pit_safe":
+            specs = derive_run_specs_pit_safe(
+                conn,
+                match_ids=tuple(match_ids),
+                policy=ReplayDecisionTimePolicy(),
+            )
+        else:
+            specs = derive_run_specs_from_match_days(
+                conn,
+                match_ids=tuple(match_ids),
+                policy=ReplayDecisionTimePolicy(),
+            )
         request = ReplayLoadRequest(
             run_specs=specs,
             result_as_of=_end_of_day(args.end_date),
@@ -128,7 +169,7 @@ def main(argv: list[str] | None = None) -> int:
         # factory reads PIT evidence lazily for otherwise-qualified BETs.
         result = run_replay(
             loaded.runs,
-            replay_id=REPLAY_ID,
+            replay_id=args.replay_id,
             provisional=provisional,
             provisional_label=(
                 PROVISIONAL_HISTORICAL_RECOVERY_NOT_FROZEN if provisional else None
