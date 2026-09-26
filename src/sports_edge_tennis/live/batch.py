@@ -78,7 +78,7 @@ from sports_edge_tennis.live.transport import (
 )
 from sports_edge_tennis.market import (
     SharpReferenceSpec,
-    ensure_market_policy_version_v1,
+    ensure_market_policy_version_v2,
     evaluate_and_persist_market_slate,
 )
 from sports_edge_tennis.market.type_b import scan_type_b_value_signals
@@ -847,7 +847,7 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
 
             policy = None
             if prediction_run_ids or candidate_match_ids:
-                policy = ensure_market_policy_version_v1(conn)
+                policy = ensure_market_policy_version_v2(conn)
                 market_as_of = max(market_as_of, datetime.now(timezone.utc))
 
             if prediction_run_ids and policy is not None:
