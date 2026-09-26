@@ -471,3 +471,44 @@ def test_identity_bridge_activation_creates_cache_segment_boundary(
         a3_lookback_days=A3_CONFIG.lookback_days,
     )
     assert cache.mode == MODE_CACHE_SEGMENTED
+
+
+
+def test_alias_identity_first_completed_result_creates_segment_boundary(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    row = db.execute(
+        """
+        SELECT mv.player_1_id
+        FROM match_versions mv
+        JOIN match_result_observations mro ON mro.match_id = mv.match_id
+        WHERE mro.source_observed_at = %s
+        ORDER BY mv.match_id
+        LIMIT 1
+        """,
+        (R2,),
+    ).fetchone()
+    candidate = int(row[0])
+    db.execute(
+        """
+        INSERT INTO player_source_ids (
+            player_id, source_system, source_player_id
+        )
+        VALUES (%s, 'SACKMANN', %s)
+        """,
+        (candidate, f"hist-{candidate}"),
+    )
+    db.execute(
+        """
+        INSERT INTO player_aliases (
+            player_id, source_system, alias, normalized_alias
+        )
+        VALUES (%s, 'TENNIS_DATA', 'Candidate Alias', 'candidate alias')
+        """,
+        (candidate,),
+    )
+
+    boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
+    assert R2 in boundaries
+    assert cache_cutoff_segments(db, cutoffs=[T1, T2]) == ((T1,), (T2,))
