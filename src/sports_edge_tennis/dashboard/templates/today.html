@@ -52,7 +52,7 @@
   <button class="weak-filter-toggle" type="button" id="weak-filter-toggle" aria-pressed="false">
     Filter weak bets: <strong id="weak-filter-state">Disabled</strong>
   </button>
-  <span class="weak-filter-note">Weak = below 60% Manager win probability, or wide-spread tracking. Display only.</span>
+  <span class="weak-filter-note">Weak = below 60% Manager win probability, or below 60% A1/A2 tracking average for wide-spread picks. Display only.</span>
 </div>
 
 <section class="pick-list" id="today-pick-list" aria-label="Today's picks">
@@ -66,8 +66,8 @@
       </div>
       <div class="pick-probability">
         {% if pick.is_wide_spread %}
-        <span class="prob-value">{{ pick.primary_a1_probability_text }} / {{ pick.primary_a2_probability_text }}</span>
-        <span class="prob-label">A1 / A2 confidence</span>
+        <span class="prob-value">{{ pick.primary_average_probability_text }}</span>
+        <span class="prob-label">A1/A2 tracking probability</span>
         {% else %}
         <span class="prob-value">{{ pick.probability_text }}</span>
         <span class="prob-label">Win probability</span>
@@ -86,6 +86,14 @@
     {% if pick.is_wide_spread %}
     <div class="metric-row">
       <div class="metric">
+        <span class="metric-label">A1 confidence</span>
+        <span class="metric-value">{{ pick.primary_a1_probability_text }}</span>
+      </div>
+      <div class="metric">
+        <span class="metric-label">A2 confidence</span>
+        <span class="metric-value">{{ pick.primary_a2_probability_text }}</span>
+      </div>
+      <div class="metric">
         <span class="metric-label">Confidence spread</span>
         <span class="metric-value">{{ pick.primary_probability_spread_text }}</span>
       </div>
@@ -95,7 +103,7 @@
       </div>
       <div class="metric">
         <span class="metric-label">Bet status</span>
-        <span class="metric-value">Not market-qualified</span>
+        <span class="metric-value">Tracking only · not market-qualified</span>
       </div>
     </div>
     {% endif %}

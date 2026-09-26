@@ -253,6 +253,12 @@ def _pick_payload(pick) -> dict:
         "player": pick.player,
         "opponent": pick.opponent,
         "win_probability": pick.probability_text,
+        "tracking_probability": (
+            pick.primary_average_probability_text if pick.is_wide_spread else None
+        ),
+        "probability_basis": (
+            "A1_A2_TRACKING_AVERAGE" if pick.is_wide_spread else "MANAGER_CONSENSUS"
+        ),
         "tournament": pick.tournament,
         "competition_tier": pick.tier_text,
         "scheduled_start": (
@@ -275,11 +281,11 @@ def index():
 
 @app.get("/today", response_class=HTMLResponse)
 def today(request: Request, date: str | None = Query(default=None)):
-    """Today's client-visible picks only.
+    """Today's client-visible issued picks only.
 
-    Every evaluated target is loaded, but only records that reached a Manager
-    consensus are rendered by default. Manager NO_BET rows are available only
-    through an optional collapsed disclosure on the same page.
+    The page is an issued-pick ledger, not a complete fixture browser. It keeps
+    the first Manager-qualified pick per sporting match for the selected UTC
+    match date, plus the latest A1/A2 same-side wide-spread tracking cases.
     """
     requested_date = _parse_date(date)
     if requested_date is None:

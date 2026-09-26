@@ -39,7 +39,8 @@ BLOCKED = "BLOCKED"
 WIDE_SPREAD_CLASSIFICATION = "WIDE_CONFIDENCE_SPREAD"
 WIDE_SPREAD_SUMMARY = (
     "Primary models agreed, but confidence spread was too wide. "
-    "This is a model pick for tracking only and is not Manager-qualified for betting."
+    "The displayed tracking probability is the A1/A2 average; this is not a "
+    "Manager consensus and is never market-qualified for betting."
 )
 
 # Presentation-only weak-pick band. This never changes Manager, Market, Veto,
@@ -89,6 +90,7 @@ class PickCard:
     published_at: datetime | None = None
     primary_a1_probability: Decimal | None = None
     primary_a2_probability: Decimal | None = None
+    primary_average_probability: Decimal | None = None
     primary_probability_spread: Decimal | None = None
 
     @property
@@ -116,15 +118,20 @@ class PickCard:
     def is_weak(self) -> bool:
         """Dashboard-only confidence flag for issued Model Picks / Value Bets.
 
-        Wide-spread tracking picks are weak by construction. For normal issued
-        picks, anything below 60% Manager consensus probability is de-emphasized.
+        Normal issued picks use Manager consensus probability. Wide-spread
+        tracking picks use the explicit A1/A2 arithmetic mean for display
+        filtering only; they remain non-Manager-qualified and non-bettable.
         Missing confidence is treated fail-closed as weak rather than promoted.
-        This does not change whether the row is a Model Pick or Value Bet.
         """
         if self.kind not in (MODEL_PICK, VALUE_BET):
             return False
         if self.is_wide_spread:
-            return True
+            if self.primary_average_probability is None:
+                return True
+            return (
+                Decimal(self.primary_average_probability)
+                < WEAK_PICK_PROBABILITY_THRESHOLD
+            )
         if self.win_probability is None:
             return True
         return Decimal(self.win_probability) < WEAK_PICK_PROBABILITY_THRESHOLD
@@ -134,7 +141,9 @@ class PickCard:
         if not self.is_weak:
             return None
         if self.is_wide_spread:
-            return "Primary models agreed, but their confidence spread is too wide."
+            if self.primary_average_probability is None:
+                return "A1/A2 tracking probability is unavailable."
+            return "A1/A2 tracking probability is below 60%."
         if self.win_probability is None:
             return "Model confidence is unavailable."
         return "Manager win probability is below 60%."
@@ -150,6 +159,10 @@ class PickCard:
     @property
     def primary_a2_probability_text(self) -> str:
         return pres.percent(self.primary_a2_probability)
+
+    @property
+    def primary_average_probability_text(self) -> str:
+        return pres.percent(self.primary_average_probability)
 
     @property
     def primary_probability_spread_text(self) -> str | None:
@@ -314,6 +327,7 @@ def build_pick_card(match, decision) -> PickCard | None:
         if not player:
             return None
         opponent = match.player_2 if player == match.player_1 else match.player_1
+        average_probability = (a1_probability + a2_probability) / Decimal("2")
         return PickCard(
             match_id=match.match_id,
             kind=MODEL_PICK,
@@ -326,6 +340,7 @@ def build_pick_card(match, decision) -> PickCard | None:
             scheduled_start=match.scheduled_start,
             primary_a1_probability=a1_probability,
             primary_a2_probability=a2_probability,
+            primary_average_probability=average_probability,
             primary_probability_spread=spread,
         )
 
