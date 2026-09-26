@@ -236,6 +236,47 @@ def test_qualified_value_bet_scores_win(monkeypatch):
     assert bet.clv_pct is None
 
 
+def test_production_market_cutoff_accepts_odds_captured_after_prediction(monkeypatch):
+    """Odds captured between prediction and the market-evaluation cutoff are fresh."""
+    _monkeypatch_agents(monkeypatch, _consensus_agents())
+    market = PREDICTION + timedelta(seconds=90)
+    run = ReplayRunInput(
+        run_id="run-1",
+        run_sequence=1,
+        decision_time=ReplayDecisionTime(PREDICTION, market, "PRODUCTION"),
+        manager_policy=MANAGER_POLICY,
+        market_policy=MARKET_POLICY,
+        sharp_reference=SHARP,
+        matches=(_match_input(odds=_odds(observed_at=PREDICTION)),),
+        agent1_replay=object(),
+        agent2_snapshot=object(),
+        agent3_snapshot=object(),
+    )
+    result = engine.run_replay([run])
+    assert len(result.value_bets) == 1
+    assert result.value_bets[0].market_observed_at == PREDICTION
+
+
+def test_odds_captured_after_market_cutoff_are_invisible(monkeypatch):
+    _monkeypatch_agents(monkeypatch, _consensus_agents())
+    market = PREDICTION + timedelta(seconds=90)
+    future = PREDICTION + timedelta(minutes=10)
+    run = ReplayRunInput(
+        run_id="run-1",
+        run_sequence=1,
+        decision_time=ReplayDecisionTime(PREDICTION, market, "PRODUCTION"),
+        manager_policy=MANAGER_POLICY,
+        market_policy=MARKET_POLICY,
+        sharp_reference=SHARP,
+        matches=(_match_input(odds=_odds(observed_at=future)),),
+        agent1_replay=object(),
+        agent2_snapshot=object(),
+        agent3_snapshot=object(),
+    )
+    with pytest.raises(PointInTimeViolation):
+        engine.run_replay([run])
+
+
 def test_missing_odds_marked_data_not_available_pit(monkeypatch):
     _monkeypatch_agents(monkeypatch, _consensus_agents())
     result = engine.run_replay([_run(_match_input(odds=()))])
@@ -388,3 +429,8 @@ def test_real_agent_pipeline_abstains_without_history():
     assert pick.manager_outcome == "NO_BET"
     assert pick.classification == "NOT_MANAGER_QUALIFIED"
     assert result.value_bets == ()
+    # Exact A3 diagnostics are persisted from the same evaluation (observational).
+    assert pick.a3_diagnostics is not None
+    assert "abstain_reason" in pick.a3_diagnostics
+    assert "direct_raw_count_all" in pick.a3_diagnostics
+    assert "network_q_all" in pick.a3_diagnostics

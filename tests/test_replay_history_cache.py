@@ -18,8 +18,8 @@ from sports_edge_tennis.data.agent2_history import (
 )
 from sports_edge_tennis.data.agent3_history import load_agent3_history
 from sports_edge_tennis.replay.history_cache import (
-    MODE_BASELINE_PER_CUTOFF,
     MODE_CACHE_LOAD_ONCE,
+    MODE_INCREMENTAL_ADVANCE,
     ReplayHistoryCache,
 )
 from sports_edge_tennis.runner.agent3_live_snapshot import (
@@ -117,9 +117,15 @@ def _a3_projection(snapshot):
     )
 
 
-def test_cache_mode_is_load_once_without_straddle(db: psycopg.Connection):
+def test_multi_cutoff_cache_uses_incremental_advance(db: psycopg.Connection):
     _seed(db)
     cache = ReplayHistoryCache(db, cutoffs=[T1, T2], a3_lookback_days=A3_CONFIG.lookback_days)
+    assert cache.mode == MODE_INCREMENTAL_ADVANCE
+
+
+def test_single_cutoff_cache_uses_load_once(db: psycopg.Connection):
+    _seed(db)
+    cache = ReplayHistoryCache(db, cutoffs=[T2], a3_lookback_days=A3_CONFIG.lookback_days)
     assert cache.mode == MODE_CACHE_LOAD_ONCE
 
 
@@ -146,7 +152,7 @@ def test_cache_output_equals_baseline_per_cutoff(db: psycopg.Connection):
         assert _a3_projection(cached.agent3_snapshot) == _a3_projection(baseline_snap3)
 
 
-def test_cache_falls_back_to_baseline_when_observation_straddles_cutoff(db: psycopg.Connection):
+def test_incremental_advance_equals_baseline_with_straddling_reobservation(db: psycopg.Connection):
     _seed(db)
     # Add a later re-observation of match 1's result between T1 and T2.
     match_one = _fetchval(db, "SELECT min(match_id) FROM matches")
@@ -159,9 +165,10 @@ def test_cache_falls_back_to_baseline_when_observation_straddles_cutoff(db: psyc
     )
 
     cache = ReplayHistoryCache(db, cutoffs=[T1, T2], a3_lookback_days=A3_CONFIG.lookback_days)
-    assert cache.mode == MODE_BASELINE_PER_CUTOFF
+    assert cache.mode == MODE_INCREMENTAL_ADVANCE
 
-    # Fallback path must still equal baseline at every cutoff.
+    # Hybrid advance+rebuild must still equal baseline at every cutoff, including
+    # the cutoff that sits between the two result observations.
     for cutoff in (T1, T2):
         cached = cache.history_for(cutoff)
         baseline_a2 = load_agent2_history(db, cutoff=cutoff)
