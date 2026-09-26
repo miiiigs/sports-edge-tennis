@@ -57,11 +57,7 @@
 
 <section class="pick-list" id="today-pick-list" aria-label="Today's picks">
   {% for pick in today_picks.picks %}
-  <article
-    class="pick-card{% if pick.kind == 'VALUE_BET' %} is-value{% elif pick.kind == 'BLOCKED' %} is-blocked{% endif %}"
-    data-weak="{{ 'true' if pick.is_weak else 'false' }}"
-    data-original-index="{{ loop.index0 }}"
-  >
+  <article class="pick-card{% if pick.kind == 'VALUE_BET' %} is-value{% elif pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
     <div class="pick-top">
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
@@ -173,6 +169,7 @@
   <a class="date-link" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
 </nav>
 
+{% if not today_picks.is_empty %}
 <script>
 (() => {
   const toggle = document.getElementById('weak-filter-toggle');
@@ -218,4 +215,5 @@
   });
 })();
 </script>
+{% endif %}
 {% endblock %}
