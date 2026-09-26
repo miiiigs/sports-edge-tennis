@@ -1,0 +1,1 @@
+Pause the full V1.1 replay runner before optimizing PIT snapshot reuse. No production data mutation.
