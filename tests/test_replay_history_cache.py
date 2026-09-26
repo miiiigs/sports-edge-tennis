@@ -153,7 +153,9 @@ def test_cache_output_equals_baseline_per_cutoff(db: psycopg.Connection):
 
         baseline_a1 = load_agent1_history(db, cutoff=cutoff)
         baseline_replay1 = replay_agent1_history(baseline_a1, cutoff, A1_CONFIG)
-        assert cached.agent1_replay.player_states == baseline_replay1.player_states
+        # Compare the complete replay contract, including diagnostics such as
+        # skipped_future_observation_count, not only rating state.
+        assert cached.agent1_replay == baseline_replay1
 
         baseline_a2 = load_agent2_history(db, cutoff=cutoff)
         baseline_snap2 = build_agent2_snapshot(baseline_a2, cutoff=cutoff)
@@ -192,22 +194,34 @@ def test_cache_segments_when_result_correction_straddles_cutoff(db: psycopg.Conn
 
 
 
-def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
+def test_cache_bootstraps_once_then_advances_all_agents_incrementally(
     db: psycopg.Connection,
     monkeypatch,
 ):
     _seed(db)
     calls = {
+        "a1_build": 0,
+        "a1_advance": 0,
         "a2_build": 0,
         "a2_advance": 0,
         "a3_build": 0,
         "a3_advance": 0,
     }
 
+    original_a1_build = history_cache.replay_agent1_history
+    original_a1_advance = history_cache.advance_agent1_replay_history
     original_a2_build = history_cache.build_agent2_snapshot
     original_a2_advance = history_cache.advance_agent2_history_snapshot
     original_a3_build = history_cache.build_live_agent3_history_snapshot
     original_a3_advance = history_cache.advance_live_agent3_history_snapshot
+
+    def a1_build(*args, **kwargs):
+        calls["a1_build"] += 1
+        return original_a1_build(*args, **kwargs)
+
+    def a1_advance(*args, **kwargs):
+        calls["a1_advance"] += 1
+        return original_a1_advance(*args, **kwargs)
 
     def a2_build(*args, **kwargs):
         calls["a2_build"] += 1
@@ -225,6 +239,8 @@ def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
         calls["a3_advance"] += 1
         return original_a3_advance(*args, **kwargs)
 
+    monkeypatch.setattr(history_cache, "replay_agent1_history", a1_build)
+    monkeypatch.setattr(history_cache, "advance_agent1_replay_history", a1_advance)
     monkeypatch.setattr(history_cache, "build_agent2_snapshot", a2_build)
     monkeypatch.setattr(history_cache, "advance_agent2_history_snapshot", a2_advance)
     monkeypatch.setattr(history_cache, "build_live_agent3_history_snapshot", a3_build)
@@ -241,6 +257,8 @@ def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
     result = cache.history_for(T2)
     assert result.cutoff == T2
     assert calls == {
+        "a1_build": 1,
+        "a1_advance": 1,
         "a2_build": 1,
         "a2_advance": 1,
         "a3_build": 1,
@@ -251,6 +269,8 @@ def test_cache_bootstraps_once_then_advances_a2_a3_incrementally(
     cache.history_for(T1)
     cache.history_for(T2)
     assert calls == {
+        "a1_build": 1,
+        "a1_advance": 1,
         "a2_build": 1,
         "a2_advance": 1,
         "a3_build": 1,
