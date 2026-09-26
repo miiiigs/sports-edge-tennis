@@ -16,6 +16,7 @@ from typing import Iterable
 import psycopg
 
 from sports_edge_tennis.performance.regimes import (
+    PRODUCTION_RUN_PREDICATE,
     first_production_bets_cte,
     veto_audits_available,
 )
@@ -164,7 +165,6 @@ def load_daily_bet_summaries(
     *,
     limit: int = 5000,
     regime_key: str | None = None,
-    min_consensus_probability: Decimal | None = None,
 ) -> tuple[DailyBetSummary, ...]:
     """Return one aggregate row per UTC scheduled match day, newest first.
 
@@ -177,11 +177,6 @@ def load_daily_bet_summaries(
     *after* the first-bet-per-match selection, never inside it: filtering first
     would let a later duplicate bet on the same match become that match's
     "first" bet within the cohort and inflate the sample.
-
-    ``min_consensus_probability`` is also applied only after the immutable
-    first-bet-per-match ledger is chosen. It is used by the Sep-10 current-rule
-    alignment to exclude bets whose issued model probability was below 60%
-    without rewriting or promoting historical decisions.
     """
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
@@ -239,24 +234,127 @@ def load_daily_bet_summaries(
             ) AS one_unit_profit
         FROM dated_bets d
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
-        WHERE (%s::text IS NULL OR d.regime_key = %s::text)
-          AND (
-              %s::numeric IS NULL
-              OR d.consensus_probability >= %s::numeric
-          )
+        WHERE %s::text IS NULL OR d.regime_key = %s::text
         GROUP BY d.match_date
         ORDER BY d.match_date DESC
         LIMIT %s
         """,
-        (
-            regime_key,
-            regime_key,
-            min_consensus_probability,
-            min_consensus_probability,
-            limit,
-        ),
+        (regime_key, regime_key, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
+
+def load_aligned_daily_bet_summaries(
+    conn: psycopg.Connection,
+    *,
+    start_date: date,
+    min_consensus_probability: Decimal,
+    limit: int = 5000,
+) -> tuple[DailyBetSummary, ...]:
+    """Current-rule Value Bet history over persisted live decision evidence.
+
+    The candidate set is filtered to the requested model-probability floor
+    *before* DISTINCT ON chooses the first bet per sporting match. Therefore an
+    early sub-floor signal is correctly skipped and a later first qualifying
+    live opportunity may become the aligned bet, exactly as the rule would have
+    behaved prospectively. Original historical decisions remain untouched.
+    """
+    if limit < 1 or limit > 5000:
+        raise ValueError("limit must be between 1 and 5000")
+
+    rows = conn.execute(
+        f"""
+        WITH publication_boundary AS (
+            SELECT min(published_at) AS first_published_at
+            FROM decisions
+            WHERE published_at IS NOT NULL
+        ),
+        aligned_first_bets AS (
+            SELECT DISTINCT ON (d.match_id)
+                d.decision_id,
+                d.match_id,
+                COALESCE(d.published_at, d.as_of) AS published_at,
+                d.market_decimal_price,
+                d.selection_side,
+                d.consensus_probability
+            FROM decisions d
+            CROSS JOIN publication_boundary pb
+            JOIN prediction_runs pr
+              ON pr.prediction_run_id = d.prediction_run_id
+            WHERE d.signal_type = 'TYPE_A_MODEL_EDGE'
+              AND d.decision_status = 'BET'
+              AND d.market_type = 'MATCH_WINNER'
+              AND d.experiment_id IS NULL
+              AND d.consensus_probability >= %s
+              AND {PRODUCTION_RUN_PREDICATE}
+              AND (
+                  d.published_at IS NOT NULL
+                  OR pb.first_published_at IS NULL
+                  OR d.as_of < pb.first_published_at
+              )
+            ORDER BY
+                d.match_id,
+                COALESCE(d.published_at, d.as_of),
+                d.decision_id
+        ),
+        dated_bets AS (
+            SELECT
+                d.*,
+                COALESCE(
+                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
+                    (d.published_at AT TIME ZONE 'UTC')::date
+                ) AS match_date
+            FROM aligned_first_bets d
+            LEFT JOIN LATERAL (
+                SELECT mv0.match_start_at
+                FROM match_versions mv0
+                WHERE mv0.match_id = d.match_id
+                  AND mv0.as_of <= d.published_at
+                  AND mv0.source_observed_at <= d.published_at
+                ORDER BY mv0.as_of DESC,
+                         mv0.source_observed_at DESC,
+                         mv0.match_version_id DESC
+                LIMIT 1
+            ) mv ON TRUE
+        )
+        SELECT
+            d.match_date,
+            COUNT(*)::int AS bets,
+            COUNT(*) FILTER (
+                WHERE ds.decision_id IS NOT NULL
+                  AND ds.settlement_status <> 'PENDING'
+            )::int AS settled,
+            COUNT(*) FILTER (
+                WHERE ds.decision_id IS NULL
+                   OR ds.settlement_status = 'PENDING'
+            )::int AS pending,
+            COUNT(*) FILTER (WHERE ds.settlement_status = 'WON')::int AS wins,
+            COUNT(*) FILTER (WHERE ds.settlement_status = 'LOST')::int AS losses,
+            COUNT(*) FILTER (WHERE ds.settlement_status IN ('VOID', 'PUSH'))::int AS voids,
+            COUNT(*) FILTER (WHERE ds.settlement_status = 'CANCELLED')::int AS cancelled,
+            COALESCE(
+                SUM(
+                    CASE ds.settlement_status
+                        WHEN 'WON' THEN d.market_decimal_price - 1
+                        WHEN 'LOST' THEN -1
+                        WHEN 'VOID' THEN 0
+                        WHEN 'PUSH' THEN 0
+                        WHEN 'CANCELLED' THEN 0
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS one_unit_profit
+        FROM dated_bets d
+        LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
+        WHERE d.match_date >= %s
+        GROUP BY d.match_date
+        ORDER BY d.match_date DESC
+        LIMIT %s
+        """,
+        (min_consensus_probability, start_date, limit),
+    ).fetchall()
+    return tuple(_summary_from_row(row) for row in rows)
+
 
 def _profit_for_status(status: str, price: Decimal) -> Decimal | None:
     if status == "WON":
