@@ -1,51 +1,6 @@
 {% extends "base.html" %}
 {% set active_nav = 'today' %}
-{% block title %}Today's Picks — Sports Edge Tennis<script>
-(() => {
-  const toggle = document.getElementById('weak-filter-toggle');
-  const state = document.getElementById('weak-filter-state');
-  const list = document.getElementById('today-pick-list');
-  if (!toggle || !state || !list) return;
-
-  const cards = Array.from(list.querySelectorAll('.pick-card'));
-  const storageKey = 'sports-edge-tennis-filter-weak-bets';
-
-  function apply(enabled) {
-    toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
-    state.textContent = enabled ? 'Enabled' : 'Disabled';
-
-    for (const card of cards) {
-      const weak = card.dataset.weak === 'true';
-      card.classList.toggle('is-weak-filtered', enabled && weak);
-    }
-
-    const ordered = [...cards].sort((a, b) => {
-      if (!enabled) {
-        return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
-      }
-      const weakDelta = Number(a.dataset.weak === 'true') - Number(b.dataset.weak === 'true');
-      if (weakDelta !== 0) return weakDelta;
-      return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
-    });
-    for (const card of ordered) list.appendChild(card);
-
-    try {
-      localStorage.setItem(storageKey, enabled ? '1' : '0');
-    } catch (_) {}
-  }
-
-  let enabled = false;
-  try {
-    enabled = localStorage.getItem(storageKey) === '1';
-  } catch (_) {}
-  apply(enabled);
-
-  toggle.addEventListener('click', () => {
-    apply(toggle.getAttribute('aria-pressed') !== 'true');
-  });
-})();
-</script>
-{% endblock %}
+{% block title %}Today's Picks — Sports Edge Tennis{% endblock %}
 
 {% block content %}
 <header class="page-header">
@@ -217,4 +172,50 @@
   <a class="date-link" href="/today?date={{ prev_date.isoformat() }}">‹ {{ prev_date.strftime('%a %d %b') }}</a>
   <a class="date-link" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
 </nav>
+
+<script>
+(() => {
+  const toggle = document.getElementById('weak-filter-toggle');
+  const state = document.getElementById('weak-filter-state');
+  const list = document.getElementById('today-pick-list');
+  if (!toggle || !state || !list) return;
+
+  const cards = Array.from(list.querySelectorAll('.pick-card'));
+  const storageKey = 'sports-edge-tennis-filter-weak-bets';
+
+  function apply(enabled) {
+    toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    state.textContent = enabled ? 'Enabled' : 'Disabled';
+
+    for (const card of cards) {
+      const weak = card.dataset.weak === 'true';
+      card.classList.toggle('is-weak-filtered', enabled && weak);
+    }
+
+    const ordered = [...cards].sort((a, b) => {
+      if (!enabled) {
+        return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
+      }
+      const weakDelta = Number(a.dataset.weak === 'true') - Number(b.dataset.weak === 'true');
+      if (weakDelta !== 0) return weakDelta;
+      return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
+    });
+    for (const card of ordered) list.appendChild(card);
+
+    try {
+      localStorage.setItem(storageKey, enabled ? '1' : '0');
+    } catch (_) {}
+  }
+
+  let enabled = false;
+  try {
+    enabled = localStorage.getItem(storageKey) === '1';
+  } catch (_) {}
+  apply(enabled);
+
+  toggle.addEventListener('click', () => {
+    apply(toggle.getAttribute('aria-pressed') !== 'true');
+  });
+})();
+</script>
 {% endblock %}
