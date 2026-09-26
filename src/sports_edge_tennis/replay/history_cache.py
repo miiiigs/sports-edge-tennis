@@ -4,17 +4,16 @@ The baseline replay loader re-reads the entire multi-year A2/A3 history from
 PostgreSQL for every replay cutoff. Profiling showed that repeated full-history
 DB loading is the dominant cost (A2 ~64s / 130k rows; A3 far worse per row).
 
-This cache loads the required history **once** at the final cutoff. The first
-replay cutoff is built with the exact baseline constructors; subsequent A2/A3
-cutoffs advance chronologically with the same incremental primitives used by
-live production. Agent 1 remains a deterministic in-memory replay over the
-single preloaded history set. Point-in-time visibility is preserved at every
-cutoff.
+The cache partitions replay cutoffs into point-in-time-stable chronological
+segments. Each segment performs one exact database re-baseline at its final
+cutoff, bootstraps A2/A3 once at the segment's first cutoff, then advances
+chronologically with the same incremental primitives used by live production.
+Agent 1 remains a deterministic in-memory replay over the segment load.
 
-A conservative PIT-stability guard disables the cache (falling back to the
-baseline per-cutoff DB loads) whenever a match has two result/stat observations
-whose visibility straddles a replay cutoff, because a single final load would
-otherwise collapse the earlier observation.
+Segment boundaries are created by corrected result cohorts, corrected complete
+A2 stat cohorts, and persisted model-identity bridge activations. This preserves
+the exact historical state on both sides of corrections without paying the cost
+of a full A2/A3 rebuild for every replay cutoff.
 """
 
 from __future__ import annotations
@@ -35,6 +34,7 @@ from sports_edge_tennis.data.agent2_history import (
     load_agent2_history,
 )
 from sports_edge_tennis.data.agent3_history import load_agent3_history
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 from sports_edge_tennis.replay.serde import payload_sha256
 from sports_edge_tennis.runner.agent2_live_snapshot import (
     advance_agent2_history_snapshot,
@@ -45,6 +45,7 @@ from sports_edge_tennis.runner.agent3_live_snapshot import (
 )
 
 MODE_CACHE_LOAD_ONCE = "CACHE_LOAD_ONCE"
+MODE_CACHE_SEGMENTED = "CACHE_SEGMENTED"
 MODE_BASELINE_PER_CUTOFF = "BASELINE_PER_CUTOFF"
 
 
@@ -108,13 +109,27 @@ def _straddles_any_cutoff(vc_new: datetime, vc_old: datetime, cutoffs: list[date
     return False
 
 
-def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) -> bool:
-    """Return True only when a single final load is PIT-equivalent for all cutoffs."""
+
+def cache_correction_boundaries(
+    conn: psycopg.Connection,
+    *,
+    cutoffs: list[datetime],
+) -> tuple[datetime, ...]:
+    """Return visibility boundaries that can change a final-cutoff history load.
+
+    A2/A3 select the latest PIT-visible result/stat cohort per match. A later
+    correction replaces the earlier row when a segment is loaded at its final
+    cutoff. Persisted identity bridges can also change model-player resolution
+    at activated_at. Each transition becomes a hard segment boundary when it
+    lands inside the requested replay window.
+    """
 
     ordered = sorted(set(cutoffs))
     if len(ordered) < 2:
-        return True
+        return ()
+    first = ordered[0]
     final = ordered[-1]
+    boundaries: set[datetime] = set()
 
     result_rows = conn.execute(
         """
@@ -132,9 +147,9 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
         by_match.setdefault(int(match_id), []).append(vc)
     for values in by_match.values():
         ordered_values = sorted(set(values))
-        for vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
-            if _straddles_any_cutoff(vc_new, vc_old, ordered):
-                return False
+        for _vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
+            if first < vc_new <= final:
+                boundaries.add(vc_new)
 
     stat_rows = conn.execute(
         """
@@ -154,13 +169,201 @@ def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) ->
     stat_cohorts_by_match: dict[int, list[datetime]] = {}
     for match_id, vc in stat_rows:
         stat_cohorts_by_match.setdefault(int(match_id), []).append(vc)
-    for values in stat_cohorts_by_match.values():
-        ordered_values = sorted(set(values))
-        for vc_old, vc_new in zip(ordered_values, ordered_values[1:]):
-            if _straddles_any_cutoff(vc_new, vc_old, ordered):
-                return False
+    for match_id, values in stat_cohorts_by_match.items():
+        ordered_stats = sorted(set(values))
+        first_result_visibility = min(by_match.get(match_id, ()), default=None)
+        for stat_index, vc in enumerate(ordered_stats):
+            if not (first < vc <= final):
+                continue
+            # A later complete stat cohort can replace the cohort attached by
+            # the segment-final history load, so every correction is a hard
+            # boundary. The first stat cohort only needs a boundary when the
+            # match result was already visible earlier. If first result and
+            # first stats become visible together, the entire history row is
+            # absent before that instant, so the snapshot cutoff filter already
+            # prevents leakage and no extra segment is necessary.
+            if stat_index > 0 or (
+                first_result_visibility is not None
+                and first_result_visibility < vc
+            ):
+                boundaries.add(vc)
 
-    return True
+    bridge_rows = conn.execute(
+        """
+        SELECT DISTINCT activated_at
+        FROM model_identity_bridge_events
+        WHERE activated_at > %s
+          AND activated_at <= %s
+        ORDER BY activated_at
+        """,
+        (first, final),
+    ).fetchall()
+    boundaries.update(row[0] for row in bridge_rows if row[0] is not None)
+
+    # The fallback alias resolver can change a live-only player's model identity
+    # when a candidate historical player gets its first PIT-visible completed
+    # result. Since player aliases/source IDs are reference identity data, that
+    # first completed-result visibility is the temporal fact that makes the
+    # candidate usable by resolve_model_player_ids.
+    alias_evidence_rows = conn.execute(
+        """
+        WITH candidate_players AS (
+            SELECT DISTINCT pa.player_id
+            FROM player_aliases pa
+            WHERE pa.source_system = 'TENNIS_DATA'
+              AND EXISTS (
+                  SELECT 1
+                  FROM player_source_ids psi
+                  WHERE psi.player_id = pa.player_id
+                    AND psi.source_system <> ALL(%s)
+              )
+        ),
+        candidate_evidence AS (
+            SELECT
+                cp.player_id,
+                GREATEST(mro.source_observed_at, mro.as_of) AS visible_at
+            FROM candidate_players cp
+            JOIN match_versions mv
+              ON mv.player_1_id = cp.player_id
+              OR mv.player_2_id = cp.player_id
+            JOIN match_result_observations mro
+              ON mro.match_id = mv.match_id
+             AND mro.outcome_status = 'COMPLETED'
+             AND mv.source_observed_at <= mro.source_observed_at
+             AND mv.as_of <= mro.as_of
+            WHERE GREATEST(mro.source_observed_at, mro.as_of) <= %s
+        )
+        SELECT player_id, min(visible_at) AS first_visible_at
+        FROM candidate_evidence
+        GROUP BY player_id
+        HAVING min(visible_at) > %s
+           AND min(visible_at) <= %s
+        ORDER BY first_visible_at, player_id
+        """,
+        (list(LIVE_FIXTURE_SOURCE_SYSTEMS), final, first, final),
+    ).fetchall()
+    boundaries.update(row[1] for row in alias_evidence_rows if row[1] is not None)
+
+    # A2 can recover a NULL match surface from point-in-time-visible tournament
+    # evidence at the history-loader cutoff. Segment on those relevant surface
+    # evidence arrivals so a later recovered surface cannot be attached to a
+    # historical row at an earlier cutoff.
+    surface_evidence_rows = conn.execute(
+        """
+        WITH selected_results AS (
+            SELECT
+                mro.match_id,
+                mro.source_observed_at,
+                mro.as_of,
+                ROW_NUMBER() OVER (
+                    PARTITION BY mro.match_id
+                    ORDER BY
+                        mro.as_of DESC,
+                        mro.source_observed_at DESC,
+                        mro.match_result_observation_id DESC
+                ) AS result_rank
+            FROM match_result_observations mro
+            WHERE mro.source_observed_at <= %s
+              AND mro.as_of <= %s
+        ),
+        selected_versions AS (
+            SELECT
+                sr.match_id,
+                te.tournament_id,
+                t.canonical_name,
+                t.tour_scope::text AS tour_scope,
+                te.season_year,
+                te.surface::text AS edition_surface,
+                mv.surface::text AS match_surface,
+                ROW_NUMBER() OVER (
+                    PARTITION BY sr.match_id
+                    ORDER BY
+                        mv.as_of DESC,
+                        mv.source_observed_at DESC,
+                        mv.match_version_id DESC
+                ) AS version_rank
+            FROM selected_results sr
+            JOIN matches m
+              ON m.match_id = sr.match_id
+            JOIN tournament_editions te
+              ON te.tournament_edition_id = m.tournament_edition_id
+            JOIN tournaments t
+              ON t.tournament_id = te.tournament_id
+            JOIN match_versions mv
+              ON mv.match_id = sr.match_id
+             AND mv.source_observed_at <= sr.source_observed_at
+             AND mv.as_of <= sr.as_of
+            WHERE sr.result_rank = 1
+        ),
+        missing_targets AS (
+            SELECT
+                match_id,
+                tournament_id,
+                canonical_name,
+                tour_scope,
+                season_year
+            FROM selected_versions
+            WHERE version_rank = 1
+              AND match_surface IS NULL
+              AND edition_surface IS NULL
+        ),
+        surface_evidence AS (
+            SELECT DISTINCT
+                GREATEST(mv_hist.source_observed_at, mv_hist.as_of) AS visible_at
+            FROM missing_targets target
+            JOIN tournaments t_hist
+              ON t_hist.tournament_id = target.tournament_id
+              OR (
+                  t_hist.canonical_name = target.canonical_name
+                  AND t_hist.tour_scope::text = target.tour_scope
+              )
+            JOIN tournament_editions te_hist
+              ON te_hist.tournament_id = t_hist.tournament_id
+             AND te_hist.season_year <= target.season_year
+            JOIN matches m_hist
+              ON m_hist.tournament_edition_id = te_hist.tournament_edition_id
+            JOIN match_versions mv_hist
+              ON mv_hist.match_id = m_hist.match_id
+             AND mv_hist.surface IS NOT NULL
+            WHERE GREATEST(mv_hist.source_observed_at, mv_hist.as_of) > %s
+              AND GREATEST(mv_hist.source_observed_at, mv_hist.as_of) <= %s
+        )
+        SELECT visible_at
+        FROM surface_evidence
+        ORDER BY visible_at
+        """,
+        (final, final, first, final),
+    ).fetchall()
+    boundaries.update(row[0] for row in surface_evidence_rows if row[0] is not None)
+
+    return tuple(sorted(boundaries))
+
+
+def cache_cutoff_segments(
+    conn: psycopg.Connection,
+    *,
+    cutoffs: list[datetime],
+) -> tuple[tuple[datetime, ...], ...]:
+    """Partition replay cutoffs into PIT-stable chronological cache segments."""
+
+    ordered = sorted(set(cutoffs))
+    if not ordered:
+        return ()
+    if len(ordered) == 1:
+        return (tuple(ordered),)
+
+    boundaries = cache_correction_boundaries(conn, cutoffs=ordered)
+    grouped: dict[int, list[datetime]] = {}
+    for cutoff in ordered:
+        segment_key = bisect_right(boundaries, cutoff)
+        grouped.setdefault(segment_key, []).append(cutoff)
+    return tuple(tuple(grouped[key]) for key in sorted(grouped))
+
+
+def cache_is_pit_stable(conn: psycopg.Connection, *, cutoffs: list[datetime]) -> bool:
+    """True when all requested cutoffs can safely share one final history load."""
+
+    return len(cache_cutoff_segments(conn, cutoffs=cutoffs)) <= 1
 
 
 class ReplayHistoryCache:
@@ -179,12 +382,19 @@ class ReplayHistoryCache:
         self._conn = conn
         self._cutoffs = ordered
         self._a3_lookback_days = a3_lookback_days
+        self._segments = cache_cutoff_segments(conn, cutoffs=ordered)
+        self._cutoff_segment = {
+            cutoff: segment_index
+            for segment_index, segment in enumerate(self._segments)
+            for cutoff in segment
+        }
         self.mode = (
             MODE_CACHE_LOAD_ONCE
-            if cache_is_pit_stable(conn, cutoffs=ordered)
-            else MODE_BASELINE_PER_CUTOFF
+            if len(self._segments) == 1
+            else MODE_CACHE_SEGMENTED
         )
         self._cache: dict[datetime, ReplayHistorySet] = {}
+        self._active_segment_index: int | None = None
         self._a1_all = None
         self._a2_all = None
         self._a3_all = None
@@ -192,11 +402,19 @@ class ReplayHistoryCache:
         self._a2_visibility: list[datetime] = []
         self._a3_visibility: list[datetime] = []
         if self.mode == MODE_CACHE_LOAD_ONCE:
-            self._preload()
+            self._load_segment(0)
+        else:
+            print(
+                "REPLAY_HISTORY_CACHE_SEGMENTED "
+                f"cutoffs={len(self._cutoffs)} segments={len(self._segments)} "
+                f"sizes={','.join(str(len(segment)) for segment in self._segments)}",
+                flush=True,
+            )
 
-    def _preload(self) -> None:
-        final = self._cutoffs[-1]
-        first = self._cutoffs[0]
+    def _load_segment(self, segment_index: int) -> None:
+        segment = self._segments[segment_index]
+        final = segment[-1]
+        first = segment[0]
         self._a1_all = sorted(
             load_agent1_history(self._conn, cutoff=final),
             key=lambda item: max(item.source_observed_at, item.as_of),
@@ -219,9 +437,11 @@ class ReplayHistoryCache:
         ]
         self._a2_visibility = [item.visibility_cohort for item in self._a2_all]
         self._a3_visibility = [item.visibility_cohort for item in self._a3_all]
+        self._active_segment_index = segment_index
         print(
-            "REPLAY_HISTORY_CACHE_READY "
-            f"mode={self.mode} cutoffs={len(self._cutoffs)} "
+            "REPLAY_HISTORY_CACHE_SEGMENT_READY "
+            f"mode={self.mode} segment={segment_index + 1}/{len(self._segments)} "
+            f"cutoffs={len(segment)} first={first.isoformat()} final={final.isoformat()} "
             f"a1={len(self._a1_all)} a2={len(self._a2_all)} a3={len(self._a3_all)}",
             flush=True,
         )
@@ -247,6 +467,10 @@ class ReplayHistoryCache:
         )
 
     def _cached_set(self, cutoff: datetime) -> ReplayHistorySet:
+        segment_index = self._cutoff_segment[cutoff]
+        if self._active_segment_index != segment_index:
+            self._load_segment(segment_index)
+
         a1 = self._a1_all
         a2 = self._a2_all
         a3 = self._a3_all
@@ -258,7 +482,11 @@ class ReplayHistoryCache:
         visible2 = a2[:a2_end]
         visible3 = a3[:a3_end]
 
-        previous_cutoffs = [value for value in self._cache if value < cutoff]
+        previous_cutoffs = [
+            value
+            for value in self._cache
+            if value < cutoff and self._cutoff_segment.get(value) == segment_index
+        ]
         if previous_cutoffs:
             previous_cutoff = max(previous_cutoffs)
             previous = self._cache[previous_cutoff]
@@ -279,6 +507,7 @@ class ReplayHistoryCache:
             )
             print(
                 "REPLAY_HISTORY_CACHE_INCREMENTAL "
+                f"segment={segment_index + 1}/{len(self._segments)} "
                 f"previous={previous_cutoff.isoformat()} cutoff={cutoff.isoformat()} "
                 f"a2_delta={len(delta2)} a3_delta={len(delta3)}",
                 flush=True,
@@ -288,6 +517,7 @@ class ReplayHistoryCache:
             agent3_snapshot = build_live_agent3_history_snapshot(a3, cutoff=cutoff)
             print(
                 "REPLAY_HISTORY_CACHE_BOOTSTRAP "
+                f"segment={segment_index + 1}/{len(self._segments)} "
                 f"cutoff={cutoff.isoformat()} a2_visible={len(visible2)} "
                 f"a3_visible={len(visible3)}",
                 flush=True,
@@ -301,34 +531,32 @@ class ReplayHistoryCache:
             agent1_snapshot_id=_agent1_snapshot_id(visible1, cutoff),
             agent2_snapshot_id=_agent2_snapshot_id(visible2, cutoff),
             agent3_snapshot_id=_agent3_snapshot_id(visible3, cutoff),
-            mode=MODE_CACHE_LOAD_ONCE,
+            mode=self.mode,
         )
 
     def history_for(self, cutoff: datetime) -> ReplayHistorySet:
         if cutoff in self._cache:
             return self._cache[cutoff]
 
-        if self.mode == MODE_CACHE_LOAD_ONCE:
-            # Build planned cutoffs chronologically even when callers request a
-            # later cutoff first. This guarantees every snapshot is advanced
-            # from its immediate predecessor rather than silently rebuilding
-            # the full A2/A3 history.
-            for planned_cutoff in self._cutoffs:
-                if planned_cutoff > cutoff:
-                    break
-                if planned_cutoff not in self._cache:
-                    self._cache[planned_cutoff] = self._cached_set(planned_cutoff)
-            if cutoff not in self._cache:
-                self._cache[cutoff] = self._cached_set(cutoff)
-        else:
+        if cutoff not in self._cutoff_segment:
             self._cache[cutoff] = self._baseline_set(cutoff)
+            return self._cache[cutoff]
+
+        for planned_cutoff in self._cutoffs:
+            if planned_cutoff > cutoff:
+                break
+            if planned_cutoff not in self._cache:
+                self._cache[planned_cutoff] = self._cached_set(planned_cutoff)
         return self._cache[cutoff]
 
 
 __all__ = [
     "MODE_CACHE_LOAD_ONCE",
+    "MODE_CACHE_SEGMENTED",
     "MODE_BASELINE_PER_CUTOFF",
     "ReplayHistorySet",
     "ReplayHistoryCache",
+    "cache_correction_boundaries",
+    "cache_cutoff_segments",
     "cache_is_pit_stable",
 ]
