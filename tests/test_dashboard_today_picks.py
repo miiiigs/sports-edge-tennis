@@ -213,6 +213,52 @@ def test_consensus_awaiting_market_evaluation_is_a_model_pick() -> None:
     assert pick.classification == "PRICE_PENDING"
 
 
+def test_weak_flag_is_display_only_and_uses_manager_probability_band() -> None:
+    weak_value = build_today_picks(
+        [_match(1, manager_status="CONSENSUS", probability="0.599999")],
+        {1: _decision(1, decision_status="BET", stake="0.0100")},
+    ).picks[0]
+    strong_model = build_today_picks(
+        [_match(2, manager_status="CONSENSUS", probability="0.600000")],
+        {},
+    ).picks[0]
+
+    assert weak_value.kind == VALUE_BET
+    assert weak_value.is_actionable_bet is True
+    assert weak_value.is_weak is True
+    assert weak_value.weak_reason == "Manager win probability is below 60%."
+
+    assert strong_model.kind == MODEL_PICK
+    assert strong_model.is_weak is False
+    assert strong_model.weak_reason is None
+
+
+def test_wide_spread_tracking_pick_is_weak_without_becoming_a_bet() -> None:
+    agents = {
+        AGENT_1: AgentView(AGENT_1, "PREDICTED", 1, Decimal("0.64")),
+        AGENT_2: AgentView(AGENT_2, "PREDICTED", 1, Decimal("0.54")),
+        AGENT_3: AgentView(AGENT_3, "ABSTAINED", None, None),
+    }
+    pick = build_today_picks(
+        [
+            _match(
+                5,
+                manager_status="NO_BET",
+                selected_side=None,
+                probability=None,
+                reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+                agents=agents,
+                abstaining_agent_count=1,
+            )
+        ],
+        {},
+    ).picks[0]
+
+    assert pick.is_weak is True
+    assert pick.kind == MODEL_PICK
+    assert pick.is_actionable_bet is False
+
+
 def test_model_pick_and_value_bet_are_distinguishable_without_colour() -> None:
     """The two states must read differently in text alone."""
     assert MODEL_PICK != VALUE_BET
@@ -368,6 +414,15 @@ def test_today_page_shows_probability_prominently(demo_client) -> None:
     assert "70%" in response.text
 
 
+def test_today_page_has_weak_pick_toggle(demo_client) -> None:
+    body = demo_client.get("/today").text
+
+    assert "Filter weak bets:" in body
+    assert 'id="weak-filter-state">Disabled<' in body
+    assert "below 60% Manager win probability" in body
+    assert 'data-weak="' in body
+
+
 def test_today_page_has_no_diagnostic_clutter(demo_client) -> None:
     body = demo_client.get("/today").text
 
@@ -428,6 +483,8 @@ def test_today_api_exposes_picks_without_internal_identifiers(demo_client) -> No
     for pick in body["picks"]:
         assert "match_id" not in pick
         assert pick["kind"] in {VALUE_BET, MODEL_PICK, BLOCKED}
+        assert "is_weak" in pick
+        assert "weak_reason" in pick
         if not pick["is_actionable_bet"]:
             assert pick["stake"] is None
 

@@ -42,6 +42,11 @@ WIDE_SPREAD_SUMMARY = (
     "This is a model pick for tracking only and is not Manager-qualified for betting."
 )
 
+# Presentation-only weak-pick band. This never changes Manager, Market, Veto,
+# staking, publication, or historical truth. It only lets the dashboard
+# de-emphasize lower-confidence issued picks while keeping them visible.
+WEAK_PICK_PROBABILITY_THRESHOLD = Decimal("0.600000")
+
 KIND_LABELS = {
     VALUE_BET: "VALUE BET",
     MODEL_PICK: "MODEL PICK",
@@ -106,6 +111,33 @@ class PickCard:
     def is_actionable_bet(self) -> bool:
         """True only for a Market-qualified bet that the Veto did not kill."""
         return self.kind == VALUE_BET
+
+    @property
+    def is_weak(self) -> bool:
+        """Dashboard-only confidence flag for issued Model Picks / Value Bets.
+
+        Wide-spread tracking picks are weak by construction. For normal issued
+        picks, anything below 60% Manager consensus probability is de-emphasized.
+        Missing confidence is treated fail-closed as weak rather than promoted.
+        This does not change whether the row is a Model Pick or Value Bet.
+        """
+        if self.kind not in (MODEL_PICK, VALUE_BET):
+            return False
+        if self.is_wide_spread:
+            return True
+        if self.win_probability is None:
+            return True
+        return Decimal(self.win_probability) < WEAK_PICK_PROBABILITY_THRESHOLD
+
+    @property
+    def weak_reason(self) -> str | None:
+        if not self.is_weak:
+            return None
+        if self.is_wide_spread:
+            return "Primary models agreed, but their confidence spread is too wide."
+        if self.win_probability is None:
+            return "Model confidence is unavailable."
+        return "Manager win probability is below 60%."
 
     @property
     def probability_text(self) -> str:
@@ -367,6 +399,7 @@ __all__ = [
     "MODEL_PICK",
     "VALUE_BET",
     "WIDE_SPREAD_CLASSIFICATION",
+    "WEAK_PICK_PROBABILITY_THRESHOLD",
     "PickCard",
     "TodayPicks",
     "build_pick_card",

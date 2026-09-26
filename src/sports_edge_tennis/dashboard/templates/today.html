@@ -48,9 +48,16 @@
 </section>
 
 {% else %}
-<section class="pick-list" aria-label="Today's picks">
+<div class="weak-filter-bar" aria-label="Weak pick display controls">
+  <button class="weak-filter-toggle" type="button" id="weak-filter-toggle" aria-pressed="false">
+    Filter weak bets: <strong id="weak-filter-state">Disabled</strong>
+  </button>
+  <span class="weak-filter-note">Weak = below 60% Manager win probability, or wide-spread tracking. Display only.</span>
+</div>
+
+<section class="pick-list" id="today-pick-list" aria-label="Today's picks">
   {% for pick in today_picks.picks %}
-  <article class="pick-card{% if pick.kind == 'VALUE_BET' %} is-value{% elif pick.kind == 'BLOCKED' %} is-blocked{% endif %}">
+  <article class="pick-card{% if pick.kind == 'VALUE_BET' %} is-value{% elif pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
     <div class="pick-top">
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
@@ -70,6 +77,9 @@
 
     <div class="pick-meta" style="align-items: flex-start;">
       <span class="badge badge-{{ 'value' if pick.kind == 'VALUE_BET' else ('blocked' if pick.kind == 'BLOCKED' else 'model') }}">{{ pick.kind_label }}</span>
+      {% if pick.is_weak %}
+      <span class="badge badge-weak" title="{{ pick.weak_reason or 'Weak confidence' }}">WEAK</span>
+      {% endif %}
       <p class="pick-summary">{{ pick.kind_summary }}</p>
     </div>
 
@@ -158,4 +168,52 @@
   <a class="date-link" href="/today?date={{ prev_date.isoformat() }}">‹ {{ prev_date.strftime('%a %d %b') }}</a>
   <a class="date-link" href="/today?date={{ next_date.isoformat() }}">{{ next_date.strftime('%a %d %b') }} ›</a>
 </nav>
+
+{% if not today_picks.is_empty %}
+<script>
+(() => {
+  const toggle = document.getElementById('weak-filter-toggle');
+  const state = document.getElementById('weak-filter-state');
+  const list = document.getElementById('today-pick-list');
+  if (!toggle || !state || !list) return;
+
+  const cards = Array.from(list.querySelectorAll('.pick-card'));
+  const storageKey = 'sports-edge-tennis-filter-weak-bets';
+
+  function apply(enabled) {
+    toggle.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+    state.textContent = enabled ? 'Enabled' : 'Disabled';
+
+    for (const card of cards) {
+      const weak = card.dataset.weak === 'true';
+      card.classList.toggle('is-weak-filtered', enabled && weak);
+    }
+
+    const ordered = [...cards].sort((a, b) => {
+      if (!enabled) {
+        return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
+      }
+      const weakDelta = Number(a.dataset.weak === 'true') - Number(b.dataset.weak === 'true');
+      if (weakDelta !== 0) return weakDelta;
+      return Number(a.dataset.originalIndex) - Number(b.dataset.originalIndex);
+    });
+    for (const card of ordered) list.appendChild(card);
+
+    try {
+      localStorage.setItem(storageKey, enabled ? '1' : '0');
+    } catch (_) {}
+  }
+
+  let enabled = false;
+  try {
+    enabled = localStorage.getItem(storageKey) === '1';
+  } catch (_) {}
+  apply(enabled);
+
+  toggle.addEventListener('click', () => {
+    apply(toggle.getAttribute('aria-pressed') !== 'true');
+  });
+})();
+</script>
+{% endif %}
 {% endblock %}
