@@ -140,9 +140,9 @@ def _agent_runner(run: ReplayRunInput, match: ReplayMatchInput):
             A3: _abstained(A3, as_of),
         }
     return {
-        A1: _agent(A1, 1, "0.55", AGENT1_RAW_PROBABILITY_V1, as_of),
-        A2: _agent(A2, 1, "0.56", AGENT2_RAW_PROBABILITY_V1, as_of),
-        A3: _agent(A3, 1, "0.54", AGENT3_RAW_PROBABILITY_V1, as_of),
+        A1: _agent(A1, 1, "0.65", AGENT1_RAW_PROBABILITY_V1, as_of),
+        A2: _agent(A2, 1, "0.66", AGENT2_RAW_PROBABILITY_V1, as_of),
+        A3: _agent(A3, 1, "0.64", AGENT3_RAW_PROBABILITY_V1, as_of),
     }
 
 
