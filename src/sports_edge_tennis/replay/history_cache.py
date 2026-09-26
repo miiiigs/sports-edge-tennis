@@ -233,6 +233,98 @@ def cache_correction_boundaries(
     ).fetchall()
     boundaries.update(row[1] for row in alias_evidence_rows if row[1] is not None)
 
+    # A2 can recover a NULL match surface from point-in-time-visible tournament
+    # evidence at the history-loader cutoff. Segment on those relevant surface
+    # evidence arrivals so a later recovered surface cannot be attached to a
+    # historical row at an earlier cutoff.
+    surface_evidence_rows = conn.execute(
+        """
+        WITH selected_results AS (
+            SELECT
+                mro.match_id,
+                mro.source_observed_at,
+                mro.as_of,
+                ROW_NUMBER() OVER (
+                    PARTITION BY mro.match_id
+                    ORDER BY
+                        mro.as_of DESC,
+                        mro.source_observed_at DESC,
+                        mro.match_result_observation_id DESC
+                ) AS result_rank
+            FROM match_result_observations mro
+            WHERE mro.source_observed_at <= %s
+              AND mro.as_of <= %s
+        ),
+        selected_versions AS (
+            SELECT
+                sr.match_id,
+                te.tournament_id,
+                t.canonical_name,
+                t.tour_scope::text AS tour_scope,
+                te.season_year,
+                te.surface::text AS edition_surface,
+                mv.surface::text AS match_surface,
+                ROW_NUMBER() OVER (
+                    PARTITION BY sr.match_id
+                    ORDER BY
+                        mv.as_of DESC,
+                        mv.source_observed_at DESC,
+                        mv.match_version_id DESC
+                ) AS version_rank
+            FROM selected_results sr
+            JOIN matches m
+              ON m.match_id = sr.match_id
+            JOIN tournament_editions te
+              ON te.tournament_edition_id = m.tournament_edition_id
+            JOIN tournaments t
+              ON t.tournament_id = te.tournament_id
+            JOIN match_versions mv
+              ON mv.match_id = sr.match_id
+             AND mv.source_observed_at <= sr.source_observed_at
+             AND mv.as_of <= sr.as_of
+            WHERE sr.result_rank = 1
+        ),
+        missing_targets AS (
+            SELECT
+                match_id,
+                tournament_id,
+                canonical_name,
+                tour_scope,
+                season_year
+            FROM selected_versions
+            WHERE version_rank = 1
+              AND match_surface IS NULL
+              AND edition_surface IS NULL
+        ),
+        surface_evidence AS (
+            SELECT DISTINCT
+                GREATEST(mv_hist.source_observed_at, mv_hist.as_of) AS visible_at
+            FROM missing_targets target
+            JOIN tournaments t_hist
+              ON t_hist.tournament_id = target.tournament_id
+              OR (
+                  t_hist.canonical_name = target.canonical_name
+                  AND t_hist.tour_scope::text = target.tour_scope
+              )
+            JOIN tournament_editions te_hist
+              ON te_hist.tournament_id = t_hist.tournament_id
+             AND te_hist.season_year <= target.season_year
+            JOIN matches m_hist
+              ON m_hist.tournament_edition_id = te_hist.tournament_edition_id
+            JOIN match_versions mv_hist
+              ON mv_hist.match_id = m_hist.match_id
+             AND mv_hist.surface IS NOT NULL
+            WHERE GREATEST(mv_hist.source_observed_at, mv_hist.as_of) > %s
+              AND GREATEST(mv_hist.source_observed_at, mv_hist.as_of) <= %s
+        )
+        SELECT visible_at
+        FROM surface_evidence
+        ORDER BY visible_at
+        """,
+        (final, final, first, final),
+    ).fetchall()
+    boundaries.update(row[0] for row in surface_evidence_rows if row[0] is not None)
+
     return tuple(sorted(boundaries))
 
 
