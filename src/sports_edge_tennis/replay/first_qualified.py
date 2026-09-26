@@ -28,6 +28,12 @@ _DEFAULT_MODEL_PICK_CLASSIFICATIONS: tuple[ModelPickClassification, ...] = (
     "MANAGER_QUALIFIED",
 )
 
+CURRENT_MODEL_PICK_MIN_PROBABILITY = Decimal("0.600000")
+_CURRENT_MODEL_PICK_CLASSIFICATIONS: tuple[ModelPickClassification, ...] = (
+    "MANAGER_QUALIFIED",
+    "A1_A2_AGREE_WIDE_SPREAD_NOT_MANAGER_QUALIFIED",
+)
+
 
 @dataclass(frozen=True)
 class ModelPickMetrics:
@@ -74,6 +80,57 @@ def first_qualified_model_picks(
             continue
         existing = first.get(row.sporting_match_id)
         if existing is None:
+            first[row.sporting_match_id] = row
+    return tuple(first[match_id] for match_id in sorted(first))
+
+
+def current_rule_model_pick_probability(
+    row: ModelPickLedgerRow,
+) -> Decimal | None:
+    """Probability used by the current Model Pick reporting rule.
+
+    Normal Manager-qualified picks use the persisted Manager consensus
+    probability. Wide-spread A1+A2 tracking picks use the arithmetic mean of
+    the two agreeing primary-model probabilities. No probability is invented
+    when the required evidence is absent.
+    """
+    if row.classification == "MANAGER_QUALIFIED":
+        return row.consensus_probability
+    if row.classification == "A1_A2_AGREE_WIDE_SPREAD_NOT_MANAGER_QUALIFIED":
+        if (
+            row.a1_state != "PREDICTED"
+            or row.a2_state != "PREDICTED"
+            or row.a3_state != "ABSTAINED"
+            or row.a1_probability is None
+            or row.a2_probability is None
+            or row.a1_side not in (1, 2)
+            or row.a2_side != row.a1_side
+        ):
+            return None
+        return (row.a1_probability + row.a2_probability) / Decimal("2")
+    return None
+
+
+def first_current_rule_model_picks(
+    rows: Iterable[ModelPickLedgerRow],
+    *,
+    min_probability: Decimal = CURRENT_MODEL_PICK_MIN_PROBABILITY,
+) -> tuple[ModelPickLedgerRow, ...]:
+    """First Model Pick per match under the current >=60% reporting rule.
+
+    A match may qualify later if an earlier hourly evaluation was below the
+    probability floor. This mirrors prospective current-system behavior rather
+    than freezing the first raw Manager/wide-spread observation.
+    """
+    allowed = set(_CURRENT_MODEL_PICK_CLASSIFICATIONS)
+    first: dict[int, ModelPickLedgerRow] = {}
+    for row in sorted(rows, key=_model_pick_sort_key):
+        if row.classification not in allowed:
+            continue
+        probability = current_rule_model_pick_probability(row)
+        if probability is None or probability < min_probability:
+            continue
+        if row.sporting_match_id not in first:
             first[row.sporting_match_id] = row
     return tuple(first[match_id] for match_id in sorted(first))
 
@@ -155,8 +212,11 @@ def value_bet_metrics(rows: Iterable[ValueBetLedgerRow]) -> ValueBetMetrics:
 
 
 __all__ = [
+    "CURRENT_MODEL_PICK_MIN_PROBABILITY",
     "ModelPickMetrics",
     "ValueBetMetrics",
+    "current_rule_model_pick_probability",
+    "first_current_rule_model_picks",
     "first_qualified_model_picks",
     "first_qualified_value_bets",
     "model_pick_metrics",
