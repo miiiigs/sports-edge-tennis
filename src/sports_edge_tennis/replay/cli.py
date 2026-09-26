@@ -126,6 +126,7 @@ def main(argv: list[str] | None = None) -> int:
             conn,
             match_ids=tuple(match_ids),
             policy=ReplayDecisionTimePolicy(),
+            window_as_of=_end_of_day(args.end_date),
         )
         request = ReplayLoadRequest(
             run_specs=specs,
