@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from decimal import Decimal
 
 from replay_helpers import model_pick, utc, value_bet
 
 from sports_edge_tennis.replay.first_qualified import (
+    current_rule_model_pick_probability,
+    first_current_rule_model_picks,
     first_qualified_model_picks,
     first_qualified_value_bets,
     model_pick_metrics,
@@ -113,3 +116,71 @@ def test_cancelled_and_retired_matches_keep_single_observation():
     assert len(first) == 1
     assert first[0].run_sequence == 1
     assert first[0].actual_result == "VOID"
+
+
+
+def test_current_rule_model_picks_skip_early_sub_60_then_take_later_qualifier():
+    early = replace(
+        model_pick(match_id=20, run_sequence=1, decision_as_of=utc(11)),
+        consensus_probability=Decimal("0.590000"),
+    )
+    later = replace(
+        model_pick(match_id=20, run_sequence=2, decision_as_of=utc(12)),
+        consensus_probability=Decimal("0.610000"),
+    )
+
+    first = first_current_rule_model_picks([later, early])
+    assert len(first) == 1
+    assert first[0].run_sequence == 2
+    assert current_rule_model_pick_probability(first[0]) == Decimal("0.610000")
+
+
+def test_current_rule_includes_a1_a2_wide_spread_at_60_or_above():
+    wide = replace(
+        model_pick(
+            match_id=21,
+            classification="A1_A2_AGREE_WIDE_SPREAD_NOT_MANAGER_QUALIFIED",
+        ),
+        manager_outcome="NO_BET",
+        manager_reason="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+        consensus_probability=None,
+        a1_probability=Decimal("0.640000"),
+        a2_probability=Decimal("0.600000"),
+        a3_state="ABSTAINED",
+        a3_side=None,
+        a3_probability=None,
+        a3_reason="INSUFFICIENT_SHARED_OPPONENTS",
+    )
+
+    first = first_current_rule_model_picks([wide])
+    assert len(first) == 1
+    assert current_rule_model_pick_probability(wide) == Decimal("0.620000")
+
+
+def test_current_rule_excludes_a1_a2_wide_spread_below_60():
+    wide = replace(
+        model_pick(
+            match_id=22,
+            classification="A1_A2_AGREE_WIDE_SPREAD_NOT_MANAGER_QUALIFIED",
+        ),
+        manager_outcome="NO_BET",
+        manager_reason="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+        consensus_probability=None,
+        a1_probability=Decimal("0.610000"),
+        a2_probability=Decimal("0.580000"),
+        a3_state="ABSTAINED",
+        a3_side=None,
+        a3_probability=None,
+        a3_reason="INSUFFICIENT_SHARED_OPPONENTS",
+    )
+
+    assert current_rule_model_pick_probability(wide) == Decimal("0.595000")
+    assert first_current_rule_model_picks([wide]) == ()
+
+
+def test_current_rule_exactly_60_is_included():
+    normal = replace(
+        model_pick(match_id=23),
+        consensus_probability=Decimal("0.600000"),
+    )
+    assert first_current_rule_model_picks([normal]) == (normal,)
