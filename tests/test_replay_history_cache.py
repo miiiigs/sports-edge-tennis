@@ -613,13 +613,24 @@ def test_a2_surface_recovery_evidence_creates_segment_boundary(
     p3 = _player(db, "Surface Evidence One")
     p4 = _player(db, "Surface Evidence Two")
     surface_visible = T1 + timedelta(hours=12)
-    _completed_match(
+    evidence_match = _fetchval(
         db,
-        prior_edition,
-        p3,
-        p4,
-        observed=surface_visible,
-        surface="CLAY",
+        "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
+        (prior_edition,),
+    )
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, tour_scope, competition_tier,
+            surface, round_code, best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of
+        )
+        VALUES (
+            %s, %s, %s, 'ATP_MAIN', 'ATP_250',
+            'CLAY', 'R32', 3, FALSE, 'COMPLETED', %s, %s
+        )
+        """,
+        (evidence_match, p3, p4, surface_visible, surface_visible),
     )
 
     boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
