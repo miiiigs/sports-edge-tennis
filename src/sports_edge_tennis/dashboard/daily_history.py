@@ -18,6 +18,10 @@ from sports_edge_tennis.dashboard.daily_bets import (
     load_daily_bets,
 )
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.dashboard.history_alignment import (
+    ALIGNED_LIVE_HISTORY_START,
+    since_aligned_start,
+)
 from sports_edge_tennis.performance.regimes import (
     RegimeCohort,
     RegimeIdentity,
@@ -144,6 +148,7 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
 
     view = _load_history(requested_date)
     as_of_date = datetime.now(UTC).date()
+    aligned_summaries = since_aligned_start(view.all_summaries)
     return templates.TemplateResponse(
         request,
         "bet_history.html",
@@ -155,6 +160,11 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
             "selected_date": view.selected_date,
             "selected_summary": view.selected_summary,
             "daily_bets": view.bets,
+            "aligned_live_start": ALIGNED_LIVE_HISTORY_START,
+            "aligned_live_windows": build_performance_windows(
+                aligned_summaries, as_of_date=as_of_date
+            ),
+            "aligned_live_bets": sum(row.bets for row in aligned_summaries),
             # "Current System" windows use only the active regime's bets.
             "current_windows": build_performance_windows(
                 view.current_summaries, as_of_date=as_of_date
@@ -193,6 +203,10 @@ def api_bet_history(date: str | None = Query(default=None)):
     bets = view.bets
     as_of_date = datetime.now(UTC).date()
     performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
+    aligned_summaries = since_aligned_start(summaries)
+    aligned_windows = build_performance_windows(
+        aligned_summaries, as_of_date=as_of_date
+    )
     current_windows = build_performance_windows(
         view.current_summaries, as_of_date=as_of_date
     )
@@ -202,6 +216,14 @@ def api_bet_history(date: str | None = Query(default=None)):
             "as_of_date": as_of_date.isoformat(),
             # Existing key retained for compatibility: all production regimes.
             "performance_windows": {key: _period_json(value) for key, value in performance_windows.items()},
+            "aligned_live_history": {
+                "start_date": ALIGNED_LIVE_HISTORY_START.isoformat(),
+                "scope": "ACTUAL_LIVE_FIRST_PUBLISHED_VALUE_BET_PER_MATCH",
+                "is_replay": False,
+                "performance": {
+                    key: _period_json(value) for key, value in aligned_windows.items()
+                },
+            },
             "current_regime": None
             if view.current_regime is None
             else {

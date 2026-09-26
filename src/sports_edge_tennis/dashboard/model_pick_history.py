@@ -18,6 +18,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect, _latest_activity, templates
+from sports_edge_tennis.dashboard.history_alignment import (
+    ALIGNED_LIVE_HISTORY_START,
+    since_aligned_start,
+)
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
     ModelRegimeIdentity,
@@ -441,6 +445,7 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
 
     view = _load_history(requested_date)
     as_of_date = datetime.now(UTC).date()
+    aligned_summaries = since_aligned_start(view.all_summaries)
     return templates.TemplateResponse(
         request,
         "model_pick_results.html",
@@ -452,6 +457,11 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
             "selected_date": view.selected_date,
             "selected_summary": view.selected_summary,
             "daily_picks": view.picks,
+            "aligned_live_start": ALIGNED_LIVE_HISTORY_START,
+            "aligned_live_windows": build_model_pick_windows(
+                aligned_summaries, as_of_date=as_of_date
+            ),
+            "aligned_live_picks": sum(row.picks for row in aligned_summaries),
             "current_windows": build_model_pick_windows(
                 view.current_summaries, as_of_date=as_of_date
             ),
@@ -483,6 +493,10 @@ def api_model_pick_results(date: str | None = Query(default=None)):
 
     as_of_date = datetime.now(UTC).date()
     all_windows = build_model_pick_windows(view.all_summaries, as_of_date=as_of_date)
+    aligned_summaries = since_aligned_start(view.all_summaries)
+    aligned_windows = build_model_pick_windows(
+        aligned_summaries, as_of_date=as_of_date
+    )
     current_windows = build_model_pick_windows(
         view.current_summaries, as_of_date=as_of_date
     )
@@ -490,6 +504,14 @@ def api_model_pick_results(date: str | None = Query(default=None)):
     return JSONResponse(
         {
             "as_of_date": as_of_date.isoformat(),
+            "aligned_live_history": {
+                "start_date": ALIGNED_LIVE_HISTORY_START.isoformat(),
+                "scope": "ACTUAL_LIVE_FIRST_MANAGER_QUALIFIED_PICK_PER_MATCH",
+                "is_replay": False,
+                "performance": {
+                    key: _period_json(value) for key, value in aligned_windows.items()
+                },
+            },
             "current_model_regime": None
             if view.current_regime is None
             else {
