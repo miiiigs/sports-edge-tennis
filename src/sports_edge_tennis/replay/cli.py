@@ -41,7 +41,7 @@ from sports_edge_tennis.replay.first_qualified import (
 from sports_edge_tennis.replay.loader import (
     ReplayDecisionTimePolicy,
     ReplayLoadRequest,
-    derive_run_specs_from_match_days,
+    derive_run_specs_from_match_cutoffs,
     load_replay_inputs,
 )
 from sports_edge_tennis.replay.manifest import (
@@ -54,9 +54,19 @@ from sports_edge_tennis.market.staking import STAKING_RULE_VERSION
 
 
 def _git_sha() -> str:
+    """Resolve the source SHA deterministically, independent of process cwd."""
+
+    for env_name in ("SPORTS_EDGE_REPLAY_GIT_SHA", "RAILWAY_GIT_COMMIT_SHA"):
+        candidate = os.environ.get(env_name, "").strip()
+        if candidate:
+            return candidate
+
+    repo_root = Path(__file__).resolve().parents[3]
     try:
         return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+            text=True,
+            stderr=subprocess.DEVNULL,
         ).strip()
     except Exception:
         return "UNKNOWN"
@@ -112,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
 
     provisional = args.label == "provisional"
     with psycopg.connect(args.database_url, autocommit=True) as conn:
-        specs = derive_run_specs_from_match_days(
+        specs = derive_run_specs_from_match_cutoffs(
             conn,
             match_ids=tuple(match_ids),
             policy=ReplayDecisionTimePolicy(),
