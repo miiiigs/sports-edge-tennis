@@ -26,7 +26,62 @@
 </section>
 
 {% else %}
-<section class="section" aria-label="Current system performance" style="margin-top: 0;">
+<section class="section" aria-label="Aligned live value-bet history" style="margin-top: 0;">
+  <h2 class="section-title">Aligned live history · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
+  <p class="section-note">
+    One actual published Value Bet per sporting match, always using the first
+    qualifying live bet for that match. This removes hourly duplicates and keeps
+    the same accounting rule across the full September record. It is live-issued
+    history, not a backtest or replay.
+  </p>
+
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-value">{{ aligned_live_bets }}</span><span class="stat-label">Bets</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.roi) }}</span><span class="stat-label">ROI</span></div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 14px;">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Settled</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Pending</th>
+          <th scope="col">Win rate</th>
+          <th scope="col">P/L</th>
+          <th scope="col">ROI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set aligned_periods = [
+          ('Today', aligned_live_windows.today),
+          ('Last 7 days', aligned_live_windows.last_7_days),
+          ('Since 10 Sep', aligned_live_windows.all_time)
+        ] %}
+        {% for label, period in aligned_periods %}
+        <tr>
+          <th scope="row">{{ label }}</th>
+          <td class="num">{{ period.bets }}</td>
+          <td class="num">{{ period.settled }}</td>
+          <td class="num">{{ period.wins }}</td>
+          <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.pending }}</td>
+          <td class="num">{{ pct(period.hit_rate) }}</td>
+          <td class="num">{{ units(period.one_unit_profit) }}</td>
+          <td class="num">{{ pct(period.roi) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" aria-label="Current system performance">
   <h2 class="section-title">Current system</h2>
   <p class="section-note">
     {% if current_regime and current_regime.is_inconsistent %}
