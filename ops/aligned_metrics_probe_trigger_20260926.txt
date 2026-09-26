@@ -1,0 +1,1 @@
+Trigger one read-only production metrics probe for the Sep 10 aligned live ledger.
