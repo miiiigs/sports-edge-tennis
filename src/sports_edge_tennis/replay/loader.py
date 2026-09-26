@@ -588,6 +588,49 @@ def derive_run_specs_from_match_days(
     return tuple(specs)
 
 
+def derive_run_specs_from_match_cutoffs(
+    conn: psycopg.Connection,
+    *,
+    match_ids: tuple[int, ...],
+    policy: ReplayDecisionTimePolicy = ReplayDecisionTimePolicy(),
+    window_as_of: datetime | None = None,
+) -> tuple[ReplayRunSpec, ...]:
+    """Plan V1.1 runs from each match's own PIT decision cutoffs.
+
+    Matches are grouped only when they resolve to the exact same prediction and
+    market cutoffs. This avoids advancing a later same-day match to the day's
+    earliest start, which can incorrectly hide a scheduled version that became
+    visible before the later match's own blind cutoff.
+    """
+
+    window_as_of = window_as_of or datetime.now(timezone.utc)
+    cohorts: dict[tuple[datetime, datetime], list[int]] = {}
+
+    for match_id in sorted(set(match_ids)):
+        match_start_at = _load_match_start_at(conn, match_id=match_id, as_of=window_as_of)
+        decision_time = policy.resolve(match_start_at)
+        if decision_time is None:
+            continue
+        key = (decision_time.prediction_as_of, decision_time.market_as_of)
+        cohorts.setdefault(key, []).append(match_id)
+
+    specs: list[ReplayRunSpec] = []
+    for sequence, ((prediction_as_of, market_as_of), cohort_ids) in enumerate(
+        sorted(cohorts.items(), key=lambda item: item[0]), start=1
+    ):
+        stamp = prediction_as_of.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        specs.append(
+            ReplayRunSpec(
+                run_id=f"replay-match-cutoff-{stamp}-{sequence:04d}",
+                run_sequence=sequence,
+                prediction_as_of=prediction_as_of,
+                market_as_of=market_as_of,
+                match_ids=tuple(sorted(cohort_ids)),
+            )
+        )
+    return tuple(specs)
+
+
 __all__ = [
     "PINNACLE_SHARP",
     "ReplayLoadError",
@@ -599,6 +642,7 @@ __all__ = [
     "load_market_policy",
     "load_replay_inputs",
     "derive_run_specs_from_match_days",
+    "derive_run_specs_from_match_cutoffs",
     "VETO_POLICY_VERSION",
     "STAKING_RULE_VERSION",
     "AGENT3_DEFAULT_CONFIG",
