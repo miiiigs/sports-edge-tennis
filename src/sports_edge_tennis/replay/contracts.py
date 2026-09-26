@@ -15,7 +15,7 @@ from sports_edge_tennis.runner.contracts import ResolvedTargetV1
 from sports_edge_tennis.veto.contracts import VetoContext
 
 
-REPLAY_ID = "CURRENT_SYSTEM_REPLAY_20260910_V1"
+REPLAY_ID = "CURRENT_SYSTEM_REPLAY_20260910_V1_1"
 REPLAY_SCHEMA_VERSION = "current_system_replay_v1"
 
 #: Marker used whenever a required historical fact cannot be proven visible at
