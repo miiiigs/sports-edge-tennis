@@ -47,7 +47,16 @@ def _player(conn, name):
     )
 
 
-def _completed_match(conn, edition_id, p1, p2, *, observed, winner=1):
+def _completed_match(
+    conn,
+    edition_id,
+    p1,
+    p2,
+    *,
+    observed,
+    winner=1,
+    stats_observed=None,
+):
     match_id = _fetchval(
         conn,
         "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
@@ -71,6 +80,7 @@ def _completed_match(conn, edition_id, p1, p2, *, observed, winner=1):
         """,
         (match_id, winner, observed, observed),
     )
+    stat_visible_at = stats_observed or observed
     for player_id in (p1, p2):
         conn.execute(
             """
@@ -82,7 +92,13 @@ def _completed_match(conn, edition_id, p1, p2, *, observed, winner=1):
             )
             VALUES (%s, %s, 'API_TENNIS', %s, 'RAW_SOURCE', 10, 7, 3, 20, 8, 2, 1, 3, 5, %s, %s)
             """,
-            (match_id, player_id, f"stat-{match_id}-{player_id}", observed, observed),
+            (
+                match_id,
+                player_id,
+                f"stat-{match_id}-{player_id}",
+                stat_visible_at,
+                stat_visible_at,
+            ),
         )
     return match_id
 
@@ -512,3 +528,39 @@ def test_alias_identity_first_completed_result_creates_segment_boundary(
     boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
     assert R2 in boundaries
     assert cache_cutoff_segments(db, cutoffs=[T1, T2]) == ((T1,), (T2,))
+
+
+
+def test_first_complete_stat_cohort_splits_segment_before_a2_can_use_it(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    edition = _fetchval(db, "SELECT min(tournament_edition_id) FROM tournament_editions")
+    p5 = _player(db, "E Five")
+    p6 = _player(db, "F Six")
+    stats_visible = T1 + timedelta(hours=12)
+    _completed_match(
+        db,
+        edition,
+        p5,
+        p6,
+        observed=R1,
+        stats_observed=stats_visible,
+    )
+
+    boundaries = cache_correction_boundaries(db, cutoffs=[T1, T2])
+    assert stats_visible in boundaries
+    assert cache_cutoff_segments(db, cutoffs=[T1, T2]) == ((T1,), (T2,))
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+    assert cache.mode == MODE_CACHE_SEGMENTED
+
+    for cutoff in (T1, T2):
+        cached = cache.history_for(cutoff)
+        baseline_a2 = load_agent2_history(db, cutoff=cutoff)
+        baseline_snap2 = build_agent2_snapshot(baseline_a2, cutoff=cutoff)
+        assert _a2_projection(cached.agent2_snapshot) == _a2_projection(baseline_snap2)
