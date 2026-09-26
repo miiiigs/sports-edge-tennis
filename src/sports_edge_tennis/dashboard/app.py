@@ -263,6 +263,8 @@ def _pick_payload(pick) -> dict:
         "bookmaker": pick.bookmaker,
         "edge_pct": pick.edge_text,
         "stake": pick.stake_text,
+        "is_weak": pick.is_weak,
+        "weak_reason": pick.weak_reason,
     }
 
 
