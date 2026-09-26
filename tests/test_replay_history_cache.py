@@ -267,3 +267,52 @@ def test_cache_guard_checks_entire_correction_chain_not_only_latest_two(
     # only those two would miss the older R1 -> correction_1 transition that
     # changes what was knowable at T1.
     assert cache.mode == MODE_BASELINE_PER_CUTOFF
+
+
+
+def test_cache_falls_back_when_complete_stat_cohort_changes_across_cutoff(
+    db: psycopg.Connection,
+):
+    _seed(db)
+    match_one = _fetchval(db, "SELECT min(match_id) FROM matches")
+    p1, p2 = db.execute(
+        """
+        SELECT player_1_id, player_2_id
+        FROM match_versions
+        WHERE match_id = %s
+        ORDER BY match_version_id DESC
+        LIMIT 1
+        """,
+        (match_one,),
+    ).fetchone()
+    corrected_at = T1 + timedelta(hours=1)
+
+    for player_id in (p1, p2):
+        db.execute(
+            """
+            INSERT INTO match_stat_observations (
+                match_id, player_id, source_system, source_record_id, observation_kind,
+                first_serves_in, first_serve_points_won, second_serve_points_won,
+                service_points_played, return_points_won, aces, double_faults,
+                break_points_saved, break_points_faced, source_observed_at, as_of
+            )
+            VALUES (
+                %s, %s, 'API_TENNIS', %s, 'RAW_SOURCE',
+                11, 8, 3, 21, 9, 3, 1, 4, 6, %s, %s
+            )
+            """,
+            (
+                match_one,
+                player_id,
+                f"stat-correction-{match_one}-{player_id}",
+                corrected_at,
+                corrected_at,
+            ),
+        )
+
+    cache = ReplayHistoryCache(
+        db,
+        cutoffs=[T1, T2],
+        a3_lookback_days=A3_CONFIG.lookback_days,
+    )
+    assert cache.mode == MODE_BASELINE_PER_CUTOFF
