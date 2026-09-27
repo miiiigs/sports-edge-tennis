@@ -67,11 +67,10 @@
       <div class="pick-probability">
         {% if pick.is_wide_spread %}
         <span class="prob-value">{{ pick.primary_average_probability_text }}</span>
-        <span class="prob-label">A1/A2 tracking probability</span>
         {% else %}
         <span class="prob-value">{{ pick.probability_text }}</span>
-        <span class="prob-label">Win probability</span>
         {% endif %}
+        <span class="prob-label">Probability basis: {{ pick.probability_basis_label }}</span>
       </div>
     </div>
 

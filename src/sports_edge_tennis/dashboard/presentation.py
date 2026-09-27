@@ -7,7 +7,7 @@ codes to the language shown to a client.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 
 STATE_LABELS = {
     "MODEL_CONSENSUS": "Consensus",
@@ -120,10 +120,26 @@ def recommendation_classification(
     return "PRICE_PENDING"
 
 
+def _as_decimal(value: Decimal | float) -> Decimal:
+    if isinstance(value, Decimal):
+        return value
+    return Decimal(str(value))
+
+
 def percent(probability: Decimal | None) -> str:
+    """Render a model probability at one decimal, truncated (never rounded up).
+
+    Truncation is deliberate: it keeps the displayed value on the same side of
+    the 60% threshold as the raw ``Decimal`` used for classification. A value
+    below the threshold can never round up to ``60.0%``, and a qualifying value
+    can never round down below it. The raw probability is never altered.
+    """
     if probability is None:
         return "—"
-    return f"{float(probability) * 100:.0f}%"
+    hundredths = (_as_decimal(probability) * 100).quantize(
+        Decimal("0.1"), rounding=ROUND_DOWN
+    )
+    return f"{hundredths:.1f}%"
 
 
 def precise_percent(value: Decimal | None) -> str:

@@ -210,7 +210,7 @@
           <th scope="col">Picked</th>
           <th scope="col">Model pick</th>
           <th scope="col">Opponent / event</th>
-          <th scope="col">Model probability</th>
+          <th scope="col">Manager consensus probability</th>
           <th scope="col">Result</th>
           <th scope="col">Type</th>
           <th scope="col">System</th>
@@ -225,7 +225,7 @@
             {{ pick.player_1 or 'Player 1' }} vs {{ pick.player_2 or 'Player 2' }}<br>
             <span class="stat-note">{{ pick.tournament or 'Tournament unavailable' }}{% if pick.match_start_at %} · {{ pick.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
           </td>
-          <td class="num">{% if pick.consensus_probability is not none %}{{ pct(pick.consensus_probability) }}{% else %}—{% endif %}</td>
+          <td class="num">{% if pick.consensus_probability is not none %}{{ pres.percent(pick.consensus_probability) }}{% else %}—{% endif %}</td>
           <td>
             <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.result_status }}</span>
           </td>

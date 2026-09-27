@@ -68,7 +68,7 @@ def test_bet_terminology_is_scoped_to_market_bet_state():
 def test_tier_and_percent():
     assert pres.tier_label("MASTERS_1000") == "ATP Masters 1000"
     assert pres.tier_label("CHALLENGER") == "Challenger"
-    assert pres.percent(Decimal("0.683")) == "68%"
+    assert pres.percent(Decimal("0.683")) == "68.3%"
     assert pres.percent(None) == "—"
 
 
