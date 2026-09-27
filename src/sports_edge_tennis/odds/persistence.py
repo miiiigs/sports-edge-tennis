@@ -383,10 +383,12 @@ def insert_live_odds_snapshot(
                 as_of,
                 raw_odds_observation_id,
                 provider_bookmaker_mapping_id,
-                odds_origin
+                odds_origin,
+                ingested_at
             )
             VALUES (
-                %s, %s, %s, 'MATCH_WINNER', %s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, 'LIVE_PROVIDER'
+                %s, %s, %s, 'MATCH_WINNER', %s, NULL, %s, %s, %s, %s, %s, %s, %s, %s, 'LIVE_PROVIDER',
+                GREATEST(clock_timestamp(), %s, %s)
             )
             ON CONFLICT (
                 source_system,
@@ -448,6 +450,8 @@ def insert_live_odds_snapshot(
             quote.as_of,
             quote.raw_odds_observation_id,
             quote.provider_bookmaker_mapping_id,
+            quote.source_observed_at,
+            quote.as_of,
             quote.source_system,
             quote.source_snapshot_id,
             quote.bookmaker_code,
