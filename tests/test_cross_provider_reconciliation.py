@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import psycopg
+import pytest
 
 from sports_edge_tennis.data import cross_provider_reconciliation as cpr
 
@@ -313,4 +314,230 @@ def test_evaluation_performs_zero_writes(db: psycopg.Connection):
     cpr.evaluate_cross_provider_reconciliation(
         db, target_match_id=target, evidence_match_id=target
     )
+    assert counts() == before
+
+
+REVIEWED_AT = datetime(2026, 5, 2, 9, 0, tzinfo=UTC)
+
+
+def _apply(
+    db: psycopg.Connection,
+    target: int,
+    evidence: int,
+    *,
+    reviewed_at: datetime = REVIEWED_AT,
+) -> cpr.CrossProviderReconciliationApplyResult:
+    return cpr.apply_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        reviewed_at=reviewed_at,
+    )
+
+
+def _count(db: psycopg.Connection, table: str, where: str = "", params: tuple = ()) -> int:
+    sql = f"SELECT count(*) FROM {table}"
+    if where:
+        sql += f" WHERE {where}"
+    return int(db.execute(sql, params).fetchone()[0])
+
+
+def test_apply_direct_returns_applied(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    result = _apply(db, target, evidence)
+    assert result.status == cpr.STATUS_APPLIED
+    assert result.reconciliation_id is not None
+    assert result.target_result_observation_id is not None
+    assert result.classification == cpr.CLASSIFICATION_EXACT
+    assert result.already_reconciled is False
+
+
+def test_apply_reversed_returns_applied(db: psycopg.Connection):
+    target, evidence = _scenario(db, reverse=True)
+    result = _apply(db, target, evidence)
+    assert result.status == cpr.STATUS_APPLIED
+    assert result.classification == cpr.CLASSIFICATION_REVERSED
+    assert result.player_order_mapping == cpr.PLAYER_ORDER_REVERSED
+
+
+def test_apply_inserts_reconciliation_row(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    result = _apply(db, target, evidence)
+    row = db.execute(
+        "SELECT canonical_target_match_id, evidence_match_id, classification, "
+        "player_order_mapping, reconciliation_policy_version "
+        "FROM cross_provider_match_reconciliations"
+    ).fetchone()
+    assert _count(db, "cross_provider_match_reconciliations") == 1
+    assert int(row[0]) == target
+    assert int(row[1]) == evidence
+    assert row[2] == cpr.CLASSIFICATION_EXACT
+    assert row[3] == cpr.PLAYER_ORDER_DIRECT
+    assert row[4] == cpr.POLICY_VERSION
+    assert result.reconciliation_id == db.execute(
+        "SELECT reconciliation_id FROM cross_provider_match_reconciliations"
+    ).fetchone()[0]
+
+
+def test_apply_appends_target_result(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    result = _apply(db, target, evidence)
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 1
+    assert result.target_result_observation_id is not None
+
+
+def test_apply_direct_winner_preserved(db: psycopg.Connection):
+    target, evidence = _scenario(db, winner_side=2)
+    _apply(db, target, evidence)
+    winner = db.execute(
+        "SELECT winner_side FROM match_result_observations WHERE match_id = %s",
+        (target,),
+    ).fetchone()[0]
+    assert int(winner) == 2
+
+
+def test_apply_reversed_winner_translated(db: psycopg.Connection):
+    target, evidence = _scenario(db, reverse=True, winner_side=1)
+    _apply(db, target, evidence)
+    winner = db.execute(
+        "SELECT winner_side FROM match_result_observations WHERE match_id = %s",
+        (target,),
+    ).fetchone()[0]
+    assert int(winner) == 2
+
+
+def test_apply_reversed_sets_and_games_translated(db: psycopg.Connection):
+    target, evidence = _scenario(db, reverse=True, sets=(2, 0), games=(12, 7))
+    _apply(db, target, evidence)
+    row = db.execute(
+        "SELECT sets_won_player_1, sets_won_player_2, games_won_player_1, games_won_player_2 "
+        "FROM match_result_observations WHERE match_id = %s",
+        (target,),
+    ).fetchone()
+    assert tuple(int(v) for v in row) == (0, 2, 7, 12)
+
+
+def test_apply_uses_reviewed_at_as_visibility_time(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _apply(db, target, evidence)
+    row = db.execute(
+        "SELECT source_observed_at, as_of, ingested_at FROM match_result_observations "
+        "WHERE match_id = %s",
+        (target,),
+    ).fetchone()
+    assert row[0] == REVIEWED_AT
+    assert row[1] == REVIEWED_AT
+    assert row[2] >= REVIEWED_AT
+
+
+def test_apply_evidence_payload_preserves_original_timestamps(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _apply(db, target, evidence)
+    payload = db.execute(
+        "SELECT evidence_payload FROM cross_provider_match_reconciliations"
+    ).fetchone()[0]
+    original = db.execute(
+        "SELECT match_result_observation_id, source_observed_at, as_of "
+        "FROM match_result_observations WHERE match_id = %s",
+        (evidence,),
+    ).fetchone()
+    assert payload["policy_version"] == cpr.POLICY_VERSION
+    assert payload["evidence_result_observation_id"] == int(original[0])
+    assert payload["evidence_source_observed_at"] == original[1].isoformat()
+    assert payload["evidence_as_of"] == original[2].isoformat()
+    assert payload["reviewed_at"] == REVIEWED_AT.isoformat()
+
+
+def test_apply_second_call_returns_already_reconciled(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _apply(db, target, evidence)
+    second = _apply(db, target, evidence)
+    assert second.status == cpr.STATUS_ALREADY_RECONCILED
+    assert second.already_reconciled is True
+
+
+def test_apply_second_call_adds_zero_reconciliation_rows(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _apply(db, target, evidence)
+    _apply(db, target, evidence)
+    assert _count(db, "cross_provider_match_reconciliations") == 1
+
+
+def test_apply_second_call_adds_zero_target_results(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _apply(db, target, evidence)
+    _apply(db, target, evidence)
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 1
+
+
+def test_apply_equivalent_existing_result_no_duplicate(db: psycopg.Connection):
+    target, evidence = _scenario(db, winner_side=1)
+    existing_id = _mk_result(db, target, winner_side=1)
+    result = _apply(db, target, evidence)
+    assert result.status == cpr.STATUS_EXISTING_EQUIVALENT_RESULT
+    assert result.existing_equivalent_result is True
+    assert result.target_result_observation_id == existing_id
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 1
+
+
+def test_apply_equivalent_existing_result_still_records_provenance(db: psycopg.Connection):
+    target, evidence = _scenario(db, winner_side=1)
+    _mk_result(db, target, winner_side=1)
+    _apply(db, target, evidence)
+    assert _count(db, "cross_provider_match_reconciliations") == 1
+
+
+def test_apply_conflicting_target_result_fails_closed(db: psycopg.Connection):
+    target, evidence = _scenario(db, winner_side=1)
+    _mk_result(db, target, winner_side=2)
+    result = _apply(db, target, evidence)
+    assert result.status == cpr.STATUS_RESULT_CONFLICT
+    assert _count(db, "cross_provider_match_reconciliations") == 0
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 1
+
+
+def test_apply_unsafe_evaluation_writes_nothing(db: psycopg.Connection):
+    target, evidence = _scenario(db, player_mismatch=True)
+    result = _apply(db, target, evidence)
+    assert result.status == cpr.STATUS_UNSAFE_EVALUATION
+    assert _count(db, "cross_provider_match_reconciliations") == 0
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 0
+
+
+def test_apply_rolls_back_on_second_write_failure(
+    db: psycopg.Connection, monkeypatch: pytest.MonkeyPatch
+):
+    target, evidence = _scenario(db)
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("forced failure after reconciliation insert")
+
+    monkeypatch.setattr(cpr, "_insert_target_result", _boom)
+    with pytest.raises(RuntimeError):
+        _apply(db, target, evidence)
+    assert _count(db, "cross_provider_match_reconciliations") == 0
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 0
+
+
+def test_apply_mutates_no_other_tables(db: psycopg.Connection):
+    tracked = (
+        "players",
+        "tournaments",
+        "tournament_editions",
+        "matches",
+        "match_versions",
+        "match_source_ids",
+        "predictions",
+        "manager_consensus_results",
+    )
+
+    def counts() -> dict[str, int]:
+        return {
+            t: int(db.execute(f"SELECT count(*) FROM {t}").fetchone()[0])
+            for t in tracked
+        }
+
+    target, evidence = _scenario(db)
+    before = counts()
+    _apply(db, target, evidence)
     assert counts() == before

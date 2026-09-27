@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 POLICY_VERSION = "cross_provider_exact_match_v1"
 MAX_START_DELTA_MINUTES = 15
@@ -38,6 +39,13 @@ REASON_TIME_MISMATCH = "TIME_MISMATCH"
 REASON_SOURCE_IDENTITY_MISSING = "SOURCE_IDENTITY_MISSING"
 REASON_SOURCE_IDENTITY_AMBIGUOUS = "SOURCE_IDENTITY_AMBIGUOUS"
 REASON_RESULT_MISSING = "RESULT_MISSING"
+
+# Apply statuses.
+STATUS_APPLIED = "APPLIED"
+STATUS_ALREADY_RECONCILED = "ALREADY_RECONCILED"
+STATUS_EXISTING_EQUIVALENT_RESULT = "EXISTING_EQUIVALENT_RESULT"
+STATUS_UNSAFE_EVALUATION = "UNSAFE_EVALUATION"
+STATUS_RESULT_CONFLICT = "RESULT_CONFLICT"
 
 
 @dataclass(frozen=True)
@@ -389,3 +397,344 @@ def evaluate_cross_provider_reconciliation(
         translated_games_won_player_1=translated_games_1,
         translated_games_won_player_2=translated_games_2,
     )
+
+
+@dataclass(frozen=True)
+class CrossProviderReconciliationApplyResult:
+    """Immutable outcome of an apply attempt."""
+
+    status: str
+    target_match_id: int
+    evidence_match_id: int
+    already_reconciled: bool
+    existing_equivalent_result: bool
+    classification: str | None = None
+    reconciliation_id: int | None = None
+    target_result_observation_id: int | None = None
+    evidence_result_observation_id: int | None = None
+    player_order_mapping: str | None = None
+    translated_outcome_status: str | None = None
+    translated_winner_side: int | None = None
+    translated_retired_side: int | None = None
+    reason: str | None = None
+
+
+def _iso(value: datetime | None) -> str | None:
+    return None if value is None else value.isoformat()
+
+
+def _find_existing_reconciliation(
+    conn: psycopg.Connection,
+    *,
+    target_match_id: int,
+    evidence_result_observation_id: int | None,
+) -> int | None:
+    if evidence_result_observation_id is None:
+        return None
+    row = conn.execute(
+        """
+        SELECT reconciliation_id
+        FROM cross_provider_match_reconciliations
+        WHERE canonical_target_match_id = %s
+          AND evidence_result_observation_id = %s
+          AND reconciliation_policy_version = %s
+        """,
+        (target_match_id, evidence_result_observation_id, POLICY_VERSION),
+    ).fetchone()
+    return None if row is None else int(row[0])
+
+
+def _results_equivalent(
+    existing: _TerminalResult,
+    *,
+    outcome_status: str | None,
+    winner_side: int | None,
+    retired_side: int | None,
+) -> bool:
+    """Semantic equivalence: outcome status + winner + retired side only.
+
+    Optional score fields (sets/games/scoreline) are supplementary evidence and are
+    deliberately NOT required to match.
+    """
+    return (
+        existing.outcome_status == outcome_status
+        and existing.winner_side == winner_side
+        and existing.retired_side == retired_side
+    )
+
+
+def _evidence_payload(
+    evaluation: CrossProviderReconciliationEvaluation, *, reviewed_at: datetime
+) -> dict[str, object]:
+    return {
+        "policy_version": POLICY_VERSION,
+        "target_match_id": evaluation.target_match_id,
+        "evidence_match_id": evaluation.evidence_match_id,
+        "target_source_system": evaluation.target_source_system,
+        "target_source_match_id": evaluation.target_source_match_id,
+        "evidence_source_system": evaluation.evidence_source_system,
+        "evidence_source_match_id": evaluation.evidence_source_match_id,
+        "target_player_1_id": evaluation.target_player_1_id,
+        "target_player_2_id": evaluation.target_player_2_id,
+        "evidence_player_1_id": evaluation.evidence_player_1_id,
+        "evidence_player_2_id": evaluation.evidence_player_2_id,
+        "player_order_mapping": evaluation.player_order_mapping,
+        "target_tournament_id": evaluation.target_tournament_id,
+        "evidence_tournament_id": evaluation.evidence_tournament_id,
+        "target_tournament_edition_id": evaluation.target_tournament_edition_id,
+        "evidence_tournament_edition_id": evaluation.evidence_tournament_edition_id,
+        "target_season": evaluation.target_season,
+        "evidence_season": evaluation.evidence_season,
+        "target_start_at": _iso(evaluation.target_start_at),
+        "evidence_start_at": _iso(evaluation.evidence_start_at),
+        "start_delta_minutes": evaluation.start_delta_minutes,
+        "target_tour_scope": evaluation.target_tour_scope,
+        "evidence_tour_scope": evaluation.evidence_tour_scope,
+        "target_competition_tier": evaluation.target_competition_tier,
+        "evidence_competition_tier": evaluation.evidence_competition_tier,
+        "evidence_result_observation_id": evaluation.evidence_result_observation_id,
+        "evidence_outcome_status": evaluation.evidence_outcome_status,
+        "evidence_winner_side": evaluation.evidence_winner_side,
+        "evidence_retired_side": evaluation.evidence_retired_side,
+        "translated_winner_side": evaluation.translated_winner_side,
+        "translated_retired_side": evaluation.translated_retired_side,
+        "evidence_source_observed_at": _iso(evaluation.evidence_source_observed_at),
+        "evidence_as_of": _iso(evaluation.evidence_as_of),
+        "reviewed_at": _iso(reviewed_at),
+    }
+
+
+def _insert_reconciliation(
+    conn: psycopg.Connection,
+    *,
+    evaluation: CrossProviderReconciliationEvaluation,
+    reviewed_at: datetime,
+) -> int:
+    payload = _evidence_payload(evaluation, reviewed_at=reviewed_at)
+    row = conn.execute(
+        """
+        INSERT INTO cross_provider_match_reconciliations (
+            canonical_target_match_id,
+            evidence_match_id,
+            target_source_system,
+            target_source_match_id,
+            evidence_source_system,
+            evidence_source_match_id,
+            evidence_result_observation_id,
+            classification,
+            player_order_mapping,
+            reconciliation_policy_version,
+            reviewed_at,
+            evidence_payload
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        RETURNING reconciliation_id
+        """,
+        (
+            evaluation.target_match_id,
+            evaluation.evidence_match_id,
+            evaluation.target_source_system,
+            evaluation.target_source_match_id,
+            evaluation.evidence_source_system,
+            evaluation.evidence_source_match_id,
+            evaluation.evidence_result_observation_id,
+            evaluation.classification,
+            evaluation.player_order_mapping,
+            POLICY_VERSION,
+            reviewed_at,
+            Jsonb(payload),
+        ),
+    ).fetchone()
+    return int(row[0])
+
+
+def _insert_target_result(
+    conn: psycopg.Connection,
+    *,
+    evaluation: CrossProviderReconciliationEvaluation,
+    reviewed_at: datetime,
+) -> int:
+    # Free-form scoreline text is orientation-dependent; only copy it under DIRECT
+    # orientation. Structured sets/games are translated separately.
+    scoreline = (
+        evaluation.evidence_scoreline_text
+        if evaluation.player_order_mapping == PLAYER_ORDER_DIRECT
+        else None
+    )
+    # Persistence time must be >= the knowledge time; never backdate. GREATEST keeps
+    # ingested_at >= reviewed_at even if the DB clock is briefly behind a future stamp.
+    row = conn.execute(
+        """
+        INSERT INTO match_result_observations (
+            match_id,
+            outcome_status,
+            winner_side,
+            retired_side,
+            sets_won_player_1,
+            sets_won_player_2,
+            games_won_player_1,
+            games_won_player_2,
+            scoreline_text,
+            source_observed_at,
+            as_of,
+            ingested_at
+        )
+        VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+            GREATEST(clock_timestamp(), %s)
+        )
+        RETURNING match_result_observation_id
+        """,
+        (
+            evaluation.target_match_id,
+            evaluation.evidence_outcome_status,
+            evaluation.translated_winner_side,
+            evaluation.translated_retired_side,
+            evaluation.translated_sets_won_player_1,
+            evaluation.translated_sets_won_player_2,
+            evaluation.translated_games_won_player_1,
+            evaluation.translated_games_won_player_2,
+            scoreline,
+            reviewed_at,
+            reviewed_at,
+            reviewed_at,
+        ),
+    ).fetchone()
+    return int(row[0])
+
+
+def _already_reconciled_result(
+    evaluation: CrossProviderReconciliationEvaluation, reconciliation_id: int
+) -> CrossProviderReconciliationApplyResult:
+    return CrossProviderReconciliationApplyResult(
+        status=STATUS_ALREADY_RECONCILED,
+        target_match_id=evaluation.target_match_id,
+        evidence_match_id=evaluation.evidence_match_id,
+        already_reconciled=True,
+        existing_equivalent_result=False,
+        classification=evaluation.classification,
+        reconciliation_id=reconciliation_id,
+        evidence_result_observation_id=evaluation.evidence_result_observation_id,
+        player_order_mapping=evaluation.player_order_mapping,
+        translated_outcome_status=evaluation.evidence_outcome_status,
+        translated_winner_side=evaluation.translated_winner_side,
+        translated_retired_side=evaluation.translated_retired_side,
+    )
+
+
+def apply_cross_provider_reconciliation(
+    conn: psycopg.Connection,
+    *,
+    target_match_id: int,
+    evidence_match_id: int,
+    reviewed_at: datetime,
+) -> CrossProviderReconciliationApplyResult:
+    """Atomically persist a proven cross-provider reconciliation.
+
+    Always re-evaluates before mutating. Only writes to
+    ``cross_provider_match_reconciliations`` and ``match_result_observations``.
+    Uses ``conn.transaction()`` so the reconciliation provenance insert and the
+    target result append commit or roll back together (nested savepoints are used
+    when the caller already holds an open transaction).
+    """
+    evaluation = evaluate_cross_provider_reconciliation(
+        conn, target_match_id=target_match_id, evidence_match_id=evidence_match_id
+    )
+    if not evaluation.apply_safe:
+        return CrossProviderReconciliationApplyResult(
+            status=STATUS_UNSAFE_EVALUATION,
+            target_match_id=target_match_id,
+            evidence_match_id=evidence_match_id,
+            already_reconciled=False,
+            existing_equivalent_result=False,
+            classification=evaluation.classification,
+            player_order_mapping=evaluation.player_order_mapping,
+            reason=evaluation.rejection_reason,
+        )
+
+    evidence_observation_id = evaluation.evidence_result_observation_id
+    existing_reconciliation_id = _find_existing_reconciliation(
+        conn,
+        target_match_id=target_match_id,
+        evidence_result_observation_id=evidence_observation_id,
+    )
+    if existing_reconciliation_id is not None:
+        return _already_reconciled_result(evaluation, existing_reconciliation_id)
+
+    target_result = _load_terminal_result(conn, target_match_id)
+    if target_result is not None and not _results_equivalent(
+        target_result,
+        outcome_status=evaluation.evidence_outcome_status,
+        winner_side=evaluation.translated_winner_side,
+        retired_side=evaluation.translated_retired_side,
+    ):
+        return CrossProviderReconciliationApplyResult(
+            status=STATUS_RESULT_CONFLICT,
+            target_match_id=target_match_id,
+            evidence_match_id=evidence_match_id,
+            already_reconciled=False,
+            existing_equivalent_result=False,
+            classification=evaluation.classification,
+            evidence_result_observation_id=evidence_observation_id,
+            player_order_mapping=evaluation.player_order_mapping,
+            reason="target terminal result contradicts translated evidence result",
+        )
+
+    try:
+        with conn.transaction():
+            raced = _find_existing_reconciliation(
+                conn,
+                target_match_id=target_match_id,
+                evidence_result_observation_id=evidence_observation_id,
+            )
+            if raced is not None:
+                return _already_reconciled_result(evaluation, raced)
+
+            reconciliation_id = _insert_reconciliation(
+                conn, evaluation=evaluation, reviewed_at=reviewed_at
+            )
+
+            if target_result is not None:
+                return CrossProviderReconciliationApplyResult(
+                    status=STATUS_EXISTING_EQUIVALENT_RESULT,
+                    target_match_id=target_match_id,
+                    evidence_match_id=evidence_match_id,
+                    already_reconciled=False,
+                    existing_equivalent_result=True,
+                    classification=evaluation.classification,
+                    reconciliation_id=reconciliation_id,
+                    target_result_observation_id=target_result.observation_id,
+                    evidence_result_observation_id=evidence_observation_id,
+                    player_order_mapping=evaluation.player_order_mapping,
+                    translated_outcome_status=evaluation.evidence_outcome_status,
+                    translated_winner_side=evaluation.translated_winner_side,
+                    translated_retired_side=evaluation.translated_retired_side,
+                )
+
+            target_observation_id = _insert_target_result(
+                conn, evaluation=evaluation, reviewed_at=reviewed_at
+            )
+            return CrossProviderReconciliationApplyResult(
+                status=STATUS_APPLIED,
+                target_match_id=target_match_id,
+                evidence_match_id=evidence_match_id,
+                already_reconciled=False,
+                existing_equivalent_result=False,
+                classification=evaluation.classification,
+                reconciliation_id=reconciliation_id,
+                target_result_observation_id=target_observation_id,
+                evidence_result_observation_id=evidence_observation_id,
+                player_order_mapping=evaluation.player_order_mapping,
+                translated_outcome_status=evaluation.evidence_outcome_status,
+                translated_winner_side=evaluation.translated_winner_side,
+                translated_retired_side=evaluation.translated_retired_side,
+            )
+    except psycopg.errors.UniqueViolation:
+        existing = _find_existing_reconciliation(
+            conn,
+            target_match_id=target_match_id,
+            evidence_result_observation_id=evidence_observation_id,
+        )
+        if existing is not None:
+            return _already_reconciled_result(evaluation, existing)
+        raise
