@@ -42,6 +42,23 @@ def normalize_person_lookup(value: str) -> str:
     return collapse_whitespace(normalized)
 
 
+_TOURNAMENT_EDITION_SUFFIXES = (" CH",)
+
+
+def normalize_tournament_identity(name: str) -> str:
+    """Return a deterministic tournament identity key after documented suffix removal.
+
+    Only fixed, reviewed provider edition suffixes are stripped (the historical
+    corpus appends `` CH`` for Challenger editions). No fuzzy matching, abbreviation
+    expansion, city/date inference, or similarity scoring is performed.
+    """
+    normalized = collapse_whitespace(re.sub(r"[^A-Z0-9]+", " ", name.upper()))
+    for suffix in _TOURNAMENT_EDITION_SUFFIXES:
+        if normalized.endswith(suffix):
+            normalized = normalized[: -len(suffix)].strip()
+    return normalized
+
+
 def tennis_data_aliases(canonical_name: str) -> set[str]:
     aliases = {canonical_name}
     tokens = [token for token in collapse_whitespace(canonical_name).split(" ") if token]

@@ -4,11 +4,13 @@ from datetime import datetime
 
 import psycopg
 
-from sports_edge_tennis.data.model_identity_bridge import (
-    LIVE_FIXTURE_SOURCE_SYSTEMS,
-    resolve_active_bridge,
+from sports_edge_tennis.data import model_identity
+from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
+from sports_edge_tennis.data.normalize import (
+    normalize_person_lookup,
+    normalize_tournament_identity,
+    tennis_data_aliases,
 )
-from sports_edge_tennis.data.normalize import normalize_person_lookup, tennis_data_aliases
 from sports_edge_tennis.runner.contracts import (
     ResolvedTargetV1,
     TargetResolutionError,
@@ -22,19 +24,7 @@ def _has_non_api_source_identity(conn: psycopg.Connection, player_id: int) -> bo
     carrying the deep historical corpus identity, so they must not disable the
     live-to-history model bridge.
     """
-    return (
-        conn.execute(
-            """
-            SELECT 1
-            FROM player_source_ids
-            WHERE player_id = %s
-              AND source_system <> ALL(%s)
-            LIMIT 1
-            """,
-            (player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS)),
-        ).fetchone()
-        is not None
-    )
+    return model_identity.has_historical_model_identity(conn, player_id)
 
 
 def _resolve_model_player_id(
@@ -45,82 +35,13 @@ def _resolve_model_player_id(
 ) -> int:
     """Resolve a live-only API-Tennis player to one unambiguous historical identity.
 
-    API-Tennis stable player IDs are authoritative for live fixture identity, but the
-    restored historical corpus uses its own source IDs. Earlier live ingestion created
-    a new canonical player when an API-Tennis ID was first seen, which disconnected the
-    frozen predictive agents from that player's historical observations.
-
-    This bridge is model-input-only: it does not rewrite append-only source mappings or
-    live match identity. It only substitutes a historical player ID when the normalized
-    TENNIS_DATA aliases resolve to exactly one non-API player with PIT-visible completed
-    result truth. Zero or multiple candidates fail closed by retaining the live player
-    ID.
-
-    Historical Sackmann match timestamps may intentionally be unknown. Therefore model
-    eligibility must follow the authoritative result-observation PIT boundary rather
-    than requiring match_start_at to be populated.
+    Delegates to :func:`sports_edge_tennis.data.model_identity.resolve_model_player_id`,
+    the single shared implementation. It is model-input-only, never rewrites source
+    mappings, and fails closed (retaining the live player id) on zero or multiple
+    candidates. Historical replay overrides this with the stricter point-in-time
+    resolver in ``replay.identity_pit``.
     """
-    if _has_non_api_source_identity(conn, player_id):
-        return player_id
-
-    persisted_bridge = resolve_active_bridge(
-        conn,
-        live_player_id=player_id,
-        as_of=as_of,
-    )
-    if persisted_bridge is not None:
-        return persisted_bridge
-
-    row = conn.execute(
-        "SELECT canonical_name FROM players WHERE player_id = %s",
-        (player_id,),
-    ).fetchone()
-    if row is None:
-        return player_id
-
-    normalized_aliases = sorted(
-        {
-            normalize_person_lookup(alias)
-            for alias in tennis_data_aliases(row[0])
-            if alias and normalize_person_lookup(alias)
-        }
-    )
-    if not normalized_aliases:
-        return player_id
-
-    candidates = conn.execute(
-        """
-        SELECT DISTINCT pa.player_id
-        FROM player_aliases pa
-        WHERE pa.source_system = 'TENNIS_DATA'
-          AND pa.normalized_alias = ANY(%s)
-          AND pa.player_id <> %s
-          AND EXISTS (
-              SELECT 1
-              FROM player_source_ids psi
-              WHERE psi.player_id = pa.player_id
-                AND psi.source_system <> ALL(%s)
-          )
-          AND EXISTS (
-              SELECT 1
-              FROM match_result_observations hist_mro
-              JOIN match_versions hist_mv
-                ON hist_mv.match_id = hist_mro.match_id
-               AND hist_mv.source_observed_at <= hist_mro.source_observed_at
-               AND hist_mv.as_of <= hist_mro.as_of
-              WHERE (hist_mv.player_1_id = pa.player_id OR hist_mv.player_2_id = pa.player_id)
-                AND hist_mro.outcome_status = 'COMPLETED'
-                AND hist_mro.source_observed_at <= %s
-                AND hist_mro.as_of <= %s
-          )
-        ORDER BY pa.player_id
-        """,
-        (normalized_aliases, player_id, list(LIVE_FIXTURE_SOURCE_SYSTEMS), as_of, as_of),
-    ).fetchall()
-
-    if len(candidates) != 1:
-        return player_id
-    return int(candidates[0][0])
+    return model_identity.resolve_model_player_id(conn, player_id=player_id, as_of=as_of)
 
 
 def _model_identity_status(
@@ -268,6 +189,39 @@ def _safe_log_text(value: object) -> str:
     return " ".join(str(value).replace("\n", " ").replace("\r", " ").split())[:120] or "-"
 
 
+def _unanimous_latest_surface(
+    rows: list[tuple[object, object]],
+) -> tuple[str | None, bool]:
+    """Return the latest PIT-visible season's surface when it is unanimous.
+
+    Only used for an *exact* tournament identity (same ``tournament_id`` or exact
+    ``canonical_name`` + scope). For an exact identity the latest season is the most
+    recent authoritative surface even when an earlier season used a different surface
+    (venues and surfaces do change). See ``_consistent_surface`` for the stricter rule
+    required by the weaker normalized cross-identity fallback.
+    """
+    latest_historical_year = int(rows[0][0])
+    surfaces = {str(row[1]) for row in rows if int(row[0]) == latest_historical_year}
+    if len(surfaces) != 1:
+        return None, False
+    return next(iter(surfaces)), True
+
+
+def _consistent_surface(
+    rows: list[tuple[object, object]],
+) -> tuple[str | None, bool]:
+    """Require every PIT-visible historical surface to agree across all seasons.
+
+    The normalized fallback may span multiple historical identities, so the latest
+    season alone is not sufficient evidence. A single surface across every visible
+    season (and every matched identity) is required; any conflict fails closed.
+    """
+    surfaces = {str(row[1]) for row in rows}
+    if len(surfaces) != 1:
+        return None, False
+    return next(iter(surfaces)), True
+
+
 def _resolve_model_surface(
     conn: psycopg.Connection,
     *,
@@ -282,9 +236,16 @@ def _resolve_model_surface(
     """Resolve missing live surface from existing PIT-visible tournament history only.
 
     API-Tennis fixtures do not consistently carry court surface. We never invent one
-    and do not make an extra provider call here. A missing match surface may use the
-    already-enriched current edition surface, or one unique surface from the latest
-    PIT-visible historical season for the same canonical tournament identity. Conflicts
+    and do not make an extra provider call here. Authority order:
+
+    1. the live match-version surface;
+    2. the current tournament-edition surface;
+    3. an exact historical tournament identity, using the latest PIT-visible season;
+    4. a documented Challenger-suffixed historical identity, which must be fully
+       surface-consistent across *every* PIT-visible season and matched identity.
+
+    Every historical row is point-in-time filtered (``source_observed_at``/``as_of``);
+    a surface discovered later can never leak backward. Conflicts and missing evidence
     fail closed.
     """
     if live_surface is not None:
@@ -320,14 +281,61 @@ def _resolve_model_surface(
         (as_of, as_of, season_year, tournament_id, canonical_name, tour_scope),
     ).fetchall()
 
-    if not rows:
-        return None, "UNRESOLVED"
+    if rows:
+        surface, unanimous = _unanimous_latest_surface(rows)
+        if not unanimous:
+            return None, "AMBIGUOUS_HISTORY"
+        return surface, "HISTORICAL_TOURNAMENT"
 
-    latest_historical_year = int(rows[0][0])
-    surfaces = {str(row[1]) for row in rows if int(row[0]) == latest_historical_year}
-    if len(surfaces) != 1:
-        return None, "AMBIGUOUS_HISTORY"
-    return next(iter(surfaces)), "HISTORICAL_TOURNAMENT"
+    # Fallback: same tournament under a documented historical edition suffix. Require
+    # the historical identity to be a distinct, non-live-corpus tournament in the same
+    # scope, and require *every* PIT-visible historical season (across every matched
+    # identity) to agree on one surface. Any historical surface change fails closed.
+    target_identity = normalize_tournament_identity(canonical_name)
+    if target_identity:
+        candidate_rows = conn.execute(
+            """
+            SELECT DISTINCT t_hist.tournament_id, t_hist.canonical_name
+            FROM tournaments t_hist
+            JOIN tournament_source_ids tsi_hist
+              ON tsi_hist.tournament_id = t_hist.tournament_id
+             AND tsi_hist.source_system = 'SACKMANN'
+            WHERE t_hist.tour_scope::text = %s
+              AND t_hist.tournament_id <> %s
+              AND t_hist.canonical_name <> %s
+            """,
+            (tour_scope, tournament_id, canonical_name),
+        ).fetchall()
+        matched_ids = sorted(
+            int(candidate[0])
+            for candidate in candidate_rows
+            if normalize_tournament_identity(str(candidate[1])) == target_identity
+        )
+        if matched_ids:
+            history_rows = conn.execute(
+                """
+                SELECT te_hist.season_year, hist_mv.surface::text
+                FROM tournament_editions te_hist
+                JOIN matches m_hist
+                  ON m_hist.tournament_edition_id = te_hist.tournament_edition_id
+                JOIN match_versions hist_mv
+                  ON hist_mv.match_id = m_hist.match_id
+                WHERE te_hist.tournament_id = ANY(%s)
+                  AND hist_mv.surface IS NOT NULL
+                  AND hist_mv.source_observed_at <= %s
+                  AND hist_mv.as_of <= %s
+                  AND te_hist.season_year <= %s
+                ORDER BY te_hist.season_year DESC, hist_mv.as_of DESC, hist_mv.match_version_id DESC
+                """,
+                (matched_ids, as_of, as_of, season_year),
+            ).fetchall()
+            if history_rows:
+                surface, consistent = _consistent_surface(history_rows)
+                if not consistent:
+                    return None, "AMBIGUOUS_HISTORY"
+                return surface, "HISTORICAL_TOURNAMENT_NORMALIZED"
+
+    return None, "UNRESOLVED"
 
 
 def resolve_target(
