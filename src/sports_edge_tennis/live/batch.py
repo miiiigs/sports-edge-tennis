@@ -73,6 +73,7 @@ from sports_edge_tennis.live.target_fixtures import (
 )
 from sports_edge_tennis.live.transport import (
     TransportError,
+    fetch_api_tennis_fixtures,
     fetch_api_tennis_odds,
     fetch_pinnapi_board,
 )
@@ -511,6 +512,15 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
                         live_kwargs["fetch_fixtures"] = fetch_sportradar_fixture_rows
                         live_kwargs["ingest_fixtures"] = ingest_sportradar_fixture_rows
                         live_kwargs["fixture_provider_code"] = "SPORTRADAR_V3"
+                        # Authorized per-slate API-Tennis fallback (Sportradar stays primary).
+                        live_kwargs["fallback_fetch_fixtures"] = fetch_api_tennis_fixtures
+                        live_kwargs["fallback_ingest_fixtures"] = (
+                            ingest_api_tennis_source_a_fixtures_with_upcoming_status
+                        )
+                        live_kwargs["data_failover_authorized"] = (
+                            (os.environ.get("TENNIS_DATA_FAILOVER_AUTHORIZATION") or "").strip()
+                            == "SPORTRADAR_DATA_ONLY_V1"
+                        )
                     else:
                         live_kwargs["ingest_fixtures"] = (
                             ingest_api_tennis_source_a_fixtures_with_upcoming_status

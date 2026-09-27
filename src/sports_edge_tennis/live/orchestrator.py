@@ -98,6 +98,31 @@ class LivePilotPinnapiFailed(LiveMvpError):
     result_code = "LIVE_PILOT_PINNAPI_FAILED"
 
 
+# Sportradar TransportError kinds eligible for an authorized per-slate API-Tennis
+# fallback. Anything else (PARSE, unknown, local construction/ValueError) fails
+# closed. HTTP_5xx is matched by prefix.
+_FAILOVER_ELIGIBLE_KINDS = frozenset(
+    {
+        "TIMEOUT",
+        "NETWORK",
+        "HTTP_401",
+        "HTTP_403",
+        "HTTP_429",
+        "PROVIDER_ERROR",
+    }
+)
+
+
+def sportradar_error_is_failover_eligible(kind: str) -> bool:
+    """Return True only for explicitly authorized, non-deterministic failures."""
+    normalized = str(kind or "").strip().upper()
+    if normalized in _FAILOVER_ELIGIBLE_KINDS:
+        return True
+    if normalized.startswith("HTTP_5") and normalized[6:].isdigit():
+        return True
+    return False
+
+
 # Injectable step signatures.
 FetchFixtures = Callable[[str, date], tuple[datetime, list[dict[str, Any]]]]
 FetchBoard = Callable[[str], tuple[datetime, dict[str, Any]]]
@@ -387,18 +412,61 @@ def run_live_mvp(
     clock: Callable[[], datetime] = _utc_now,
     artifacts_dir: Path = Path("artifacts/live_mvp"),
     fixture_provider_code: str = "API_TENNIS",
+    fallback_fetch_fixtures: FetchFixtures | None = None,
+    fallback_ingest_fixtures: IngestFixtures | None = None,
+    data_failover_authorized: bool = False,
 ) -> LiveMvpResult:
     preflight(conn)
 
     run_id = f"{slate_date.isoformat()}-{uuid.uuid4().hex[:12]}"
 
-    # 1. fetch + persist the canonical fixture slate.
+    # 1. fetch + persist the canonical fixture slate (primary, then authorized
+    #    per-slate fallback only). Batch-wide provider authority is never changed.
+    data_provider_lineage: list[str] = []
     try:
         fixtures_received_at, fixtures = fetch_fixtures(api_tennis_key, slate_date)
     except TransportError as exc:
-        if fixture_provider_code == "SPORTRADAR_V3":
-            raise LivePilotSportradarFailed(exc.message) from exc
-        raise LivePilotApiTennisFailed(exc.message) from exc
+        eligible = (
+            fixture_provider_code == "SPORTRADAR_V3"
+            and data_failover_authorized
+            and fallback_fetch_fixtures is not None
+            and sportradar_error_is_failover_eligible(exc.kind)
+        )
+        if not eligible:
+            if fixture_provider_code == "SPORTRADAR_V3":
+                raise LivePilotSportradarFailed(exc.message) from exc
+            raise LivePilotApiTennisFailed(exc.message) from exc
+        print(
+            "DATA_PROVIDER_PRIMARY_FAILED "
+            f"date={slate_date.isoformat()} primary=SPORTRADAR_V3 "
+            f"category={exc.kind}",
+            flush=True,
+        )
+        print(
+            "DATA_PROVIDER_FAILOVER_ACTIVATED "
+            f"date={slate_date.isoformat()} fallback=API_TENNIS",
+            flush=True,
+        )
+        try:
+            fixtures_received_at, fixtures = fallback_fetch_fixtures(api_tennis_key, slate_date)
+        except TransportError as fallback_exc:
+            print(
+                "DATA_PROVIDER_FAILOVER_FAILED "
+                f"date={slate_date.isoformat()} fallback=API_TENNIS category={fallback_exc.kind}",
+                flush=True,
+            )
+            raise LivePilotApiTennisFailed(fallback_exc.message) from fallback_exc
+        if fallback_ingest_fixtures is not None:
+            ingest_fixtures = fallback_ingest_fixtures
+        print(
+            "DATA_PROVIDER_FAILOVER_SUCCESS "
+            f"date={slate_date.isoformat()} data_provider=API_TENNIS_FAILOVER fixtures={len(fixtures)}",
+            flush=True,
+        )
+        data_provider_lineage.append(
+            "data_provider=API_TENNIS_FAILOVER primary=SPORTRADAR_V3 "
+            f"primary_failure={exc.kind}"
+        )
 
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)
     fixture_reconciliation = fixture_reconciliation_summary(ingest_outcome)
@@ -423,7 +491,7 @@ def run_live_mvp(
     # 3. pinnapi sharp retrieval only when consensus exists.
     pinnapi_requests = 0
     sharp_by_match: dict[int, dict[str, Any]] = {}
-    notes: list[str] = []
+    notes: list[str] = list(data_provider_lineage)
 
     if consensus_match_ids:
         if pinnapi_key is None:
