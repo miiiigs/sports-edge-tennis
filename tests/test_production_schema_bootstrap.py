@@ -432,7 +432,7 @@ def test_production_main_fails_closed_when_provider_authority_blocks(monkeypatch
     )
     monkeypatch.setattr(
         production_batch,
-        "assert_cutover_ready",
+        "load_provider_authority",
         lambda *args, **kwargs: (_ for _ in ()).throw(
             RuntimeError("TENNIS_PROVIDER_CUTOVER_BLOCKED TARGET_RUNTIME_NOT_ACTIVATABLE")
         ),

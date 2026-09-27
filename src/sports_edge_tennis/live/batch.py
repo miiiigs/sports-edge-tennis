@@ -20,7 +20,7 @@ from typing import Any, Callable
 import psycopg
 
 from sports_edge_tennis.clv import activation_from_env, finalize_closing_evidence
-from sports_edge_tennis.live import production_lock
+from sports_edge_tennis.live import production_lock, provider_circuit, provider_failures
 from sports_edge_tennis.live.api_tennis_fixture_compat import (
     ingest_api_tennis_source_a_fixtures_with_upcoming_status,
 )
@@ -343,6 +343,7 @@ def main(
     argv: list[str] | None = None,
     *,
     summary_sink: Callable[[dict[str, int]], None] | None = None,
+    provider_decision: provider_circuit.CircuitDecision | None = None,
 ) -> int:
     parser = argparse.ArgumentParser(description="Sports Edge Tennis scheduled live horizon")
     parser.add_argument("--start-date", type=date.fromisoformat, default=_today_utc())
@@ -382,7 +383,7 @@ def main(
         f"reentrant={int(lock_info.reentrant)}"
     )
     try:
-        return _run_batch(args, summary_sink)
+        return _run_batch(args, summary_sink, provider_decision=provider_decision)
     finally:
         production_lock.release_production_batch_lock(lock_info)
         _log(
@@ -391,9 +392,127 @@ def main(
         )
 
 
-def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> int:
+def _resolve_provider_circuit(
+    dsn: str,
+    configured_authority,
+) -> provider_circuit.CircuitDecision:
+    """Resolve the single provider pair for this batch, fail-safe to configured.
+
+    The circuit only engages when the configured authority is the primary pair
+    (SPORTRADAR_V3 + ODDSPAPI_TENNIS). Any durable-state problem degrades to the
+    configured pair, preserving the previous fail-closed behavior.
+    """
+    if not provider_circuit.circuit_is_active(configured_authority):
+        return provider_circuit.disabled_decision(configured_authority)
     try:
-        provider_authority = load_provider_authority(os.environ)
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            store = provider_circuit.PostgresCircuitStateStore(conn)
+            return provider_circuit.resolve_provider_pair(
+                store=store,
+                configured=configured_authority,
+                env=os.environ,
+                now=datetime.now(timezone.utc),
+                probe=provider_circuit.sportradar_health_probe(os.environ),
+            )
+    except (provider_circuit.CircuitStoreUnavailable, psycopg.Error, OSError) as exc:
+        _log(f"PROVIDER_CIRCUIT_UNAVAILABLE error_type={type(exc).__name__}")
+        return provider_circuit.disabled_decision(configured_authority)
+
+
+def _record_provider_circuit_outcome(
+    dsn: str,
+    configured_authority,
+    *,
+    success: bool,
+    failure_kind: str | None,
+) -> None:
+    """Persist the primary provider's outcome for the finished cycle."""
+    if not provider_circuit.circuit_is_active(configured_authority):
+        return
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            store = provider_circuit.PostgresCircuitStateStore(conn)
+            provider_circuit.record_primary_outcome(
+                store=store,
+                configured=configured_authority,
+                now=datetime.now(timezone.utc),
+                success=success,
+                failure_kind=failure_kind,
+                env=os.environ,
+            )
+    except (provider_circuit.CircuitStoreUnavailable, psycopg.Error, OSError) as exc:
+        _log(f"PROVIDER_CIRCUIT_STATE_WRITE_FAILED error_type={type(exc).__name__}")
+
+
+def _primary_rate_limit_kind(kinds: list[str | None]) -> str | None:
+    for kind in kinds:
+        if not kind:
+            continue
+        classified = provider_failures.classify_provider_failure(kind)
+        if (
+            classified.failure_class
+            is provider_failures.ProviderFailureClass.RATE_LIMIT
+        ):
+            return kind
+    return None
+
+
+def _apply_primary_circuit_policy(
+    dsn: str,
+    configured_authority,
+    *,
+    totals: dict[str, int],
+    failure_kinds: list[str | None],
+) -> None:
+    """Record the primary provider outcome and open the circuit by class.
+
+    * RATE_LIMIT (HTTP 429) is a confirmed availability signal: ANY primary
+      slate receiving it opens the circuit for the NEXT atomic cycle, even when
+      other slates succeeded. The current batch still finishes on the primary
+      pair; there is no mid-cycle switch.
+    * TIMEOUT/NETWORK/SERVER_ERROR are conservative: the circuit opens only when
+      the whole primary batch failed (no successful slate).
+    * AUTH/CONTRACT/unknown remain fail-closed and never open the circuit.
+    """
+    rate_limit_kind = _primary_rate_limit_kind(failure_kinds)
+    if rate_limit_kind is not None:
+        _record_provider_circuit_outcome(
+            dsn, configured_authority, success=False, failure_kind=rate_limit_kind
+        )
+        return
+
+    if totals["slates"] == 0 and totals["failed_slates"]:
+        eligible_kind = next(
+            (
+                kind
+                for kind in failure_kinds
+                if kind and provider_failures.is_failover_eligible(kind)
+            ),
+            None,
+        )
+        _record_provider_circuit_outcome(
+            dsn,
+            configured_authority,
+            success=False,
+            failure_kind=eligible_kind
+            or (failure_kinds[0] if failure_kinds else None),
+        )
+        return
+
+    # A healthy primary cycle completes a HALF_OPEN recovery.
+    _record_provider_circuit_outcome(
+        dsn, configured_authority, success=True, failure_kind=None
+    )
+
+
+def _run_batch(
+    args,
+    summary_sink: Callable[[dict[str, int]], None] | None,
+    *,
+    provider_decision: provider_circuit.CircuitDecision | None = None,
+) -> int:
+    try:
+        configured_authority = load_provider_authority(os.environ)
     except ValueError as exc:
         _log(f"BLOCKED_PROVIDER_AUTHORITY: {exc}")
         return 2
@@ -401,9 +520,34 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
     _log(
         "LIVE_BATCH_START "
         f"start_date={args.start_date.isoformat()} days={args.days} "
+        f"data_provider={configured_authority.data_mode} "
+        f"odds_provider={configured_authority.odds_mode} "
+        f"pinnapi_configured={bool(load_secret('PINNAPI_KEY'))}"
+    )
+
+    # One atomic provider-pair decision for the entire batch. production_batch
+    # resolves and validates it once and passes the same object here; direct
+    # `python -m ...batch` invocation resolves it here. Downstream code never
+    # re-reads the provider mode environment variables.
+    if provider_decision is None:
+        circuit_decision = _resolve_provider_circuit(args.dsn, configured_authority)
+    else:
+        circuit_decision = provider_decision
+    provider_authority = circuit_decision.authority
+    provider_env = circuit_decision.apply_env(os.environ)
+    if (
+        provider_authority.data_mode,
+        provider_authority.odds_mode,
+    ) == (LEGACY_DATA_MODE, TARGET_ODDS_MODE):
+        raise RuntimeError(
+            "unsafe mixed provider pair rejected: API_TENNIS + ODDSPAPI_TENNIS"
+        )
+    _log(
+        "LIVE_PROVIDER_AUTHORITY "
         f"data_provider={provider_authority.data_mode} "
         f"odds_provider={provider_authority.odds_mode} "
-        f"pinnapi_configured={bool(load_secret('PINNAPI_KEY'))}"
+        f"circuit={circuit_decision.state} "
+        f"reason={circuit_decision.reason}"
     )
 
     if provider_authority.data_mode == LEGACY_DATA_MODE:
@@ -462,6 +606,7 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
         "clv_calculated": 0,
     }
     prediction_run_ids: list[int] = []
+    primary_failure_kinds: list[str | None] = []
     offered_odds_result: dict[str, Any] | None = None
 
     board_observation_id = new_pinnapi_board_observation_id()
@@ -479,8 +624,9 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
         with psycopg.connect(args.dsn, autocommit=True) as conn:
             _log("LIVE_BATCH_DB_CONNECTED")
             # Enforce the same cutover gate even when live.batch is invoked
-            # directly instead of through production_batch.
-            assert_cutover_ready(conn, env=os.environ)
+            # directly instead of through production_batch. The gate always
+            # reflects the resolved pair, never the raw environment.
+            assert_cutover_ready(conn, env=provider_env)
             if pinnapi_key:
                 ensure_pinnapi_bookmaker_mapping(conn)
                 _log("LIVE_BATCH_PINNAPI_MAPPING_READY")
@@ -506,6 +652,7 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
                         "fetch_board": fetch_board_once,
                         "board_observation_id_factory": lambda: board_observation_id,
                         "artifacts_dir": Path(args.artifacts_dir),
+                        "provider_lineage": circuit_decision.lineage(),
                     }
                     if provider_authority.data_mode == TARGET_DATA_MODE:
                         live_kwargs["fetch_fixtures"] = fetch_sportradar_fixture_rows
@@ -518,6 +665,8 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
                     result = run_live_mvp(**live_kwargs)
                 except (LivePilotApiTennisFailed, LivePilotSportradarFailed) as exc:
                     totals["failed_slates"] += 1
+                    if isinstance(exc, LivePilotSportradarFailed):
+                        primary_failure_kinds.append(getattr(exc, "failure_kind", None))
                     _log(
                         "SLATE_UNAVAILABLE "
                         f"date={slate_date.isoformat()} "
@@ -559,6 +708,14 @@ def _run_batch(args, summary_sink: Callable[[dict[str, int]], None] | None) -> i
                     f"fixtures={result.fixture_count} targets={result.target_count} "
                     f"consensus={result.manager_consensus_count} "
                     f"pinnapi_requests={result.pinnapi_requests}"
+                )
+
+            if provider_authority.data_mode == TARGET_DATA_MODE:
+                _apply_primary_circuit_policy(
+                    args.dsn,
+                    configured_authority,
+                    totals=totals,
+                    failure_kinds=primary_failure_kinds,
                 )
 
             if totals["slates"] == 0 and totals["failed_slates"]:

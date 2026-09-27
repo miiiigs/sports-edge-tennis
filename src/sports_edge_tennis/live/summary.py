@@ -19,6 +19,7 @@ def build_live_summary(
     manager_consensus_count: int,
     pinnapi_requests: int,
     matches: list[dict[str, Any]],
+    provider_lineage: str | None = None,
 ) -> dict[str, Any]:
     return {
         "run_id": run_id,
@@ -29,6 +30,7 @@ def build_live_summary(
         "target_count": target_count,
         "manager_consensus_count": manager_consensus_count,
         "pinnapi_requests": pinnapi_requests,
+        "provider_lineage": provider_lineage,
         "matches": matches,
     }
 
