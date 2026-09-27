@@ -183,18 +183,36 @@ def _load_match_evidence(
 
 
 def _load_source_evidence(
-    conn: psycopg.Connection, match_id: int
+    conn: psycopg.Connection, match_id: int, *, source_system: str | None = None
 ) -> _SourceEvidence | str:
-    """Return the deterministic provider identity, or a rejection reason string."""
-    rows = conn.execute(
-        """
-        SELECT source_system, source_match_id
-        FROM match_source_ids
-        WHERE match_id = %s AND source_match_id IS NOT NULL
-        ORDER BY match_source_id
-        """,
-        (match_id,),
-    ).fetchall()
+    """Return the deterministic provider identity, or a rejection reason string.
+
+    When ``source_system`` is given, only that provider's rows are considered, so
+    unrelated provider mappings on the same canonical match never create ambiguity.
+    Without an explicit provider, the match must carry exactly one usable row.
+    """
+    if source_system is not None:
+        rows = conn.execute(
+            """
+            SELECT source_system, source_match_id
+            FROM match_source_ids
+            WHERE match_id = %s
+              AND source_system = %s
+              AND source_match_id IS NOT NULL
+            ORDER BY match_source_id
+            """,
+            (match_id, source_system),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT source_system, source_match_id
+            FROM match_source_ids
+            WHERE match_id = %s AND source_match_id IS NOT NULL
+            ORDER BY match_source_id
+            """,
+            (match_id,),
+        ).fetchall()
     if not rows:
         return REASON_SOURCE_IDENTITY_MISSING
     if len(rows) > 1:
@@ -311,8 +329,14 @@ def evaluate_cross_provider_reconciliation(
     *,
     target_match_id: int,
     evidence_match_id: int,
+    target_source_system: str | None = None,
+    evidence_source_system: str | None = None,
 ) -> CrossProviderReconciliationEvaluation:
-    """Evaluate a proposed target/evidence pair. Read-only and deterministic."""
+    """Evaluate a proposed target/evidence pair. Read-only and deterministic.
+
+    ``target_source_system`` / ``evidence_source_system`` optionally pin the
+    provider identity to use; without them the match must carry exactly one row.
+    """
     base = _evaluate(
         conn, target_match_id=target_match_id, evidence_match_id=evidence_match_id
     )
@@ -320,10 +344,14 @@ def evaluate_cross_provider_reconciliation(
         return base
     target, evidence, mapping = base
 
-    target_source = _load_source_evidence(conn, target_match_id)
+    target_source = _load_source_evidence(
+        conn, target_match_id, source_system=target_source_system
+    )
     if isinstance(target_source, str):
         return _reject(target_match_id, evidence_match_id, target_source)
-    evidence_source = _load_source_evidence(conn, evidence_match_id)
+    evidence_source = _load_source_evidence(
+        conn, evidence_match_id, source_system=evidence_source_system
+    )
     if isinstance(evidence_source, str):
         return _reject(target_match_id, evidence_match_id, evidence_source)
 
@@ -628,6 +656,8 @@ def apply_cross_provider_reconciliation(
     target_match_id: int,
     evidence_match_id: int,
     reviewed_at: datetime,
+    target_source_system: str | None = None,
+    evidence_source_system: str | None = None,
 ) -> CrossProviderReconciliationApplyResult:
     """Atomically persist a proven cross-provider reconciliation.
 
@@ -638,7 +668,11 @@ def apply_cross_provider_reconciliation(
     when the caller already holds an open transaction).
     """
     evaluation = evaluate_cross_provider_reconciliation(
-        conn, target_match_id=target_match_id, evidence_match_id=evidence_match_id
+        conn,
+        target_match_id=target_match_id,
+        evidence_match_id=evidence_match_id,
+        target_source_system=target_source_system,
+        evidence_source_system=evidence_source_system,
     )
     if not evaluation.apply_safe:
         return CrossProviderReconciliationApplyResult(

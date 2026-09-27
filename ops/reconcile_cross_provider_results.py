@@ -51,6 +51,8 @@ class ReviewedMapping:
     target_match_id: int
     evidence_match_id: int
     expected_result: str
+    target_source_system: str = "SPORTRADAR"
+    evidence_source_system: str = "API_TENNIS"
 
 
 # The seven reviewed production mappings. ``expected_result`` is an operator
@@ -114,6 +116,8 @@ class OperatorSummary:
     expected_lost: int
     expected_void: int
     aborted: bool
+    schema_present: bool = True
+    blocker: str | None = None
     audits: tuple[MappingAudit, ...] = ()
 
 
@@ -152,9 +156,20 @@ def _compute_result(
     return None
 
 
+def _reconciliation_table_present(conn: psycopg.Connection) -> bool:
+    return (
+        conn.execute(
+            "SELECT to_regclass('public.cross_provider_match_reconciliations')"
+        ).fetchone()[0]
+        is not None
+    )
+
+
 def _existing_reconciliation(
     conn: psycopg.Connection, *, target_match_id: int, evidence_result_observation_id: int | None
 ) -> bool:
+    if not _reconciliation_table_present(conn):
+        return False
     if evidence_result_observation_id is None:
         return False
     row = conn.execute(
@@ -178,6 +193,8 @@ def audit_mapping(
         conn,
         target_match_id=mapping.target_match_id,
         evidence_match_id=mapping.evidence_match_id,
+        target_source_system=mapping.target_source_system,
+        evidence_source_system=mapping.evidence_source_system,
     )
     already_reconciled = _existing_reconciliation(
         conn,
@@ -261,7 +278,16 @@ def _format_audit(audit: MappingAudit) -> str:
     )
 
 
-def _summarize(mode: str, audits: tuple[MappingAudit, ...], *, aborted: bool, newly_applied: int, failed: int) -> OperatorSummary:
+def _summarize(
+    mode: str,
+    audits: tuple[MappingAudit, ...],
+    *,
+    aborted: bool,
+    newly_applied: int,
+    failed: int,
+    schema_present: bool = True,
+    blocker: str | None = None,
+) -> OperatorSummary:
     counts = {RESULT_WON: 0, RESULT_LOST: 0, RESULT_VOID: 0}
     for audit in audits:
         counts[audit.expected_result] = counts.get(audit.expected_result, 0) + 1
@@ -280,6 +306,8 @@ def _summarize(mode: str, audits: tuple[MappingAudit, ...], *, aborted: bool, ne
         expected_lost=counts[RESULT_LOST],
         expected_void=counts[RESULT_VOID],
         aborted=aborted,
+        schema_present=schema_present,
+        blocker=blocker,
         audits=audits,
     )
 
@@ -298,6 +326,13 @@ def run_operator(
     is unsafe or expectation-mismatched the whole cohort is aborted before any
     write. Phase B applies every WOULD_APPLY mapping inside one outer transaction.
     """
+    schema_present = _reconciliation_table_present(conn)
+    if not schema_present:
+        emit(
+            "RECONCILIATION_SCHEMA_MISSING migration 0016 not applied; "
+            "prior-reconciliation state unavailable"
+        )
+
     audits = tuple(audit_mapping(conn, mapping) for mapping in mappings)
     for audit in audits:
         emit(_format_audit(audit))
@@ -308,7 +343,14 @@ def run_operator(
     )
 
     if not apply:
-        summary = _summarize(MODE_DRY_RUN, audits, aborted=False, newly_applied=0, failed=0)
+        summary = _summarize(
+            MODE_DRY_RUN,
+            audits,
+            aborted=False,
+            newly_applied=0,
+            failed=0,
+            schema_present=schema_present,
+        )
         emit(
             f"SUMMARY mode={summary.mode} reviewed={summary.reviewed} safe={summary.safe} "
             f"unsafe={summary.unsafe} mismatches={summary.expected_result_mismatches} "
@@ -318,8 +360,16 @@ def run_operator(
         )
         return summary
 
-    if blocking:
-        summary = _summarize(MODE_APPLY, audits, aborted=True, newly_applied=0, failed=0)
+    if blocking or not schema_present:
+        summary = _summarize(
+            MODE_APPLY,
+            audits,
+            aborted=True,
+            newly_applied=0,
+            failed=0,
+            schema_present=schema_present,
+            blocker=None if schema_present else "RECONCILIATION_SCHEMA_MISSING",
+        )
         emit(
             f"SUMMARY mode={summary.mode} aborted=True reviewed={summary.reviewed} "
             f"safe={summary.safe} unsafe={summary.unsafe} "
@@ -341,6 +391,8 @@ def run_operator(
                 target_match_id=mapping.target_match_id,
                 evidence_match_id=mapping.evidence_match_id,
                 reviewed_at=run_reviewed_at,
+                target_source_system=mapping.target_source_system,
+                evidence_source_system=mapping.evidence_source_system,
             )
             if result.status == STATUS_APPLIED:
                 newly_applied += 1
@@ -353,7 +405,12 @@ def run_operator(
                 )
 
     summary = _summarize(
-        MODE_APPLY, audits, aborted=False, newly_applied=newly_applied, failed=failed
+        MODE_APPLY,
+        audits,
+        aborted=False,
+        newly_applied=newly_applied,
+        failed=failed,
+        schema_present=schema_present,
     )
     emit(
         f"SUMMARY mode={summary.mode} reviewed={summary.reviewed} safe={summary.safe} "

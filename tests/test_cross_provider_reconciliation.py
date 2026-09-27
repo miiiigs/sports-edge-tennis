@@ -541,3 +541,123 @@ def test_apply_mutates_no_other_tables(db: psycopg.Connection):
     before = counts()
     _apply(db, target, evidence)
     assert counts() == before
+
+
+def test_requested_target_provider_ignores_unrelated_rows(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, target, "ODDSPAPI", f"od-{target}")
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        target_source_system="SPORTRADAR",
+        evidence_source_system="API_TENNIS",
+    )
+    assert ev.apply_safe is True
+    assert ev.target_source_system == "SPORTRADAR"
+    assert ev.evidence_source_system == "API_TENNIS"
+
+
+def test_requested_evidence_provider_ignores_unrelated_rows(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, evidence, "PINNAPI", f"pin-{evidence}")
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        target_source_system="SPORTRADAR",
+        evidence_source_system="API_TENNIS",
+    )
+    assert ev.apply_safe is True
+    assert ev.evidence_source_match_id == f"at-{evidence}"
+
+
+def test_requested_provider_missing_fails_closed(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        target_source_system="PINNAPI",
+        evidence_source_system="API_TENNIS",
+    )
+    assert ev.apply_safe is False
+    assert ev.rejection_reason == cpr.REASON_SOURCE_IDENTITY_MISSING
+
+
+def test_requested_provider_duplicate_fails_closed(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, target, "SPORTRADAR", f"sr2-{target}")
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        target_source_system="SPORTRADAR",
+        evidence_source_system="API_TENNIS",
+    )
+    assert ev.apply_safe is False
+    assert ev.rejection_reason == cpr.REASON_SOURCE_IDENTITY_AMBIGUOUS
+
+
+def test_no_provider_single_source_succeeds(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db, target_match_id=target, evidence_match_id=evidence
+    )
+    assert ev.apply_safe is True
+
+
+def test_no_provider_multiple_sources_fails_closed(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, target, "ODDSPAPI", f"od2-{target}")
+    ev = cpr.evaluate_cross_provider_reconciliation(
+        db, target_match_id=target, evidence_match_id=evidence
+    )
+    assert ev.apply_safe is False
+    assert ev.rejection_reason == cpr.REASON_SOURCE_IDENTITY_AMBIGUOUS
+
+
+def test_apply_with_providers_succeeds_with_unrelated_rows(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, target, "ODDSPAPI", f"od3-{target}")
+    result = cpr.apply_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        reviewed_at=REVIEWED_AT,
+        target_source_system="SPORTRADAR",
+        evidence_source_system="API_TENNIS",
+    )
+    assert result.status == cpr.STATUS_APPLIED
+    assert (
+        _count(db, "cross_provider_match_reconciliations") == 1
+    )
+
+
+def test_apply_stores_selected_provider_ids(db: psycopg.Connection):
+    target, evidence = _scenario(db)
+    _mk_source(db, target, "ODDSPAPI", f"od4-{target}")
+    cpr.apply_cross_provider_reconciliation(
+        db,
+        target_match_id=target,
+        evidence_match_id=evidence,
+        reviewed_at=REVIEWED_AT,
+        target_source_system="SPORTRADAR",
+        evidence_source_system="API_TENNIS",
+    )
+    row = db.execute(
+        "SELECT target_source_system, target_source_match_id, "
+        "evidence_source_system, evidence_source_match_id "
+        "FROM cross_provider_match_reconciliations"
+    ).fetchone()
+    assert row[0] == "SPORTRADAR"
+    assert row[1] == f"sr-{target}"
+    assert row[2] == "API_TENNIS"
+    assert row[3] == f"at-{evidence}"
+    payload = db.execute(
+        "SELECT evidence_payload FROM cross_provider_match_reconciliations"
+    ).fetchone()[0]
+    assert payload["target_source_system"] == "SPORTRADAR"
+    assert payload["target_source_match_id"] == f"sr-{target}"
+    assert payload["evidence_source_system"] == "API_TENNIS"
+    assert payload["evidence_source_match_id"] == f"at-{evidence}"

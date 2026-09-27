@@ -213,3 +213,37 @@ def test_summary_expects_one_won_six_lost():
     assert counts[operator.RESULT_WON] == 1
     assert counts[operator.RESULT_LOST] == 6
     assert counts[operator.RESULT_VOID] == 0
+
+
+def test_manifest_has_explicit_provider_expectations():
+    for mapping in operator.REVIEWED_MAPPINGS:
+        assert mapping.target_source_system == "SPORTRADAR"
+        assert mapping.evidence_source_system == "API_TENNIS"
+
+
+def test_dry_run_detects_missing_reconciliation_table(
+    db: psycopg.Connection, monkeypatch
+):
+    target, evidence = helpers._scenario(db)
+    monkeypatch.setattr(operator, "_load_selected_side", lambda conn, match_id: 1)
+    monkeypatch.setattr(operator, "_reconciliation_table_present", lambda conn: False)
+    summary = operator.run_operator(
+        db, mappings=(_mapping(target, evidence, "WON"),), emit=_quiet
+    )
+    assert summary.schema_present is False
+    assert summary.audits[0].action == operator.ACTION_WOULD_APPLY
+
+
+def test_apply_mode_fails_closed_when_schema_missing(
+    db: psycopg.Connection, monkeypatch
+):
+    target, evidence = helpers._scenario(db)
+    monkeypatch.setattr(operator, "_load_selected_side", lambda conn, match_id: 1)
+    monkeypatch.setattr(operator, "_reconciliation_table_present", lambda conn: False)
+    summary = operator.run_operator(
+        db, apply=True, mappings=(_mapping(target, evidence, "WON"),), emit=_quiet
+    )
+    assert summary.aborted is True
+    assert summary.blocker == "RECONCILIATION_SCHEMA_MISSING"
+    assert summary.newly_applied == 0
+    assert _count(db, "cross_provider_match_reconciliations") == 0
