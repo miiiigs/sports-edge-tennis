@@ -89,9 +89,17 @@ class BlockedPinnapiBookmakerMapping(LiveMvpError):
 class LivePilotApiTennisFailed(LiveMvpError):
     result_code = "LIVE_PILOT_API_TENNIS_FAILED"
 
+    def __init__(self, message: str, *, failure_kind: str | None = None):
+        super().__init__(message)
+        self.failure_kind = failure_kind
+
 
 class LivePilotSportradarFailed(LiveMvpError):
     result_code = "LIVE_PILOT_SPORTRADAR_FAILED"
+
+    def __init__(self, message: str, *, failure_kind: str | None = None):
+        super().__init__(message)
+        self.failure_kind = failure_kind
 
 
 class LivePilotPinnapiFailed(LiveMvpError):
@@ -387,6 +395,7 @@ def run_live_mvp(
     clock: Callable[[], datetime] = _utc_now,
     artifacts_dir: Path = Path("artifacts/live_mvp"),
     fixture_provider_code: str = "API_TENNIS",
+    provider_lineage: str | None = None,
 ) -> LiveMvpResult:
     preflight(conn)
 
@@ -397,8 +406,12 @@ def run_live_mvp(
         fixtures_received_at, fixtures = fetch_fixtures(api_tennis_key, slate_date)
     except TransportError as exc:
         if fixture_provider_code == "SPORTRADAR_V3":
-            raise LivePilotSportradarFailed(exc.message) from exc
-        raise LivePilotApiTennisFailed(exc.message) from exc
+            raise LivePilotSportradarFailed(
+                exc.message, failure_kind=exc.kind
+            ) from exc
+        raise LivePilotApiTennisFailed(
+            exc.message, failure_kind=exc.kind
+        ) from exc
 
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)
     fixture_reconciliation = fixture_reconciliation_summary(ingest_outcome)
@@ -423,7 +436,7 @@ def run_live_mvp(
     # 3. pinnapi sharp retrieval only when consensus exists.
     pinnapi_requests = 0
     sharp_by_match: dict[int, dict[str, Any]] = {}
-    notes: list[str] = []
+    notes: list[str] = [provider_lineage] if provider_lineage else []
 
     if consensus_match_ids:
         if pinnapi_key is None:
@@ -476,6 +489,7 @@ def run_live_mvp(
         target_count=len(target_match_ids),
         manager_consensus_count=len(consensus_match_ids),
         pinnapi_requests=pinnapi_requests,
+        provider_lineage=provider_lineage,
         matches=matches,
     )
     summary_path = write_summary(summary, artifacts_dir=artifacts_dir, run_id=run_id)

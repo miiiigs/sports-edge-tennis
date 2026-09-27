@@ -15,9 +15,12 @@ from pathlib import Path
 import psycopg
 
 from sports_edge_tennis.data.model_identity_bridge import ensure_schema as ensure_model_identity_bridge_schema
-from sports_edge_tennis.live import production_lock
+from sports_edge_tennis.live import production_lock, provider_circuit
 from sports_edge_tennis.live.batch import main as live_batch_main
-from sports_edge_tennis.live.provider_authority import assert_cutover_ready, TARGET_ODDS_MODE
+from sports_edge_tennis.live.provider_authority import (
+    TARGET_ODDS_MODE,
+    load_provider_authority,
+)
 from sports_edge_tennis.live.validation import validation_mode_enabled
 from sports_edge_tennis.live.operational_health import (
     evaluate_live_operational_health,
@@ -509,12 +512,38 @@ def main(argv: list[str] | None = None) -> int:
         )
 
 
+def _resolve_provider_decision(
+    conn: psycopg.Connection,
+    configured_authority,
+    *,
+    env,
+) -> provider_circuit.CircuitDecision:
+    """Resolve ONE atomic provider pair and validate readiness for that pair.
+
+    The circuit may intentionally select the fallback pair when the primary is
+    rate-limited or unavailable; readiness is then validated against the
+    fallback pair, never against primary availability.
+    """
+    decision = provider_circuit.resolve_provider_pair(
+        store=provider_circuit.PostgresCircuitStateStore(conn),
+        configured=configured_authority,
+        env=env,
+        now=datetime.now(timezone.utc),
+        probe=provider_circuit.sportradar_health_probe(env),
+    )
+    provider_circuit.assert_decision_ready(conn, decision=decision, env=env)
+    return decision
+
+
 def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     shadow_cycle_started_at = datetime.now(timezone.utc)
 
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
-            provider_authority = assert_cutover_ready(conn, env=os.environ)
+            configured_authority = load_provider_authority(os.environ)
+            provider_decision = _resolve_provider_decision(
+                conn, configured_authority, env=os.environ
+            )
     except (psycopg.Error, ValueError, RuntimeError) as exc:
         _log(
             "PROVIDER_AUTHORITY_BLOCKED "
@@ -522,9 +551,11 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         )
         return 2
 
+    provider_authority = provider_decision.authority
     _log(
         "PROVIDER_AUTHORITY "
-        f"data={provider_authority.data_mode} odds={provider_authority.odds_mode}"
+        f"data={provider_authority.data_mode} odds={provider_authority.odds_mode} "
+        f"circuit={provider_decision.state} reason={provider_decision.reason}"
     )
 
     try:
@@ -583,7 +614,11 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     def capture_live_summary(summary: dict[str, int]) -> None:
         live_summary.update(summary)
 
-    live_status = live_batch_main(argv, summary_sink=capture_live_summary)
+    live_status = live_batch_main(
+        argv,
+        summary_sink=capture_live_summary,
+        provider_decision=provider_decision,
+    )
     _live_operational_health_cycle(
         dsn,
         cycle_started_at=shadow_cycle_started_at,

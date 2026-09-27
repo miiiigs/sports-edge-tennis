@@ -82,12 +82,27 @@ class _Connect:
         return _Conn()
 
 
+def _primary_decision():
+    return SimpleNamespace(
+        authority=SimpleNamespace(
+            data_mode=TARGET_DATA_MODE, odds_mode=TARGET_ODDS_MODE
+        ),
+        state="CLOSED",
+        reason="PRIMARY_ACTIVE",
+    )
+
+
 def _wire_validation_main(monkeypatch):
     monkeypatch.setattr(production_batch, "_db_dsn", lambda: "postgresql://example")
     monkeypatch.setattr(
         production_batch,
-        "assert_cutover_ready",
-        lambda conn, env: SimpleNamespace(data_mode="TARGET", odds_mode="TARGET"),
+        "load_provider_authority",
+        lambda env: SimpleNamespace(data_mode=TARGET_DATA_MODE, odds_mode=TARGET_ODDS_MODE),
+    )
+    monkeypatch.setattr(
+        production_batch,
+        "_resolve_provider_decision",
+        lambda conn, configured, *, env: _primary_decision(),
     )
     monkeypatch.setattr(production_batch.psycopg, "connect", _Connect())
     monkeypatch.setattr(production_batch, "_ensure_quarter_kelly_schema", lambda conn: "EXISTING")
@@ -99,7 +114,11 @@ def _wire_validation_main(monkeypatch):
     monkeypatch.setattr(production_batch, "_ensure_oddspapi_ledger_schema", lambda conn: "READY")
     monkeypatch.setattr(production_batch, "_live_batch_gap_cycle", lambda *a, **k: None)
     monkeypatch.setattr(production_batch, "_live_operational_health_cycle", lambda *a, **k: None)
-    monkeypatch.setattr(production_batch, "live_batch_main", lambda argv, summary_sink=None: 0)
+    monkeypatch.setattr(
+        production_batch,
+        "live_batch_main",
+        lambda argv, summary_sink=None, provider_decision=None: 0,
+    )
     monkeypatch.setattr(production_batch, "validation_mode_enabled", lambda: True)
 
 
