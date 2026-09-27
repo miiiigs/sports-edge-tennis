@@ -169,9 +169,10 @@ def test_primary_models_same_side_wide_spread_is_visible_model_pick() -> None:
     assert pick.player == "Carlos Alcaraz"
     assert pick.is_wide_spread is True
     assert pick.kind_label == "MODEL PICK · WIDE SPREAD"
-    assert pick.primary_a1_probability_text == "64%"
-    assert pick.primary_a2_probability_text == "54%"
-    assert pick.primary_average_probability_text == "59%"
+    assert pick.primary_a1_probability_text == "63.9%"
+    assert pick.primary_a2_probability_text == "54.2%"
+    assert pick.primary_average_probability_text == "59.1%"
+    assert pick.probability_basis_label == "A1/A2 Tracking Average"
     assert pick.primary_probability_spread_text == "9.66%"
     assert pick.is_weak is True
     assert pick.is_actionable_bet is False
@@ -287,7 +288,7 @@ def test_wide_spread_tracking_pick_uses_a1_a2_average_for_weak_filter() -> None:
     assert strong.is_actionable_bet is False
 
     payload = dashboard_app._pick_payload(strong)
-    assert payload["tracking_probability"] == "64%"
+    assert payload["tracking_probability"] == "64.5%"
     assert payload["probability_basis"] == "A1_A2_TRACKING_AVERAGE"
 
 
@@ -442,8 +443,8 @@ def test_no_bet_matches_are_collapsed_by_default_and_explain_the_reason(demo_cli
 def test_today_page_shows_probability_prominently(demo_client) -> None:
     response = demo_client.get("/today")
 
-    assert "Win probability" in response.text
-    assert "70%" in response.text
+    assert "Probability basis: Manager Consensus" in response.text
+    assert "70.0%" in response.text
 
 
 def test_today_page_has_weak_pick_toggle(demo_client) -> None:

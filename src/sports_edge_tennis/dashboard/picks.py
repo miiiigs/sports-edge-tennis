@@ -153,6 +153,17 @@ class PickCard:
         return pres.percent(self.win_probability)
 
     @property
+    def probability_basis_label(self) -> str:
+        """Human-readable source of the headline probability.
+
+        Normal picks report Manager consensus; wide-spread tracking rows report
+        the A1/A2 average. The two bases must never read as the same thing.
+        """
+        if self.is_wide_spread:
+            return "A1/A2 Tracking Average"
+        return "Manager Consensus"
+
+    @property
     def primary_a1_probability_text(self) -> str:
         return pres.percent(self.primary_a1_probability)
 

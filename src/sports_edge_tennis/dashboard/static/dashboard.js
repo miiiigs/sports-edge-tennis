@@ -11,13 +11,6 @@
     return node;
   }
 
-  function percent(raw, digits) {
-    if (raw === null || raw === undefined || raw === "") return "—";
-    const value = Number(raw);
-    if (!Number.isFinite(value)) return "—";
-    return `${(value * 100).toFixed(digits || 0)}%`;
-  }
-
   function utcTime(raw) {
     if (!raw) return "—";
     const parsed = new Date(raw);
@@ -93,14 +86,14 @@
       const original = el("td");
       original.appendChild(el("strong", null, row.first_pick || "—"));
       original.appendChild(document.createElement("br"));
-      original.appendChild(el("span", "stat-note", `${percent(row.first_probability)} at first display`));
+      original.appendChild(el("span", "stat-note", `${row.first_probability_text || "—"} at first display`));
       tr.appendChild(original);
 
       const latest = el("td");
       if (row.latest_pick) {
         latest.appendChild(el("strong", null, row.latest_pick));
         latest.appendChild(document.createElement("br"));
-        latest.appendChild(el("span", "stat-note", percent(row.latest_probability)));
+        latest.appendChild(el("span", "stat-note", row.latest_probability_text || "—"));
       } else {
         latest.appendChild(el("span", "stat-note", "No current qualifying model pick"));
       }

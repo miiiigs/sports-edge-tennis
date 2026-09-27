@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 from fastapi import Query
 from fastapi.responses import JSONResponse
 
+from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect
 from sports_edge_tennis.dashboard.pick_lifecycle import load_pick_lifecycle
 
@@ -50,10 +51,12 @@ def api_pick_lifecycle(date: str | None = Query(default=None)):
                     "first_shown_at": row.first_pick_at.isoformat(),
                     "first_pick": row.first_selected_player,
                     "first_probability": str(row.first_probability) if row.first_probability is not None else None,
+                    "first_probability_text": pres.percent(row.first_probability),
                     "latest_model_at": row.latest_model_at.isoformat(),
                     "latest_model_status": row.latest_manager_status,
                     "latest_pick": row.latest_selected_player,
                     "latest_probability": str(row.latest_probability) if row.latest_probability is not None else None,
+                    "latest_probability_text": pres.percent(row.latest_probability),
                     "model_pick_still_active": row.model_pick_still_active,
                     "model_pick_changed": row.model_pick_changed,
                     "active_agents": row.latest_active_agent_count,
