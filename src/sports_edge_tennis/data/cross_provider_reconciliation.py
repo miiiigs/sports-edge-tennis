@@ -11,6 +11,7 @@ service and is intentionally not implemented here.
 
 from __future__ import annotations
 
+from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -279,6 +280,88 @@ def _flip(side: int | None) -> int | None:
     return 2 if side == 1 else 1
 
 
+@dataclass(frozen=True)
+class SportingIdentity:
+    """Provider-neutral sporting identity compared by ``cross_provider_exact_match_v1``.
+
+    Shared by historical reconciliation and prospective canonical reuse so the two
+    gates can never drift apart.
+    """
+
+    player_1_id: int
+    player_2_id: int
+    tournament_id: int | None
+    season_year: int | None
+    tour_scope: str | None
+    competition_tier: str | None
+    match_start_at: datetime | None
+
+
+@dataclass(frozen=True)
+class SportingIdentityComparison:
+    safe: bool
+    reason: str | None
+    player_order_mapping: str | None
+    start_delta_minutes: float | None
+
+
+def compare_sporting_identity(
+    target: SportingIdentity,
+    evidence: SportingIdentity,
+    *,
+    max_start_delta_minutes: int = MAX_START_DELTA_MINUTES,
+) -> SportingIdentityComparison:
+    """Pure ``cross_provider_exact_match_v1`` comparison. Performs no I/O."""
+    if (
+        target.player_1_id == evidence.player_1_id
+        and target.player_2_id == evidence.player_2_id
+    ):
+        mapping = PLAYER_ORDER_DIRECT
+    elif (
+        target.player_1_id == evidence.player_2_id
+        and target.player_2_id == evidence.player_1_id
+    ):
+        mapping = PLAYER_ORDER_REVERSED
+    else:
+        return SportingIdentityComparison(False, REASON_IDENTITY_CONFLICT, None, None)
+
+    if target.tournament_id is None or evidence.tournament_id is None:
+        return SportingIdentityComparison(False, REASON_TOURNAMENT_MISMATCH, mapping, None)
+    if target.tournament_id != evidence.tournament_id:
+        return SportingIdentityComparison(False, REASON_TOURNAMENT_MISMATCH, mapping, None)
+    if target.season_year is None or evidence.season_year is None:
+        return SportingIdentityComparison(False, REASON_SEASON_MISMATCH, mapping, None)
+    if target.season_year != evidence.season_year:
+        return SportingIdentityComparison(False, REASON_SEASON_MISMATCH, mapping, None)
+    if target.tour_scope != evidence.tour_scope:
+        return SportingIdentityComparison(False, REASON_SCOPE_MISMATCH, mapping, None)
+    if target.competition_tier != evidence.competition_tier:
+        return SportingIdentityComparison(False, REASON_TIER_MISMATCH, mapping, None)
+    if target.match_start_at is None or evidence.match_start_at is None:
+        return SportingIdentityComparison(False, REASON_TIME_MISMATCH, mapping, None)
+
+    start_delta_minutes = (
+        abs((target.match_start_at - evidence.match_start_at).total_seconds()) / 60.0
+    )
+    if start_delta_minutes > max_start_delta_minutes:
+        return SportingIdentityComparison(
+            False, REASON_TIME_MISMATCH, mapping, start_delta_minutes
+        )
+    return SportingIdentityComparison(True, None, mapping, start_delta_minutes)
+
+
+def _identity_from_evidence(evidence: _MatchEvidence) -> SportingIdentity:
+    return SportingIdentity(
+        player_1_id=evidence.player_1_id,
+        player_2_id=evidence.player_2_id,
+        tournament_id=evidence.tournament_id,
+        season_year=evidence.season_year,
+        tour_scope=evidence.tour_scope,
+        competition_tier=evidence.competition_tier,
+        match_start_at=evidence.match_start_at,
+    )
+
+
 def _evaluate(
     conn: psycopg.Connection,
     *,
@@ -293,35 +376,16 @@ def _evaluate(
     if target is None or evidence is None:
         return _reject(target_match_id, evidence_match_id, REASON_MATCH_NOT_FOUND)
 
-    if (
-        target.player_1_id == evidence.player_1_id
-        and target.player_2_id == evidence.player_2_id
-    ):
-        mapping = PLAYER_ORDER_DIRECT
-    elif (
-        target.player_1_id == evidence.player_2_id
-        and target.player_2_id == evidence.player_1_id
-    ):
-        mapping = PLAYER_ORDER_REVERSED
-    else:
-        return _reject(target_match_id, evidence_match_id, REASON_IDENTITY_CONFLICT)
-
-    if target.tournament_id != evidence.tournament_id:
-        return _reject(target_match_id, evidence_match_id, REASON_TOURNAMENT_MISMATCH)
-    if target.season_year != evidence.season_year:
-        return _reject(target_match_id, evidence_match_id, REASON_SEASON_MISMATCH)
-    if target.tour_scope != evidence.tour_scope:
-        return _reject(target_match_id, evidence_match_id, REASON_SCOPE_MISMATCH)
-    if target.competition_tier != evidence.competition_tier:
-        return _reject(target_match_id, evidence_match_id, REASON_TIER_MISMATCH)
-
-    start_delta_minutes = abs(
-        (target.match_start_at - evidence.match_start_at).total_seconds()
-    ) / 60.0
-    if start_delta_minutes > MAX_START_DELTA_MINUTES:
-        return _reject(target_match_id, evidence_match_id, REASON_TIME_MISMATCH)
-
-    return target, evidence, mapping
+    comparison = compare_sporting_identity(
+        _identity_from_evidence(target), _identity_from_evidence(evidence)
+    )
+    if not comparison.safe:
+        return _reject(
+            target_match_id,
+            evidence_match_id,
+            comparison.reason or REASON_IDENTITY_CONFLICT,
+        )
+    return target, evidence, comparison.player_order_mapping or PLAYER_ORDER_DIRECT
 
 
 def evaluate_cross_provider_reconciliation(
@@ -424,6 +488,173 @@ def evaluate_cross_provider_reconciliation(
         translated_sets_won_player_2=translated_sets_2,
         translated_games_won_player_1=translated_games_1,
         translated_games_won_player_2=translated_games_2,
+    )
+
+
+# --------------------------------------------------- prospective canonical reuse
+#
+# Historical reconciliation attaches an already-existing duplicate. Prospective
+# reuse prevents the duplicate from ever being created: when a provider supplies a
+# previously unseen source id whose sporting identity is exactly one existing
+# canonical match, ingestion reuses that match instead of creating a second one.
+
+#: Providers whose unknown source ids attempt deterministic v1 canonical reuse.
+PROSPECTIVE_REUSE_SOURCE_SYSTEMS = ("API_TENNIS",)
+
+#: Bounded pre-filter around the incoming start time. Candidates outside this
+#: window are not loaded; the exact v1 gate is still the 15-minute tolerance.
+CANDIDATE_START_SEARCH_MINUTES = 180
+
+REUSE_STATUS_REUSED = "REUSED"
+REUSE_STATUS_NO_SAFE_CANDIDATE = "NO_SAFE_CANDIDATE"
+REUSE_STATUS_AMBIGUOUS = "AMBIGUOUS"
+
+
+class CrossProviderIdentityAmbiguous(RuntimeError):
+    """An unknown provider event matches more than one safe canonical match.
+
+    Raised so ingestion fails closed rather than guessing or creating a duplicate.
+    """
+
+
+@dataclass(frozen=True)
+class CanonicalReuseResolution:
+    status: str
+    match_id: int | None
+    orientation: str | None
+    start_delta_minutes: float | None
+    candidate_count: int
+    reason: str | None = None
+
+
+def _bounded_candidate_rows(
+    conn: psycopg.Connection,
+    *,
+    incoming: SportingIdentity,
+    search_minutes: int,
+) -> list[tuple]:
+    assert incoming.match_start_at is not None
+    return conn.execute(
+        """
+        WITH latest AS (
+            SELECT DISTINCT ON (mv.match_id)
+                mv.match_id,
+                mv.player_1_id,
+                mv.player_2_id,
+                mv.match_start_at,
+                mv.tour_scope::text AS tour_scope,
+                mv.competition_tier::text AS competition_tier
+            FROM match_versions mv
+            WHERE mv.match_start_at IS NOT NULL
+              AND mv.match_start_at
+                  BETWEEN %(start)s - (%(search)s * INTERVAL '1 minute')
+                      AND %(start)s + (%(search)s * INTERVAL '1 minute')
+              AND (
+                  (mv.player_1_id = %(p1)s AND mv.player_2_id = %(p2)s)
+                  OR (mv.player_1_id = %(p2)s AND mv.player_2_id = %(p1)s)
+              )
+            ORDER BY
+                mv.match_id,
+                mv.as_of DESC,
+                mv.source_observed_at DESC,
+                mv.match_version_id DESC
+        )
+        SELECT
+            latest.match_id,
+            latest.player_1_id,
+            latest.player_2_id,
+            latest.match_start_at,
+            latest.tour_scope,
+            latest.competition_tier,
+            te.tournament_id,
+            te.season_year
+        FROM latest
+        JOIN matches m ON m.match_id = latest.match_id
+        JOIN tournament_editions te
+          ON te.tournament_edition_id = m.tournament_edition_id
+        ORDER BY latest.match_id
+        """,
+        {
+            "start": incoming.match_start_at,
+            "search": search_minutes,
+            "p1": incoming.player_1_id,
+            "p2": incoming.player_2_id,
+        },
+    ).fetchall()
+
+
+def resolve_cross_provider_canonical_reuse(
+    conn: psycopg.Connection,
+    *,
+    incoming: SportingIdentity,
+    search_minutes: int = CANDIDATE_START_SEARCH_MINUTES,
+    max_start_delta_minutes: int = MAX_START_DELTA_MINUTES,
+) -> CanonicalReuseResolution:
+    """Read-only, bounded v1 lookup for a previously unseen provider event.
+
+    Zero safe candidates returns ``NO_SAFE_CANDIDATE`` (normal creation). Exactly
+    one returns ``REUSED``. Two or more returns ``AMBIGUOUS`` so the caller fails
+    closed. The 15-minute tolerance is the exact gate; the wider pre-filter only
+    bounds the candidate scan.
+    """
+    if incoming.match_start_at is None:
+        return CanonicalReuseResolution(
+            REUSE_STATUS_NO_SAFE_CANDIDATE, None, None, None, 0, REASON_TIME_MISMATCH
+        )
+    if incoming.tournament_id is None:
+        return CanonicalReuseResolution(
+            REUSE_STATUS_NO_SAFE_CANDIDATE,
+            None,
+            None,
+            None,
+            0,
+            REASON_TOURNAMENT_MISMATCH,
+        )
+
+    rows = _bounded_candidate_rows(
+        conn, incoming=incoming, search_minutes=search_minutes
+    )
+    safe: list[tuple[int, SportingIdentityComparison]] = []
+    reasons: Counter[str] = Counter()
+    for row in rows:
+        candidate = SportingIdentity(
+            player_1_id=int(row[1]),
+            player_2_id=int(row[2]),
+            tournament_id=int(row[6]),
+            season_year=int(row[7]),
+            tour_scope=str(row[4]),
+            competition_tier=str(row[5]),
+            match_start_at=row[3],
+        )
+        comparison = compare_sporting_identity(
+            incoming, candidate, max_start_delta_minutes=max_start_delta_minutes
+        )
+        if comparison.safe:
+            safe.append((int(row[0]), comparison))
+            continue
+        reasons[comparison.reason or "UNKNOWN"] += 1
+
+    if len(safe) == 1:
+        match_id, comparison = safe[0]
+        return CanonicalReuseResolution(
+            REUSE_STATUS_REUSED,
+            match_id,
+            comparison.player_order_mapping,
+            comparison.start_delta_minutes,
+            len(rows),
+        )
+    if len(safe) > 1:
+        return CanonicalReuseResolution(
+            REUSE_STATUS_AMBIGUOUS,
+            None,
+            None,
+            None,
+            len(rows),
+            REASON_IDENTITY_CONFLICT,
+        )
+    dominant = reasons.most_common(1)[0][0] if reasons else REASON_IDENTITY_CONFLICT
+    return CanonicalReuseResolution(
+        REUSE_STATUS_NO_SAFE_CANDIDATE, None, None, None, len(rows), dominant
     )
 
 
