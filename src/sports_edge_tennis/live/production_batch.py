@@ -9,7 +9,7 @@ analytics without changing Today, Manager, or production decision/publication be
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 import psycopg
@@ -429,6 +429,40 @@ def _shadow_cycle(
     )
 
 
+def _pending_result_refresh_cycle(dsn: str) -> None:
+    """Resolve same-day pending Model Pick results without affecting batch health.
+
+    Additive result-ingestion only. Never raises: a provider or persistence problem
+    is reported and the prediction batch continues.
+    """
+    try:
+        from sports_edge_tennis.live.credentials import (
+            MissingCredentialError,
+            load_secret,
+        )
+        from sports_edge_tennis.live.pending_result_refresh import (
+            refresh_pending_results,
+        )
+
+        try:
+            api_key = load_secret("API_TENNIS_API_KEY")
+        except MissingCredentialError:
+            api_key = None
+        if not api_key:
+            _log("PENDING_RESULT_REFRESH_SKIPPED reason=MISSING_API_TENNIS_KEY")
+            return
+
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            summary = refresh_pending_results(
+                conn,
+                api_key=api_key,
+                as_of=datetime.now(UTC),
+            )
+        _log(summary.log_line())
+    except Exception as exc:  # noqa: BLE001 - fail-isolated operational lane
+        _log(f"PENDING_RESULT_REFRESH_FAILED error_type={type(exc).__name__}")
+
+
 def _a1_evidence_cycle(dsn: str) -> None:
     """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
     try:
@@ -637,6 +671,10 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             "publication=blocked settlement=blocked shadow=blocked notifications=blocked"
         )
         return 0
+
+    # Same-day pending Model Pick result refresh. Runs before settlement so newly
+    # persisted terminal results are visible to this cycle's settlement pass.
+    _pending_result_refresh_cycle(dsn)
 
     settled_at = datetime.now(timezone.utc)
     _pncl_concordance_cycle(dsn, captured_at=settled_at)

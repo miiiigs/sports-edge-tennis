@@ -88,6 +88,32 @@ python -m pip install . && python -m sports_edge_tennis.live.history_refresh --s
 
 This is a bounded utility, not a second live scheduler.
 
+### Same-day pending Model Pick result refresh
+
+The broad historical refresh intentionally ends at `UTC today - 1 day`, so a Model Pick
+from day D is not scored until day D+1. A separate bounded lane removes that delay for
+production Model Picks that are still `PENDING` on the picked canonical `match_id`:
+
+```text
+python -m sports_edge_tennis.live.pending_result_refresh
+```
+
+It is also wired into the end of every successful hourly live cycle, before settlement,
+so a same-day result becomes visible to the dashboard and to the same cycle's
+settlement pass. The broad daily job (`10 0 * * *`) is unchanged.
+
+The lane is canonical-match-aware and delegates identity to the shared ingestion path:
+a selected API-Tennis fixture is only ingested once it is associated with a pending
+pick, and the repository's global prospective resolver decides whether the existing
+canonical match is reused or a new one is created. The 15-minute
+`cross_provider_exact_match_v1` tolerance is unchanged and the lane implements no
+independent identity policy. Unresolved or ambiguous identities fail closed and leave
+the pick `PENDING`. It creates no wagers and changes no model, Manager, Market, Veto or
+staking behavior.
+
+Run it read-only with `--dry-run` (at most one bounded API-Tennis fixture-window
+request, zero database writes).
+
 ## Provider dependencies
 
 Required live-runner secret variable names:
