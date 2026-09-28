@@ -707,6 +707,7 @@ def test_pending_cycle_is_reachable_and_wired_before_settlement():
 
 
 def test_main_blocks_without_database(monkeypatch, capsys):
+    monkeypatch.setattr(prr, "_db_dsn", lambda: None)
     monkeypatch.setattr(prr, "load_secret", lambda name: "key")
     assert prr.main([]) == 2
     assert "reason=NO_DATABASE" in capsys.readouterr().out
