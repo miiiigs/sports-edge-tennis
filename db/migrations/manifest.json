@@ -106,6 +106,13 @@
       "up": "db/migrations/0015_oddspapi_request_ledger_v1.up.sql",
       "down": "db/migrations/0015_oddspapi_request_ledger_v1.down.sql",
       "schema_snapshot": "db/schema/0015_oddspapi_request_ledger_v1.sql"
+    },
+    {
+      "version": "0016",
+      "name": "cross_provider_match_reconciliations",
+      "up": "db/migrations/0016_cross_provider_match_reconciliations.up.sql",
+      "down": "db/migrations/0016_cross_provider_match_reconciliations.down.sql",
+      "schema_snapshot": "db/schema/0016_cross_provider_match_reconciliations.sql"
     }
   ]
 }
