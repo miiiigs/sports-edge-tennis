@@ -45,6 +45,12 @@ RESULT_WON = "WON"
 RESULT_LOST = "LOST"
 RESULT_VOID = "VOID"
 
+SELECTION_MANAGER_CONSENSUS = "MANAGER_CONSENSUS"
+SELECTION_WIDE_SPREAD = "WIDE_SPREAD_A1_A2"
+
+COHORT_FIRST_PRODUCTION = "first-production"
+COHORT_WIDE_SPREAD = "wide-spread-20260924-26"
+
 
 @dataclass(frozen=True)
 class ReviewedMapping:
@@ -53,6 +59,7 @@ class ReviewedMapping:
     expected_result: str
     target_source_system: str = "SPORTRADAR"
     evidence_source_system: str = "API_TENNIS"
+    selection_source: str = SELECTION_MANAGER_CONSENSUS
 
 
 # The seven reviewed production mappings. ``expected_result`` is an operator
@@ -66,6 +73,25 @@ REVIEWED_MAPPINGS: tuple[ReviewedMapping, ...] = (
     ReviewedMapping(131021, 131088, RESULT_LOST),
     ReviewedMapping(131038, 131140, RESULT_LOST),
 )
+
+FIRST_PRODUCTION_REVIEWED_COHORT: tuple[ReviewedMapping, ...] = REVIEWED_MAPPINGS
+
+# Second reviewed cohort: A1_A2_WIDE_SPREAD tracking-only picks. Their aligned
+# selected side comes from the A1/A2 agreement, NOT the Manager consensus side.
+WIDE_SPREAD_REVIEWED_COHORT: tuple[ReviewedMapping, ...] = (
+    ReviewedMapping(130873, 130838, RESULT_WON, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(130884, 131086, RESULT_LOST, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(130888, 131072, RESULT_LOST, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(130896, 131093, RESULT_LOST, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(131027, 131092, RESULT_VOID, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(130899, 131136, RESULT_WON, selection_source=SELECTION_WIDE_SPREAD),
+    ReviewedMapping(130901, 131142, RESULT_LOST, selection_source=SELECTION_WIDE_SPREAD),
+)
+
+COHORTS: dict[str, tuple[ReviewedMapping, ...]] = {
+    COHORT_FIRST_PRODUCTION: FIRST_PRODUCTION_REVIEWED_COHORT,
+    COHORT_WIDE_SPREAD: WIDE_SPREAD_REVIEWED_COHORT,
+}
 
 
 @dataclass(frozen=True)
@@ -138,6 +164,43 @@ def _load_selected_side(conn: psycopg.Connection, match_id: int) -> int | None:
     return None if row is None else int(row[0])
 
 
+def _load_wide_spread_selected_side(conn: psycopg.Connection, match_id: int) -> int | None:
+    """Aligned A1/A2 wide-spread selected side, revalidating the exact path.
+
+    Returns None (fail closed) unless the current evidence still matches the
+    tracking path: NO_BET + AGENT3_ABSTENTION_SPREAD_EXCEEDED, A1/A2 PREDICTED on
+    the same side, A3 ABSTAINED, and A1/A2 mean >= 0.60. Earliest qualifying pick
+    mirrors the aligned DISTINCT ON (match_id) ordering.
+    """
+    row = conn.execute(
+        """
+        SELECT a1.selection_side
+        FROM manager_consensus_results mcr
+        JOIN predictions a1 ON a1.prediction_run_id = mcr.prediction_run_id
+             AND a1.match_id = mcr.match_id AND a1.agent_code = 'AGENT_1_SURFACE_ELO'
+        JOIN predictions a2 ON a2.prediction_run_id = mcr.prediction_run_id
+             AND a2.match_id = mcr.match_id AND a2.agent_code = 'AGENT_2_HIERARCHICAL_MARKOV'
+        JOIN predictions a3 ON a3.prediction_run_id = mcr.prediction_run_id
+             AND a3.match_id = mcr.match_id AND a3.agent_code = 'AGENT_3_INTRANSITIVITY'
+        WHERE mcr.match_id = %s
+          AND mcr.manager_status = 'NO_BET'
+          AND mcr.reason_code = 'AGENT3_ABSTENTION_SPREAD_EXCEEDED'
+          AND a1.prediction_status = 'PREDICTED'
+          AND a2.prediction_status = 'PREDICTED'
+          AND a3.prediction_status = 'ABSTAINED'
+          AND a1.selection_side IN (1, 2)
+          AND a2.selection_side = a1.selection_side
+          AND a1.win_probability IS NOT NULL
+          AND a2.win_probability IS NOT NULL
+          AND ((a1.win_probability + a2.win_probability) / 2.0) >= 0.60
+        ORDER BY mcr.as_of ASC, mcr.manager_consensus_result_id ASC
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    return None if row is None else int(row[0])
+
+
 def _compute_result(
     outcome_status: str | None,
     translated_winner_side: int | None,
@@ -201,7 +264,10 @@ def audit_mapping(
         target_match_id=mapping.target_match_id,
         evidence_result_observation_id=evaluation.evidence_result_observation_id,
     )
-    selected_side = _load_selected_side(conn, mapping.target_match_id)
+    if mapping.selection_source == SELECTION_WIDE_SPREAD:
+        selected_side = _load_wide_spread_selected_side(conn, mapping.target_match_id)
+    else:
+        selected_side = _load_selected_side(conn, mapping.target_match_id)
     computed_result = _compute_result(
         evaluation.evidence_outcome_status,
         evaluation.translated_winner_side,
@@ -429,6 +495,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="persist the reviewed cohort (default: read-only dry run)",
     )
+    parser.add_argument(
+        "--cohort",
+        choices=sorted(COHORTS),
+        default=COHORT_FIRST_PRODUCTION,
+        help="reviewed cohort to run",
+    )
     args = parser.parse_args(argv)
 
     dsn = os.environ.get("TENNIS_DATABASE_URL") or os.environ.get("DATABASE_URL")
@@ -439,7 +511,7 @@ def main(argv: list[str] | None = None) -> int:
     conn = psycopg.connect(dsn, autocommit=False)
     committed = False
     try:
-        summary = run_operator(conn, apply=args.apply)
+        summary = run_operator(conn, apply=args.apply, mappings=COHORTS[args.cohort])
         if (
             args.apply
             and not summary.aborted

@@ -389,3 +389,117 @@ def test_cli_dry_run_writes_nothing_across_new_connection(
             )
             == 0
         )
+
+
+def _wide(target: int, evidence: int, expected: str) -> operator.ReviewedMapping:
+    return operator.ReviewedMapping(
+        target, evidence, expected, selection_source=operator.SELECTION_WIDE_SPREAD
+    )
+
+
+def test_wide_spread_cohort_has_exactly_seven_mappings():
+    assert len(operator.WIDE_SPREAD_REVIEWED_COHORT) == 7
+    assert [m.target_match_id for m in operator.WIDE_SPREAD_REVIEWED_COHORT] == [
+        130873,
+        130884,
+        130888,
+        130896,
+        131027,
+        130899,
+        130901,
+    ]
+    assert [m.evidence_match_id for m in operator.WIDE_SPREAD_REVIEWED_COHORT] == [
+        130838,
+        131086,
+        131072,
+        131093,
+        131092,
+        131136,
+        131142,
+    ]
+    assert [m.expected_result for m in operator.WIDE_SPREAD_REVIEWED_COHORT] == [
+        "WON",
+        "LOST",
+        "LOST",
+        "LOST",
+        "VOID",
+        "WON",
+        "LOST",
+    ]
+
+
+def test_first_cohort_remains_unchanged():
+    assert operator.FIRST_PRODUCTION_REVIEWED_COHORT is operator.REVIEWED_MAPPINGS
+    assert [
+        m.target_match_id for m in operator.FIRST_PRODUCTION_REVIEWED_COHORT
+    ] == [130874, 130885, 130886, 130889, 130898, 131021, 131038]
+
+
+def test_cohort_excludes_130903_and_131036():
+    ids: set[int] = set()
+    for cohort in operator.COHORTS.values():
+        for mapping in cohort:
+            ids.add(mapping.target_match_id)
+            ids.add(mapping.evidence_match_id)
+    assert 130903 not in ids
+    assert 131036 not in ids
+    assert 131137 not in ids
+
+
+def test_cohort_selection_keys():
+    assert set(operator.COHORTS) == {"first-production", "wide-spread-20260924-26"}
+
+
+def test_wide_spread_uses_a1_a2_side_not_manager_side(
+    db: psycopg.Connection, monkeypatch
+):
+    target, evidence = helpers._scenario(db, winner_side=1)
+    monkeypatch.setattr(operator, "_load_selected_side", lambda conn, match_id: 2)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 1
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "WON"),), emit=_quiet)
+    assert summary.audits[0].selected_side == 1
+    assert summary.audits[0].action == operator.ACTION_WOULD_APPLY
+
+
+def test_wide_spread_won_verification(db: psycopg.Connection, monkeypatch):
+    target, evidence = helpers._scenario(db, winner_side=1)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 1
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "WON"),), emit=_quiet)
+    assert summary.audits[0].computed_result == "WON"
+    assert summary.audits[0].action == operator.ACTION_WOULD_APPLY
+
+
+def test_wide_spread_lost_verification(db: psycopg.Connection, monkeypatch):
+    target, evidence = helpers._scenario(db, winner_side=2)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 1
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "LOST"),), emit=_quiet)
+    assert summary.audits[0].computed_result == "LOST"
+    assert summary.audits[0].action == operator.ACTION_WOULD_APPLY
+
+
+def test_wide_spread_void_for_retired(db: psycopg.Connection, monkeypatch):
+    target, evidence = helpers._scenario(db, with_result=False)
+    helpers._mk_result(db, evidence, outcome="RETIRED", winner_side=2)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 1
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "VOID"),), emit=_quiet)
+    assert summary.audits[0].computed_result == "VOID"
+    assert summary.audits[0].action == operator.ACTION_WOULD_APPLY
+
+
+def test_wide_spread_dry_run_zero_writes(db: psycopg.Connection, monkeypatch):
+    target, evidence = helpers._scenario(db)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 1
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "WON"),), emit=_quiet)
+    assert summary.mode == operator.MODE_DRY_RUN
+    assert _count(db, "cross_provider_match_reconciliations") == 0
+    assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 0
