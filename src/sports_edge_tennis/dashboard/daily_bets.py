@@ -165,6 +165,7 @@ def load_daily_bet_summaries(
     *,
     limit: int = 5000,
     regime_key: str | None = None,
+    timezone_name: str = "UTC",
 ) -> tuple[DailyBetSummary, ...]:
     """Return one aggregate row per UTC scheduled match day, newest first.
 
@@ -188,8 +189,8 @@ def load_daily_bet_summaries(
             SELECT
                 d.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (d.published_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (d.published_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM first_bets d
             LEFT JOIN LATERAL (
@@ -239,7 +240,7 @@ def load_daily_bet_summaries(
         ORDER BY d.match_date DESC
         LIMIT %s
         """,
-        (regime_key, regime_key, limit),
+        (timezone_name, timezone_name, regime_key, regime_key, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -249,6 +250,7 @@ def load_aligned_daily_bet_summaries(
     start_date: date,
     min_consensus_probability: Decimal,
     limit: int = 5000,
+    timezone_name: str = "UTC",
 ) -> tuple[DailyBetSummary, ...]:
     """Current-rule Value Bet history over persisted live decision evidence.
 
@@ -300,8 +302,8 @@ def load_aligned_daily_bet_summaries(
             SELECT
                 d.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (d.published_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (d.published_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM aligned_first_bets d
             LEFT JOIN LATERAL (
@@ -351,7 +353,7 @@ def load_aligned_daily_bet_summaries(
         ORDER BY d.match_date DESC
         LIMIT %s
         """,
-        (min_consensus_probability, start_date, limit),
+        (min_consensus_probability, timezone_name, timezone_name, start_date, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -372,6 +374,7 @@ def load_daily_bets(
     conn: psycopg.Connection,
     *,
     decision_date: date,
+    timezone_name: str = "UTC",
 ) -> tuple[DailyBetRow, ...]:
     """Return the first publishable Type A BET per match for one UTC match day."""
     rows = conn.execute(
@@ -424,12 +427,12 @@ def load_daily_bets(
         LEFT JOIN players p2 ON p2.player_id = mv.player_2_id
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
         WHERE COALESCE(
-            (mv.match_start_at AT TIME ZONE 'UTC')::date,
-            (d.published_at AT TIME ZONE 'UTC')::date
+            (mv.match_start_at AT TIME ZONE %s::text)::date,
+            (d.published_at AT TIME ZONE %s::text)::date
         ) = %s
         ORDER BY d.published_at DESC, d.decision_id DESC
         """,
-        (decision_date,),
+        (timezone_name, timezone_name, decision_date),
     ).fetchall()
 
     result: list[DailyBetRow] = []

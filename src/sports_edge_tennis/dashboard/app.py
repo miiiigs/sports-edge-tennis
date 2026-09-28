@@ -34,6 +34,18 @@ from sports_edge_tennis.dashboard.read_model import (
     get_latest_activity,
     get_latest_live_operational_health,
 )
+from sports_edge_tennis.dashboard.timezone import (
+    DEFAULT_TIMEZONE,
+    SUPPORTED_TIMEZONES,
+    TIMEZONE_COOKIE_NAME,
+    DashboardTimezone,
+    dashboard_today,
+    format_dashboard_date,
+    format_dashboard_datetime,
+    format_dashboard_time,
+    is_supported_key,
+    resolve_dashboard_timezone,
+)
 from sports_edge_tennis.dashboard.upcoming import get_upcoming_matches
 from sports_edge_tennis.performance.regimes import (
     load_regime_cohorts,
@@ -42,9 +54,74 @@ from sports_edge_tennis.performance.regimes import (
 
 _BASE_DIR = Path(__file__).resolve().parent
 
+_TIMEZONE_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
+
+
+class DashboardTemplates(Jinja2Templates):
+    """Jinja2 templates that always know the selected dashboard time zone.
+
+    The selector, the header clock, and every localized timestamp are driven
+    from here so no route has to remember to pass them, and no template has to
+    hard-code a zone.
+    """
+
+    def TemplateResponse(self, request, name, context=None, *args, **kwargs):
+        tz = _request_timezone(request)
+        merged = dict(context or {})
+        merged.setdefault("dashboard_timezone", tz)
+        merged.setdefault("dashboard_timezone_options", SUPPORTED_TIMEZONES)
+        merged.setdefault("tz_time", lambda value, fmt="%H:%M": format_dashboard_time(value, tz, fmt))
+        merged.setdefault(
+            "tz_datetime",
+            lambda value, fmt="%d %b %H:%M": format_dashboard_datetime(value, tz, fmt),
+        )
+        merged.setdefault(
+            "tz_date",
+            lambda value, fmt="%a %d %b %Y": format_dashboard_date(value, tz, fmt),
+        )
+        return super().TemplateResponse(request, name, merged, *args, **kwargs)
+
+
 app = FastAPI(title="Sports Edge Tennis", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=str(_BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(_BASE_DIR / "templates"))
+templates = DashboardTemplates(directory=str(_BASE_DIR / "templates"))
+
+
+def _request_timezone(request: Request) -> DashboardTimezone:
+    """The time zone selected for this request (cookie or URL override)."""
+    resolved = getattr(request.state, "dashboard_timezone", None)
+    if isinstance(resolved, DashboardTimezone):
+        return resolved
+    return DEFAULT_TIMEZONE
+
+
+@app.middleware("http")
+async def dashboard_timezone_middleware(request: Request, call_next):
+    """Resolve the selected time zone and persist an explicit URL override.
+
+    ``?tz=<key>`` is validated against the fixed key set. A valid override is
+    written to the preference cookie and then removed from the URL; an invalid
+    one is ignored. Arbitrary zone names are never accepted.
+    """
+    raw_override = request.query_params.get("tz")
+    request.state.dashboard_timezone = resolve_dashboard_timezone(
+        raw_override if is_supported_key(raw_override) else request.cookies.get(TIMEZONE_COOKIE_NAME)
+    )
+    if raw_override is not None and is_supported_key(raw_override):
+        response = RedirectResponse(
+            url=str(request.url.remove_query_params("tz")),
+            status_code=303,
+        )
+        response.set_cookie(
+            TIMEZONE_COOKIE_NAME,
+            request.state.dashboard_timezone.key,
+            max_age=_TIMEZONE_COOKIE_MAX_AGE,
+            httponly=True,
+            samesite="lax",
+            path="/",
+        )
+        return response
+    return await call_next(request)
 
 DEMO_MODE = os.environ.get("SPORTS_EDGE_DASHBOARD_DEMO", "0") == "1"
 
@@ -97,32 +174,33 @@ def _now_utc() -> datetime:
     return datetime.now(UTC)
 
 
-def _now_utc_date() -> date:
-    return _now_utc().date()
-
-
-def _parse_date(raw: str | None) -> date | None:
+def _parse_date(raw: str | None, tz: DashboardTimezone | None = None) -> date | None:
+    """Parse an explicit date, else default to today in the selected zone."""
     if raw is None:
-        return _now_utc_date()
+        return dashboard_today(tz or DEFAULT_TIMEZONE)
     try:
         return date.fromisoformat(raw)
     except ValueError:
         return None
 
 
-def _load_state(requested_date: date) -> RunState:
+def _load_state(requested_date: date, tz: DashboardTimezone | None = None) -> RunState:
     if DEMO_MODE:
         return build_demo_state()
     conn = _connect()
     if conn is None:
         return RunState(kind="DB_ERROR", run_date=requested_date, as_of=None, prediction_run_id=None, run_status=None)
     try:
-        return get_issued_day_state(conn, requested_date)
+        return get_issued_day_state(
+            conn, requested_date, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
     finally:
         conn.close()
 
 
-def _load_issued_market_overlay(requested_date: date):
+def _load_issued_market_overlay(
+    requested_date: date, tz: DashboardTimezone | None = None
+):
     """First issued BET decision per sporting match for the day (Value Bet ledger)."""
     if DEMO_MODE:
         return build_demo_market_decisions()
@@ -130,7 +208,9 @@ def _load_issued_market_overlay(requested_date: date):
     if conn is None:
         return {}
     try:
-        return get_issued_market_decisions(conn, requested_date)
+        return get_issued_market_decisions(
+            conn, requested_date, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
     finally:
         conn.close()
 
@@ -149,7 +229,7 @@ def _load_market_overlay(prediction_run_id: int | None):
         conn.close()
 
 
-def _load_history():
+def _load_history(tz: DashboardTimezone | None = None):
     if DEMO_MODE:
         state = build_demo_state()
         return [state]
@@ -157,7 +237,7 @@ def _load_history():
     if conn is None:
         return []
     try:
-        return get_history(conn)
+        return get_history(conn, timezone_name=(tz or DEFAULT_TIMEZONE).iana)
     finally:
         conn.close()
 
@@ -222,7 +302,7 @@ def _clv_text(value) -> str | None:
     return f"{float(value) * 100:+.2f}%"
 
 
-def _load_regime_context() -> dict:
+def _load_regime_context(tz: DashboardTimezone | None = None) -> dict:
     """Current production regime, resolved from persisted lineage.
 
     Returns empty context rather than guessing when the database is
@@ -236,7 +316,9 @@ def _load_regime_context() -> dict:
     try:
         return {
             "current_regime": resolve_current_regime(conn),
-            "has_multiple_regimes": len(load_regime_cohorts(conn)) > 1,
+            "has_multiple_regimes": len(
+                load_regime_cohorts(conn, timezone_name=(tz or DEFAULT_TIMEZONE).iana)
+            ) > 1,
         }
     except Exception:
         return {"current_regime": None, "has_multiple_regimes": False}
@@ -287,12 +369,13 @@ def today(request: Request, date: str | None = Query(default=None)):
     the first Manager-qualified pick per sporting match for the selected UTC
     match date, plus the latest A1/A2 same-side wide-spread tracking cases.
     """
-    requested_date = _parse_date(date)
+    tz = _request_timezone(request)
+    requested_date = _parse_date(date, tz)
     if requested_date is None:
         return HTMLResponse("Invalid date", status_code=400)
 
-    state = _load_state(requested_date)
-    market_by_match = _load_issued_market_overlay(requested_date)
+    state = _load_state(requested_date, tz)
+    market_by_match = _load_issued_market_overlay(requested_date, tz)
     today_picks = build_today_picks(state.matches, market_by_match)
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
@@ -316,12 +399,13 @@ def today(request: Request, date: str | None = Query(default=None)):
 @app.get("/value", response_class=HTMLResponse)
 def value(request: Request, date: str | None = Query(default=None)):
     """Market/value detail, kept off the default morning screen."""
-    requested_date = _parse_date(date)
+    tz = _request_timezone(request)
+    requested_date = _parse_date(date, tz)
     if requested_date is None:
         return HTMLResponse("Invalid date", status_code=400)
 
-    state = _load_state(requested_date)
-    market_by_match = _load_issued_market_overlay(requested_date)
+    state = _load_state(requested_date, tz)
+    market_by_match = _load_issued_market_overlay(requested_date, tz)
     today_picks = build_today_picks(state.matches, market_by_match)
     return templates.TemplateResponse(
         request,
@@ -346,7 +430,7 @@ def performance(request: Request):
         "performance.html",
         {
             "models": MODEL_PERFORMANCE,
-            **_load_regime_context(),
+            **_load_regime_context(_request_timezone(request)),
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
@@ -363,7 +447,7 @@ def history(request: Request):
         request,
         "history.html",
         {
-            "history": _load_history(),
+            "history": _load_history(_request_timezone(request)),
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
@@ -377,17 +461,25 @@ def healthz():
 
 
 @app.get("/api/dashboard/today")
-def api_today(date: str | None = Query(default=None)):
-    requested_date = _parse_date(date)
+def api_today(request: Request, date: str | None = Query(default=None)):
+    tz = _request_timezone(request)
+    requested_date = _parse_date(date, tz)
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
-    state = _load_state(requested_date)
-    market_by_match = _load_issued_market_overlay(requested_date)
+    state = _load_state(requested_date, tz)
+    market_by_match = _load_issued_market_overlay(requested_date, tz)
     upcoming = _load_upcoming()
     operational_health = _load_live_health()
     today_picks = build_today_picks(state.matches, market_by_match)
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
+        # Canonical timestamps stay timezone-aware ISO-8601 UTC. This block only
+        # tells a client how the calendar dates were resolved for display.
+        "display_timezone": {
+            "key": tz.key,
+            "iana": tz.iana,
+            "label": tz.display_label,
+        },
         "picks": [_pick_payload(pick) for pick in today_picks.picks],
         "pick_counts": {
             "total": today_picks.total,
@@ -481,8 +573,9 @@ def api_today(date: str | None = Query(default=None)):
 
 
 @app.get("/api/dashboard/history")
-def api_history():
-    rows = _load_history()
+def api_history(request: Request):
+    tz = _request_timezone(request)
+    rows = _load_history(tz)
     return JSONResponse(
         [
             {
@@ -500,16 +593,22 @@ def api_history():
 
 
 @app.get("/api/dashboard/value")
-def api_value(date: str | None = Query(default=None)):
-    requested_date = _parse_date(date)
+def api_value(request: Request, date: str | None = Query(default=None)):
+    tz = _request_timezone(request)
+    requested_date = _parse_date(date, tz)
     if requested_date is None:
         return JSONResponse({"error": "invalid date"}, status_code=400)
-    state = _load_state(requested_date)
-    market_by_match = _load_issued_market_overlay(requested_date)
+    state = _load_state(requested_date, tz)
+    market_by_match = _load_issued_market_overlay(requested_date, tz)
     today_picks = build_today_picks(state.matches, market_by_match)
     return JSONResponse(
         {
             "date": state.run_date.isoformat() if state.run_date else None,
+            "display_timezone": {
+                "key": tz.key,
+                "iana": tz.iana,
+                "label": tz.display_label,
+            },
             "value_bets": [
                 _pick_payload(p) for p in today_picks.picks if p.kind == VALUE_BET
             ],

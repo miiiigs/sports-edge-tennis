@@ -23,7 +23,7 @@
     {% else %}
     Live data is older than expected. Today's picks may not reflect the latest prices.
     {% endif %}
-    Checked {{ operational_health.checked_at.strftime('%H:%M UTC') }}.
+    Checked {{ tz_time(operational_health.checked_at) }}.
   </span>
 </div>
 {% endif %}
@@ -62,7 +62,7 @@
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
         <p class="pick-opponent">vs {{ pick.opponent }}</p>
-        <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }}</p>
+        <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }}</p>
       </div>
       <div class="pick-probability">
         {% if pick.is_wide_spread %}
@@ -158,7 +158,7 @@
       <article class="no-bet-card">
         <div class="no-bet-card-main">
           <h3 class="no-bet-match">{{ match.player_1 }} <span>vs</span> {{ match.player_2 }}</h3>
-          <p class="no-bet-context">{{ pres.start_time(match.scheduled_start) }} · {{ match.tournament }} · {{ pres.tier_label(match.competition_tier) }}</p>
+          <p class="no-bet-context">{{ tz_time(match.scheduled_start) }} · {{ match.tournament }} · {{ pres.tier_label(match.competition_tier) }}</p>
         </div>
         <div class="no-bet-reason">
           <span class="badge badge-model">NO BET</span>

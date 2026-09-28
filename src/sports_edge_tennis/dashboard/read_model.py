@@ -13,7 +13,9 @@ from decimal import Decimal
 import psycopg
 
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.dashboard.history_alignment import ALIGNED_MIN_MODEL_PROBABILITY
 from sports_edge_tennis.dashboard.market_overlay import MarketDecisionView
+from sports_edge_tennis.dashboard.picks import wide_spread_primary_details
 
 
 @dataclass(frozen=True)
@@ -140,7 +142,9 @@ def get_latest_live_operational_health(
     )
 
 
-def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
+def get_run_for_date(
+    conn: psycopg.Connection, run_date: date, timezone_name: str = "UTC"
+) -> RunState:
     """Return the newest completed prediction run for a slate date.
 
     In-progress runs are intentionally excluded from the client read model. A
@@ -168,12 +172,12 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
                   LIMIT 1
               ) target_mv ON TRUE
               WHERE prt.prediction_run_id = pr.prediction_run_id
-                AND (target_mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+                AND (target_mv.match_start_at AT TIME ZONE %s::text)::date = %s
           )
         ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
         LIMIT 1
         """,
-        (run_date,),
+        (timezone_name, run_date),
     ).fetchone()
     if run_row is not None:
         prediction_run_id, run_status, as_of = run_row
@@ -194,7 +198,7 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
         """
         SELECT pr.prediction_run_id, pr.run_status, pr.as_of
         FROM prediction_runs pr
-        WHERE pr.as_of::date = %s
+        WHERE (pr.as_of AT TIME ZONE %s::text)::date = %s
           AND pr.run_status = 'COMPLETED'
           AND NOT EXISTS (
               SELECT 1
@@ -204,7 +208,7 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
         ORDER BY pr.as_of DESC, pr.prediction_run_id DESC
         LIMIT 1
         """,
-        (run_date,),
+        (timezone_name, run_date),
     ).fetchone()
     if run_row is not None:
         prediction_run_id, run_status, as_of = run_row
@@ -221,11 +225,12 @@ def get_run_for_date(conn: psycopg.Connection, run_date: date) -> RunState:
         """
         SELECT started_at, status
         FROM ingest_runs
-        WHERE source_system = 'API_TENNIS' AND started_at::date = %s
+        WHERE source_system = 'API_TENNIS'
+          AND (started_at AT TIME ZONE %s::text)::date = %s
         ORDER BY started_at DESC, ingest_run_id DESC
         LIMIT 1
         """,
-        (run_date,),
+        (timezone_name, run_date),
     ).fetchone()
     if ingest_row is not None:
         started_at, status = ingest_row
@@ -275,20 +280,42 @@ _DAY_RUNS_SQL = """
               LIMIT 1
           ) target_mv ON TRUE
           WHERE prt.prediction_run_id = pr.prediction_run_id
-            AND (target_mv.match_start_at AT TIME ZONE 'UTC')::date = %s
+            AND (target_mv.match_start_at AT TIME ZONE %s::text)::date = %s
       )
     ORDER BY pr.as_of ASC, pr.prediction_run_id ASC
 """
 
 
-def completed_day_run_rows(conn: psycopg.Connection, run_date: date) -> list[tuple[int, datetime]]:
+def completed_day_run_rows(
+    conn: psycopg.Connection, run_date: date, timezone_name: str = "UTC"
+) -> list[tuple[int, datetime]]:
     """Completed prediction runs that target ``run_date``, earliest first."""
     return [
-        (int(row[0]), row[1]) for row in conn.execute(_DAY_RUNS_SQL, (run_date,)).fetchall()
+        (int(row[0]), row[1])
+        for row in conn.execute(
+            _DAY_RUNS_SQL, (timezone_name, run_date)
+        ).fetchall()
     ]
 
 
-def get_issued_day_state(conn: psycopg.Connection, run_date: date) -> RunState:
+def _qualifying_wide_spread_tracking(match: MatchView) -> bool:
+    """True for an A1/A2 same-side wide-spread case whose mean clears 60%.
+
+    Read-model display selection only: it decides whether a tracking case joins
+    Today's primary pick population. It never creates, edits, or re-scores a
+    persisted decision, and it cannot promote a wide-spread case into a bet.
+    """
+    details = wide_spread_primary_details(match)
+    if details is None:
+        return False
+    _side, a1_probability, a2_probability, _spread = details
+    mean = (a1_probability + a2_probability) / Decimal(2)
+    return mean >= ALIGNED_MIN_MODEL_PROBABILITY
+
+
+def get_issued_day_state(
+    conn: psycopg.Connection, run_date: date, timezone_name: str = "UTC"
+) -> RunState:
     """Return the issued daily Model Pick ledger for ``run_date``.
 
     Qualified Model Picks are the *earliest* Manager CONSENSUS per sporting
@@ -296,9 +323,9 @@ def get_issued_day_state(conn: psycopg.Connection, run_date: date) -> RunState:
     taken from the latest completed evaluation, excluding any match that already
     has an issued qualified pick (qualified always wins for a match).
     """
-    runs = completed_day_run_rows(conn, run_date)
+    runs = completed_day_run_rows(conn, run_date, timezone_name)
     if not runs:
-        return get_run_for_date(conn, run_date)
+        return get_run_for_date(conn, run_date, timezone_name)
 
     run_ids = [run_id for run_id, _ in runs]
     latest_run_id, latest_as_of = runs[-1]
@@ -327,11 +354,13 @@ def get_issued_day_state(conn: psycopg.Connection, run_date: date) -> RunState:
                 issued[match.match_id] = match
 
     # Additive latest-evaluation Wide-Spread tracking picks, never overriding an
-    # issued qualified pick for the same sporting match.
+    # issued qualified pick for the same sporting match. The A1/A2 tracking
+    # average must clear the same 60% floor as the aligned Model Picks ledger,
+    # so Today's primary pick population matches that established definition.
     for match in load_run_matches(conn, latest_run_id):
         if match.match_id in issued:
             continue
-        if match.manager_status == "NO_BET" and match.reason_code == "AGENT3_ABSTENTION_SPREAD_EXCEEDED":
+        if _qualifying_wide_spread_tracking(match):
             issued[match.match_id] = match
 
     return RunState(
@@ -347,6 +376,7 @@ def get_issued_day_state(conn: psycopg.Connection, run_date: date) -> RunState:
 def get_issued_market_decisions(
     conn: psycopg.Connection,
     run_date: date,
+    timezone_name: str = "UTC",
 ) -> dict[int, MarketDecisionView]:
     """First actually-issued BET decision per sporting match for the day.
 
@@ -354,7 +384,7 @@ def get_issued_market_decisions(
     a Value Bet keeps its issued bookmaker, price, edge, and stake even after a
     later re-evaluation or market refresh. Never recalculates old value bets.
     """
-    runs = completed_day_run_rows(conn, run_date)
+    runs = completed_day_run_rows(conn, run_date, timezone_name)
     if not runs:
         return {}
     rows = conn.execute(
@@ -446,7 +476,9 @@ def load_run_matches(conn: psycopg.Connection, prediction_run_id: int) -> list[M
     return matches
 
 
-def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
+def get_history(
+    conn: psycopg.Connection, limit: int = 30, timezone_name: str = "UTC"
+) -> list[RunSummary]:
     run_rows = conn.execute(
         """
         WITH run_dates AS (
@@ -454,7 +486,7 @@ def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
                 pr.prediction_run_id,
                 pr.run_status,
                 pr.as_of,
-                min((target_mv.match_start_at AT TIME ZONE 'UTC')::date) AS run_date
+                min((target_mv.match_start_at AT TIME ZONE %s::text)::date) AS run_date
             FROM prediction_runs pr
             JOIN prediction_run_targets prt
               ON prt.prediction_run_id = pr.prediction_run_id
@@ -491,7 +523,7 @@ def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
         ORDER BY run_date DESC, as_of DESC, prediction_run_id DESC
         LIMIT %s
         """,
-        (limit,),
+        (timezone_name, limit),
     ).fetchall()
 
     summaries: list[RunSummary] = []
@@ -514,19 +546,27 @@ def get_history(conn: psycopg.Connection, limit: int = 30) -> list[RunSummary]:
     populated_dates = {summary.run_date for summary in summaries}
     ingest_rows = conn.execute(
         """
-        SELECT DISTINCT ON ((started_at AT TIME ZONE 'UTC')::date)
+        WITH localized AS (
+            SELECT
+                ingest_run_id,
+                (started_at AT TIME ZONE %s::text)::date AS run_date,
+                started_at,
+                status
+            FROM ingest_runs
+            WHERE source_system = 'API_TENNIS'
+        )
+        SELECT DISTINCT ON (run_date)
             ingest_run_id,
-            (started_at AT TIME ZONE 'UTC')::date AS run_date,
+            run_date,
             started_at,
             status
-        FROM ingest_runs
-        WHERE source_system = 'API_TENNIS'
-        ORDER BY (started_at AT TIME ZONE 'UTC')::date DESC,
+        FROM localized
+        ORDER BY run_date DESC,
                  started_at DESC,
                  ingest_run_id DESC
         LIMIT %s
         """,
-        (limit,),
+        (timezone_name, limit),
     ).fetchall()
 
     for _ingest_id, run_date, as_of, status in ingest_rows:

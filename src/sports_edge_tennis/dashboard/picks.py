@@ -282,7 +282,7 @@ def _sort_key(card: PickCard) -> tuple[int, float, str]:
     return (order.get(card.kind, 3), start, card.player)
 
 
-def _wide_spread_primary_details(
+def wide_spread_primary_details(
     match,
 ) -> tuple[int, Decimal, Decimal, Decimal] | None:
     """Return same-side A1/A2 details for the A3-abstention spread rejection.
@@ -291,6 +291,10 @@ def _wide_spread_primary_details(
     a market decision. The Manager reason is treated as necessary but not
     sufficient: persisted A1/A2 predictions must also independently prove the
     same selected side, and A3 must be persisted as ABSTAINED.
+
+    The caller decides whether the returned A1/A2 mean clears the current 60%
+    rule. The read model uses this to keep Today's primary population aligned
+    with the Model Picks ledger without changing any stored decision.
     """
     if (
         match.manager_status != "NO_BET"
@@ -331,7 +335,7 @@ def build_pick_card(match, decision) -> PickCard | None:
     ``match`` is a ``read_model.MatchView``; ``decision`` is an optional
     ``market_overlay.MarketDecisionView`` for the same match.
     """
-    wide_details = _wide_spread_primary_details(match)
+    wide_details = wide_spread_primary_details(match)
     if wide_details is not None:
         selected_side, a1_probability, a2_probability, spread = wide_details
         player = pres.side_name(selected_side, match.player_1, match.player_2)
@@ -432,4 +436,5 @@ __all__ = [
     "build_today_picks",
     "build_value_opportunities",
     "pick_kind",
+    "wide_spread_primary_details",
 ]

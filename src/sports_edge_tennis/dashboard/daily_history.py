@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
-from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect, _latest_activity, templates
+from sports_edge_tennis.dashboard.app import (
+    DEMO_MODE,
+    _connect,
+    _latest_activity,
+    _request_timezone,
+    templates,
+)
 from sports_edge_tennis.dashboard.daily_bets import (
     DailyBetSummary,
     PeriodBetSummary,
@@ -23,6 +29,11 @@ from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_LIVE_HISTORY_START,
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
+)
+from sports_edge_tennis.dashboard.timezone import (
+    DEFAULT_TIMEZONE,
+    DashboardTimezone,
+    dashboard_today,
 )
 from sports_edge_tennis.performance.regimes import (
     RegimeCohort,
@@ -97,28 +108,32 @@ class ResultsView:
         return len(self.cohorts) > 1
 
 
-def _load_history(requested_date: date | None) -> ResultsView:
+def _load_history(
+    requested_date: date | None, tz: DashboardTimezone | None = None
+) -> ResultsView:
+    tz = tz or DEFAULT_TIMEZONE
     if DEMO_MODE:
         return ResultsView(selected_date=requested_date)
     conn = _connect()
     if conn is None:
         return ResultsView(selected_date=requested_date, failed=True)
     try:
-        summaries = load_daily_bet_summaries(conn)
+        summaries = load_daily_bet_summaries(conn, timezone_name=tz.iana)
         aligned_summaries = load_aligned_daily_bet_summaries(
             conn,
             start_date=ALIGNED_LIVE_HISTORY_START,
             min_consensus_probability=ALIGNED_MIN_MODEL_PROBABILITY,
+            timezone_name=tz.iana,
         )
         current_regime = resolve_current_regime(conn)
         current_summaries: tuple[DailyBetSummary, ...] = ()
         started_at = None
         if current_regime is not None:
             current_summaries = load_daily_bet_summaries(
-                conn, regime_key=current_regime.regime_key
+                conn, regime_key=current_regime.regime_key, timezone_name=tz.iana
             )
             started_at = current_regime_started_at(conn, current_regime.regime_key)
-        cohorts = load_regime_cohorts(conn)
+        cohorts = load_regime_cohorts(conn, timezone_name=tz.iana)
 
         selected_date = requested_date or (
             summaries[0].decision_date if summaries else None
@@ -130,7 +145,9 @@ def _load_history(requested_date: date | None) -> ResultsView:
                 (row for row in summaries if row.decision_date == selected_date),
                 None,
             )
-            bets = load_daily_bets(conn, decision_date=selected_date)
+            bets = load_daily_bets(
+                conn, decision_date=selected_date, timezone_name=tz.iana
+            )
         return ResultsView(
             all_summaries=summaries,
             aligned_summaries=aligned_summaries,
@@ -155,8 +172,9 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
     except ValueError:
         return HTMLResponse("Invalid date", status_code=400)
 
-    view = _load_history(requested_date)
-    as_of_date = datetime.now(UTC).date()
+    tz = _request_timezone(request)
+    view = _load_history(requested_date, tz)
+    as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
     return templates.TemplateResponse(
         request,
@@ -196,13 +214,14 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
 
 
 @router.get("/api/dashboard/bet-history")
-def api_bet_history(date: str | None = Query(default=None)):
+def api_bet_history(request: Request, date: str | None = Query(default=None)):
     try:
         requested_date = _parse_optional_date(date)
     except ValueError:
         return JSONResponse({"error": "invalid date"}, status_code=400)
 
-    view = _load_history(requested_date)
+    tz = _request_timezone(request)
+    view = _load_history(requested_date, tz)
     if view.failed:
         return JSONResponse({"error": "bet history unavailable"}, status_code=503)
 
@@ -210,7 +229,7 @@ def api_bet_history(date: str | None = Query(default=None)):
     selected_date = view.selected_date
     selected_summary = view.selected_summary
     bets = view.bets
-    as_of_date = datetime.now(UTC).date()
+    as_of_date = dashboard_today(tz)
     performance_windows = build_performance_windows(summaries, as_of_date=as_of_date)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
     aligned_windows = build_performance_windows(
@@ -223,6 +242,11 @@ def api_bet_history(date: str | None = Query(default=None)):
     return JSONResponse(
         {
             "as_of_date": as_of_date.isoformat(),
+            "display_timezone": {
+                "key": tz.key,
+                "iana": tz.iana,
+                "label": tz.display_label,
+            },
             # Existing key retained for compatibility: all production regimes.
             "performance_windows": {key: _period_json(value) for key, value in performance_windows.items()},
             "aligned_live_history": {

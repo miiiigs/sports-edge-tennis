@@ -37,7 +37,7 @@
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
         <p class="pick-opponent">vs {{ pick.opponent }}</p>
-        <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }} · {{ pick.tier_text }}</p>
+        <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }} · {{ pick.tier_text }}</p>
       </div>
       <div class="pick-probability">
         <span class="prob-value">{{ pick.probability_text }}</span>
@@ -101,7 +101,7 @@
         <div class="pick-identity">
           <h3 class="pick-player">{{ pick.player }}</h3>
           <p class="pick-opponent">vs {{ pick.opponent }}</p>
-          <p class="pick-context">{{ pick.start_text }} · {{ pick.tournament }}</p>
+          <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }}</p>
         </div>
         <div class="pick-probability">
           <span class="prob-value">{{ pick.probability_text }}</span>

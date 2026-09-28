@@ -585,7 +585,9 @@ def resolve_current_regime(conn: psycopg.Connection) -> RegimeIdentity | None:
     )
 
 
-def load_regime_cohorts(conn: psycopg.Connection) -> tuple[RegimeCohort, ...]:
+def load_regime_cohorts(
+    conn: psycopg.Connection, timezone_name: str = "UTC"
+) -> tuple[RegimeCohort, ...]:
     """Realised production performance, grouped by the regime that produced it.
 
     Every legitimate historical bet appears in exactly one cohort. Nothing is
@@ -600,8 +602,8 @@ def load_regime_cohorts(conn: psycopg.Connection) -> tuple[RegimeCohort, ...]:
             SELECT
                 b.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (b.published_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (b.published_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM first_bets b
             LEFT JOIN LATERAL (
@@ -651,7 +653,8 @@ def load_regime_cohorts(conn: psycopg.Connection) -> tuple[RegimeCohort, ...]:
         LEFT JOIN decision_settlements ds ON ds.decision_id = d.decision_id
         GROUP BY d.regime_key
         ORDER BY max(d.match_date) DESC NULLS LAST, d.regime_key
-        """
+        """,
+        (timezone_name, timezone_name),
     ).fetchall()
 
     cohorts = [
@@ -919,7 +922,7 @@ def resolve_current_model_regime(
 
 
 def load_model_regime_cohorts(
-    conn: psycopg.Connection,
+    conn: psycopg.Connection, timezone_name: str = "UTC"
 ) -> tuple[ModelRegimeCohort, ...]:
     rows = conn.execute(
         f"""
@@ -928,8 +931,8 @@ def load_model_regime_cohorts(
             SELECT
                 p.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (p.picked_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (p.picked_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM first_model_picks p
             LEFT JOIN LATERAL (
@@ -993,7 +996,8 @@ def load_model_regime_cohorts(
         FROM with_results
         GROUP BY model_regime_key
         ORDER BY max(match_date) DESC NULLS LAST, model_regime_key
-        """
+        """,
+        (timezone_name, timezone_name),
     ).fetchall()
 
     cohorts = [

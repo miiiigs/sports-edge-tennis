@@ -145,7 +145,7 @@
       Partial: <strong>{{ clv.partial_closes }}</strong> ·
       Missing: <strong>{{ clv.missing_closes }}</strong> ·
       No-bet closes: <strong>{{ clv.no_bet_complete_closes }}/{{ clv.no_bet_close_records }}</strong>
-      {% if clv.activation_at %}<br>Prospective activation: {{ clv.activation_at.strftime('%Y-%m-%d %H:%M UTC') }}{% endif %}
+      {% if clv.activation_at %}<br>Prospective activation: {{ tz_datetime(clv.activation_at, '%Y-%m-%d %H:%M') }}{% endif %}
       <br>Positive CLV over a small sample is not proof of profitability. Coverage and
       sample size must be read alongside the estimate.
     </p>

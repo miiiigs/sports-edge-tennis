@@ -201,6 +201,29 @@ a {
   color: var(--ink-muted);
 }
 
+.tz-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+}
+
+.tz-picker-label {
+  font-size: var(--step-1);
+  color: var(--ink-muted);
+}
+
+.tz-select {
+  font: inherit;
+  font-size: var(--step-1);
+  color: var(--ink);
+  background: var(--surface, transparent);
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.15));
+  border-radius: 6px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;
