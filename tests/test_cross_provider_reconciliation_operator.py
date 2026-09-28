@@ -420,7 +420,7 @@ def test_wide_spread_cohort_has_exactly_seven_mappings():
     assert [m.expected_result for m in operator.WIDE_SPREAD_REVIEWED_COHORT] == [
         "WON",
         "LOST",
-        "LOST",
+        "WON",
         "LOST",
         "VOID",
         "WON",
@@ -503,3 +503,29 @@ def test_wide_spread_dry_run_zero_writes(db: psycopg.Connection, monkeypatch):
     assert summary.mode == operator.MODE_DRY_RUN
     assert _count(db, "cross_provider_match_reconciliations") == 0
     assert _count(db, "match_result_observations", "match_id = %s", (target,)) == 0
+
+
+def test_wide_spread_130888_uses_earliest_pick_won(
+    db: psycopg.Connection, monkeypatch
+):
+    entry = next(
+        m
+        for m in operator.WIDE_SPREAD_REVIEWED_COHORT
+        if m.target_match_id == 130888
+    )
+    assert entry.evidence_match_id == 131072
+    assert entry.selection_source == operator.SELECTION_WIDE_SPREAD
+    assert entry.expected_result == "WON"
+
+    target, evidence = helpers._scenario(db, winner_side=2)
+    monkeypatch.setattr(
+        operator, "_load_wide_spread_selected_side", lambda conn, match_id: 2
+    )
+    summary = operator.run_operator(db, mappings=(_wide(target, evidence, "WON"),), emit=_quiet)
+    audit = summary.audits[0]
+    assert audit.selected_side == 2
+    assert audit.evidence_winner_side == 2
+    assert audit.computed_result == "WON"
+    assert audit.expected_result == "WON"
+    assert audit.action == operator.ACTION_WOULD_APPLY
+    assert summary.expected_result_mismatches == 0
