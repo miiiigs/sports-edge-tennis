@@ -22,7 +22,8 @@ from sports_edge_tennis.live.history_refresh import refresh_history_chunk
 NOW = datetime.now(UTC)
 MATCH_START = NOW - timedelta(hours=4)
 OBSERVED = NOW - timedelta(hours=5)
-RECEIVED_AT = NOW
+# Slightly in the past so the database clock is always >= the observation time.
+RECEIVED_AT = NOW - timedelta(seconds=5)
 MATCH_DAY = MATCH_START.date()
 
 
@@ -389,7 +390,7 @@ def test_retry_is_idempotent(db: psycopg.Connection):
         db, [_fixture(event_key="at-6")], received_at=RECEIVED_AT
     )
     second = ingest_api_tennis_source_a_fixtures(
-        db, [_fixture(event_key="at-6")], received_at=RECEIVED_AT + timedelta(minutes=1)
+        db, [_fixture(event_key="at-6")], received_at=RECEIVED_AT
     )
     assert first.matches[0].match_id == second.matches[0].match_id
     assert _count(db, "matches") == 1
