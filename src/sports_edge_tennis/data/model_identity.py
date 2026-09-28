@@ -27,6 +27,10 @@ def has_historical_model_identity(conn: psycopg.Connection, player_id: int) -> b
     Sportradar is a live fixture provider: its source IDs are attached to live
     canonical players and do not represent the deep historical corpus. A player
     that only carries live-provider identities must remain bridgeable.
+
+    Player source ids and aliases are reference identity data and are not
+    time-scoped here; the temporal boundary for replay is enforced by the dedicated
+    ``replay.identity_pit`` resolver.
     """
     return (
         conn.execute(
