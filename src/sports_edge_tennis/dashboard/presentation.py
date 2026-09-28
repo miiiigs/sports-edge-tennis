@@ -9,6 +9,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import ROUND_DOWN, Decimal
 
+from sports_edge_tennis.dashboard.timezone import (
+    DEFAULT_TIMEZONE,
+    DashboardTimezone,
+    format_dashboard_time,
+)
+
 STATE_LABELS = {
     "MODEL_CONSENSUS": "Consensus",
     "NO_BET_MODEL": "No Bet — Model Filter",
@@ -165,7 +171,8 @@ def system_status(latest_activity) -> tuple[str, str]:
     return ("stale", "Stale")
 
 
-def start_time(scheduled_start) -> str:
-    if scheduled_start is None:
-        return "—"
-    return scheduled_start.strftime("%H:%M UTC")
+def start_time(
+    scheduled_start, tz: DashboardTimezone | None = None
+) -> str:
+    """Display a scheduled start in the selected zone (UTC by default)."""
+    return format_dashboard_time(scheduled_start, tz or DEFAULT_TIMEZONE)

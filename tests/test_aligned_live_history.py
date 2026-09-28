@@ -59,7 +59,7 @@ def test_value_bet_api_exposes_sep10_aligned_live_history(monkeypatch):
     monkeypatch.setattr(
         daily_history,
         "_load_history",
-        lambda requested: daily_history.ResultsView(
+        lambda requested, tz=None: daily_history.ResultsView(
             all_summaries=rows,
             aligned_summaries=rows[:2],
         ),
@@ -87,7 +87,7 @@ def test_model_pick_api_exposes_sep10_aligned_live_history(monkeypatch):
     monkeypatch.setattr(
         model_pick_history,
         "_load_history",
-        lambda requested: ModelPickResultsView(
+        lambda requested, tz=None: ModelPickResultsView(
             all_summaries=rows,
             aligned_summaries=rows[:2],
         ),
@@ -113,7 +113,7 @@ def test_results_pages_label_aligned_history_as_actual_live_not_replay(monkeypat
     monkeypatch.setattr(
         daily_history,
         "_load_history",
-        lambda requested: daily_history.ResultsView(
+        lambda requested, tz=None: daily_history.ResultsView(
             all_summaries=bet_rows,
             aligned_summaries=bet_rows,
         ),
@@ -121,7 +121,7 @@ def test_results_pages_label_aligned_history_as_actual_live_not_replay(monkeypat
     monkeypatch.setattr(
         model_pick_history,
         "_load_history",
-        lambda requested: ModelPickResultsView(
+        lambda requested, tz=None: ModelPickResultsView(
             all_summaries=model_rows,
             aligned_summaries=model_rows,
         ),
@@ -137,7 +137,7 @@ def test_results_pages_label_aligned_history_as_actual_live_not_replay(monkeypat
     assert "issued model" in bets_page
     assert "at least 60%" in bets_page
     assert "original live ledger remains unchanged" in bets_page.lower()
-    assert "Aligned live history · since 10 Sep 2026" in picks_page
+    assert "Aligned Model Picks · since 10 Sep 2026" in picks_page
     assert "A1/A2 arithmetic mean" in picks_page
     assert "at least 60%" in picks_page
     assert "never Value Bets" in picks_page
@@ -188,4 +188,6 @@ def test_aligned_value_bet_query_filters_before_first_per_match_selection():
     assert "d.consensus_probability >= %s" in conn.sql
     assert "ORDER BY" in conn.sql
     assert conn.params[0] == Decimal("0.600000")
-    assert conn.params[1] == date(2026, 9, 10)
+    assert conn.params[1] == "UTC"
+    assert conn.params[2] == "UTC"
+    assert conn.params[3] == date(2026, 9, 10)

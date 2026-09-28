@@ -487,7 +487,7 @@ def test_empty_slate_renders_a_polished_empty_state(monkeypatch) -> None:
     monkeypatch.setattr(
         dashboard_app,
         "_load_state",
-        lambda requested_date: dashboard_app.RunState(
+        lambda requested_date, tz=None: dashboard_app.RunState(
             kind="EMPTY_SLATE",
             run_date=requested_date,
             as_of=None,

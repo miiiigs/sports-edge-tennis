@@ -31,15 +31,34 @@
         {% endif %}
       </nav>
       <div class="header-meta">
+        <div class="tz-picker">
+          <label class="tz-picker-label" for="tz-select">Time zone</label>
+          <select id="tz-select" class="tz-select" name="tz" aria-label="Dashboard time zone">
+            {% for option in dashboard_timezone_options %}
+            <option value="{{ option.key }}"{% if option.key == dashboard_timezone.key %} selected{% endif %}>{{ option.display_label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         {% set status_class, status_label = pres.system_status(latest_activity) %}
         <span class="status-dot status-{{ status_class }}" aria-hidden="true"></span>
         <span class="status-label">{{ status_label }}</span>
         {% if latest_activity %}
-        <span class="updated">· {{ latest_activity.strftime('%H:%M UTC') }}</span>
+        <span class="updated">· {{ tz_time(latest_activity) }}</span>
         {% endif %}
       </div>
     </div>
   </header>
+  <script>
+    (function () {
+      var select = document.getElementById('tz-select');
+      if (!select) return;
+      select.addEventListener('change', function () {
+        var url = new URL(window.location.href);
+        url.searchParams.set('tz', select.value);
+        window.location.href = url.toString();
+      });
+    })();
+  </script>
 
   {% if demo_mode %}
   <div class="demo-banner" role="status">Demo data — visual preview only</div>

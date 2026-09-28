@@ -8,7 +8,7 @@ those matches remain in this ledger but still count only once.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Iterable
 
@@ -17,11 +17,22 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from sports_edge_tennis.dashboard import presentation as pres
-from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect, _latest_activity, templates
+from sports_edge_tennis.dashboard.app import (
+    DEMO_MODE,
+    _connect,
+    _latest_activity,
+    _request_timezone,
+    templates,
+)
 from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_LIVE_HISTORY_START,
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
+)
+from sports_edge_tennis.dashboard.timezone import (
+    DEFAULT_TIMEZONE,
+    DashboardTimezone,
+    dashboard_today,
 )
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
@@ -76,6 +87,25 @@ class ModelPickRow:
     manager_policy_version: str | None
     model_regime_key: str | None
     agent_config_versions: tuple[str | None, ...] = (None, None, None)
+    pick_type: str | None = None
+
+    @property
+    def is_wide_spread(self) -> bool:
+        return self.pick_type == "A1_A2_WIDE_SPREAD"
+
+    @property
+    def type_label(self) -> str:
+        if self.is_wide_spread:
+            return "MODEL PICK · WIDE SPREAD"
+        if self.is_value_bet:
+            return "VALUE BET"
+        return "MODEL PICK"
+
+    @property
+    def probability_source_label(self) -> str:
+        if self.is_wide_spread:
+            return "A1/A2 Tracking Average"
+        return "Manager Consensus"
 
 
 @dataclass(frozen=True)
@@ -270,6 +300,7 @@ def load_aligned_daily_model_pick_summaries(
     conn: psycopg.Connection,
     *,
     limit: int = 5000,
+    timezone_name: str = "UTC",
 ) -> tuple[DailyModelPickSummary, ...]:
     """Daily current-rule aligned picks from Sep 10 live production evidence."""
     if limit < 1 or limit > 5000:
@@ -282,8 +313,8 @@ def load_aligned_daily_model_pick_summaries(
             SELECT
                 p.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (p.picked_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (p.picked_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM aligned_model_picks p
             LEFT JOIN LATERAL (
@@ -344,7 +375,7 @@ def load_aligned_daily_model_pick_summaries(
         ORDER BY match_date DESC
         LIMIT %s
         """,
-        (ALIGNED_LIVE_HISTORY_START, limit),
+        (timezone_name, timezone_name, ALIGNED_LIVE_HISTORY_START, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -354,6 +385,7 @@ def load_daily_model_pick_summaries(
     *,
     limit: int = 5000,
     model_regime_key: str | None = None,
+    timezone_name: str = "UTC",
 ) -> tuple[DailyModelPickSummary, ...]:
     if limit < 1 or limit > 5000:
         raise ValueError("limit must be between 1 and 5000")
@@ -365,8 +397,8 @@ def load_daily_model_pick_summaries(
             SELECT
                 p.*,
                 COALESCE(
-                    (mv.match_start_at AT TIME ZONE 'UTC')::date,
-                    (p.picked_at AT TIME ZONE 'UTC')::date
+                    (mv.match_start_at AT TIME ZONE %s::text)::date,
+                    (p.picked_at AT TIME ZONE %s::text)::date
                 ) AS match_date
             FROM first_model_picks p
             LEFT JOIN LATERAL (
@@ -427,7 +459,7 @@ def load_daily_model_pick_summaries(
         ORDER BY match_date DESC
         LIMIT %s
         """,
-        (model_regime_key, model_regime_key, limit),
+        (timezone_name, timezone_name, model_regime_key, model_regime_key, limit),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -436,6 +468,7 @@ def load_daily_model_picks(
     conn: psycopg.Connection,
     *,
     decision_date: date,
+    timezone_name: str = "UTC",
 ) -> tuple[ModelPickRow, ...]:
     veto_available = veto_audits_available(conn)
     rows = conn.execute(
@@ -510,12 +543,12 @@ def load_daily_model_picks(
         ) r ON TRUE
         LEFT JOIN first_bets fb ON fb.match_id = p.match_id
         WHERE COALESCE(
-            (mv.match_start_at AT TIME ZONE 'UTC')::date,
-            (p.picked_at AT TIME ZONE 'UTC')::date
+            (mv.match_start_at AT TIME ZONE %s::text)::date,
+            (p.picked_at AT TIME ZONE %s::text)::date
         ) = %s
         ORDER BY p.picked_at DESC, p.manager_consensus_result_id DESC
         """,
-        (decision_date,),
+        (timezone_name, timezone_name, decision_date),
     ).fetchall()
 
     return tuple(
@@ -541,15 +574,138 @@ def load_daily_model_picks(
     )
 
 
-def _load_history(requested_date: date | None) -> ModelPickResultsView:
+def load_aligned_daily_model_picks(
+    conn: psycopg.Connection,
+    *,
+    decision_date: date,
+    timezone_name: str = "UTC",
+) -> tuple[ModelPickRow, ...]:
+    """Detail rows for the aligned Model Picks population on one local day.
+
+    This uses the *same* ``aligned_production_model_picks_cte()`` as the daily
+    summary, so the selected-day detail count always equals the aligned
+    summary's pick count for that day. Wide-spread rows are tracking-only and
+    are labelled through ``pick_type``.
+    """
+    veto_available = veto_audits_available(conn)
+    rows = conn.execute(
+        f"""
+        WITH {aligned_production_model_picks_cte()},
+        {first_production_bets_cte(veto_available=veto_available)}
+        SELECT
+            p.manager_consensus_result_id,
+            p.picked_at,
+            mv.match_start_at,
+            t.canonical_name AS tournament,
+            p1.canonical_name AS player_1,
+            p2.canonical_name AS player_2,
+            CASE p.selected_side
+                WHEN 1 THEN p1.canonical_name
+                WHEN 2 THEN p2.canonical_name
+                ELSE NULL
+            END AS selection,
+            p.aligned_probability,
+            CASE
+                WHEN r.outcome_status = 'COMPLETED'
+                     AND r.winner_side = p.selected_side THEN 'WON'
+                WHEN r.outcome_status = 'COMPLETED'
+                     AND r.winner_side IN (1, 2)
+                     AND r.winner_side <> p.selected_side THEN 'LOST'
+                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED') THEN 'VOID'
+                ELSE 'PENDING'
+            END AS result_status,
+            (
+                fb.decision_id IS NOT NULL
+                AND fb.selection_side = p.selected_side
+            ) AS is_value_bet,
+            mpv.policy_version AS manager_policy_version,
+            p.aligned_pick_type
+        FROM aligned_model_picks p
+        JOIN matches m ON m.match_id = p.match_id
+        JOIN tournament_editions te
+          ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        LEFT JOIN LATERAL (
+            SELECT
+                mv0.player_1_id,
+                mv0.player_2_id,
+                mv0.match_start_at
+            FROM match_versions mv0
+            WHERE mv0.match_id = p.match_id
+              AND mv0.as_of <= p.picked_at
+              AND mv0.source_observed_at <= p.picked_at
+            ORDER BY mv0.as_of DESC,
+                     mv0.source_observed_at DESC,
+                     mv0.match_version_id DESC
+            LIMIT 1
+        ) mv ON TRUE
+        LEFT JOIN players p1 ON p1.player_id = mv.player_1_id
+        LEFT JOIN players p2 ON p2.player_id = mv.player_2_id
+        LEFT JOIN LATERAL (
+            SELECT
+                mro.outcome_status::text AS outcome_status,
+                mro.winner_side
+            FROM match_result_observations mro
+            WHERE mro.match_id = p.match_id
+              AND mro.outcome_status IN (
+                  'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+              )
+            ORDER BY mro.as_of DESC,
+                     mro.source_observed_at DESC,
+                     mro.match_result_observation_id DESC
+            LIMIT 1
+        ) r ON TRUE
+        LEFT JOIN first_bets fb ON fb.match_id = p.match_id
+        LEFT JOIN manager_consensus_results mcr2
+          ON mcr2.manager_consensus_result_id = p.manager_consensus_result_id
+        LEFT JOIN manager_policy_versions mpv
+          ON mpv.manager_policy_version_id = mcr2.manager_policy_version_id
+        WHERE COALESCE(
+            (mv.match_start_at AT TIME ZONE %s::text)::date,
+            (p.picked_at AT TIME ZONE %s::text)::date
+        ) = %s
+        ORDER BY p.picked_at DESC, p.manager_consensus_result_id DESC
+        """,
+        (timezone_name, timezone_name, decision_date),
+    ).fetchall()
+
+    return tuple(
+        ModelPickRow(
+            manager_consensus_result_id=int(row[0]),
+            picked_at=row[1],
+            match_start_at=row[2],
+            tournament=str(row[3]) if row[3] is not None else None,
+            player_1=str(row[4]) if row[4] is not None else None,
+            player_2=str(row[5]) if row[5] is not None else None,
+            selection=str(row[6]) if row[6] is not None else None,
+            consensus_probability=Decimal(row[7]) if row[7] is not None else None,
+            result_status=str(row[8]),
+            is_value_bet=bool(row[9]),
+            manager_policy_version=str(row[10]) if row[10] is not None else None,
+            model_regime_key=None,
+            agent_config_versions=(None, None, None),
+            pick_type=str(row[11]) if row[11] is not None else None,
+        )
+        for row in rows
+    )
+
+
+def _load_history(
+    requested_date: date | None, tz: DashboardTimezone | None = None
+) -> ModelPickResultsView:
+    tz = tz or DEFAULT_TIMEZONE
     if DEMO_MODE:
         return ModelPickResultsView(selected_date=requested_date)
     conn = _connect()
     if conn is None:
         return ModelPickResultsView(selected_date=requested_date, failed=True)
     try:
-        summaries = load_daily_model_pick_summaries(conn)
-        aligned_summaries = load_aligned_daily_model_pick_summaries(conn)
+        # Aligned current-rule population is the primary client ledger.
+        aligned_summaries = load_aligned_daily_model_pick_summaries(
+            conn, timezone_name=tz.iana
+        )
+        # Original first-production Manager ledger is retained for auditing.
+        summaries = load_daily_model_pick_summaries(conn, timezone_name=tz.iana)
         current_regime = resolve_current_model_regime(conn)
         current_summaries: tuple[DailyModelPickSummary, ...] = ()
         started_at = None
@@ -559,25 +715,33 @@ def _load_history(requested_date: date | None) -> ModelPickResultsView:
             and not current_regime.is_inconsistent
         ):
             current_summaries = load_daily_model_pick_summaries(
-                conn, model_regime_key=current_regime.regime_key
+                conn,
+                model_regime_key=current_regime.regime_key,
+                timezone_name=tz.iana,
             )
             started_at = current_model_regime_started_at(
                 conn, current_regime.regime_key
             )
-        cohorts = load_model_regime_cohorts(conn)
+        cohorts = load_model_regime_cohorts(conn, timezone_name=tz.iana)
         selected_date = requested_date or (
-            summaries[0].decision_date if summaries else None
+            aligned_summaries[0].decision_date
+            if aligned_summaries
+            else (summaries[0].decision_date if summaries else None)
         )
+        # The selected-day summary and detail both come from the aligned
+        # population, so they can never disagree about the day's pick count.
         selected_summary = next(
             (
                 row
-                for row in summaries
+                for row in aligned_summaries
                 if selected_date is not None and row.decision_date == selected_date
             ),
             None,
         )
         picks = (
-            load_daily_model_picks(conn, decision_date=selected_date)
+            load_aligned_daily_model_picks(
+                conn, decision_date=selected_date, timezone_name=tz.iana
+            )
             if selected_date is not None
             else ()
         )
@@ -617,8 +781,9 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
     except ValueError:
         return HTMLResponse("Invalid date", status_code=400)
 
-    view = _load_history(requested_date)
-    as_of_date = datetime.now(UTC).date()
+    tz = _request_timezone(request)
+    view = _load_history(requested_date, tz)
+    as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
     return templates.TemplateResponse(
         request,
@@ -627,7 +792,11 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
-            "daily_summaries": view.all_summaries,
+            # Primary aligned ledger drives the daily table and detail rows.
+            "daily_summaries": aligned_summaries,
+            # Original first-production Manager ledger, kept for auditing.
+            "original_daily_summaries": view.all_summaries,
+            "original_picks": sum(row.picks for row in view.all_summaries),
             "selected_date": view.selected_date,
             "selected_summary": view.selected_summary,
             "daily_picks": view.picks,
@@ -655,19 +824,22 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
 
 
 @router.get("/api/dashboard/model-pick-results")
-def api_model_pick_results(date: str | None = Query(default=None)):
+def api_model_pick_results(request: Request, date: str | None = Query(default=None)):
     try:
         requested_date = _parse_optional_date(date)
     except ValueError:
         return JSONResponse({"error": "invalid date"}, status_code=400)
 
-    view = _load_history(requested_date)
+    tz = _request_timezone(request)
+    view = _load_history(requested_date, tz)
     if view.failed:
         return JSONResponse({"error": "model pick history unavailable"}, status_code=503)
 
-    as_of_date = datetime.now(UTC).date()
+    as_of_date = dashboard_today(tz)
     all_windows = build_model_pick_windows(view.all_summaries, as_of_date=as_of_date)
-    aligned_summaries = since_aligned_start(view.all_summaries)
+    # The aligned block is built from the aligned current-rule population, the
+    # same population the page headlines and daily table use.
+    aligned_summaries = since_aligned_start(view.aligned_summaries)
     aligned_windows = build_model_pick_windows(
         aligned_summaries, as_of_date=as_of_date
     )
@@ -678,6 +850,11 @@ def api_model_pick_results(date: str | None = Query(default=None)):
     return JSONResponse(
         {
             "as_of_date": as_of_date.isoformat(),
+            "display_timezone": {
+                "key": tz.key,
+                "iana": tz.iana,
+                "label": tz.display_label,
+            },
             "aligned_live_history": {
                 "start_date": ALIGNED_LIVE_HISTORY_START.isoformat(),
                 "scope": "SEP10_LIVE_MODEL_PICKS_ALIGNED_TO_CURRENT_60_PERCENT_RULE",

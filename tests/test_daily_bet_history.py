@@ -223,6 +223,6 @@ def test_daily_bets_keep_pending_separate_and_compute_one_unit_profit():
     assert rows[2].settlement_status == "PENDING"
     assert rows[2].profit_units is None
     assert rows[0].selection == "Player A"
-    assert conn.calls[0][1] == (date(2026, 9, 13),)
+    assert conn.calls[0][1] == ("UTC", "UTC", date(2026, 9, 13))
     assert "published_at IS NOT NULL" in conn.calls[0][0]
-    assert "match_start_at AT TIME ZONE 'UTC'" in conn.calls[0][0]
+    assert "match_start_at AT TIME ZONE %s::text" in conn.calls[0][0]

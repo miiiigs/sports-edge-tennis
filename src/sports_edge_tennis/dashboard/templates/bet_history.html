@@ -160,7 +160,7 @@
     more than one system version{% endif %}. Older bets keep the price, the selection and the
     result they had at the time — nothing is re-scored against today's models.
     One-unit performance by scheduled match day through
-    {{ performance_as_of.strftime('%d %b %Y') }} UTC. ROI uses settled bets only.
+    {{ performance_as_of.strftime('%d %b %Y') }} ({{ dashboard_timezone.display_label }}). ROI uses settled bets only.
   </p>
   <div class="table-wrap">
     <table class="data">
@@ -210,7 +210,7 @@
 {% if selected_summary %}
 <section class="section" aria-label="Selected day">
   <h2 class="section-title">{{ selected_date.strftime('%a %d %b %Y') }}</h2>
-  <p class="section-note">Every published bet scheduled for this UTC match day.</p>
+  <p class="section-note">Every published bet scheduled for this match day in {{ dashboard_timezone.display_label }}.</p>
 
   <div class="stat-grid" style="margin-bottom: 14px;">
     <div class="stat"><span class="stat-value">{{ selected_summary.bets }}</span><span class="stat-label">Bets</span></div>
@@ -239,11 +239,11 @@
       <tbody>
         {% for bet in daily_bets %}
         <tr>
-          <td class="num">{{ bet.decision_at.strftime('%H:%M UTC') }}</td>
+          <td class="num">{{ tz_time(bet.decision_at) }}</td>
           <th scope="row" class="wrap">{{ bet.selection or '—' }}</th>
           <td class="wrap">
             {{ bet.player_1 or 'Player 1' }} vs {{ bet.player_2 or 'Player 2' }}<br>
-            <span class="stat-note">{{ bet.tournament or 'Tournament unavailable' }}{% if bet.match_start_at %} · {{ bet.match_start_at.strftime('%d %b %H:%M UTC') }}{% endif %}</span>
+            <span class="stat-note">{{ bet.tournament or 'Tournament unavailable' }}{% if bet.match_start_at %} · {{ tz_datetime(bet.match_start_at) }}{% endif %}</span>
           </td>
           <td class="num">{{ '%.2f'|format(bet.market_decimal_price) }}{% if bet.bookmaker_code %}<br><span class="stat-note">{{ bet.bookmaker_code }}</span>{% endif %}</td>
           <td class="num">{% if bet.consensus_probability is not none %}{{ pct(bet.consensus_probability) }}{% else %}—{% endif %}</td>
