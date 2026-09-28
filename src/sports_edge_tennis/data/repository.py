@@ -7,6 +7,14 @@ from decimal import Decimal
 import psycopg
 
 from .contracts import IdentityResolution, MatchStatLine
+from .cross_provider_reconciliation import (
+    PROSPECTIVE_REUSE_SOURCE_SYSTEMS,
+    REUSE_STATUS_AMBIGUOUS,
+    REUSE_STATUS_REUSED,
+    CrossProviderIdentityAmbiguous,
+    SportingIdentity,
+    resolve_cross_provider_canonical_reuse,
+)
 from .normalize import normalize_person_lookup, tennis_data_aliases
 
 
@@ -385,6 +393,85 @@ class HistoricalRepository:
             (tournament_id, season_year, edition_name, surface, start_date, end_date),
         ).fetchone()[0]
 
+    def _resolve_canonical_reuse(
+        self,
+        *,
+        tournament_edition_id: int,
+        source_system: str,
+        source_match_id: str,
+        player_1_id: int,
+        player_2_id: int,
+        match_start_at: datetime | None,
+        tour_scope: str,
+        competition_tier: str,
+    ) -> int | None:
+        """Deterministic prospective canonical reuse for an unseen provider event.
+
+        Returns the existing canonical ``match_id`` to reuse, ``None`` to create a
+        new canonical match, or raises ``CrossProviderIdentityAmbiguous`` to fail
+        closed when more than one safe candidate exists.
+        """
+        if match_start_at is None or player_1_id == player_2_id:
+            print(
+                "CROSS_PROVIDER_CANONICAL_CREATE "
+                f"source={source_system} source_match_id={source_match_id} "
+                "candidates=0 reason=IDENTITY_CONFLICT",
+                flush=True,
+            )
+            return None
+
+        edition = self.conn.execute(
+            """
+            SELECT tournament_id, season_year
+            FROM tournament_editions
+            WHERE tournament_edition_id = %s
+            """,
+            (tournament_edition_id,),
+        ).fetchone()
+        if edition is None:
+            return None
+
+        incoming = SportingIdentity(
+            player_1_id=player_1_id,
+            player_2_id=player_2_id,
+            tournament_id=int(edition[0]),
+            season_year=int(edition[1]),
+            tour_scope=tour_scope,
+            competition_tier=competition_tier,
+            match_start_at=match_start_at,
+        )
+        resolution = resolve_cross_provider_canonical_reuse(
+            self.conn, incoming=incoming
+        )
+        evidence = (
+            f"source={source_system} source_match_id={source_match_id} "
+            f"candidates={resolution.candidate_count}"
+        )
+        if resolution.status == REUSE_STATUS_REUSED:
+            delta = resolution.start_delta_minutes
+            print(
+                "CROSS_PROVIDER_CANONICAL_REUSE "
+                f"{evidence} canonical_match_id={resolution.match_id} "
+                f"orientation={resolution.orientation} "
+                f"start_delta_minutes={delta if delta is None else format(delta, 'g')}",
+                flush=True,
+            )
+            return resolution.match_id
+        if resolution.status == REUSE_STATUS_AMBIGUOUS:
+            print(
+                f"CROSS_PROVIDER_CANONICAL_BLOCKED reason=AMBIGUOUS {evidence}",
+                flush=True,
+            )
+            raise CrossProviderIdentityAmbiguous(
+                "ambiguous cross-provider canonical candidates "
+                f"source={source_system} source_match_id={source_match_id}"
+            )
+        print(
+            f"CROSS_PROVIDER_CANONICAL_CREATE reason={resolution.reason} {evidence}",
+            flush=True,
+        )
+        return None
+
     def upsert_match_version(
         self,
         *,
@@ -428,7 +515,28 @@ class HistoricalRepository:
                 (source_system, source_record_hash),
             ).fetchone()
 
-        if match_row is None:
+        reuse_match_id: int | None = None
+        if (
+            match_row is None
+            and source_match_id
+            and source_system in PROSPECTIVE_REUSE_SOURCE_SYSTEMS
+        ):
+            reuse_match_id = self._resolve_canonical_reuse(
+                tournament_edition_id=tournament_edition_id,
+                source_system=source_system,
+                source_match_id=source_match_id,
+                player_1_id=player_1_id,
+                player_2_id=player_2_id,
+                match_start_at=match_start_at,
+                tour_scope=tour_scope,
+                competition_tier=competition_tier,
+            )
+
+        if match_row is not None:
+            match_id = match_row[0]
+        elif reuse_match_id is not None:
+            match_id = reuse_match_id
+        else:
             match_id = self.conn.execute(
                 """
                 INSERT INTO matches (tournament_edition_id)
@@ -437,8 +545,6 @@ class HistoricalRepository:
                 """,
                 (tournament_edition_id,),
             ).fetchone()[0]
-        else:
-            match_id = match_row[0]
 
         version_row = self.conn.execute(
             """

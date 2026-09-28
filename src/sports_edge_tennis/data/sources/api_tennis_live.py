@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import json
+import zlib
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from typing import Any, Iterable, Mapping
 
 import psycopg
 
+from ..cross_provider_reconciliation import CrossProviderIdentityAmbiguous
 from ..hashing import source_hash
 from ..normalize import collapse_whitespace
 from ..repository import HistoricalRepository, MatchLocator
-
 
 SOURCE_SYSTEM = "API_TENNIS"
 SOURCE_DATASET = "api_tennis_scheduled_fixtures"
@@ -168,9 +169,15 @@ def ingest_api_tennis_source_a_fixtures(
     ingested: list[ApiTennisIngestedMatch] = []
     try:
         for record in records:
+            # Serialize identity resolution for this provider event across workers.
+            # The source-id unique index stays authoritative; this only prevents two
+            # workers from both deciding to create a canonical match for one event.
+            lock_key = _event_identity_lock_key(record.source_match_id)
+            conn.execute("SELECT pg_advisory_lock(%s)", (lock_key,))
             try:
                 _ensure_existing_event_identity(conn, record)
-            except ApiTennisSourceAError as exc:
+                locator = _persist_fixture(repository, record)
+            except (ApiTennisSourceAError, CrossProviderIdentityAmbiguous) as exc:
                 rejected_rows.append(
                     {
                         "event_key": record.source_match_id,
@@ -178,7 +185,8 @@ def ingest_api_tennis_source_a_fixtures(
                     }
                 )
                 continue
-            locator = _persist_fixture(repository, record)
+            finally:
+                conn.execute("SELECT pg_advisory_unlock(%s)", (lock_key,))
             ingested.append(
                 ApiTennisIngestedMatch(
                     source_match_id=record.source_match_id,
@@ -227,6 +235,12 @@ def _ingest_status(*, success_count: int, rejected_count: int) -> str:
     if success_count == 0:
         return "FAILED"
     return "PARTIAL"
+
+
+def _event_identity_lock_key(source_match_id: str) -> int:
+    """Signed 64-bit advisory-lock key for one provider event identity."""
+    digest = zlib.crc32(f"{SOURCE_SYSTEM}:{source_match_id}".encode()) & 0xFFFFFFFF
+    return digest - 0x100000000 if digest >= 0x80000000 else digest
 
 
 def _parse_fixture(
