@@ -437,10 +437,30 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     conn = psycopg.connect(dsn, autocommit=False)
+    committed = False
     try:
-        run_operator(conn, apply=args.apply)
+        summary = run_operator(conn, apply=args.apply)
+        if (
+            args.apply
+            and not summary.aborted
+            and summary.blocker is None
+            and summary.failed == 0
+        ):
+            conn.commit()
+            committed = True
+        else:
+            conn.rollback()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
+    print(
+        "COMMIT mode="
+        + (MODE_APPLY if args.apply else MODE_DRY_RUN)
+        + " committed="
+        + ("true" if committed else "false")
+    )
     return 0
 
 

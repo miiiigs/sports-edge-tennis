@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+import os
 import sys
 from pathlib import Path
 
@@ -247,3 +248,144 @@ def test_apply_mode_fails_closed_when_schema_missing(
     assert summary.blocker == "RECONCILIATION_SCHEMA_MISSING"
     assert summary.newly_applied == 0
     assert _count(db, "cross_provider_match_reconciliations") == 0
+
+
+PROD_TARGETS = [130874, 130885, 130886, 130889, 130898, 131021, 131038]
+PROD_EVIDENCE = [130832, 131089, 131069, 131071, 131139, 131088, 131140]
+PROD_WINNER = {130832: 1, 131089: 2, 131069: 2, 131071: 1, 131139: 2, 131088: 2, 131140: 2}
+PROD_SELECTED = {130874: 2, 130885: 1, 130886: 2, 130889: 2, 130898: 1, 131021: 1, 131038: 1}
+
+
+def _seed_production_cohort(conn: psycopg.Connection) -> None:
+    for target, evidence in zip(PROD_TARGETS, PROD_EVIDENCE):
+        pa = helpers._mk_player(conn, f"A{target}")
+        pb = helpers._mk_player(conn, f"B{target}")
+        tournament = helpers._mk_tournament(conn, f"T{target}")
+        target_edition = helpers._mk_edition(conn, tournament, 2026, f"ET{target}")
+        evidence_edition = helpers._mk_edition(conn, tournament, 2026, f"EE{target}")
+        conn.execute(
+            "INSERT INTO matches (match_id, tournament_edition_id) "
+            "OVERRIDING SYSTEM VALUE VALUES (%s, %s)",
+            (target, target_edition),
+        )
+        conn.execute(
+            "INSERT INTO matches (match_id, tournament_edition_id) "
+            "OVERRIDING SYSTEM VALUE VALUES (%s, %s)",
+            (evidence, evidence_edition),
+        )
+        helpers._mk_version(conn, target, pa, pb, helpers.BASE_START)
+        helpers._mk_version(conn, evidence, pa, pb, helpers.BASE_START)
+        helpers._mk_source(conn, target, "SPORTRADAR", f"sr-{target}")
+        helpers._mk_source(conn, evidence, "API_TENNIS", f"at-{evidence}")
+        helpers._mk_result(conn, evidence, winner_side=PROD_WINNER[evidence])
+
+
+def _sides(conn: psycopg.Connection, match_id: int):
+    return PROD_SELECTED.get(match_id)
+
+
+def _test_dsn(monkeypatch) -> str:
+    dsn = os.environ.get("TEST_POSTGRES_DSN") or os.environ.get("DATABASE_URL")
+    monkeypatch.setenv("DATABASE_URL", dsn)
+    monkeypatch.delenv("TENNIS_DATABASE_URL", raising=False)
+    return dsn
+
+
+def test_cli_apply_commits_across_new_connection(db: psycopg.Connection, monkeypatch):
+    _seed_production_cohort(db)
+    monkeypatch.setattr(operator, "_load_selected_side", _sides)
+    dsn = _test_dsn(monkeypatch)
+
+    assert operator.main(["--apply"]) == 0
+
+    with psycopg.connect(dsn, autocommit=True) as fresh:
+        assert (
+            int(
+                fresh.execute(
+                    "SELECT count(*) FROM cross_provider_match_reconciliations"
+                ).fetchone()[0]
+            )
+            == 7
+        )
+        for target in PROD_TARGETS:
+            assert (
+                int(
+                    fresh.execute(
+                        "SELECT count(*) FROM match_result_observations WHERE match_id = %s",
+                        (target,),
+                    ).fetchone()[0]
+                )
+                == 1
+            )
+
+
+def test_cli_apply_rolls_back_across_new_connection(
+    db: psycopg.Connection, monkeypatch
+):
+    _seed_production_cohort(db)
+    monkeypatch.setattr(operator, "_load_selected_side", _sides)
+    dsn = _test_dsn(monkeypatch)
+
+    real_apply = operator.apply_cross_provider_reconciliation
+    calls = {"n": 0}
+
+    def _flaky(conn, **kwargs):
+        calls["n"] += 1
+        if calls["n"] >= 2:
+            raise RuntimeError("forced failure")
+        return real_apply(conn, **kwargs)
+
+    monkeypatch.setattr(operator, "apply_cross_provider_reconciliation", _flaky)
+
+    with pytest.raises(RuntimeError):
+        operator.main(["--apply"])
+
+    with psycopg.connect(dsn, autocommit=True) as fresh:
+        assert (
+            int(
+                fresh.execute(
+                    "SELECT count(*) FROM cross_provider_match_reconciliations"
+                ).fetchone()[0]
+            )
+            == 0
+        )
+        assert (
+            int(
+                fresh.execute(
+                    "SELECT count(*) FROM match_result_observations "
+                    "WHERE match_id = ANY(%s)",
+                    (PROD_TARGETS,),
+                ).fetchone()[0]
+            )
+            == 0
+        )
+
+
+def test_cli_dry_run_writes_nothing_across_new_connection(
+    db: psycopg.Connection, monkeypatch
+):
+    _seed_production_cohort(db)
+    monkeypatch.setattr(operator, "_load_selected_side", _sides)
+    dsn = _test_dsn(monkeypatch)
+
+    assert operator.main([]) == 0
+
+    with psycopg.connect(dsn, autocommit=True) as fresh:
+        assert (
+            int(
+                fresh.execute(
+                    "SELECT count(*) FROM cross_provider_match_reconciliations"
+                ).fetchone()[0]
+            )
+            == 0
+        )
+        assert (
+            int(
+                fresh.execute(
+                    "SELECT count(*) FROM match_result_observations "
+                    "WHERE match_id = ANY(%s)",
+                    (PROD_TARGETS,),
+                ).fetchone()[0]
+            )
+            == 0
+        )
