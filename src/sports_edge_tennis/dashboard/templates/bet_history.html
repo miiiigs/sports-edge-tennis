@@ -2,6 +2,8 @@
 {% block title %}Value Bets Results — Sports Edge Tennis{% endblock %}
 {% set active_nav = 'value_results' %}
 
+{% from "_pagination.html" import pager with context %}
+
 {% block content %}
 <header class="page-header">
   <h1 class="page-title">Value Bets Results</h1>
@@ -258,6 +260,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager(detail_pagination, 'detail_page') }}
 </section>
 {% endif %}
 
@@ -343,6 +346,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager(history_pagination, 'history_page') }}
 </section>
 
 <section class="section" aria-label="Published pick timeline and paper bankroll">

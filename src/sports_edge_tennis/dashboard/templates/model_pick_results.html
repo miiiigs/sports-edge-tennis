@@ -2,6 +2,8 @@
 {% block title %}Model Picks Results — Sports Edge Tennis{% endblock %}
 {% set active_nav = 'model_results' %}
 
+{% from "_pagination.html" import pager with context %}
+
 {% block content %}
 <header class="page-header">
   <h1 class="page-title">Model Picks Results</h1>
@@ -45,7 +47,7 @@
   </p>
 
   <div class="stat-grid">
-    <div class="stat"><span class="stat-value">{{ aligned_live_picks }}</span><span class="stat-label">Picks</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_live_picks }}</span><span class="stat-label">Picks since {{ aligned_live_start.strftime('%d %b') }}</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}</span><span class="stat-label">Wins</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Losses</span></div>
     <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.hit_rate) }}</span><span class="stat-label">Win rate</span></div>
@@ -117,6 +119,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager(history_pagination, 'history_page') }}
 </section>
 
 {% if selected_summary %}
@@ -175,6 +178,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager(detail_pagination, 'detail_page') }}
 </section>
 {% endif %}
 
@@ -324,10 +328,11 @@
             <td class="num">{{ day.pending }}</td>
             <td class="num">{{ pct(day.hit_rate) }}</td>
           </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+    {{ pager(audit_pagination, 'audit_page') }}
 
     {% if has_multiple_regimes %}
     <h3 class="section-title" style="margin-top: 24px; font-size: 1.05rem;">Performance by system version</h3>

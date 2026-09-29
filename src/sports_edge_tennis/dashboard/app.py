@@ -19,6 +19,11 @@ from sports_edge_tennis.dashboard.demo import (
     build_demo_state,
 )
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
+from sports_edge_tennis.dashboard.pagination import (
+    DEFAULT_PAGE_SIZE,
+    build_page_url,
+    paginate,
+)
 from sports_edge_tennis.dashboard.picks import (
     BLOCKED,
     MODEL_PICK,
@@ -397,7 +402,11 @@ def today(request: Request, date: str | None = Query(default=None)):
 
 
 @app.get("/value", response_class=HTMLResponse)
-def value(request: Request, date: str | None = Query(default=None)):
+def value(
+    request: Request,
+    date: str | None = Query(default=None),
+    model_page: int = Query(default=1, ge=1),
+):
     """Market/value detail, kept off the default morning screen."""
     tz = _request_timezone(request)
     requested_date = _parse_date(date, tz)
@@ -407,6 +416,14 @@ def value(request: Request, date: str | None = Query(default=None)):
     state = _load_state(requested_date, tz)
     market_by_match = _load_issued_market_overlay(requested_date, tz)
     today_picks = build_today_picks(state.matches, market_by_match)
+    # Wide-Spread tracking picks are shown on Today/Model Picks, never in the
+    # Value page's model-only table (they are not a market-value comparison).
+    model_only_picks = tuple(
+        p for p in today_picks.picks if p.kind == MODEL_PICK and not p.is_wide_spread
+    )
+    model_rows, model_pagination = paginate(
+        model_only_picks, page=model_page, page_size=DEFAULT_PAGE_SIZE
+    )
     return templates.TemplateResponse(
         request,
         "value.html",
@@ -418,7 +435,9 @@ def value(request: Request, date: str | None = Query(default=None)):
             "demo_mode": DEMO_MODE,
             "value_picks": [p for p in today_picks.picks if p.kind == VALUE_BET],
             "blocked_picks": [p for p in today_picks.picks if p.kind == BLOCKED],
-            "model_only_picks": [p for p in today_picks.picks if p.kind == MODEL_PICK],
+            "model_only_picks": model_rows,
+            "model_pagination": model_pagination,
+            "page_url": lambda param, page: build_page_url(request, param, page),
         },
     )
 

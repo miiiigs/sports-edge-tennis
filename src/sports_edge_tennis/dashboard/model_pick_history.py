@@ -17,6 +17,10 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.dashboard.aligned_model_picks import (
+    ALIGNED_PICK_DATE_FILTER,
+    aligned_production_model_picks_cte,
+)
 from sports_edge_tennis.dashboard.app import (
     DEMO_MODE,
     _connect,
@@ -29,6 +33,11 @@ from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
 )
+from sports_edge_tennis.dashboard.pagination import (
+    DEFAULT_PAGE_SIZE,
+    build_page_url,
+    paginate,
+)
 from sports_edge_tennis.dashboard.timezone import (
     DEFAULT_TIMEZONE,
     DashboardTimezone,
@@ -38,7 +47,6 @@ from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
     ModelRegimeIdentity,
     current_model_regime_started_at,
-    PRODUCTION_RUN_PREDICATE,
     first_production_bets_cte,
     first_production_model_picks_cte,
     load_model_regime_cohorts,
@@ -88,6 +96,7 @@ class ModelPickRow:
     model_regime_key: str | None
     agent_config_versions: tuple[str | None, ...] = (None, None, None)
     pick_type: str | None = None
+    match_id: int | None = None
 
     @property
     def is_wide_spread(self) -> bool:
@@ -208,92 +217,6 @@ def build_model_pick_windows(
         ),
         "all_time": aggregate_model_pick_summaries(rows, end_date=as_of_date),
     }
-
-
-def aligned_production_model_picks_cte() -> str:
-    """Current-rule Sep-10 model-pick ledger over immutable live evidence.
-
-    A qualifying aligned Model Pick is the earliest production evaluation per
-    sporting match that satisfies either:
-    1) Manager CONSENSUS with probability >= 60%; or
-    2) A1+A2 same-side, A3 abstained, Manager rejected only because the A1/A2
-       spread exceeded the abstention gate, with A1/A2 arithmetic mean >= 60%.
-
-    The second case is tracking-only and never becomes a Value Bet.
-    """
-    floor = str(ALIGNED_MIN_MODEL_PROBABILITY)
-    return f"""
-        aligned_model_candidates AS (
-            SELECT
-                mcr.manager_consensus_result_id,
-                mcr.prediction_run_id,
-                mcr.match_id,
-                mcr.as_of AS picked_at,
-                mcr.selected_side,
-                mcr.consensus_probability AS aligned_probability,
-                'MANAGER_CONSENSUS'::text AS aligned_pick_type
-            FROM manager_consensus_results mcr
-            JOIN prediction_runs pr
-              ON pr.prediction_run_id = mcr.prediction_run_id
-            WHERE mcr.manager_status = 'CONSENSUS'
-              AND mcr.selected_side IN (1, 2)
-              AND mcr.consensus_probability >= {floor}
-              AND {PRODUCTION_RUN_PREDICATE}
-
-            UNION ALL
-
-            SELECT
-                mcr.manager_consensus_result_id,
-                mcr.prediction_run_id,
-                mcr.match_id,
-                mcr.as_of AS picked_at,
-                a1.selection_side AS selected_side,
-                ((a1.win_probability + a2.win_probability) / 2.0) AS aligned_probability,
-                'A1_A2_WIDE_SPREAD'::text AS aligned_pick_type
-            FROM manager_consensus_results mcr
-            JOIN prediction_runs pr
-              ON pr.prediction_run_id = mcr.prediction_run_id
-            JOIN predictions a1
-              ON a1.prediction_run_id = mcr.prediction_run_id
-             AND a1.match_id = mcr.match_id
-             AND a1.agent_code = 'AGENT_1_SURFACE_ELO'
-            JOIN predictions a2
-              ON a2.prediction_run_id = mcr.prediction_run_id
-             AND a2.match_id = mcr.match_id
-             AND a2.agent_code = 'AGENT_2_HIERARCHICAL_MARKOV'
-            JOIN predictions a3
-              ON a3.prediction_run_id = mcr.prediction_run_id
-             AND a3.match_id = mcr.match_id
-             AND a3.agent_code = 'AGENT_3_INTRANSITIVITY'
-            WHERE mcr.manager_status = 'NO_BET'
-              AND mcr.reason_code = 'AGENT3_ABSTENTION_SPREAD_EXCEEDED'
-              AND a1.prediction_status = 'PREDICTED'
-              AND a2.prediction_status = 'PREDICTED'
-              AND a3.prediction_status = 'ABSTAINED'
-              AND a1.selection_side IN (1, 2)
-              AND a2.selection_side = a1.selection_side
-              AND a1.win_probability IS NOT NULL
-              AND a2.win_probability IS NOT NULL
-              AND ((a1.win_probability + a2.win_probability) / 2.0) >= {floor}
-              AND {PRODUCTION_RUN_PREDICATE}
-        ),
-        aligned_model_picks AS (
-            SELECT DISTINCT ON (match_id)
-                manager_consensus_result_id,
-                prediction_run_id,
-                match_id,
-                picked_at,
-                selected_side,
-                aligned_probability,
-                aligned_pick_type
-            FROM aligned_model_candidates
-            ORDER BY
-                match_id,
-                picked_at,
-                manager_consensus_result_id,
-                aligned_pick_type
-        )
-    """
 
 
 def load_aligned_daily_model_pick_summaries(
@@ -619,7 +542,8 @@ def load_aligned_daily_model_picks(
                 AND fb.selection_side = p.selected_side
             ) AS is_value_bet,
             mpv.policy_version AS manager_policy_version,
-            p.aligned_pick_type
+            p.aligned_pick_type,
+            p.match_id
         FROM aligned_model_picks p
         JOIN matches m ON m.match_id = p.match_id
         JOIN tournament_editions te
@@ -660,10 +584,7 @@ def load_aligned_daily_model_picks(
           ON mcr2.manager_consensus_result_id = p.manager_consensus_result_id
         LEFT JOIN manager_policy_versions mpv
           ON mpv.manager_policy_version_id = mcr2.manager_policy_version_id
-        WHERE COALESCE(
-            (mv.match_start_at AT TIME ZONE %s::text)::date,
-            (p.picked_at AT TIME ZONE %s::text)::date
-        ) = %s
+        WHERE {ALIGNED_PICK_DATE_FILTER}
         ORDER BY p.picked_at DESC, p.manager_consensus_result_id DESC
         """,
         (timezone_name, timezone_name, decision_date),
@@ -685,6 +606,7 @@ def load_aligned_daily_model_picks(
             model_regime_key=None,
             agent_config_versions=(None, None, None),
             pick_type=str(row[11]) if row[11] is not None else None,
+            match_id=int(row[12]) if row[12] is not None else None,
         )
         for row in rows
     )
@@ -723,11 +645,10 @@ def _load_history(
                 conn, current_regime.regime_key
             )
         cohorts = load_model_regime_cohorts(conn, timezone_name=tz.iana)
-        selected_date = requested_date or (
-            aligned_summaries[0].decision_date
-            if aligned_summaries
-            else (summaries[0].decision_date if summaries else None)
-        )
+        # Default the selected detail day to *today* in the chosen dashboard zone,
+        # exactly like /today. A future slate with earlier picks must never hijack
+        # the default; the daily history list still shows future/past days.
+        selected_date = requested_date or dashboard_today(tz)
         # The selected-day summary and detail both come from the aligned
         # population, so they can never disagree about the day's pick count.
         selected_summary = next(
@@ -775,7 +696,13 @@ def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
 
 
 @router.get("/model-pick-results", response_class=HTMLResponse)
-def model_pick_results(request: Request, date: str | None = Query(default=None)):
+def model_pick_results(
+    request: Request,
+    date: str | None = Query(default=None),
+    history_page: int = Query(default=1, ge=1),
+    detail_page: int = Query(default=1, ge=1),
+    audit_page: int = Query(default=1, ge=1),
+):
     try:
         requested_date = _parse_optional_date(date)
     except ValueError:
@@ -785,6 +712,17 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
     view = _load_history(requested_date, tz)
     as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
+
+    history_rows, history_pagination = paginate(
+        aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
+    )
+    detail_rows, detail_pagination = paginate(
+        view.picks, page=detail_page, page_size=DEFAULT_PAGE_SIZE
+    )
+    audit_rows, audit_pagination = paginate(
+        view.all_summaries, page=audit_page, page_size=DEFAULT_PAGE_SIZE
+    )
+
     return templates.TemplateResponse(
         request,
         "model_pick_results.html",
@@ -793,13 +731,16 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
             # Primary aligned ledger drives the daily table and detail rows.
-            "daily_summaries": aligned_summaries,
+            "daily_summaries": history_rows,
+            "history_pagination": history_pagination,
             # Original first-production Manager ledger, kept for auditing.
-            "original_daily_summaries": view.all_summaries,
+            "original_daily_summaries": audit_rows,
+            "audit_pagination": audit_pagination,
             "original_picks": sum(row.picks for row in view.all_summaries),
             "selected_date": view.selected_date,
             "selected_summary": view.selected_summary,
-            "daily_picks": view.picks,
+            "daily_picks": detail_rows,
+            "detail_pagination": detail_pagination,
             "aligned_live_start": ALIGNED_LIVE_HISTORY_START,
             "aligned_live_windows": build_model_pick_windows(
                 aligned_summaries, as_of_date=as_of_date
@@ -818,6 +759,7 @@ def model_pick_results(request: Request, date: str | None = Query(default=None))
             "has_multiple_regimes": view.has_multiple_regimes,
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
+            "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
     )
@@ -956,9 +898,9 @@ __all__ = [
     "ModelPickRow",
     "PeriodModelPickSummary",
     "aggregate_model_pick_summaries",
+    "aligned_production_model_picks_cte",
     "api_model_pick_results",
     "build_model_pick_windows",
-    "aligned_production_model_picks_cte",
     "load_aligned_daily_model_pick_summaries",
     "load_daily_model_pick_summaries",
     "load_daily_model_picks",
