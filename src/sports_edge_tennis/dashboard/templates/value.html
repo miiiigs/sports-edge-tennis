@@ -2,6 +2,8 @@
 {% set active_nav = 'value' %}
 {% block title %}Value Opportunities — Sports Edge Tennis{% endblock %}
 
+{% from "_pagination.html" import pager with context %}
+
 {% block content %}
 <header class="page-header">
   <h1 class="page-title">Value Opportunities</h1>
@@ -118,8 +120,7 @@
 </section>
 {% endif %}
 
-{% set qualified_model_only_picks = model_only_picks | rejectattr('is_wide_spread') | list %}
-{% if qualified_model_only_picks %}
+{% if model_only_picks %}
 <section class="section" aria-label="Model picks without current value">
   <h2 class="section-title">Model picks without current value</h2>
   <p class="section-note">
@@ -137,7 +138,7 @@
         </tr>
       </thead>
       <tbody>
-        {% for pick in qualified_model_only_picks %}
+        {% for pick in model_only_picks %}
         <tr>
           <th scope="row">{{ pick.player }}</th>
           <td class="wrap">{{ pick.opponent }}</td>
@@ -148,6 +149,7 @@
       </tbody>
     </table>
   </div>
+  {{ pager(model_pagination, 'model_page') }}
 </section>
 {% endif %}
 {% endblock %}

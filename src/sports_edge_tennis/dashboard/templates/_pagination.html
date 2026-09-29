@@ -1,0 +1,30 @@
+{# Reusable compact pager. Expects `page_url(param, page)` in the context. #}
+{% macro pager(pagination, page_param) %}
+{% if pagination.is_paginated %}
+<nav class="pagination" aria-label="Pagination">
+  <span class="pagination-range">{{ pagination.range_text }}</span>
+  <span class="pagination-controls">
+    {% if pagination.has_previous %}
+    <a class="pagination-link" href="{{ page_url(page_param, pagination.previous_page) }}" rel="prev">Previous</a>
+    {% else %}
+    <span class="pagination-link is-disabled" aria-disabled="true">Previous</span>
+    {% endif %}
+    {% set ns = namespace(last=0) %}
+    {% for p in pagination.page_numbers %}
+      {% if p - ns.last > 1 %}<span class="pagination-ellipsis" aria-hidden="true">…</span>{% endif %}
+      {% if p == pagination.page %}
+      <span class="pagination-link is-current" aria-current="page">{{ p }}</span>
+      {% else %}
+      <a class="pagination-link" href="{{ page_url(page_param, p) }}">{{ p }}</a>
+      {% endif %}
+      {% set ns.last = p %}
+    {% endfor %}
+    {% if pagination.has_next %}
+    <a class="pagination-link" href="{{ page_url(page_param, pagination.next_page) }}" rel="next">Next</a>
+    {% else %}
+    <span class="pagination-link is-disabled" aria-disabled="true">Next</span>
+    {% endif %}
+  </span>
+</nav>
+{% endif %}
+{% endmacro %}

@@ -143,7 +143,9 @@ def test_issued_daily_ledger_preserves_run_a_across_degraded_run_b(db: psycopg.C
         configs,
     )
     for mid, side in ((m1, 1), (m2, 2), (m3, 1), (m4, 2)):
-        _seed_manager(db, run_a, mid, t0, status="CONSENSUS", side=side, prob="0.58")
+        # Qualifying (>= 60%) so these are aligned Model Picks under the current
+        # rule; the test still proves run B cannot erase run A's issued picks.
+        _seed_manager(db, run_a, mid, t0, status="CONSENSUS", side=side, prob="0.62")
     for mid, offer_p1, offer_p2 in ((m1, "1.98", "2.05"), (m3, "2.15", "1.90")):
         _odds(db, mid, "PLAYER_1", "2.00", f"sharp-{mid}", "SHARP", "PINNACLE", t0)
         _odds(db, mid, "PLAYER_2", "2.00", f"sharp-{mid}", "SHARP", "PINNACLE", t0)

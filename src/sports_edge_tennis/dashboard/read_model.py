@@ -13,9 +13,11 @@ from decimal import Decimal
 import psycopg
 
 from sports_edge_tennis.dashboard import presentation as pres
-from sports_edge_tennis.dashboard.history_alignment import ALIGNED_MIN_MODEL_PROBABILITY
+from sports_edge_tennis.dashboard.aligned_model_picks import (
+    AlignedPick,
+    load_aligned_day_picks,
+)
 from sports_edge_tennis.dashboard.market_overlay import MarketDecisionView
-from sports_edge_tennis.dashboard.picks import wide_spread_primary_details
 
 
 @dataclass(frozen=True)
@@ -259,8 +261,13 @@ def get_run_for_date(
 # The client page must show what was *issued* during the sporting day, not the
 # newest re-evaluation. A later degraded run (e.g. the run-616 A2 regression)
 # must never erase a Qualified Model Pick or a Value Bet that was already
-# issued earlier the same day. This is a read-model selection rule; no
-# prediction, Manager, decision, or settlement row is ever mutated.
+# issued earlier the same day.
+#
+# The primary Model Pick population now comes from the single shared aligned
+# ledger (``dashboard.aligned_model_picks``) so Today and Model Picks Results
+# select the same sporting matches for the same local day. This is a read-model
+# selection rule; no prediction, Manager, decision, or settlement row is ever
+# mutated.
 # ---------------------------------------------------------------------------
 
 _DAY_RUNS_SQL = """
@@ -298,19 +305,59 @@ def completed_day_run_rows(
     ]
 
 
-def _qualifying_wide_spread_tracking(match: MatchView) -> bool:
-    """True for an A1/A2 same-side wide-spread case whose mean clears 60%.
+def _load_aligned_match_views(
+    conn: psycopg.Connection, picks: tuple[AlignedPick, ...]
+) -> list[MatchView]:
+    """Reconstruct the Today card matches for the aligned Model Pick population.
 
-    Read-model display selection only: it decides whether a tracking case joins
-    Today's primary pick population. It never creates, edits, or re-scores a
-    persisted decision, and it cannot promote a wide-spread case into a bet.
+    Each qualifying pick is rendered from the exact prediction run / match pair
+    that produced it, so Today's cards carry the issued Manager/Agent evidence
+    instead of the newest re-evaluation.
     """
-    details = wide_spread_primary_details(match)
-    if details is None:
-        return False
-    _side, a1_probability, a2_probability, _spread = details
-    mean = (a1_probability + a2_probability) / Decimal(2)
-    return mean >= ALIGNED_MIN_MODEL_PROBABILITY
+    by_run: dict[int, list[AlignedPick]] = {}
+    for pick in picks:
+        by_run.setdefault(pick.prediction_run_id, []).append(pick)
+
+    views: dict[int, MatchView] = {}
+    for run_id, run_picks in by_run.items():
+        match_ids = [pick.match_id for pick in run_picks]
+        base = _load_match_base(conn, match_ids)
+        predictions = _load_predictions(conn, run_id)
+        manager = _load_manager(conn, run_id)
+        sharp = _load_sharp(conn, match_ids)
+        for pick in run_picks:
+            if pick.match_id in views:
+                continue
+            info = base.get(pick.match_id, {})
+            mgr = manager.get(pick.match_id, {})
+            sharp_info = sharp.get(pick.match_id, {})
+            views[pick.match_id] = MatchView(
+                match_id=pick.match_id,
+                player_1=info.get("player_1", "—"),
+                player_2=info.get("player_2", "—"),
+                tournament=info.get("tournament", "—"),
+                competition_tier=info.get("competition_tier"),
+                scheduled_start=info.get("scheduled_start"),
+                agents=predictions.get(pick.match_id, {}),
+                manager_status=mgr.get("manager_status"),
+                selected_side=(
+                    mgr.get("selected_side")
+                    if mgr.get("selected_side") is not None
+                    else pick.selected_side
+                ),
+                consensus_probability=(
+                    mgr.get("consensus_probability")
+                    if mgr.get("consensus_probability") is not None
+                    else pick.aligned_probability
+                ),
+                reason_code=mgr.get("reason_code"),
+                active_agent_count=mgr.get("active_agent_count", 0),
+                abstaining_agent_count=mgr.get("abstaining_agent_count", 0),
+                player_1_price=sharp_info.get("player_1_price"),
+                player_2_price=sharp_info.get("player_2_price"),
+                sharp_source_observed_at=sharp_info.get("source_observed_at"),
+            )
+    return list(views.values())
 
 
 def get_issued_day_state(
@@ -318,58 +365,31 @@ def get_issued_day_state(
 ) -> RunState:
     """Return the issued daily Model Pick ledger for ``run_date``.
 
-    Qualified Model Picks are the *earliest* Manager CONSENSUS per sporting
-    match across every completed run that day. Wide-Spread tracking picks are
-    taken from the latest completed evaluation, excluding any match that already
-    has an issued qualified pick (qualified always wins for a match).
+    The primary population is the *shared* aligned Model Picks ledger
+    (``aligned_model_picks``): the earliest qualifying current-rule evaluation
+    per sporting match whose local match day is ``run_date``. This is exactly the
+    population the Model Picks Results page shows, so Today and that page can
+    never disagree about the day's Model Picks. Wide-Spread cases remain
+    tracking-only here and are never promoted into a Value Bet.
     """
+    picks = load_aligned_day_picks(
+        conn, decision_date=run_date, timezone_name=timezone_name
+    )
     runs = completed_day_run_rows(conn, run_date, timezone_name)
     if not runs:
+        # No completed production run covers this local day. Fall back for
+        # context only; it cannot introduce non-qualifying picks.
         return get_run_for_date(conn, run_date, timezone_name)
 
-    run_ids = [run_id for run_id, _ in runs]
     latest_run_id, latest_as_of = runs[-1]
-
-    qualified_rows = conn.execute(
-        """
-        SELECT DISTINCT ON (mcr.match_id)
-            mcr.match_id,
-            mcr.prediction_run_id
-        FROM manager_consensus_results mcr
-        WHERE mcr.manager_status = 'CONSENSUS'
-          AND mcr.prediction_run_id = ANY(%s)
-        ORDER BY mcr.match_id, mcr.as_of ASC, mcr.prediction_run_id ASC
-        """,
-        (run_ids,),
-    ).fetchall()
-
-    matches_by_run: dict[int, set[int]] = {}
-    for match_id, run_id in qualified_rows:
-        matches_by_run.setdefault(int(run_id), set()).add(int(match_id))
-
-    issued: dict[int, MatchView] = {}
-    for run_id, wanted in matches_by_run.items():
-        for match in load_run_matches(conn, run_id):
-            if match.match_id in wanted and match.match_id not in issued:
-                issued[match.match_id] = match
-
-    # Additive latest-evaluation Wide-Spread tracking picks, never overriding an
-    # issued qualified pick for the same sporting match. The A1/A2 tracking
-    # average must clear the same 60% floor as the aligned Model Picks ledger,
-    # so Today's primary pick population matches that established definition.
-    for match in load_run_matches(conn, latest_run_id):
-        if match.match_id in issued:
-            continue
-        if _qualifying_wide_spread_tracking(match):
-            issued[match.match_id] = match
-
+    matches = _load_aligned_match_views(conn, picks) if picks else []
     return RunState(
-        kind="POPULATED",
+        kind="POPULATED" if matches else "EMPTY_SLATE",
         run_date=run_date,
         as_of=latest_as_of,
         prediction_run_id=latest_run_id,
         run_status="COMPLETED",
-        matches=list(issued.values()),
+        matches=matches,
     )
 
 

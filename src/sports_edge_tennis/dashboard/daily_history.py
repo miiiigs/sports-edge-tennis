@@ -30,6 +30,11 @@ from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
 )
+from sports_edge_tennis.dashboard.pagination import (
+    DEFAULT_PAGE_SIZE,
+    build_page_url,
+    paginate,
+)
 from sports_edge_tennis.dashboard.timezone import (
     DEFAULT_TIMEZONE,
     DashboardTimezone,
@@ -166,7 +171,12 @@ def _load_history(
 
 
 @router.get("/bet-history", response_class=HTMLResponse)
-def bet_history(request: Request, date: str | None = Query(default=None)):
+def bet_history(
+    request: Request,
+    date: str | None = Query(default=None),
+    history_page: int = Query(default=1, ge=1),
+    detail_page: int = Query(default=1, ge=1),
+):
     try:
         requested_date = _parse_optional_date(date)
     except ValueError:
@@ -176,6 +186,12 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
     view = _load_history(requested_date, tz)
     as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
+    history_rows, history_pagination = paginate(
+        view.all_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
+    )
+    detail_rows, detail_pagination = paginate(
+        view.bets, page=detail_page, page_size=DEFAULT_PAGE_SIZE
+    )
     return templates.TemplateResponse(
         request,
         "bet_history.html",
@@ -183,10 +199,13 @@ def bet_history(request: Request, date: str | None = Query(default=None)):
             "pres": pres,
             "demo_mode": DEMO_MODE,
             "latest_activity": _latest_activity(),
-            "daily_summaries": view.all_summaries,
+            "daily_summaries": history_rows,
+            "history_pagination": history_pagination,
             "selected_date": view.selected_date,
             "selected_summary": view.selected_summary,
-            "daily_bets": view.bets,
+            "daily_bets": detail_rows,
+            "detail_pagination": detail_pagination,
+            "page_url": lambda param, page: build_page_url(request, param, page),
             "aligned_live_start": ALIGNED_LIVE_HISTORY_START,
             "aligned_live_windows": build_performance_windows(
                 aligned_summaries, as_of_date=as_of_date
