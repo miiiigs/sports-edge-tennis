@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-
 from sports_edge_tennis.live import production_batch
 from sports_edge_tennis.live.provider_authority import (
     DATA_MODE_ENV,
@@ -111,6 +109,9 @@ def _wire_validation_main(monkeypatch):
         production_batch, "ensure_model_identity_bridge_schema", lambda conn: "EXISTING"
     )
     monkeypatch.setattr(production_batch, "_ensure_strict_manager_v2_schema", lambda conn: "EXISTING")
+    monkeypatch.setattr(
+        production_batch, "_ensure_prediction_abstention_reason_schema", lambda conn: "EXISTING"
+    )
     monkeypatch.setattr(production_batch, "_ensure_oddspapi_ledger_schema", lambda conn: "READY")
     monkeypatch.setattr(production_batch, "_live_batch_gap_cycle", lambda *a, **k: None)
     monkeypatch.setattr(production_batch, "_live_operational_health_cycle", lambda *a, **k: None)
