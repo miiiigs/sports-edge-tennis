@@ -37,6 +37,9 @@ _QUARTER_KELLY_MIGRATION = Path("db/migrations/0010_quarter_kelly_stake_v1.up.sq
 _PUBLICATION_CONTROL_MIGRATION = Path("db/migrations/0012_publication_control_v1.up.sql")
 _STRICT_MANAGER_V2_MIGRATION = Path("db/migrations/0014_strict_three_manager_policy_v2.up.sql")
 _ODDSPAPI_LEDGER_MIGRATION = Path("db/migrations/0015_oddspapi_request_ledger_v1.up.sql")
+_PREDICTION_ABSTENTION_MIGRATION = Path(
+    "db/migrations/0017_prediction_abstention_reasons.up.sql"
+)
 _PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
@@ -45,6 +48,12 @@ _STAKING_CONSTRAINTS = frozenset(
         "chk_decisions_suggested_stake_fraction",
         "chk_decisions_no_positive_stake_without_bet",
         "chk_decisions_staking_rule_coherent",
+    }
+)
+_PREDICTION_ABSTENTION_CONSTRAINTS = frozenset(
+    {
+        "chk_predictions_abstain_reason_code",
+        "chk_predictions_abstain_reason_status",
     }
 )
 _SHARP = SharpReferenceSpec(source_system="SHARP", bookmaker_code="PINNACLE")
@@ -212,6 +221,84 @@ def _ensure_quarter_kelly_schema(
         raise RuntimeError(
             "quarter-Kelly schema verification failed "
             f"column_present={column_present} missing_constraints={','.join(missing) or 'none'}"
+        )
+    return "APPLIED"
+
+
+def _prediction_abstention_schema_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, frozenset[str], bool]:
+    column_present = bool(
+        conn.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'predictions'
+                  AND column_name = 'abstain_reason_code'
+            )
+            """
+        ).fetchone()[0]
+    )
+    rows = conn.execute(
+        """
+        SELECT conname
+        FROM pg_constraint
+        WHERE conrelid = 'public.predictions'::regclass
+          AND conname = ANY(%s)
+        """,
+        (list(_PREDICTION_ABSTENTION_CONSTRAINTS),),
+    ).fetchall()
+    constraints = frozenset(str(row[0]) for row in rows)
+    index_present = bool(
+        conn.execute(
+            "SELECT to_regclass('public.idx_predictions_agent_status_abstain_reason') IS NOT NULL"
+        ).fetchone()[0]
+    )
+    return column_present, constraints, index_present
+
+
+def _ensure_prediction_abstention_reason_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _PREDICTION_ABSTENTION_MIGRATION,
+) -> str:
+    """Apply migration 0017 once, then verify the nullable reason column and guards.
+
+    The live runner must persist ``predictions.abstain_reason_code``. This guard
+    applies 0017 before any prediction write, so the column always exists once the
+    new code is running; it is additive and never rewrites existing rows.
+    """
+    column_present, constraints, index_present = _prediction_abstention_schema_state(conn)
+    if (
+        column_present
+        and constraints == _PREDICTION_ABSTENTION_CONSTRAINTS
+        and index_present
+    ):
+        return "EXISTING"
+    if column_present or constraints or index_present:
+        missing = sorted(_PREDICTION_ABSTENTION_CONSTRAINTS - constraints)
+        raise RuntimeError(
+            "prediction abstention schema is partially applied "
+            f"column_present={column_present} index_present={index_present} "
+            f"missing_constraints={','.join(missing) or 'none'}"
+        )
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    column_present, constraints, index_present = _prediction_abstention_schema_state(conn)
+    if not (
+        column_present
+        and constraints == _PREDICTION_ABSTENTION_CONSTRAINTS
+        and index_present
+    ):
+        missing = sorted(_PREDICTION_ABSTENTION_CONSTRAINTS - constraints)
+        raise RuntimeError(
+            "prediction abstention schema verification failed "
+            f"column_present={column_present} index_present={index_present} "
+            f"missing_constraints={','.join(missing) or 'none'}"
         )
     return "APPLIED"
 
@@ -598,6 +685,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             publication_control_status = _ensure_publication_control_schema(conn)
             model_identity_bridge_status = ensure_model_identity_bridge_schema(conn)
             strict_manager_v2_status = _ensure_strict_manager_v2_schema(conn)
+            prediction_abstention_status = _ensure_prediction_abstention_reason_schema(conn)
             oddspapi_ledger_status = "SKIPPED_LEGACY_ODDS"
             if provider_authority.odds_mode == TARGET_ODDS_MODE:
                 oddspapi_ledger_status = _ensure_oddspapi_ledger_schema(conn)
@@ -617,6 +705,10 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     _log(
         "SCHEMA_STRICT_MANAGER_V2 "
         f"status={strict_manager_v2_status} migration=0014 selected={os.environ.get('TENNIS_MANAGER_POLICY_VERSION', 'v1')}"
+    )
+    _log(
+        "SCHEMA_PREDICTION_ABSTENTION "
+        f"status={prediction_abstention_status} migration=0017"
     )
     _log(f"SCHEMA_ODDSPAPI_LEDGER status={oddspapi_ledger_status} migration=0015")
 

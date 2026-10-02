@@ -9,6 +9,10 @@ from sports_edge_tennis.dashboard.model_pick_history import (
     api_model_pick_results,
     model_pick_results,
 )
+from sports_edge_tennis.dashboard.observability_routes import (
+    api_agent_abstention,
+    api_result_coverage,
+)
 from sports_edge_tennis.dashboard.opportunity_evidence_routes import api_opportunity_evidence
 from sports_edge_tennis.dashboard.paper_bankroll_routes import api_paper_bankroll
 from sports_edge_tennis.dashboard.pick_lifecycle_routes import api_pick_lifecycle
@@ -61,6 +65,14 @@ app.get(
     "/api/dashboard/sharp-blockers",
     name="api_sharp_blockers",
 )(api_sharp_blockers)
+app.get(
+    "/api/dashboard/agent-abstention",
+    name="api_agent_abstention",
+)(api_agent_abstention)
+app.get(
+    "/api/dashboard/result-coverage",
+    name="api_result_coverage",
+)(api_result_coverage)
 
 _required_paths = {
     "/bet-history",
@@ -74,6 +86,8 @@ _required_paths = {
     "/api/dashboard/model-evidence",
     "/api/dashboard/opportunity-evidence",
     "/api/dashboard/sharp-blockers",
+    "/api/dashboard/agent-abstention",
+    "/api/dashboard/result-coverage",
 }
 _registered_paths = {getattr(route, "path", None) for route in app.routes}
 _missing_paths = _required_paths - _registered_paths

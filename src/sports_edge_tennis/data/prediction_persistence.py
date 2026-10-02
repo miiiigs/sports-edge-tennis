@@ -7,6 +7,9 @@ from typing import Iterable, Sequence
 
 import psycopg
 
+from sports_edge_tennis.agents.abstain_reasons import (
+    canonical_reason_for_agent,
+)
 from sports_edge_tennis.agents.contracts import (
     PREDICTIVE_AGENT_CODES,
     PredictiveAgentContractError,
@@ -30,6 +33,7 @@ class PersistedPredictiveAgentPrediction:
     parameter_schema_version: str
     agent_config_version_id: int
     as_of: datetime
+    abstain_reason_code: str | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +79,7 @@ def persist_predictive_agent_result(
 ) -> int:
     if result.agent_code not in PREDICTIVE_AGENT_CODES:
         raise PredictiveAgentContractError("result.agent_code must be a predictive agent")
+    abstain_reason_code = _validated_abstain_reason_code(result)
     return conn.execute(
         """
         INSERT INTO predictions (
@@ -92,11 +97,12 @@ def persist_predictive_agent_result(
             walk_forward_fold,
             variant_id,
             as_of,
-            prediction_locked_at
+            prediction_locked_at,
+            abstain_reason_code
         )
         VALUES (
             %s, %s, %s, %s, %s, %s, %s::numeric, %s, %s, %s,
-            %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s
         )
         RETURNING prediction_id
         """,
@@ -116,8 +122,26 @@ def persist_predictive_agent_result(
             variant_id,
             result.as_of,
             prediction_locked_at,
+            abstain_reason_code,
         ),
     ).fetchone()[0]
+
+
+def _validated_abstain_reason_code(result: PredictiveAgentResultV1) -> str | None:
+    """Fail closed if an abstained result carries a non-canonical reason.
+
+    Predicted rows must never persist a reason. Abstained rows must carry the
+    stable canonical code for their agent; this mirrors the DB check constraints
+    added in ``0017_prediction_abstention_reasons``.
+    """
+    if result.prediction_status != "ABSTAINED":
+        return None
+    reason = result.abstain_reason
+    if not canonical_reason_for_agent(result.agent_code, reason):
+        raise PredictiveAgentContractError(
+            f"ABSTAINED result for {result.agent_code} must carry a canonical abstain_reason"
+        )
+    return reason
 
 
 def persist_and_finalize_prediction_matrix(
@@ -207,7 +231,8 @@ def load_finalized_predictive_agent_predictions(
             acv.config_version,
             acv.parameter_schema_version,
             p.agent_config_version_id,
-            p.as_of
+            p.as_of,
+            p.abstain_reason_code
         FROM predictions p
         JOIN prediction_runs pr
           ON pr.prediction_run_id = p.prediction_run_id

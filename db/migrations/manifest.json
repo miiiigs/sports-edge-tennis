@@ -113,6 +113,13 @@
       "up": "db/migrations/0016_cross_provider_match_reconciliations.up.sql",
       "down": "db/migrations/0016_cross_provider_match_reconciliations.down.sql",
       "schema_snapshot": "db/schema/0016_cross_provider_match_reconciliations.sql"
+    },
+    {
+      "version": "0017",
+      "name": "prediction_abstention_reasons",
+      "up": "db/migrations/0017_prediction_abstention_reasons.up.sql",
+      "down": "db/migrations/0017_prediction_abstention_reasons.down.sql",
+      "schema_snapshot": "db/schema/0017_prediction_abstention_reasons.sql"
     }
   ]
 }
