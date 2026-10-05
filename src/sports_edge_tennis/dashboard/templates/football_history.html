@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% import "_football_macros.html" as fb %}
+{% from "_pagination.html" import pager with context %}
+{% block title %}Football History — Sports Edge{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Football History</h1>
+  <p class="page-subtitle">Settled qualified Football bets.</p>
+  <p class="page-note">
+    One representative qualified position per fixture and market, at the price
+    actually recorded. History is paginated; nothing is guessed when a price or
+    result is missing.
+  </p>
+</header>
+
+{% if not view.available %}
+{{ fb.degraded(view) }}
+{% else %}
+
+{% if not rows %}
+<section class="empty-state" style="margin-top: 0;">
+  <h2 class="empty-title">No settled Football bets yet</h2>
+  <p class="empty-body">Results appear here once qualified Football bets have been settled.</p>
+</section>
+{% else %}
+<section class="section" aria-label="Football settled history" style="margin-top: 0;">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Kickoff</th>
+          <th scope="col">Fixture</th>
+          <th scope="col">Market</th>
+          <th scope="col">Selection</th>
+          <th scope="col">Price</th>
+          <th scope="col">Result</th>
+          <th scope="col">Units</th>
+          <th scope="col">CLV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="num">{{ row.date or '—' }}</td>
+          <td class="wrap">
+            {{ row.fixture }}
+            {% if row.competition %}<br><span class="stat-note">{{ row.competition }}</span>{% endif %}
+          </td>
+          <td>{{ row.market }}</td>
+          <td class="wrap">
+            {{ row.selection }}
+            {% if row.line is not none %}<br><span class="stat-note">Line {{ row.line }}</span>{% endif %}
+          </td>
+          <td class="num">{{ row.price or '—' }}</td>
+          <td>
+            {% set tone = 'won' if row.result == 'WON' else ('lost' if row.result == 'LOST' else 'neutral') %}
+            <span class="badge badge-{{ tone }}">{{ row.result }}</span>
+          </td>
+          <td class="num">{{ row.units or '—' }}</td>
+          <td class="num">{{ row.clv or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(pagination, 'page') }}
+  {% if view.capped %}
+  <p class="section-note" style="margin-top: 12px;">
+    Football's read-only history payload is capped upstream, so older settled bets
+    may not be listed here. This page never fabricates what it cannot read.
+  </p>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

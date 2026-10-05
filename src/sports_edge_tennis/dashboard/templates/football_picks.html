@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% import "_football_macros.html" as fb %}
+{% block title %}Football Picks — Sports Edge{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Football Picks</h1>
+  <p class="page-subtitle">Current Asian Handicap and Corners opportunities.</p>
+  <p class="page-note">
+    The <strong>model view</strong> (probability and fair price) is kept separate
+    from the <strong>bet decision</strong> (whether the available price qualifies).
+    A model prediction is not automatically a bet.
+  </p>
+</header>
+
+{% if not view.available %}
+{{ fb.degraded(view) }}
+{% else %}
+
+<section class="section" aria-label="Football pick counts" style="margin-top: 0;">
+  <div class="stat-grid">
+    <article class="stat">
+      <span class="stat-value">{{ view.ah_count }}</span>
+      <span class="stat-label">Asian Handicap</span>
+      <span class="stat-note">current desk rows</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ view.corners_count }}</span>
+      <span class="stat-label">Corners</span>
+      <span class="stat-note">current desk rows</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ view.bet_count }}</span>
+      <span class="stat-label">Bet decisions</span>
+      <span class="stat-note">{{ view.no_bet_count }} no-bet rows retained</span>
+    </article>
+  </div>
+</section>
+
+{% if not view.picks %}
+<section class="empty-state" style="margin-top: 24px;">
+  <h2 class="empty-title">No current Football picks</h2>
+  <p class="empty-body">The desk returned no Asian Handicap or Corners rows for the current slate. Zero is a valid result.</p>
+</section>
+{% else %}
+<section class="section" aria-label="Football picks">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Kickoff</th>
+          <th scope="col">Fixture</th>
+          <th scope="col">Market</th>
+          <th scope="col">Selection</th>
+          <th scope="col">Model view</th>
+          <th scope="col">Bet decision</th>
+          <th scope="col">Available</th>
+          <th scope="col">Edge</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pick in view.picks %}
+        <tr>
+          <td class="num">{{ pick.kickoff or '—' }}</td>
+          <td class="wrap">
+            {{ pick.fixture }}
+            {% if pick.competition %}<br><span class="stat-note">{{ pick.competition }}</span>{% endif %}
+          </td>
+          <td>{{ pick.market }}</td>
+          <td class="wrap">
+            {{ pick.selection }}
+            {% if pick.line is not none %}<br><span class="stat-note">Line {{ pick.line }}</span>{% endif %}
+          </td>
+          <td class="num">
+            {{ pick.model_probability or '—' }}
+            {% if pick.fair_price %}<br><span class="stat-note">fair {{ pick.fair_price }}</span>{% endif %}
+          </td>
+          <td>
+            <span class="badge badge-{{ pick.decision_tone }}">{{ pick.decision }}</span>
+            {% if pick.reason %}<br><span class="stat-note">{{ pick.reason }}</span>{% endif %}
+          </td>
+          <td class="num">{{ pick.available_price or '—' }}</td>
+          <td class="num">{{ pick.edge or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if view.other_count %}
+  <p class="section-note" style="margin-top: 12px;">{{ view.other_count }} additional non-focus market row(s) are included above.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

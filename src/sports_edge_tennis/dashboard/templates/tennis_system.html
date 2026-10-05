@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}System — Sports Edge Tennis{% endblock %}
+{% set active_nav = 'system' %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">System</h1>
+  <p class="page-subtitle">Operational status of the Tennis prediction system.</p>
+  <p class="page-note">
+    This is client-facing operational evidence, not model internals. Prediction
+    quality is on <a href="/performance">Performance</a> and realised results are
+    on <a href="/model-pick-results">Model Picks Results</a> and
+    <a href="/value-bet-results">Value Bets Results</a>.
+  </p>
+</header>
+
+<section class="section" aria-label="Current status" style="margin-top: 0;">
+  <div class="stat-grid">
+    <article class="stat">
+      <span class="stat-value">
+        {% if operational_health %}{{ operational_health.status|title }}{% else %}—{% endif %}
+      </span>
+      <span class="stat-label">Data status</span>
+      <span class="stat-note">
+        {% if operational_health %}{{ operational_health.freshness_state|title }} · checked {{ tz_time(operational_health.checked_at) }}{% else %}No live health evidence{% endif %}
+      </span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ tz_datetime(latest_activity) }}</span>
+      <span class="stat-label">Last update</span>
+      <span class="stat-note">Latest persisted production activity</span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">
+        {% if operational_health %}{{ operational_health.error_count }}{% else %}—{% endif %}
+      </span>
+      <span class="stat-label">Collection errors</span>
+      <span class="stat-note">Reported by the latest live health check</span>
+    </article>
+  </div>
+</section>
+
+{% if operational_health and operational_health.status in ['ERROR', 'WARNING'] %}
+<div class="notice notice-{{ 'error' if operational_health.status == 'ERROR' else 'warning' }}" role="alert">
+  <h3>{{ 'Live collection reported errors' if operational_health.status == 'ERROR' else 'Live data is older than expected' }}</h3>
+  <p>
+    {% if operational_health.status == 'ERROR' %}
+    Today's picks may be incomplete. Model execution and settlement are unaffected.
+    {% else %}
+    Prices and picks may not reflect the latest state.
+    {% endif %}
+  </p>
+</div>
+{% elif not operational_health %}
+<div class="notice">
+  <h3>Operational evidence is not available</h3>
+  <p>No live health snapshot has been recorded. Predictions and settlement are unaffected.</p>
+</div>
+{% endif %}
+
+<section class="section" aria-label="Coverage and evidence">
+  <h2 class="section-title">Coverage and evidence</h2>
+  <p class="section-note">
+    Detailed, read-only production evidence is available through the client
+    surfaces rather than raw diagnostics.
+  </p>
+  <div class="sport-card-actions">
+    <a class="date-link" href="/model-pick-results">Model Picks Results</a>
+    <a class="date-link" href="/value-bet-results">Value Bets Results</a>
+    <a class="date-link" href="/performance">Performance</a>
+  </div>
+</section>
+{% endblock %}
