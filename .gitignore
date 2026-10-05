@@ -22,5 +22,10 @@ build/
 # Data and runtime artifacts
 data/raw/
 data/cache/
-artifacts/
+artifacts/*
+# The offline calibration research record is a durable, reviewed artifact.
+# Generated daily snapshots under artifacts/calibration/daily/ stay ignored.
+!artifacts/calibration/
+artifacts/calibration/*
+!artifacts/calibration/model_pick_calibration.json
 tmp/
