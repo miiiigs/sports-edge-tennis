@@ -169,6 +169,37 @@ def test_authorized_bootstrap_login_logout_flow(auth_store: AuthStore, monkeypat
         assert client.get("/history").status_code == 200
 
 
+def test_unified_root_and_football_routes_are_owner_protected(monkeypatch):
+    """The unified / -> /overview redirect and Football pages inherit owner auth.
+
+    This is the compatibility guarantee only: production protection depends on the
+    deployed start command being the owner_access wrapper. The repo Procfile starts
+    the plainly-configured app, so this must not be read as production security.
+    """
+
+    class _AnonymousStore:
+        def get_user_for_session(self, token):
+            return None
+
+    monkeypatch.setattr(
+        owner_access,
+        "SETTINGS",
+        AuthSettings(enabled=True, allow_signup=False, cookie_secure=False),
+    )
+    monkeypatch.setattr(owner_access, "_store", lambda: _AnonymousStore())
+    owner_access.templates.env.globals["tennis_auth_enabled"] = True
+    try:
+        with TestClient(owner_access.app, follow_redirects=False) as client:
+            root = client.get("/")
+            overview = client.get("/overview")
+            football = client.get("/football")
+        for response in (root, overview, football):
+            assert response.status_code == 303
+            assert response.headers["location"].startswith("/login?next=")
+    finally:
+        owner_access.templates.env.globals["tennis_auth_enabled"] = False
+
+
 def test_auth_disabled_preserves_existing_public_behavior(auth_store: AuthStore, monkeypatch):
     monkeypatch.setattr(
         owner_access,

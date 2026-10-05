@@ -14,9 +14,18 @@ Existing Tennis URLs (``/today``, ``/value``, ``/bet-history``,
 prediction, Manager, settlement, betting, provider or database behaviour is
 modified here.
 
-The new routes are registered onto the single shared ``app`` object so that
-whichever entrypoint production uses (``app``, ``owner_access`` or
-``production_app``) they are present and remain covered by owner auth.
+The new routes are registered onto the single shared ``app`` object, so they are
+present for the ``app``, ``owner_access`` and ``production_app`` entrypoints.
+
+AUTH BOUNDARY (do not over-read this): the routes only *inherit* owner auth when
+the process is actually started through the ``owner_access`` wrapper with
+``TENNIS_DASHBOARD_AUTH_ENABLED`` enabled. The repository ``Procfile`` starts the
+plain ``sports_edge_tennis.dashboard.app:app`` entrypoint, which does not apply
+the owner guard. Therefore "the new routes inherit auth" must NOT be read as
+"production is definitely protected". Enabling/proving dashboard auth on the
+deployed start command is a separate deployment blocker (see docs/BLOCKERS.md)
+and must be verified before Football credentials or live Football data are
+exposed through the unified Tennis host.
 """
 
 from __future__ import annotations
@@ -54,6 +63,22 @@ def _sport_status(response: fb.FootballResponse) -> tuple[str, str]:
     if response.state == "NOT_CONFIGURED":
         return ("no-data", "Football not configured")
     return ("stale", "Football unavailable")
+
+
+def _safe_load(loader) -> fb.FootballResponse:
+    """Call a Football loader without ever raising into the Tennis request path.
+
+    The client already converts transport failures into degraded responses, but
+    an unexpected in-process error must still not 500 a Tennis page.
+    """
+    try:
+        return loader()
+    except Exception:  # noqa: BLE001 - degrade rather than break the shared shell
+        return fb.FootballResponse(
+            ok=False,
+            state="UNAVAILABLE",
+            message="Football is temporarily unavailable.",
+        )
 
 
 # ------------------------------------------------------------------- overview
@@ -102,7 +127,7 @@ def _tennis_overview(tz) -> dict:
 def overview(request: Request):
     tz = _request_timezone(request)
     tennis = _tennis_overview(tz)
-    football_response = fb.load_candidates()
+    football_response = _safe_load(fb.load_candidates)
     football = fb.build_overview_football(football_response)
     return templates.TemplateResponse(
         request,
@@ -175,7 +200,7 @@ def tennis_system(request: Request):
 
 @app.get("/football", response_class=HTMLResponse, name="football_picks")
 def football_picks(request: Request):
-    response = fb.load_candidates()
+    response = _safe_load(fb.load_candidates)
     view = fb.build_picks_view(response)
     return templates.TemplateResponse(
         request,
@@ -196,7 +221,7 @@ def football_picks(request: Request):
     name="football_performance",
 )
 def football_performance(request: Request):
-    response = fb.load_performance()
+    response = _safe_load(fb.load_performance)
     view = fb.build_performance_view(response)
     return templates.TemplateResponse(
         request,
@@ -213,7 +238,7 @@ def football_performance(request: Request):
 
 @app.get("/football/history", response_class=HTMLResponse, name="football_history")
 def football_history(request: Request, page: int = Query(default=1, ge=1)):
-    response = fb.load_performance()
+    response = _safe_load(fb.load_performance)
     view = fb.build_history_view(response)
     rows, pagination = paginate(view.rows, page=page, page_size=DEFAULT_PAGE_SIZE)
     return templates.TemplateResponse(
@@ -234,8 +259,8 @@ def football_history(request: Request, page: int = Query(default=1, ge=1)):
 
 @app.get("/football/system", response_class=HTMLResponse, name="football_system")
 def football_system(request: Request):
-    status = fb.load_system_status()
-    health = fb.load_health()
+    status = _safe_load(fb.load_system_status)
+    health = _safe_load(fb.load_health)
     view = fb.build_system_view(status, health)
     sport_status = ("live", "Football") if (status.ok or health.ok) else _sport_status(status)
     return templates.TemplateResponse(

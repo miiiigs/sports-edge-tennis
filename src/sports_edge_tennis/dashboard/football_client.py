@@ -27,6 +27,11 @@ import requests
 
 FOOTBALL_BASE_URL_ENV = "SPORTS_EDGE_FOOTBALL_BASE_URL"
 FOOTBALL_TOKEN_ENV = "SPORTS_EDGE_CLIENT_API_TOKEN"
+# Transitional/testing-only credential. A raw browser session cookie is *not* the
+# preferred production integration; the intended contract is a dedicated,
+# GET-only, server-to-server read token in ``SPORTS_EDGE_CLIENT_API_TOKEN``. The
+# cookie fallback is retained only because the read-only Football token is not
+# deployed yet; it must never become the production mechanism.
 FOOTBALL_COOKIE_ENV = "SPORTS_EDGE_FOOTBALL_COOKIE"
 
 DEFAULT_TIMEOUT_SECONDS = 4.0
@@ -73,8 +78,68 @@ DECISION_LABELS: dict[str, str] = {
     "BET": "Bet",
     "NO_BET": "No bet",
     "VETOED": "Vetoed",
+    "BLOCKED": "Blocked",
+    "UNSUPPORTED": "Unsupported",
     "PENDING": "Pending",
     "AWAITING_MARKET": "Awaiting market",
+}
+
+# Candidate row collections, in resolution order. ``today_desk_rows`` is the
+# complete current-day desk truth exposed by the Football client-first dashboard
+# payload. ``rows`` is the canonical collection returned by the live
+# ``GET /api/candidates`` endpoint (``services.get_betting_desk_payload``).
+# ``current_slate_rows`` is the broader current-slate surface and is only a
+# documented fallback so a narrower slate never silently replaces today's truth.
+# ``visible_today_desk_rows`` is a server-side page subset and is a last resort.
+CANDIDATE_ROW_SOURCES: tuple[str, ...] = (
+    "today_desk_rows",
+    "rows",
+    "current_slate_rows",
+    "visible_today_desk_rows",
+)
+
+# Keys that identify a genuine Football candidates/dashboard payload even when it
+# carries no row collection. Used to tell an honest empty slate apart from an
+# unexpected contract, so a contract mismatch is never rendered as "no picks".
+CANDIDATE_PAYLOAD_MARKERS: frozenset[str] = frozenset(
+    {
+        "rows",
+        "visible_rows",
+        "pagination",
+        "summary",
+        "connected",
+        "quota_state",
+        "supported_markets",
+        "research_markets",
+        "blocking_reasons",
+        "preliminary_candidates",
+        "blocked_candidates",
+        "no_bet_candidates",
+        "today_desk_rows",
+        "visible_today_desk_rows",
+        "today_desk_pagination",
+        "current_slate_rows",
+        "current_slate_summary",
+        "other_decision_rows",
+        "client_match_cards",
+    }
+)
+
+# Football's client match-card labels are upper case and use the
+# "MATCH WINNER / 1X2" form; map those (and the family keys themselves) back to
+# the internal family used for focus-market counting.
+MARKET_LABEL_ALIASES: dict[str, str] = {
+    "1x2": "1x2",
+    "match winner": "1x2",
+    "match winner / 1x2": "1x2",
+    "match result": "1x2",
+    "btts": "btts",
+    "both teams to score": "btts",
+    "goals": "goals_total",
+    "goals total": "goals_total",
+    "corners": "corner_total",
+    "corner total": "corner_total",
+    "asian handicap": "asian_handicap",
 }
 
 
@@ -268,21 +333,81 @@ def market_label(market_family: str | None) -> str:
     return MARKET_LABELS.get(key, key.replace("_", " ").title() or "—")
 
 
+def market_family(row: dict[str, Any]) -> str:
+    """Resolve the internal market family for a Football desk/working row.
+
+    The live ``GET /api/candidates`` payload (``get_betting_desk_payload``) carries
+    ``market_family`` directly. The client-first dashboard ``today_desk_rows``
+    surface only carries the humanized ``market_label``, so those labels are
+    mapped back to their family key. Unknown values are passed through unchanged
+    rather than guessed.
+    """
+    family = str(_first(row, "market_family", "market") or "").strip()
+    if family in MARKET_LABELS or family in FOCUS_MARKETS:
+        return family
+    label = str(_first(row, "market_label") or "").strip().lower()
+    if label in MARKET_LABEL_ALIASES:
+        return MARKET_LABEL_ALIASES[label]
+    return family
+
+
+def _extract_candidate_rows(data: dict[str, Any]) -> tuple[list[Any] | None, str]:
+    """Return ``(rows, state)`` for a Football candidates payload.
+
+    ``state`` is one of:
+
+    * ``"OK"``              - a recognised row collection was found.
+    * ``"EMPTY"``           - a genuine candidates payload with no row collection
+                              (or an explicitly empty one). An honest empty slate.
+    * ``"MALFORMED"``       - a recognised key was present but not a list.
+    * ``"CONTRACT_MISMATCH"`` - the payload is not a candidates/dashboard payload
+                              at all; this must not be shown as "no picks today".
+    """
+    for key in CANDIDATE_ROW_SOURCES:
+        if key not in data:
+            continue
+        value = data[key]
+        if isinstance(value, list):
+            return value, "OK"
+        return None, "MALFORMED"
+    if CANDIDATE_PAYLOAD_MARKERS & set(data.keys()):
+        return [], "EMPTY"
+    return None, "CONTRACT_MISMATCH"
+
+
 def decision_label(row: dict[str, Any]) -> tuple[str, str]:
     """Return ``(label, tone)`` for the bet-decision half of a desk row.
 
     The model view and the bet decision are kept separate everywhere else; this
-    only ever describes the decision.
+    only ever describes the decision. ``current_decision_group`` is the
+    authoritative group on the client-first ``today_desk_rows`` surface, while
+    the live ``/api/candidates`` desk rows carry ``decision_group``; both are
+    supported, with the authoritative field checked first. An unknown state is
+    never promoted to "Bet".
     """
-    group = str(_first(row, "decision_group") or "").strip().lower()
+    group = str(_first(row, "current_decision_group", "decision_group") or "").strip().lower()
     state = str(_first(row, "current_decision_state", "desk_decision", "decision") or "").strip().upper()
-    if group == "bet" or state == "BET":
+    desk = str(_first(row, "desk_label") or "").strip().upper()
+
+    if group == "bet" or state == "BET" or desk == "BET":
         return "Bet", "value"
-    if state == "VETOED":
-        return "Vetoed", "blocked"
-    if group == "no_bet" or state == "NO_BET":
+    if group == "no_bet" or state.startswith("NO_BET") or desk == "NO BET":
         return "No bet", "neutral"
-    return DECISION_LABELS.get(state, state.replace("_", " ").title() or "—"), "neutral"
+    if state == "VETOED" or desk == "VETOED":
+        return "Vetoed", "blocked"
+    if group == "unsupported" or state == "UNSUPPORTED" or desk == "UNSUPPORTED":
+        return "Unsupported", "blocked"
+    if group == "blocked" or state == "BLOCKED" or desk == "BLOCKED":
+        return "Blocked", "blocked"
+    if state == "AWAITING_MARKET" or desk == "AWAITING MARKET":
+        return "Awaiting market", "neutral"
+    if DECISION_LABELS.get(state) == "Pending" or desk == "PENDING":
+        return "Pending", "neutral"
+    if not group and not state and not desk:
+        return "—", "neutral"
+    if state:
+        return DECISION_LABELS.get(state, state.replace("_", " ").title()), "neutral"
+    return desk.replace("_", " ").title(), "neutral"
 
 
 # ----------------------------------------------------------------- view models
@@ -418,9 +543,26 @@ def build_picks_view(response: FootballResponse) -> PicksView:
         return _unavailable(PicksView, response)
 
     data = response.data
-    rows = data.get("rows")
-    if not isinstance(rows, list):
-        # A connected desk with no current rows is a valid, empty state.
+    rows, row_state = _extract_candidate_rows(data)
+    if row_state == "MALFORMED":
+        return PicksView(
+            available=False,
+            state="MALFORMED",
+            message=(
+                "Football returned candidate rows in an unexpected format. "
+                "Nothing is shown rather than showing an unverified figure."
+            ),
+        )
+    if row_state == "CONTRACT_MISMATCH":
+        return PicksView(
+            available=False,
+            state="CONTRACT_MISMATCH",
+            message=(
+                "Football returned a candidates response the unified UI does not "
+                "recognise. This is a contract mismatch, not an empty slate."
+            ),
+        )
+    if rows is None:
         rows = []
 
     picks: list[FootballPick] = []
@@ -428,7 +570,7 @@ def build_picks_view(response: FootballResponse) -> PicksView:
     for row in rows:
         if not isinstance(row, dict):
             continue
-        market = str(_first(row, "market_family", "market") or "")
+        market = market_family(row)
         if market == "asian_handicap":
             ah += 1
         elif market == "corner_total":
@@ -455,13 +597,13 @@ def build_picks_view(response: FootballResponse) -> PicksView:
                 line=None if line is None else f"{_num(line):g}" if _num(line) is not None else str(line),
                 model_probability=_fmt_probability(_first(row, "model_probability")),
                 fair_price=_fmt_price(_first(row, "fair_odds", "model_fair_decimal_price")),
-                available_price=_fmt_price(_first(row, "best_available_price", "best_offer_odds")),
+                available_price=_fmt_price(_first(row, "best_available_price", "best_offer_odds", "market_odds")),
                 edge=_fmt_edge(_first(row, "edge", "settlement_aware_edge")),
                 decision=label,
                 decision_tone=tone,
                 is_bet=is_bet,
                 is_focus_market=market in FOCUS_MARKETS,
-                reason=_first(row, "reason"),
+                reason=_first(row, "reason", "desk_note"),
             )
         )
 
@@ -533,9 +675,15 @@ def build_performance_view(response: FootballResponse) -> PerformanceView:
     metrics = (
         metric("Bets", "positions", lambda v: None if _num(v) is None else str(int(_num(v)))),
         metric("Settled", "settled_positions", lambda v: None if _num(v) is None else str(int(_num(v)))),
+        metric("Pending", "pending_positions", lambda v: None if _num(v) is None else str(int(_num(v)))),
         metric("Wins", "wins", lambda v: None if _num(v) is None else str(int(_num(v)))),
         metric("Losses", "losses", lambda v: None if _num(v) is None else str(int(_num(v)))),
+        # Voids and pushes are distinct settlement outcomes upstream; they are
+        # surfaced separately rather than collapsed into one figure.
         metric("Voids", "voids", lambda v: None if _num(v) is None else str(int(_num(v)))),
+        metric("Pushes", "pushes", lambda v: None if _num(v) is None else str(int(_num(v)))),
+        # Half-win / half-loss outcomes are intentionally not recalculated here;
+        # the upstream strike rate already weights them and is used as-is.
         metric("Win rate", "strike_rate", _fmt_rate),
         metric("Units", "net_units", _fmt_units),
         metric("ROI", "roi", _fmt_rate),
@@ -561,7 +709,7 @@ def build_performance_view(response: FootballResponse) -> PerformanceView:
 def _history_row(row: dict[str, Any]) -> HistoryRow:
     line = _first(row, "line")
     return HistoryRow(
-        date=_first(row, "kickoff_local", "settled_at", "decision_timestamp"),
+        date=_first(row, "kickoff_local", "kickoff", "settled_at", "decision_timestamp"),
         fixture=_fixture_label(row),
         competition=_first(row, "competition_name"),
         market=str(_first(row, "market_label") or market_label(str(_first(row, "market") or ""))),
@@ -580,8 +728,20 @@ def build_history_view(response: FootballResponse) -> HistoryView:
 
     data = response.data
     raw = data.get("recent_paper_bets")
-    if not isinstance(raw, list):
-        raw = []
+    if not isinstance(raw, list) or not raw:
+        # ``recent_paper_bets`` is the canonical settled-history collection on
+        # ``/api/performance``. When it is absent, fall back to the normalized
+        # client history that Football attaches to the same payload.
+        client_history = data.get("client_history")
+        fallback: list[Any] = []
+        if isinstance(client_history, dict):
+            fallback = [
+                row
+                for row in (client_history.get("open_positions") or [])
+                + (client_history.get("recent_settled") or [])
+                if isinstance(row, dict)
+            ]
+        raw = fallback
     rows = tuple(_history_row(row) for row in raw if isinstance(row, dict))
     # ``client_history`` is capped server-side by Football; surface that honestly.
     capped = False
@@ -646,9 +806,20 @@ def build_system_view(
         )
     )
 
-    market_state = _first(status or {}, "market_sync") if isinstance(status, dict) else None
-    if isinstance(market_state, dict):
-        market_state = _first(market_state, "state")
+    # Prefer the client-facing ``odds_feed`` state, then the runtime ``market_sync``
+    # state, then the ``/health.market_sync_state`` fallback. All three are part of
+    # the real Football contract; using each in turn avoids a spurious "—".
+    market_state: Any = None
+    if isinstance(status, dict):
+        odds_feed = status.get("odds_feed")
+        if isinstance(odds_feed, dict):
+            market_state = _first(odds_feed, "state")
+        if market_state is None:
+            market_sync = status.get("market_sync")
+            if isinstance(market_sync, dict):
+                market_state = _first(market_sync, "state")
+            elif market_sync is not None:
+                market_state = market_sync
     if market_state is None:
         market_state = _first(health or {}, "market_sync_state")
     rows.append(_row("Market evidence", market_state, tone=_tone_for_state(market_state)))
@@ -668,12 +839,15 @@ def build_system_view(
 
 __all__ = [
     "ALLOWED_GET_PATHS",
+    "CANDIDATE_PAYLOAD_MARKERS",
+    "CANDIDATE_ROW_SOURCES",
     "DECISION_LABELS",
     "FOCUS_MARKETS",
     "FOOTBALL_BASE_URL_ENV",
     "FOOTBALL_COOKIE_ENV",
     "FOOTBALL_TOKEN_ENV",
     "MARKET_LABELS",
+    "MARKET_LABEL_ALIASES",
     "STATE_CHANGING_PATHS",
     "FootballPick",
     "FootballResponse",
@@ -694,6 +868,7 @@ __all__ = [
     "load_health",
     "load_performance",
     "load_system_status",
+    "market_family",
     "market_label",
     "request_get",
 ]

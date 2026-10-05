@@ -44,72 +44,206 @@ def _degraded(state="UNAVAILABLE", message="Football is temporarily unavailable.
     return fb.FootballResponse(ok=False, state=state, message=message)
 
 
+# --------------------------------------------------------------------------
+# Contract-faithful Football fixtures.
+#
+# These mirror the real ``sports-edge-ai`` JSON shapes (validated against
+# ``services.get_betting_desk_payload`` / ``get_dashboard_payload``,
+# ``paper_trading_performance`` and ``_build_system_status``). The Tennis tests
+# stay offline: the Football repository is never imported, only mirrored here.
+# --------------------------------------------------------------------------
+
+# Live ``GET /api/candidates`` (``get_candidates_payload`` -> desk payload). The
+# canonical collection is the top-level ``"rows"`` list.
 CANDIDATES = {
+    "connected": True,
+    "reason": "Current desk rows are staged as provider market data becomes available.",
+    "quota_waiting_reset": False,
+    "quota_state": "AVAILABLE",
     "rows": [
         {
-            "market_family": "asian_handicap",
+            "fixture_id": "api-football:100",
+            "competition_name": "Premier League",
+            "kickoff_utc": "2026-10-05T12:00:00+00:00",
+            "kickoff_local": "2026-10-05 20:00",
+            "kickoff_time_local": "20:00",
             "home_team_name": "Arsenal",
             "away_team_name": "Chelsea",
-            "competition_name": "Premier League",
-            "kickoff_local": "Oct 5, 8:00 PM",
+            "market_family": "asian_handicap",
+            "market_label": "Asian Handicap",
+            "selection": "HOME",
+            "selection_label": "Arsenal",
+            "bet_label": "Arsenal -0.5",
+            "line": -0.5,
             "model_probability": 0.61,
-            "fair_odds": 1.9,
+            "fair_odds": 1.90,
+            "model_fair_decimal_price": 1.90,
+            "best_offer_odds": 2.05,
             "best_available_price": 2.05,
             "edge": 0.05,
-            "decision_group": "bet",
+            "settlement_aware_edge": 0.05,
+            "decision": "PRELIMINARY_CANDIDATE",
+            "desk_decision": "BET",
             "current_decision_state": "BET",
-            "line": -0.5,
-            "bet_label": "Arsenal -0.5",
+            "decision_group": "bet",
+            "reason": "Qualified",
         },
         {
-            "market_family": "corner_total",
+            "fixture_id": "api-football:101",
+            "competition_name": "Premier League",
+            "kickoff_utc": "2026-10-05T10:00:00+00:00",
+            "kickoff_local": "2026-10-05 18:00",
+            "kickoff_time_local": "18:00",
             "home_team_name": "Leeds",
             "away_team_name": "Spurs",
-            "competition_name": "Premier League",
-            "kickoff_local": "Oct 5, 6:00 PM",
-            "model_probability": 0.55,
-            "fair_odds": 1.8,
-            "best_available_price": 1.7,
-            "edge": -0.02,
-            "decision_group": "no_bet",
-            "current_decision_state": "NO_BET",
-            "line": 9.5,
+            "market_family": "corner_total",
+            "market_label": "Corners",
+            "selection": "UNDER",
+            "selection_label": "Under 9.5",
             "bet_label": "Under 9.5 Corners",
+            "line": 9.5,
+            "model_probability": 0.55,
+            "fair_odds": 1.80,
+            "model_fair_decimal_price": 1.80,
+            "best_offer_odds": 1.70,
+            "best_available_price": 1.70,
+            "edge": -0.02,
+            "settlement_aware_edge": -0.02,
+            "decision": "NO_BET",
+            "desk_decision": "NO_BET_VALUE",
+            "current_decision_state": "NO_BET_VALUE",
+            "decision_group": "no_bet",
+            "reason": "Insufficient value",
         },
     ],
+    "visible_rows": [],
+    "pagination": {"page": 1, "total_items": 2, "total_pages": 1},
+    "preliminary_candidates": [],
+    "blocked_candidates": [],
+    "no_bet_candidates": [],
+    "supported_markets": ["asian_handicap", "corner_total"],
+    "research_markets": ["1x2", "btts", "goals_total"],
+    "blocking_reasons": {},
+    "summary": {"rows": 2, "bets": 1, "no_bets": 1, "blocked": 0},
+    "system_status": {},
+}
+
+# Client-first dashboard payload shape (``get_dashboard_payload``) with
+# ``today_desk_rows``. These rows use ``current_decision_group``/``desk_label``
+# and only the humanized ``market_label`` plus ``market_odds``.
+CANDIDATES_DASHBOARD = {
+    "today_desk_rows": [
+        {
+            "fixture_id": "api-football:200",
+            "competition_name": "Championship",
+            "kickoff_utc": "2026-10-05T18:00:00+00:00",
+            "kickoff_local": "2026-10-05 18:00",
+            "kickoff_time_local": "18:00",
+            "home_team_name": "Leeds",
+            "away_team_name": "Spurs",
+            "market_label": "Asian Handicap",
+            "bet_label": "Leeds +0.5",
+            "selection_label": "Leeds",
+            "model_probability": 0.61,
+            "market_odds": 2.05,
+            "fair_odds": 1.90,
+            "edge": 0.05,
+            "desk_label": "BET",
+            "current_decision_state": "BET",
+            "current_decision_group": "bet",
+            "desk_note": "Qualified",
+        },
+        {
+            "fixture_id": "api-football:201",
+            "competition_name": "Championship",
+            "kickoff_utc": "2026-10-05T19:00:00+00:00",
+            "kickoff_local": "2026-10-05 19:00",
+            "kickoff_time_local": "19:00",
+            "home_team_name": "Watford",
+            "away_team_name": "Norwich",
+            "market_label": "Corners",
+            "bet_label": "Under 9.5 Corners",
+            "selection_label": "Under 9.5",
+            "model_probability": 0.55,
+            "market_odds": 1.70,
+            "fair_odds": 1.80,
+            "edge": -0.02,
+            "desk_label": "NO BET",
+            "current_decision_state": "NO_BET_VALUE",
+            "current_decision_group": "no_bet",
+            "desk_note": "Insufficient value",
+        },
+    ],
+    "visible_today_desk_rows": [],
+    "today_desk_pagination": {"page": 1, "total_items": 2, "total_pages": 1},
+    "current_slate_rows": [],
+    "current_slate_summary": {},
+    "other_decision_rows": [],
+    "client_match_cards": [],
     "system_status": {},
 }
 
 PERFORMANCE = {
+    # ``current_paper_summary`` is ``paper_trading_performance`` output. All
+    # percentage-like values are fractional (0.55 == 55%).
     "current_paper_summary": {
         "positions": 12,
         "settled_positions": 9,
+        "pending_positions": 3,
         "wins": 5,
         "losses": 4,
+        "pushes": 1,
+        "half_wins": 1,
+        "half_losses": 0,
         "voids": 0,
         "strike_rate": 0.55,
         "net_units": 1.2,
         "roi": 0.08,
         "average_clv": 0.01,
+        "clv_sample": 7,
+        "clv_coverage": 0.78,
     },
     "market_breakdown": [
         {"key": "asian_handicap", "label": "Asian Handicap", "bets": 6, "settled": 5, "wins": 3, "losses": 2, "strike_rate": 0.6, "net_units": 0.9, "roi": 0.1, "low_sample": False},
         {"key": "corner_total", "label": "Corners", "bets": 6, "settled": 4, "wins": 2, "losses": 2, "strike_rate": 0.5, "net_units": 0.3, "roi": 0.05, "low_sample": True},
     ],
-    "window_rows": [{"window": "7D", "suggested_bets": 3, "settled": 2, "wins": 1, "losses": 1, "roi": 0.04, "net_units": 0.2, "clv": 0.01}],
-    "recent_paper_bets": [
-        {"fixture_label": "A vs B", "competition_name": "PL", "kickoff_local": "2026-10-01 20:00", "market_label": "Asian Handicap", "bet_label": "A -0.5", "entry_odds": 1.95, "result_label": "WON", "net_pnl": 0.95, "clv_pct": 0.02}
+    "window_rows": [
+        {"window": "7D", "suggested_bets": 3, "settled": 2, "wins": 1, "losses": 1, "strike_rate": 0.5, "average_odds": 2.1, "roi": 0.04, "net_units": 0.2, "clv": 0.01}
     ],
-    "client_history": {"normalized_count": 1},
+    # ``recent_paper_bets`` is ``_paper_position_display_rows`` output.
+    "recent_paper_bets": [
+        {
+            "fixture_id": "api-football:300",
+            "fixture_label": "A vs B",
+            "competition_name": "PL",
+            "kickoff_local": "2026-10-01 20:00",
+            "market": "asian_handicap",
+            "market_label": "Asian Handicap",
+            "bet_label": "A -0.5",
+            "selection_label": "A",
+            "entry_odds": 1.95,
+            "trade_state": "WON",
+            "result_label": "WON",
+            "net_pnl": 0.95,
+            "clv_pct": 0.02,
+        }
+    ],
+    "client_history": {
+        "available": True,
+        "normalized_count": 1,
+        "recent_settled": [],
+        "open_positions": [],
+    },
     "current_streak": "W1",
     "clv_status_label": "+1.00%",
 }
 
 SYSTEM_STATUS = {
-    "fixture_feed": {"state": "CONNECTED", "last_successful_sync_at": "2026-10-04T23:08:49Z"},
+    "fixture_feed": {"state": "CONNECTED", "last_successful_sync_at": "2026-10-04T23:08:49Z", "last_sync_at": "2026-10-04T23:08:49Z"},
     "prediction_engine": {"state": "READY", "last_prediction_generated_at": "2026-10-04T23:00:00Z"},
-    "market_sync": {"state": "SYNC_DISABLED"},
-    "storage": {"state": "persistent"},
+    "odds_feed": {"state": "CONNECTED", "provider": "the-odds-api", "reason": ""},
+    "market_sync": {"state": "SYNC_DISABLED", "last_sync_at": "2026-10-04T23:05:00Z"},
+    "storage": {"state": "READY", "mode": "persistent"},
 }
 
 HEALTH = {
@@ -117,6 +251,7 @@ HEALTH = {
     "fixture_provider_state": "CONNECTED",
     "last_fixture_sync_at": "2026-10-04T23:08:49Z",
     "market_sync_state": "SYNC_DISABLED",
+    "last_market_sync_at": "2026-10-04T23:05:00Z",
     "prediction_snapshot_ready": True,
     "storage_mode": "persistent",
 }
@@ -231,6 +366,203 @@ def test_football_picks_separates_model_and_bet_decision(monkeypatch):
     assert "Bet decision" in response.text
     assert "No bet" in response.text
     assert "Bet" in response.text
+
+
+# ------------------------------------------------- contract-faithful football
+
+
+def test_live_candidates_desk_rows_produce_picks():
+    view = fb.build_picks_view(_ok(CANDIDATES))
+    assert view.available is True
+    assert view.total == 2
+    assert view.ah_count == 1
+    assert view.corners_count == 1
+    assert view.bet_count == 1
+    assert view.no_bet_count == 1
+
+    ah = next(pick for pick in view.picks if pick.market_label == "asian_handicap")
+    assert ah.decision == "Bet"
+    assert ah.is_focus_market is True
+    assert ah.model_probability == "61.0%"
+    assert ah.fair_price == "1.90"
+    assert ah.available_price == "2.05"
+    assert ah.edge == "+5.0%"
+
+    corners = next(pick for pick in view.picks if pick.market_label == "corner_total")
+    assert corners.decision == "No bet"
+    assert corners.is_bet is False
+
+
+def test_dashboard_today_desk_rows_produce_picks():
+    view = fb.build_picks_view(_ok(CANDIDATES_DASHBOARD))
+    assert view.available is True
+    assert view.total == 2
+    assert view.ah_count == 1
+    assert view.corners_count == 1
+
+    bets = [pick for pick in view.picks if pick.is_bet]
+    assert [pick.decision for pick in bets] == ["Bet"]
+    assert bets[0].market == "Asian Handicap"
+    assert bets[0].selection == "Leeds +0.5"
+    assert bets[0].model_probability == "61.0%"
+    assert bets[0].edge == "+5.0%"
+    assert bets[0].available_price == "2.05"
+
+    no_bet = next(pick for pick in view.picks if not pick.is_bet)
+    assert no_bet.decision == "No bet"
+
+
+def test_bet_recognized_from_authoritative_decision_fields():
+    assert fb.decision_label(
+        {"market_family": "asian_handicap", "current_decision_state": "BET", "current_decision_group": "bet"}
+    ) == ("Bet", "value")
+    assert fb.decision_label(
+        {"desk_decision": "BET", "decision_group": "bet"}
+    ) == ("Bet", "value")
+    assert fb.decision_label(
+        {"desk_label": "BET", "current_decision_state": "BET"}
+    ) == ("Bet", "value")
+
+
+def test_no_bet_and_blocked_states_are_not_promoted_to_bet():
+    assert fb.decision_label({"current_decision_state": "NO_BET_VALUE", "current_decision_group": "no_bet"})[0] == "No bet"
+    assert fb.decision_label({"current_decision_group": "blocked"})[0] == "Blocked"
+    assert fb.decision_label({"current_decision_group": "unsupported"})[0] == "Unsupported"
+    assert fb.decision_label({"current_decision_state": "VETOED"})[0] == "Vetoed"
+    # An unknown future state must never be rendered as a bet.
+    assert fb.decision_label({"current_decision_state": "SOMETHING_NEW"})[0] != "Bet"
+
+
+def test_empty_today_desk_rows_is_an_honest_empty_slate():
+    payload = {"today_desk_rows": [], "today_desk_pagination": {}, "system_status": {}}
+    view = fb.build_picks_view(_ok(payload))
+    assert view.available is True
+    assert view.state == "OK"
+    assert view.total == 0
+    assert view.picks == ()
+
+
+def test_unexpected_candidate_contract_is_not_masqueraded_as_empty():
+    view = fb.build_picks_view(_ok({"unexpected": "shape"}))
+    assert view.available is False
+    assert view.state == "CONTRACT_MISMATCH"
+    assert "not an empty slate" in view.message
+
+
+def test_malformed_candidate_rows_are_rejected():
+    view = fb.build_picks_view(_ok({"today_desk_rows": {"not": "a list"}}))
+    assert view.available is False
+    assert view.state == "MALFORMED"
+
+
+def test_probability_price_and_edge_units_are_fractional():
+    # Football emits fractional probabilities/edges and decimal odds. The
+    # adapter must not apply heuristic divide-by-100 logic.
+    assert fb._fmt_probability(0.61) == "61.0%"
+    assert fb._fmt_edge(0.05) == "+5.0%"
+    assert fb._fmt_edge(-0.02) == "-2.0%"
+    assert fb._fmt_rate(0.55) == "55.0%"
+    assert fb._fmt_price(1.9) == "1.90"
+    assert fb._fmt_price(2.05) == "2.05"
+
+
+def test_performance_view_maps_real_payload():
+    view = fb.build_performance_view(_ok(PERFORMANCE))
+    assert view.available is True
+    values = {metric.label: metric.value for metric in view.metrics}
+    assert values["Bets"] == "12"
+    assert values["Settled"] == "9"
+    assert values["Pending"] == "3"
+    assert values["Wins"] == "5"
+    assert values["Losses"] == "4"
+    assert values["Voids"] == "0"
+    assert values["Pushes"] == "1"
+    assert values["Win rate"] == "55.0%"
+    assert values["Units"] == "+1.20u"
+    assert values["ROI"] == "8.0%"
+    assert values["CLV"] == "1.0%"
+    assert view.markets[0].label == "Asian Handicap"
+    assert view.markets[0].strike_rate == "60.0%"
+    assert view.streak == "W1"
+    assert view.clv_label == "+1.00%"
+
+
+def test_history_view_maps_real_recent_paper_bets():
+    view = fb.build_history_view(_ok(PERFORMANCE))
+    assert view.available is True
+    assert view.total == 1
+    row = view.rows[0]
+    assert row.fixture == "A vs B"
+    assert row.competition == "PL"
+    assert row.market == "Asian Handicap"
+    assert row.selection == "A -0.5"
+    assert row.price == "1.95"
+    assert row.result == "WON"
+    assert row.units == "+0.95u"
+    assert row.clv == "2.0%"
+
+
+def test_history_view_falls_back_to_client_history():
+    payload = {
+        "client_history": {
+            "normalized_count": 1,
+            "open_positions": [],
+            "recent_settled": [
+                {
+                    "fixture_label": "C vs D",
+                    "competition_name": "PL",
+                    "kickoff_local": "2026-10-01 20:00",
+                    "market": "corner_total",
+                    "market_label": "Corners",
+                    "bet_label": "Over 9.5 Corners",
+                    "entry_odds": 1.9,
+                    "trade_state": "LOST",
+                    "net_pnl": -1.0,
+                    "clv_pct": -0.01,
+                }
+            ],
+        }
+    }
+    view = fb.build_history_view(_ok(payload))
+    assert view.available is True
+    assert view.total == 1
+    assert view.rows[0].fixture == "C vs D"
+    assert view.rows[0].result == "LOST"
+    assert view.rows[0].units == "-1.00u"
+
+
+def test_system_view_uses_real_status_keys():
+    view = fb.build_system_view(_ok(SYSTEM_STATUS), _ok(HEALTH))
+    assert view.available is True
+    values = {row.label: row.value for row in view.rows}
+    assert values["Data feed"] == "CONNECTED"
+    assert values["Prediction engine"] == "READY"
+    assert values["Market evidence"] == "CONNECTED"
+    assert values["Storage"] == "READY"
+
+
+def test_system_view_falls_back_to_market_sync_and_health():
+    without_odds_feed = {"fixture_feed": {"state": "CONNECTED"}, "market_sync": {"state": "SYNC_DISABLED"}}
+    view = fb.build_system_view(_ok(without_odds_feed), _degraded())
+    values = {row.label: row.value for row in view.rows}
+    assert values["Market evidence"] == "SYNC_DISABLED"
+
+    health_only = fb.build_system_view(_degraded("UNAVAILABLE"), _ok(HEALTH))
+    assert health_only.available is True
+    health_values = {row.label: row.value for row in health_only.rows}
+    assert health_values["Data feed"] == "CONNECTED"
+    assert health_values["Market evidence"] == "SYNC_DISABLED"
+    assert health_values["Storage"] == "persistent"
+
+
+def test_football_picks_page_renders_contract_faithful_rows(monkeypatch):
+    _patch_football(monkeypatch, candidates=_ok(CANDIDATES_DASHBOARD))
+    client = _client(monkeypatch)
+    response = client.get("/football")
+    assert response.status_code == 200
+    assert "Leeds +0.5" in response.text
+    assert "61.0%" in response.text
+    assert "+5.0%" in response.text
 
 
 # ------------------------------------------------------------ failure isolation
@@ -365,3 +697,60 @@ def test_overview_keeps_sports_independent(monkeypatch):
     # combined profitability or bankroll figure.
     assert "no combined" in response.text.lower()
     assert "total sports edge" not in response.text.lower()
+
+
+def test_root_redirects_to_overview(monkeypatch):
+    _patch_football(monkeypatch)
+    client = _client(monkeypatch)
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code in (302, 307)
+    assert response.headers["location"] == "/overview"
+
+
+def test_overview_degrades_when_tennis_summary_fails(monkeypatch):
+    import sports_edge_tennis.dashboard.unified_routes as ur
+
+    _patch_football(monkeypatch)
+    monkeypatch.setattr(
+        ur,
+        "_tennis_overview",
+        lambda tz: {
+            "available": False,
+            "latest_activity": None,
+            "pick_count": None,
+            "value_bet_count": None,
+            "model_pick_count": None,
+            "system_state": None,
+            "failed": True,
+        },
+    )
+    client = _client(monkeypatch)
+    response = client.get("/overview")
+    assert response.status_code == 200
+    assert "Football" in response.text
+
+
+def test_overview_survives_unexpected_football_loader_error(monkeypatch):
+    import sports_edge_tennis.dashboard.unified_routes as ur
+
+    def boom():
+        raise RuntimeError("unexpected in-process Football failure")
+
+    monkeypatch.setattr(fb, "load_candidates", boom)
+    monkeypatch.setattr(
+        ur,
+        "_tennis_overview",
+        lambda tz: {
+            "available": False,
+            "latest_activity": None,
+            "pick_count": None,
+            "value_bet_count": None,
+            "model_pick_count": None,
+            "system_state": None,
+            "failed": True,
+        },
+    )
+    client = _client(monkeypatch)
+    response = client.get("/overview")
+    assert response.status_code == 200
+    assert "temporarily unavailable" in response.text.lower()
