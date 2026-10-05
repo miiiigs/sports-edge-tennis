@@ -531,6 +531,73 @@ def test_history_view_falls_back_to_client_history():
     assert view.rows[0].units == "-1.00u"
 
 
+def test_history_view_fallback_excludes_open_positions():
+    # ``/football/history`` is settled bet history. When canonical
+    # ``recent_paper_bets`` is unavailable, the client-history fallback must
+    # surface settled rows only; an open/pending position must never be shown
+    # here simply because canonical settled rows are absent or empty.
+    payload = {
+        "client_history": {
+            "normalized_count": 2,
+            "open_positions": [
+                {
+                    "fixture_label": "Open Team C vs Team D",
+                    "competition_name": "PL",
+                    "kickoff_local": "2026-10-02 20:00",
+                    "market": "asian_handicap",
+                    "market_label": "Asian Handicap",
+                    "bet_label": "Team C -0.5",
+                    "entry_odds": 1.95,
+                    "trade_state": "OPEN",
+                }
+            ],
+            "recent_settled": [
+                {
+                    "fixture_label": "Settled Team A vs Team B",
+                    "competition_name": "PL",
+                    "kickoff_local": "2026-10-01 20:00",
+                    "market": "asian_handicap",
+                    "market_label": "Asian Handicap",
+                    "bet_label": "Team A -0.5",
+                    "entry_odds": 1.95,
+                    "trade_state": "WON",
+                    "net_pnl": 0.95,
+                    "clv_pct": 0.02,
+                }
+            ],
+        }
+    }
+    view = fb.build_history_view(_ok(payload))
+    assert view.available is True
+    assert view.total == 1
+    fixtures = [row.fixture for row in view.rows]
+    assert "Settled Team A vs Team B" in fixtures
+    assert "Open Team C vs Team D" not in fixtures
+
+
+def test_history_view_without_settled_rows_is_honest_empty():
+    # No canonical settled rows and no settled client history: the page must be
+    # honestly empty rather than populated with open positions.
+    payload = {
+        "client_history": {
+            "normalized_count": 1,
+            "open_positions": [
+                {
+                    "fixture_label": "Open Team C vs Team D",
+                    "market": "asian_handicap",
+                    "bet_label": "Team C -0.5",
+                    "trade_state": "OPEN",
+                }
+            ],
+            "recent_settled": [],
+        }
+    }
+    view = fb.build_history_view(_ok(payload))
+    assert view.available is True
+    assert view.total == 0
+    assert view.rows == ()
+
+
 def test_system_view_uses_real_status_keys():
     view = fb.build_system_view(_ok(SYSTEM_STATUS), _ok(HEALTH))
     assert view.available is True

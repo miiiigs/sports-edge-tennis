@@ -730,15 +730,16 @@ def build_history_view(response: FootballResponse) -> HistoryView:
     raw = data.get("recent_paper_bets")
     if not isinstance(raw, list) or not raw:
         # ``recent_paper_bets`` is the canonical settled-history collection on
-        # ``/api/performance``. When it is absent, fall back to the normalized
-        # client history that Football attaches to the same payload.
+        # ``/api/performance``. When it is absent, fall back only to the
+        # normalized *settled* client history that Football attaches to the same
+        # payload. This route is settled bet history: open/pending positions must
+        # never appear here just because canonical settled rows are unavailable.
         client_history = data.get("client_history")
         fallback: list[Any] = []
         if isinstance(client_history, dict):
             fallback = [
                 row
-                for row in (client_history.get("open_positions") or [])
-                + (client_history.get("recent_settled") or [])
+                for row in (client_history.get("recent_settled") or [])
                 if isinstance(row, dict)
             ]
         raw = fallback
