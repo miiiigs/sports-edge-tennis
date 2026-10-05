@@ -42,8 +42,8 @@
         <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }} · {{ pick.tier_text }}</p>
       </div>
       <div class="pick-probability">
-        <span class="prob-value">{{ pick.probability_text }}</span>
-        <span class="prob-label">Probability basis: Manager Consensus</span>
+        <span class="prob-value">{{ pick.probability_display_text }}</span>
+        <span class="prob-label" title="{{ pick.probability_note }}">{{ pick.probability_label }} · Basis: {{ pick.probability_basis_label }}</span>
       </div>
     </div>
 
@@ -106,8 +106,8 @@
           <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }}</p>
         </div>
         <div class="pick-probability">
-          <span class="prob-value">{{ pick.probability_text }}</span>
-          <span class="prob-label">Probability basis: Manager Consensus</span>
+          <span class="prob-value">{{ pick.probability_display_text }}</span>
+          <span class="prob-label" title="{{ pick.probability_note }}">{{ pick.probability_label }} · Basis: {{ pick.probability_basis_label }}</span>
         </div>
       </div>
       <div class="pick-meta" style="align-items: flex-start;">
@@ -133,7 +133,7 @@
         <tr>
           <th scope="col">Pick</th>
           <th scope="col">Opponent</th>
-          <th scope="col">Win probability · Manager Consensus</th>
+          <th scope="col">Model probability · Manager Consensus (uncalibrated)</th>
           <th scope="col">Why not a bet</th>
         </tr>
       </thead>
@@ -142,7 +142,7 @@
         <tr>
           <th scope="row">{{ pick.player }}</th>
           <td class="wrap">{{ pick.opponent }}</td>
-          <td class="num">{{ pick.probability_text }}</td>
+          <td class="num">{{ pick.probability_display_text }}</td>
           <td class="wrap">{{ pick.market_reason or 'Market evaluation is not complete yet.' }}</td>
         </tr>
         {% endfor %}

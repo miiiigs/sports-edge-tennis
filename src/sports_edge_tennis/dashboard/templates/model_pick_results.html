@@ -157,7 +157,7 @@
             <span class="stat-note">{{ pick.tournament or 'Tournament unavailable' }}{% if pick.match_start_at %} · {{ tz_datetime(pick.match_start_at) }}{% endif %}</span>
           </td>
           <td class="num">
-            {% if pick.consensus_probability is not none %}{{ pres.percent(pick.consensus_probability) }}{% else %}—{% endif %}<br>
+            {% if pick.consensus_probability is not none %}{{ pick.probability_display_text }}{% else %}—{% endif %}<br>
             <span class="stat-note">{{ pick.probability_source_label }}</span>
           </td>
           <td>

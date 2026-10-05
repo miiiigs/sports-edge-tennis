@@ -153,6 +153,11 @@ class PickCard:
         return pres.percent(self.win_probability)
 
     @property
+    def probability_display_text(self) -> str:
+        """Whole-percent display of the Manager consensus probability (display only)."""
+        return pres.whole_percent(self.win_probability)
+
+    @property
     def probability_basis_label(self) -> str:
         """Human-readable source of the headline probability.
 
@@ -162,6 +167,22 @@ class PickCard:
         if self.is_wide_spread:
             return "A1/A2 Tracking Average"
         return "Manager Consensus"
+
+    @property
+    def probability_label(self) -> str:
+        """Client-facing confidence label that does not overclaim calibration."""
+        if self.is_wide_spread:
+            return "Wide-Spread Tracking Confidence"
+        return "Model Probability · Uncalibrated"
+
+    @property
+    def probability_note(self) -> str:
+        if self.is_wide_spread:
+            return (
+                "Tracking confidence from A1/A2 agreement. "
+                "Not a calibrated win probability."
+            )
+        return "Current model estimate. Calibration is being validated against live results."
 
     @property
     def primary_a1_probability_text(self) -> str:
@@ -174,6 +195,18 @@ class PickCard:
     @property
     def primary_average_probability_text(self) -> str:
         return pres.percent(self.primary_average_probability)
+
+    @property
+    def primary_a1_probability_display_text(self) -> str:
+        return pres.whole_percent(self.primary_a1_probability)
+
+    @property
+    def primary_a2_probability_display_text(self) -> str:
+        return pres.whole_percent(self.primary_a2_probability)
+
+    @property
+    def primary_average_probability_display_text(self) -> str:
+        return pres.whole_percent(self.primary_average_probability)
 
     @property
     def primary_probability_spread_text(self) -> str | None:
