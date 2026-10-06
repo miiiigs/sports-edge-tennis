@@ -284,6 +284,50 @@ class HistoricalRepository:
         tour_scope: str,
         competition_tier: str,
     ) -> int:
+        # Reviewed correction layer wins over historical provider provenance.
+        # It never mutates tournament_source_ids; it only changes operational
+        # canonical resolution for a provider identity that was reviewed.
+        if source_tournament_id:
+            correction = self.conn.execute(
+                """
+                SELECT canonical_tournament_id
+                FROM tournament_identity_corrections
+                WHERE source_system = %s AND source_tournament_id = %s
+                """,
+                (source_system, source_tournament_id),
+            ).fetchone()
+            if correction is not None:
+                target = self.conn.execute(
+                    "SELECT tour_scope::text, competition_tier::text "
+                    "FROM tournaments WHERE tournament_id = %s",
+                    (correction[0],),
+                ).fetchone()
+                if target is None:
+                    raise ValueError(
+                        "tournament identity correction target missing "
+                        f"{source_system}/{source_tournament_id}"
+                    )
+                if target[0] != tour_scope:
+                    raise ValueError(
+                        "tournament identity correction scope mismatch "
+                        f"{source_system}/{source_tournament_id} "
+                        f"expected={tour_scope} actual={target[0]}"
+                    )
+                historical = self.conn.execute(
+                    "SELECT tournament_id FROM tournament_source_ids "
+                    "WHERE source_system = %s AND source_tournament_id = %s",
+                    (source_system, source_tournament_id),
+                ).fetchone()
+                print(
+                    "TOURNAMENT_IDENTITY_CORRECTION_APPLIED "
+                    f"source_system={source_system} "
+                    f"source_tournament_id={source_tournament_id} "
+                    f"historical_tournament_id={historical[0] if historical else 'NONE'} "
+                    f"canonical_tournament_id={correction[0]} tier={target[1]}",
+                    flush=True,
+                )
+                return correction[0]
+
         if source_tournament_id:
             row = self.conn.execute(
                 """

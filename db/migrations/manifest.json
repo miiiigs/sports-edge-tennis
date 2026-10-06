@@ -120,6 +120,13 @@
       "up": "db/migrations/0017_prediction_abstention_reasons.up.sql",
       "down": "db/migrations/0017_prediction_abstention_reasons.down.sql",
       "schema_snapshot": "db/schema/0017_prediction_abstention_reasons.sql"
+    },
+    {
+      "version": "0018",
+      "name": "tournament_identity_corrections",
+      "up": "db/migrations/0018_tournament_identity_corrections.up.sql",
+      "down": "db/migrations/0018_tournament_identity_corrections.down.sql",
+      "schema_snapshot": "db/schema/0018_tournament_identity_corrections.sql"
     }
   ]
 }

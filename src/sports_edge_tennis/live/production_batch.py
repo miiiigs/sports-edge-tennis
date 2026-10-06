@@ -40,6 +40,9 @@ _ODDSPAPI_LEDGER_MIGRATION = Path("db/migrations/0015_oddspapi_request_ledger_v1
 _PREDICTION_ABSTENTION_MIGRATION = Path(
     "db/migrations/0017_prediction_abstention_reasons.up.sql"
 )
+_TOURNAMENT_IDENTITY_CORRECTIONS_MIGRATION = Path(
+    "db/migrations/0018_tournament_identity_corrections.up.sql"
+)
 _PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
@@ -299,6 +302,57 @@ def _ensure_prediction_abstention_reason_schema(
             "prediction abstention schema verification failed "
             f"column_present={column_present} index_present={index_present} "
             f"missing_constraints={','.join(missing) or 'none'}"
+        )
+    return "APPLIED"
+
+
+def _tournament_identity_corrections_schema_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, bool]:
+    table_present = bool(
+        conn.execute(
+            "SELECT to_regclass('public.tournament_identity_corrections') IS NOT NULL"
+        ).fetchone()[0]
+    )
+    if not table_present:
+        return False, False
+    trigger_present = bool(
+        conn.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM pg_trigger
+                WHERE tgrelid = 'public.tournament_identity_corrections'::regclass
+                  AND tgname = 'trg_tournament_identity_corrections_append_only_mutation'
+                  AND NOT tgisinternal
+            )
+            """
+        ).fetchone()[0]
+    )
+    return True, trigger_present
+
+
+def _ensure_tournament_identity_corrections_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _TOURNAMENT_IDENTITY_CORRECTIONS_MIGRATION,
+) -> str:
+    """Apply migration 0018 once, then verify the correction table and guard."""
+    table_present, trigger_present = _tournament_identity_corrections_schema_state(conn)
+    if table_present and trigger_present:
+        return "EXISTING"
+    if table_present or trigger_present:
+        raise RuntimeError(
+            "tournament identity corrections schema is partially applied "
+            f"table_present={table_present} trigger_present={trigger_present}"
+        )
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    table_present, trigger_present = _tournament_identity_corrections_schema_state(conn)
+    if not table_present or not trigger_present:
+        raise RuntimeError(
+            "tournament identity corrections schema verification failed "
+            f"table_present={table_present} trigger_present={trigger_present}"
         )
     return "APPLIED"
 
@@ -686,6 +740,9 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             model_identity_bridge_status = ensure_model_identity_bridge_schema(conn)
             strict_manager_v2_status = _ensure_strict_manager_v2_schema(conn)
             prediction_abstention_status = _ensure_prediction_abstention_reason_schema(conn)
+            tournament_identity_corrections_status = (
+                _ensure_tournament_identity_corrections_schema(conn)
+            )
             oddspapi_ledger_status = "SKIPPED_LEGACY_ODDS"
             if provider_authority.odds_mode == TARGET_ODDS_MODE:
                 oddspapi_ledger_status = _ensure_oddspapi_ledger_schema(conn)
@@ -709,6 +766,10 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     _log(
         "SCHEMA_PREDICTION_ABSTENTION "
         f"status={prediction_abstention_status} migration=0017"
+    )
+    _log(
+        "SCHEMA_TOURNAMENT_IDENTITY_CORRECTIONS "
+        f"status={tournament_identity_corrections_status} migration=0018"
     )
     _log(f"SCHEMA_ODDSPAPI_LEDGER status={oddspapi_ledger_status} migration=0015")
 
