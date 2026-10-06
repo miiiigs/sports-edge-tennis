@@ -268,10 +268,10 @@ def test_api_and_html_share_one_probability_string(demo_client) -> None:
     alcaraz = next(p for p in body["picks"] if p["player"] == "Carlos Alcaraz")
     assert alcaraz["win_probability"] == "70.0%"
     assert alcaraz["probability_basis"] == "MANAGER_CONSENSUS"
-    # The same rendered value reaches the server-rendered card, not a second
-    # client-side rounding of the raw probability.
-    assert alcaraz["win_probability"] in html
-    assert "Probability basis: Manager Consensus" in html
+    # API keeps the exact one-decimal value; the HTML card renders whole percent
+    # under the uncalibrated Model Probability label.
+    assert "70%" in html
+    assert "Model Probability · Uncalibrated" in html
 
 
 # ------------------------------------------------ lifecycle API stays type-safe

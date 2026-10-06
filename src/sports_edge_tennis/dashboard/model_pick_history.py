@@ -112,9 +112,15 @@ class ModelPickRow:
 
     @property
     def probability_source_label(self) -> str:
+        """Confidence label that never reads as a calibrated win probability."""
         if self.is_wide_spread:
-            return "A1/A2 Tracking Average"
-        return "Manager Consensus"
+            return "Wide-Spread Tracking Confidence · A1/A2 Tracking Average"
+        return "Model Probability · Uncalibrated"
+
+    @property
+    def probability_display_text(self) -> str:
+        """Whole-percent display only; the stored probability is unchanged."""
+        return pres.whole_percent(self.consensus_probability)
 
 
 @dataclass(frozen=True)

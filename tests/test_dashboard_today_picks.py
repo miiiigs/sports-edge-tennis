@@ -443,8 +443,8 @@ def test_no_bet_matches_are_collapsed_by_default_and_explain_the_reason(demo_cli
 def test_today_page_shows_probability_prominently(demo_client) -> None:
     response = demo_client.get("/today")
 
-    assert "Probability basis: Manager Consensus" in response.text
-    assert "70.0%" in response.text
+    assert "Model Probability · Uncalibrated" in response.text
+    assert "70%" in response.text
 
 
 def test_today_page_has_weak_pick_toggle(demo_client) -> None:

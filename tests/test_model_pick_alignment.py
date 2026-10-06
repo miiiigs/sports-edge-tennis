@@ -161,7 +161,7 @@ def test_manager_aligned_row_is_labelled_as_manager_consensus() -> None:
 
     assert row.is_wide_spread is False
     assert row.type_label == "MODEL PICK"
-    assert row.probability_source_label == "Manager Consensus"
+    assert row.probability_source_label == "Model Probability · Uncalibrated"
 
 
 def test_wide_spread_row_is_labelled_and_tracking_only() -> None:
@@ -169,7 +169,9 @@ def test_wide_spread_row_is_labelled_and_tracking_only() -> None:
 
     assert row.is_wide_spread is True
     assert row.type_label == "MODEL PICK · WIDE SPREAD"
-    assert row.probability_source_label == "A1/A2 Tracking Average"
+    assert row.probability_source_label == (
+        "Wide-Spread Tracking Confidence · A1/A2 Tracking Average"
+    )
     # A wide-spread row is never an actionable Value Bet.
     assert row.is_value_bet is False
 

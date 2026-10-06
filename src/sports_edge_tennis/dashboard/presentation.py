@@ -148,6 +148,21 @@ def percent(probability: Decimal | None) -> str:
     return f"{hundredths:.1f}%"
 
 
+def whole_percent(probability: Decimal | None) -> str:
+    """Render a model probability as a whole, truncated percent for display.
+
+    Presentation-only. The stored/API probability is never changed. Truncation
+    keeps the displayed value on the same side of the 60% threshold as the raw
+    Decimal (a qualifying 0.6000 renders ``60%``; 0.5999 renders ``59%``).
+    """
+    if probability is None:
+        return "—"
+    whole = (_as_decimal(probability) * 100).quantize(
+        Decimal("1"), rounding=ROUND_DOWN
+    )
+    return f"{whole:.0f}%"
+
+
 def precise_percent(value: Decimal | None) -> str:
     if value is None:
         return "—"

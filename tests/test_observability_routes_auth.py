@@ -10,10 +10,13 @@ from sports_edge_tennis.dashboard.auth import AUTH_SCHEMA, AuthSettings, AuthSto
 import sports_edge_tennis.dashboard.owner_access as owner_access
 import sports_edge_tennis.dashboard.production_app  # noqa: F401  registers the routes
 
-NEW_PATHS = (
+API_PATHS = (
     "/api/dashboard/agent-abstention",
     "/api/dashboard/result-coverage",
+    "/api/dashboard/calibration-health",
 )
+HTML_PATHS = ("/diagnostics/calibration",)
+NEW_PATHS = API_PATHS + HTML_PATHS
 
 
 @pytest.fixture()
@@ -44,10 +47,14 @@ def test_new_observability_apis_require_owner_auth_when_enabled(
     owner_access.templates.env.globals["tennis_auth_enabled"] = True
 
     with TestClient(owner_access.app, follow_redirects=False) as client:
-        for path in NEW_PATHS:
+        for path in API_PATHS:
             response = client.get(path)
             assert response.status_code == 401, path
             assert response.json()["detail"] == "Authentication required"
+        for path in HTML_PATHS:
+            response = client.get(path)
+            assert response.status_code == 303, path
+            assert response.headers["location"].startswith("/login?next=")
 
 
 def test_new_observability_apis_are_not_public_paths():
