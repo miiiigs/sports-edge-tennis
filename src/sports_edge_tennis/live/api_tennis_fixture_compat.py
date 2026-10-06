@@ -24,6 +24,7 @@ from typing import Any, Callable, Iterable, Mapping
 
 import psycopg
 
+from sports_edge_tennis.data.normalize import normalize_tournament_identity
 from sports_edge_tennis.data.sources.api_tennis_live import (
     ApiTennisIngestOutcome,
     ingest_api_tennis_source_a_fixtures,
@@ -263,6 +264,61 @@ def _stored_api_tennis_prior_surface(
         (tournament_key, season_year),
     ).fetchall()
     surfaces = {_normalize_surface(row[0]) for row in rows}
+    surfaces.discard(None)
+    if len(surfaces) != 1:
+        return _stored_canonical_prior_surface(
+            conn, tournament_key=tournament_key, season_year=season_year
+        )
+    return next(iter(surfaces))
+
+
+def _stored_canonical_prior_surface(
+    conn: psycopg.Connection,
+    *,
+    tournament_key: str,
+    season_year: int,
+) -> str | None:
+    """Cross-source deterministic prior surface for the same canonical tournament.
+
+    Resolves the canonical tournament linked to this API-Tennis provider id, then
+    finds canonical tournaments in the SAME tour scope whose normalized identity
+    matches (e.g. historical ``"... CH"`` editions of a Challenger event). Only
+    prior seasons are considered, so there is no future leakage. A single
+    consistent surface is required; any conflict or absence fails closed.
+    """
+    if not tournament_key:
+        return None
+    anchor = conn.execute(
+        """
+        SELECT t.canonical_name, t.tour_scope::text
+        FROM tournament_source_ids tsi
+        JOIN tournaments t ON t.tournament_id = tsi.tournament_id
+        WHERE tsi.source_system = 'API_TENNIS'
+          AND tsi.source_tournament_id = %s
+        LIMIT 1
+        """,
+        (tournament_key,),
+    ).fetchone()
+    if anchor is None:
+        return None
+    normalized_anchor = normalize_tournament_identity(str(anchor[0]))
+    scope = str(anchor[1])
+    rows = conn.execute(
+        """
+        SELECT DISTINCT t.canonical_name, te.surface::text
+        FROM tournaments t
+        JOIN tournament_editions te ON te.tournament_id = t.tournament_id
+        WHERE t.tour_scope = %s
+          AND te.season_year < %s
+          AND te.surface IS NOT NULL
+        """,
+        (scope, season_year),
+    ).fetchall()
+    surfaces = {
+        _normalize_surface(surface)
+        for name, surface in rows
+        if normalize_tournament_identity(str(name)) == normalized_anchor
+    }
     surfaces.discard(None)
     if len(surfaces) != 1:
         return None
