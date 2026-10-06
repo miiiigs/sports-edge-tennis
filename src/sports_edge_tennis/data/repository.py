@@ -16,6 +16,7 @@ from .cross_provider_reconciliation import (
     resolve_cross_provider_canonical_reuse,
 )
 from .normalize import normalize_person_lookup, tennis_data_aliases
+from .tournament_identity import resolve_canonical_tournament_name
 
 
 @dataclass
@@ -294,6 +295,49 @@ class HistoricalRepository:
             ).fetchone()
             if row is not None:
                 return row[0]
+
+        # Deterministic canonical alias reuse (reviewed, exact-match only).
+        # Prevents a provider display name (e.g. API-Tennis "Shanghai") from
+        # creating a duplicate canonical tournament alongside the existing
+        # canonical identity (e.g. "Shanghai Masters"). Fails closed on
+        # ambiguity; zero candidates falls through to normal create.
+        resolved_name = resolve_canonical_tournament_name(
+            source_system, canonical_name, tour_scope
+        )
+        if resolved_name != canonical_name:
+            candidates = self.conn.execute(
+                """
+                SELECT tournament_id
+                FROM tournaments
+                WHERE canonical_name = %s AND tour_scope = %s
+                ORDER BY tournament_id
+                """,
+                (resolved_name, tour_scope),
+            ).fetchall()
+            if len(candidates) > 1:
+                raise ValueError(
+                    "ambiguous canonical tournament alias "
+                    f"{canonical_name!r} -> {resolved_name!r} in {tour_scope!r}"
+                )
+            if len(candidates) == 1:
+                tournament_id = candidates[0][0]
+                if source_tournament_id:
+                    self.conn.execute(
+                        """
+                        INSERT INTO tournament_source_ids (
+                            tournament_id, source_system, source_tournament_id, ingest_run_id
+                        )
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT DO NOTHING
+                        """,
+                        (
+                            tournament_id,
+                            source_system,
+                            source_tournament_id,
+                            self.ingest_run_id,
+                        ),
+                    )
+                return tournament_id
 
         row = self.conn.execute(
             """
