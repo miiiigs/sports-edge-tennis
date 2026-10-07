@@ -775,6 +775,76 @@ class HistoricalRepository:
             player_2_id=player_2_id,
         )
 
+    def record_provider_fixture_metadata(
+        self,
+        *,
+        source_system: str,
+        source_match_id: str,
+        source_tournament_id: str | None,
+        source_tournament_season: int | None,
+        raw_tournament_name: str | None,
+        raw_event_type_key: str | None,
+        raw_event_type_type: str | None,
+        raw_tournament_round: str | None,
+        raw_event_qualification: str | None,
+        raw_surface: str | None,
+        raw_country: str | None,
+        raw_location: str | None,
+        raw_stage: str | None,
+        payload_hash: str,
+        observed_at: datetime,
+    ) -> bool:
+        """Append one provider fixture observation, deduped on identical payloads.
+
+        Returns True when a new immutable observation row was written, False when
+        an identical (source_system, source_match_id, payload_hash) already existed.
+        Never overwrites prior provider truth.
+        """
+        row = self.conn.execute(
+            """
+            INSERT INTO provider_fixture_metadata (
+                source_system,
+                source_match_id,
+                source_tournament_id,
+                source_tournament_season,
+                raw_tournament_name,
+                raw_event_type_key,
+                raw_event_type_type,
+                raw_tournament_round,
+                raw_event_qualification,
+                raw_surface,
+                raw_country,
+                raw_location,
+                raw_stage,
+                payload_hash,
+                observed_at,
+                ingest_run_id
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (source_system, source_match_id, payload_hash) DO NOTHING
+            RETURNING provider_fixture_metadata_id
+            """,
+            (
+                source_system,
+                source_match_id,
+                source_tournament_id,
+                source_tournament_season,
+                raw_tournament_name,
+                raw_event_type_key,
+                raw_event_type_type,
+                raw_tournament_round,
+                raw_event_qualification,
+                raw_surface,
+                raw_country,
+                raw_location,
+                raw_stage,
+                payload_hash,
+                observed_at,
+                self.ingest_run_id,
+            ),
+        ).fetchone()
+        return row is not None
+
     def insert_match_result(
         self,
         *,

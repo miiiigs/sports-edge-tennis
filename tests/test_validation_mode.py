@@ -117,6 +117,11 @@ def _wire_validation_main(monkeypatch):
         "_ensure_tournament_identity_corrections_schema",
         lambda conn: "EXISTING",
     )
+    monkeypatch.setattr(
+        production_batch,
+        "_ensure_provider_fixture_metadata_schema",
+        lambda conn: "EXISTING",
+    )
     monkeypatch.setattr(production_batch, "_ensure_oddspapi_ledger_schema", lambda conn: "READY")
     monkeypatch.setattr(production_batch, "_live_batch_gap_cycle", lambda *a, **k: None)
     monkeypatch.setattr(production_batch, "_live_operational_health_cycle", lambda *a, **k: None)

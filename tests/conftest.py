@@ -78,6 +78,7 @@ def _reset_db(conn: psycopg.Connection) -> None:
             match_stat_observations,
             match_result_observations,
             match_version_sources,
+            provider_fixture_metadata,
             match_source_ids,
             match_versions,
             matches,

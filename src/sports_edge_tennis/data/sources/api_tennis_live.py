@@ -351,7 +351,7 @@ def _persist_fixture(
         start_date=record.tournament_start_date,
         end_date=None,
     )
-    return repository.upsert_match_version(
+    locator = repository.upsert_match_version(
         tournament_edition_id=edition_id,
         source_system=SOURCE_SYSTEM,
         source_match_id=record.source_match_id,
@@ -372,6 +372,62 @@ def _persist_fixture(
         source_observed_at=record.source_observed_at,
         as_of=record.as_of,
     )
+    metadata = _provider_metadata_fields(record)
+    if repository.record_provider_fixture_metadata(**metadata):
+        print(
+            "PROVIDER_FIXTURE_PROVENANCE_NEW "
+            f"source_system={SOURCE_SYSTEM} event_key={record.source_match_id} "
+            f"tournament_key={record.tournament_source_id} "
+            f"event_type_type=\"{_safe_str(metadata['raw_event_type_type'])}\" "
+            f"qualification={_safe_str(metadata['raw_event_qualification'])}",
+            flush=True,
+        )
+    return locator
+
+
+def _first_text(fields: Mapping[str, Any], names: tuple[str, ...]) -> str | None:
+    for name in names:
+        value = fields.get(name)
+        if value is not None and str(value).strip() != "":
+            return str(value)
+    return None
+
+
+def _provider_metadata_fields(record: ApiTennisFixtureRecord) -> dict[str, Any]:
+    """Compact provider-truth subset used both for the provenance hash and row."""
+    raw = record.raw_fields
+    provider_fields = {
+        "event_key": _first_text(raw, ("event_key",)) or record.source_match_id,
+        "tournament_key": _first_text(raw, ("tournament_key",))
+        or record.tournament_source_id,
+        "tournament_name": _first_text(raw, ("tournament_name", "event_tournament_name")),
+        "event_type_type": _first_text(raw, ("event_type_type",)),
+        "tournament_round": _first_text(raw, ("tournament_round",)),
+        "event_qualification": _first_text(raw, ("event_qualification",)),
+        "event_date": _first_text(raw, ("event_date",)),
+        "event_time": _first_text(raw, ("event_time",)),
+        "event_status": _first_text(raw, ("event_status",)),
+        "first_player_key": _first_text(raw, ("first_player_key",)),
+        "second_player_key": _first_text(raw, ("second_player_key",)),
+        "event_surface": _first_text(raw, ("event_surface",)),
+    }
+    return {
+        "source_system": SOURCE_SYSTEM,
+        "source_match_id": record.source_match_id,
+        "source_tournament_id": record.tournament_source_id,
+        "source_tournament_season": record.season_year,
+        "raw_tournament_name": provider_fields["tournament_name"],
+        "raw_event_type_key": _first_text(raw, ("event_type_key",)),
+        "raw_event_type_type": provider_fields["event_type_type"],
+        "raw_tournament_round": provider_fields["tournament_round"],
+        "raw_event_qualification": provider_fields["event_qualification"],
+        "raw_surface": provider_fields["event_surface"],
+        "raw_country": _first_text(raw, ("tournament_country", "country")),
+        "raw_location": _first_text(raw, ("tournament_city", "city", "location")),
+        "raw_stage": _first_text(raw, ("stage", "tournament_stage")),
+        "payload_hash": source_hash(SOURCE_SYSTEM, provider_fields),
+        "observed_at": record.source_observed_at,
+    }
 
 
 def _ensure_existing_event_identity(
