@@ -127,6 +127,13 @@
       "up": "db/migrations/0018_tournament_identity_corrections.up.sql",
       "down": "db/migrations/0018_tournament_identity_corrections.down.sql",
       "schema_snapshot": "db/schema/0018_tournament_identity_corrections.sql"
+    },
+    {
+      "version": "0019",
+      "name": "provider_fixture_metadata",
+      "up": "db/migrations/0019_provider_fixture_metadata.up.sql",
+      "down": "db/migrations/0019_provider_fixture_metadata.down.sql",
+      "schema_snapshot": "db/schema/0019_provider_fixture_metadata.sql"
     }
   ]
 }
