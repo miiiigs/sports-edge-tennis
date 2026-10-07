@@ -50,6 +50,36 @@ _ROUND_SUFFIX_MAP = {
     "1/32-finals": "R64",
     "1/64-finals": "R128",
 }
+#: Reviewed provider round-word suffixes for explicit qualification stages.
+_QUALIFYING_ROUND_SUFFIX_TOKENS = {
+    "q1": "Q1",
+    "qualifying 1": "Q1",
+    "qualifying round 1": "Q1",
+    "1st qualifying round": "Q1",
+    "first qualifying round": "Q1",
+    "q2": "Q2",
+    "qualifying 2": "Q2",
+    "qualifying round 2": "Q2",
+    "2nd qualifying round": "Q2",
+    "second qualifying round": "Q2",
+    "q3": "Q3",
+    "qualifying 3": "Q3",
+    "qualifying round 3": "Q3",
+    "3rd qualifying round": "Q3",
+    "third qualifying round": "Q3",
+    "qual": "QUAL",
+    "qualifying": "QUAL",
+}
+#: Bracket depth of a main-draw round label measured from the final (final == 1).
+_MAIN_DRAW_ROUND_DEPTH = {
+    "F": 1,
+    "SF": 2,
+    "QF": 3,
+    "R16": 4,
+    "R32": 5,
+    "R64": 6,
+    "R128": 7,
+}
 _TRUE_VALUES = {"1", "true", "t", "yes", "y"}
 _FALSE_VALUES = {"0", "false", "f", "no", "n"}
 _TEAM_EVENT_SURFACE_FALLBACK_MARKERS = (
@@ -125,12 +155,26 @@ def normalize_api_tennis_upcoming_status(
     return normalized
 
 
-def _canonical_tournament_round(value: Any) -> str | None:
+def _round_suffix(value: Any) -> str | None:
     raw = _text(value)
     if not raw:
         return None
-    suffix = raw.rsplit(" - ", 1)[-1].strip().casefold()
+    return raw.rsplit(" - ", 1)[-1].strip().casefold()
+
+
+def _canonical_tournament_round(value: Any) -> str | None:
+    suffix = _round_suffix(value)
+    if suffix is None:
+        return None
     return _ROUND_SUFFIX_MAP.get(suffix)
+
+
+def _explicit_qualifying_round_code(value: Any) -> str | None:
+    """Return a canonical qualifying code when the raw round names one exactly."""
+    suffix = _round_suffix(value)
+    if suffix is None:
+        return None
+    return _QUALIFYING_ROUND_SUFFIX_TOKENS.get(suffix)
 
 
 def _provider_bool(value: Any) -> bool | None:
@@ -144,6 +188,35 @@ def _provider_bool(value: Any) -> bool | None:
     return None
 
 
+def _resolve_qualifying(row: Mapping[str, Any]) -> bool:
+    """Resolve the qualifying flag, mirroring the legacy canonical-field precedence.
+
+    An existing canonical ``qualifying_flag`` (bool or provider string) always
+    wins. Otherwise the provider ``event_qualification`` value is copied onto the
+    row. As a last resort a round code beginning with ``Q`` implies qualifying.
+    """
+    existing = row.get("qualifying_flag")
+    if isinstance(existing, bool):
+        return existing
+    text = _text(existing)
+    if text:
+        parsed = _provider_bool(text)
+        if parsed is not None:
+            return parsed
+    provider = _provider_bool(row.get("event_qualification"))
+    if provider is not None:
+        row["qualifying_flag"] = provider
+        return provider
+    round_code = _text(
+        row.get("round") or row.get("event_round") or row.get("round_code")
+    )
+    return round_code.upper().startswith("Q")
+
+
+def _qualifying_group_key(row: Mapping[str, Any]) -> tuple[str, int | None]:
+    return (_text(row.get("tournament_key")), _fixture_season(row))
+
+
 def normalize_api_tennis_fixture_rounds(
     fixtures: Iterable[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -152,26 +225,90 @@ def normalize_api_tennis_fixture_rounds(
     Existing canonical/legacy round fields win. Only exact reviewed
     ``tournament_round`` suffixes are mapped; unknown provider wording remains
     missing so Agent 2 can fail closed rather than infer a scoring rule.
+
+    Qualifying fixtures never inherit a main-draw round code. An explicit
+    qualifying stage is preserved verbatim (``Q1``/``Q2``/``Q3``/``QUAL``); when
+    the provider only supplies main-draw-style labels for a qualifying bracket,
+    the code is derived from the bracket depth relative to the final, so a
+    two-round qualifying yields ``Q1`` (first round) and ``Q2`` (final round)
+    instead of ``SF``/``F``.
     """
-    normalized: list[dict[str, Any]] = []
-    for fixture in fixtures:
-        row = dict(fixture)
-        existing_round = any(
+    rows = [dict(fixture) for fixture in fixtures]
+
+    planned: list[tuple[dict[str, Any], bool, bool, str | None, str | None]] = []
+    group_depth: dict[tuple[str, int | None], int] = {}
+    for row in rows:
+        has_explicit_round = any(
             _text(row.get(field_name))
             for field_name in ("round", "event_round", "round_code")
         )
-        if not existing_round:
-            round_code = _canonical_tournament_round(row.get("tournament_round"))
-            if round_code is not None:
-                row["round_code"] = round_code
+        qualifying = _resolve_qualifying(row)
+        base_code: str | None = None
+        explicit_code: str | None = None
+        if not has_explicit_round:
+            explicit_code = _explicit_qualifying_round_code(row.get("tournament_round"))
+            if explicit_code is None:
+                base_code = _canonical_tournament_round(row.get("tournament_round"))
+        planned.append((row, has_explicit_round, qualifying, base_code, explicit_code))
+        if (
+            not has_explicit_round
+            and qualifying
+            and base_code in _MAIN_DRAW_ROUND_DEPTH
+        ):
+            depth = _MAIN_DRAW_ROUND_DEPTH[base_code]
+            key = _qualifying_group_key(row)
+            group_depth[key] = max(group_depth.get(key, 0), depth)
 
-        if not _text(row.get("qualifying_flag")):
-            qualifying = _provider_bool(row.get("event_qualification"))
-            if qualifying is not None:
-                row["qualifying_flag"] = qualifying
+    for row, has_explicit_round, qualifying, base_code, explicit_code in planned:
+        if has_explicit_round:
+            continue
+        raw_round = _text(row.get("tournament_round"))
+        if explicit_code is not None:
+            row["round_code"] = explicit_code
+            print(
+                "ROUND_QUALIFYING_NORMALIZED "
+                f"event_key={_text(row.get('event_key')) or '-'} "
+                f"raw_round=\"{_safe_log(raw_round)}\" round_code={explicit_code}",
+                flush=True,
+            )
+            continue
+        if base_code is None:
+            if qualifying:
+                print(
+                    "ROUND_QUALIFYING_STAGE_UNRESOLVED "
+                    f"event_key={_text(row.get('event_key')) or '-'} "
+                    f"raw_round=\"{_safe_log(raw_round)}\"",
+                    flush=True,
+                )
+            continue
+        if not qualifying:
+            row["round_code"] = base_code
+            continue
+        depth = _MAIN_DRAW_ROUND_DEPTH.get(base_code)
+        total = group_depth.get(_qualifying_group_key(row), 0)
+        if depth is None or total == 0:
+            print(
+                "ROUND_QUALIFYING_STAGE_UNRESOLVED "
+                f"event_key={_text(row.get('event_key')) or '-'} "
+                f"raw_round=\"{_safe_log(raw_round)}\"",
+                flush=True,
+            )
+            continue
+        position = total - depth + 1
+        code = f"Q{position}" if 1 <= position <= 3 else "QUAL"
+        row["round_code"] = code
+        print(
+            "ROUND_QUALIFYING_NORMALIZED "
+            f"event_key={_text(row.get('event_key')) or '-'} "
+            f"raw_round=\"{_safe_log(raw_round)}\" round_code={code}",
+            flush=True,
+        )
 
-        normalized.append(row)
-    return normalized
+    return rows
+
+
+def _safe_log(value: str) -> str:
+    return " ".join(value.replace("\n", " ").replace("\r", " ").split())[:120]
 
 
 def _normalize_surface(value: Any) -> str | None:

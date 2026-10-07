@@ -96,3 +96,63 @@ def test_normalized_provider_fields_reach_source_a_record():
     assert len(records) == 1
     assert records[0].round_code == "QF"
     assert records[0].qualifying_flag is False
+
+
+def test_qualifying_bracket_maps_to_q1_and_q2_not_sf_f():
+    normalized = normalize_api_tennis_fixture_rounds(
+        [
+            _fixture(
+                event_key="q-first",
+                tournament_round="Shanghai - Semi-finals",
+                event_qualification="True",
+            ),
+            _fixture(
+                event_key="q-final",
+                tournament_round="Shanghai - Final",
+                event_qualification="True",
+            ),
+        ]
+    )
+
+    assert [row["round_code"] for row in normalized] == ["Q1", "Q2"]
+    assert all(row["qualifying_flag"] is True for row in normalized)
+
+
+def test_qualifying_explicit_q_stage_is_preserved():
+    [normalized] = normalize_api_tennis_fixture_rounds(
+        [_fixture(tournament_round="Shanghai - Q3", event_qualification="True")]
+    )
+
+    assert normalized["round_code"] == "Q3"
+
+
+def test_main_draw_rounds_unchanged_by_qualifying_logic():
+    normalized = normalize_api_tennis_fixture_rounds(
+        [
+            _fixture(
+                event_key="m-first",
+                tournament_round="ATP Example - Semi-finals",
+                event_qualification="False",
+            ),
+            _fixture(
+                event_key="m-final",
+                tournament_round="ATP Example - Final",
+                event_qualification="False",
+            ),
+        ]
+    )
+
+    assert [row["round_code"] for row in normalized] == ["SF", "F"]
+
+
+def test_unknown_qualifying_stage_fails_closed():
+    [normalized] = normalize_api_tennis_fixture_rounds(
+        [
+            _fixture(
+                tournament_round="Shanghai - Mystery stage",
+                event_qualification="True",
+            )
+        ]
+    )
+
+    assert "round_code" not in normalized
