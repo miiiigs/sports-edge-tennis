@@ -507,7 +507,7 @@ def _resolve_grand_slam_main_draw_rule(
             ScoringRuleVersion.BO5_DECIDER_ADVANTAGE
             if 2016 <= season_year <= 2018
             else ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
-            if 2019 <= season_year <= 2025
+            if 2019 <= season_year <= 2026
             else None
         )
     if slam == "RG":
@@ -515,7 +515,7 @@ def _resolve_grand_slam_main_draw_rule(
             ScoringRuleVersion.BO5_DECIDER_ADVANTAGE
             if 2016 <= season_year <= 2021
             else ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
-            if 2022 <= season_year <= 2025
+            if 2022 <= season_year <= 2026
             else None
         )
     if slam == "WIMBLEDON":
@@ -523,7 +523,7 @@ def _resolve_grand_slam_main_draw_rule(
             return ScoringRuleVersion.BO5_DECIDER_ADVANTAGE
         if 2019 <= season_year <= 2021:
             return ScoringRuleVersion.BO5_DECIDER_TB7_AT_12_12
-        if 2022 <= season_year <= 2025:
+        if 2022 <= season_year <= 2026:
             return ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
         return None
     if slam == "USO":
@@ -531,7 +531,7 @@ def _resolve_grand_slam_main_draw_rule(
             ScoringRuleVersion.BO5_DECIDER_TB7_AT_6_6
             if 2016 <= season_year <= 2021
             else ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
-            if 2022 <= season_year <= 2025
+            if 2022 <= season_year <= 2026
             else None
         )
     return None
@@ -551,7 +551,7 @@ def _resolve_grand_slam_qualifying_rule(
             ScoringRuleVersion.BO3_TB7_ALL_SETS
             if 2016 <= season_year <= 2018
             else ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6
-            if 2019 <= season_year <= 2025
+            if 2019 <= season_year <= 2026
             else None
         )
     if slam == "RG":
@@ -561,7 +561,7 @@ def _resolve_grand_slam_qualifying_rule(
             ScoringRuleVersion.BO3_TB7_ALL_SETS
             if 2016 <= season_year <= 2021
             else ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6
-            if 2022 <= season_year <= 2025
+            if 2022 <= season_year <= 2026
             else None
         )
     if slam == "WIMBLEDON":
@@ -583,7 +583,7 @@ def _resolve_grand_slam_qualifying_rule(
             return None
         if season_year == 2024 and best_of_sets == 3:
             return ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6
-        if season_year == 2025:
+        if season_year in {2025, 2026}:
             if round_code in {"Q1", "Q2"} and best_of_sets == 3:
                 return ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6
             if round_code == "Q3" and best_of_sets == 5:
@@ -597,7 +597,7 @@ def _resolve_grand_slam_qualifying_rule(
             ScoringRuleVersion.BO3_TB7_ALL_SETS
             if 2016 <= season_year <= 2021
             else ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6
-            if 2022 <= season_year <= 2025
+            if 2022 <= season_year <= 2026
             else None
         )
     return None
