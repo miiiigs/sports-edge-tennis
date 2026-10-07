@@ -500,6 +500,72 @@ def test_resolver_covers_reviewed_event_era_matrix_and_special_event_policy():
         assert special.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
 
 
+def test_resolver_covers_reviewed_2026_grand_slam_matrix_and_fails_closed_after():
+    cases = [
+        ("Australian Open", 2026, "GRAND_SLAM", "R32", 5, False, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("Australian Open", 2026, "GRAND_SLAM", "Q1", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
+        ("Roland Garros", 2026, "GRAND_SLAM", "R32", 5, False, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("Roland Garros", 2026, "GRAND_SLAM", "Q2", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
+        ("Wimbledon", 2026, "GRAND_SLAM", "SF", 5, False, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("Wimbledon", 2026, "GRAND_SLAM", "Q1", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
+        ("Wimbledon", 2026, "GRAND_SLAM", "Q2", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
+        ("Wimbledon", 2026, "GRAND_SLAM", "Q3", 5, True, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("US Open", 2026, "GRAND_SLAM", "F", 5, False, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("US Open", 2026, "GRAND_SLAM", "Q1", 3, True, ScoringRuleVersion.BO3_DECIDER_TB10_AT_6_6),
+        # 2025 behaviour unchanged
+        ("Wimbledon", 2025, "GRAND_SLAM", "Q3", 5, True, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        ("Australian Open", 2025, "GRAND_SLAM", "R32", 5, False, ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6),
+        # Non-slam behaviour unchanged
+        ("Cincinnati Masters", 2026, "MASTERS_1000", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
+        ("Bordeaux Challenger", 2026, "CHALLENGER", "R32", 3, False, ScoringRuleVersion.BO3_TB7_ALL_SETS),
+        ("Bordeaux Challenger", 2026, "CHALLENGER", "Q1", 3, True, ScoringRuleVersion.BO3_TB7_ALL_SETS),
+    ]
+    for name, season, tier, round_code, best_of, qualifying, expected in cases:
+        resolved = resolve_scoring_rule(
+            canonical_tournament_name=name,
+            season_year=season,
+            tour_scope="ATP_MAIN" if tier != "CHALLENGER" else "CHALLENGER",
+            competition_tier=tier,
+            round_code=round_code,
+            best_of_sets=best_of,
+            qualifying_flag=qualifying,
+        )
+        assert resolved.scoring_rule_version == expected, (name, season, round_code)
+        assert resolved.abstain_reason is None
+
+    # Masters qualifying generic-tier behaviour is unchanged (no canonical fallback).
+    masters_qual = resolve_scoring_rule(
+        canonical_tournament_name="Shanghai",
+        season_year=2026,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_TOUR",
+        round_code="Q1",
+        best_of_sets=3,
+        qualifying_flag=True,
+    )
+    assert masters_qual.scoring_rule_version is None
+    assert masters_qual.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
+
+    # Unsupported future seasons still fail closed.
+    for name, round_code, best_of, qualifying in (
+        ("Australian Open", "R32", 5, False),
+        ("Roland Garros", "Q1", 3, True),
+        ("Wimbledon", "SF", 5, False),
+        ("US Open", "Q1", 3, True),
+    ):
+        future = resolve_scoring_rule(
+            canonical_tournament_name=name,
+            season_year=2027,
+            tour_scope="ATP_MAIN",
+            competition_tier="GRAND_SLAM",
+            round_code=round_code,
+            best_of_sets=best_of,
+            qualifying_flag=qualifying,
+        )
+        assert future.scoring_rule_version is None, (name, round_code)
+        assert future.abstain_reason == AbstainReason.UNSUPPORTED_OR_UNKNOWN
+
+
 def test_unknown_atp_tour_events_fail_closed_and_cannot_update_history():
     for tournament_name in (
         "Mystery Team Challenge",
