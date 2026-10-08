@@ -134,6 +134,13 @@
       "up": "db/migrations/0019_provider_fixture_metadata.up.sql",
       "down": "db/migrations/0019_provider_fixture_metadata.down.sql",
       "schema_snapshot": "db/schema/0019_provider_fixture_metadata.sql"
+    },
+    {
+      "version": "0020",
+      "name": "a3_support_diagnostics",
+      "up": "db/migrations/0020_a3_support_diagnostics.up.sql",
+      "down": "db/migrations/0020_a3_support_diagnostics.down.sql",
+      "schema_snapshot": "db/schema/0020_a3_support_diagnostics.sql"
     }
   ]
 }

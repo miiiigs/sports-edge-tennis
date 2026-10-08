@@ -22,6 +22,10 @@ from sports_edge_tennis.agents.agent3_intransitivity import (
     DEFAULT_CONFIG as AGENT3_DEFAULT_CONFIG,
     predict as predict_agent3,
 )
+from sports_edge_tennis.data.a3_support_diagnostics import (
+    build_a3_support_diagnostic,
+    record_a3_support_diagnostic,
+)
 from sports_edge_tennis.data.prediction_persistence import (
     PredictiveAgentMatrixPrediction,
     persist_and_finalize_prediction_matrix,
@@ -257,7 +261,7 @@ def _execute_matrix(
     for target in targets:
         agent1 = _run_agent1(target, agent1_replay, configs[AGENT_1], as_of)
         agent2 = _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
-        agent3 = _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of)
+        agent3 = _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of, conn=conn)
         matrix.extend((agent1, agent2, agent3))
         _log_target_diagnostics(
             target.match_id,
@@ -292,11 +296,25 @@ def _run_agent2(target, snapshot, config, as_of) -> PredictiveAgentMatrixPredict
     )
 
 
-def _run_agent3(target, snapshot, config, as_of) -> PredictiveAgentMatrixPrediction:
+def _run_agent3(
+    target,
+    snapshot,
+    config,
+    as_of,
+    *,
+    conn: psycopg.Connection | None = None,
+) -> PredictiveAgentMatrixPrediction:
     request = build_agent3_request(target, snapshot, as_of)
     result = predict_agent3(request, config=AGENT3_DEFAULT_CONFIG)
     adapted = adapt_agent3_result(result)
     _validate_result(adapted, AGENT_3, config, as_of)
+    if conn is not None:
+        record_a3_support_diagnostic(
+            conn,
+            build_a3_support_diagnostic(
+                target=target, snapshot=snapshot, result=result, as_of=as_of
+            ),
+        )
     return PredictiveAgentMatrixPrediction(
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,

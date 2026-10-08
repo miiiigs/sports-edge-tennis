@@ -46,6 +46,9 @@ _TOURNAMENT_IDENTITY_CORRECTIONS_MIGRATION = Path(
 _PROVIDER_FIXTURE_METADATA_MIGRATION = Path(
     "db/migrations/0019_provider_fixture_metadata.up.sql"
 )
+_A3_SUPPORT_DIAGNOSTICS_MIGRATION = Path(
+    "db/migrations/0020_a3_support_diagnostics.up.sql"
+)
 _PUBLICATION_CONTROL_TRIGGER = "trg_publication_control_events_append_only_mutation"
 _STAKING_CONSTRAINTS = frozenset(
     {
@@ -406,6 +409,57 @@ def _ensure_provider_fixture_metadata_schema(
     if not table_present or not trigger_present:
         raise RuntimeError(
             "provider fixture metadata schema verification failed "
+            f"table_present={table_present} trigger_present={trigger_present}"
+        )
+    return "APPLIED"
+
+
+def _a3_support_diagnostics_schema_state(
+    conn: psycopg.Connection,
+) -> tuple[bool, bool]:
+    table_present = bool(
+        conn.execute(
+            "SELECT to_regclass('public.a3_support_diagnostics') IS NOT NULL"
+        ).fetchone()[0]
+    )
+    if not table_present:
+        return False, False
+    trigger_present = bool(
+        conn.execute(
+            """
+            SELECT EXISTS (
+                SELECT 1 FROM pg_trigger
+                WHERE tgrelid = 'public.a3_support_diagnostics'::regclass
+                  AND tgname = 'trg_a3_support_diagnostics_append_only_mutation'
+                  AND NOT tgisinternal
+            )
+            """
+        ).fetchone()[0]
+    )
+    return True, trigger_present
+
+
+def _ensure_a3_support_diagnostics_schema(
+    conn: psycopg.Connection,
+    *,
+    migration_path: Path = _A3_SUPPORT_DIAGNOSTICS_MIGRATION,
+) -> str:
+    """Apply migration 0020 once, then verify the A3 diagnostics table and guard."""
+    table_present, trigger_present = _a3_support_diagnostics_schema_state(conn)
+    if table_present and trigger_present:
+        return "EXISTING"
+    if table_present or trigger_present:
+        raise RuntimeError(
+            "a3 support diagnostics schema is partially applied "
+            f"table_present={table_present} trigger_present={trigger_present}"
+        )
+    if not migration_path.is_file():
+        raise RuntimeError(f"required migration file missing: {migration_path}")
+    conn.execute(migration_path.read_text(encoding="utf-8"))
+    table_present, trigger_present = _a3_support_diagnostics_schema_state(conn)
+    if not table_present or not trigger_present:
+        raise RuntimeError(
+            "a3 support diagnostics schema verification failed "
             f"table_present={table_present} trigger_present={trigger_present}"
         )
     return "APPLIED"
@@ -800,6 +854,9 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             provider_fixture_metadata_status = (
                 _ensure_provider_fixture_metadata_schema(conn)
             )
+            a3_support_diagnostics_status = (
+                _ensure_a3_support_diagnostics_schema(conn)
+            )
             oddspapi_ledger_status = "SKIPPED_LEGACY_ODDS"
             if provider_authority.odds_mode == TARGET_ODDS_MODE:
                 oddspapi_ledger_status = _ensure_oddspapi_ledger_schema(conn)
@@ -831,6 +888,10 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     _log(
         "SCHEMA_PROVIDER_FIXTURE_METADATA "
         f"status={provider_fixture_metadata_status} migration=0019"
+    )
+    _log(
+        "SCHEMA_A3_SUPPORT_DIAGNOSTICS "
+        f"status={a3_support_diagnostics_status} migration=0020"
     )
     _log(f"SCHEMA_ODDSPAPI_LEDGER status={oddspapi_ledger_status} migration=0015")
 
