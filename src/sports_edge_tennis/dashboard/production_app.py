@@ -2,7 +2,9 @@
 
 from fastapi.responses import HTMLResponse
 
-from sports_edge_tennis.dashboard.app import app
+# Use the same FastAPI object as the base dashboard, with owner-only
+# middleware and login routes installed before the production evidence routes.
+from sports_edge_tennis.dashboard.owner_access import app
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.model_pick_history import (
