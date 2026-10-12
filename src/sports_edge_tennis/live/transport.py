@@ -38,6 +38,37 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def api_tennis_failure_category(payload: Any) -> str:
+    """Classify a failed provider envelope without logging untrusted text.
+
+    Diagnostic only: never changes TransportError.kind or provider failover.
+    API-Tennis errors may be strings or nested objects in different endpoints.
+    Categories are from a fixed allowlist; never return raw provider payload.
+    """
+    if not isinstance(payload, dict):
+        return "INVALID_ENVELOPE"
+
+    values: list[str] = []
+    for key in ("error", "message", "result"):
+        item = payload.get(key)
+        if isinstance(item, str):
+            values.append(item[:512].lower())
+        elif isinstance(item, dict):
+            for subkey in ("error", "message", "code"):
+                value = item.get(subkey)
+                if isinstance(value, str):
+                    values.append(value[:512].lower())
+
+    message = " ".join(values)
+    if any(term in message for term in ("api key", "apikey", "api_key", "invalid key", "unauthorized", "authentication")):
+        return "AUTH_OR_KEY"
+    if any(term in message for term in ("rate limit", "too many requests", "quota", "request limit", "limit reached", "requests exceeded")):
+        return "QUOTA_OR_RATE"
+    if any(term in message for term in ("subscription", "plan", "payment", "billing", "expired", "credits")):
+        return "ACCOUNT_OR_PLAN"
+    return "UNCLASSIFIED"
+
+
 def fetch_api_tennis_fixtures(
     api_key: str,
     slate_date: date,
@@ -72,7 +103,7 @@ def fetch_api_tennis_fixtures(
         raise TransportError("PARSE", "api-tennis response was not valid JSON") from exc
 
     if not isinstance(data, dict) or data.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis provider reported failure")
+        raise TransportError("PROVIDER_ERROR", f"api-tennis provider reported failure diagnostic={api_tennis_failure_category(data)}")
 
     result = data.get("result")
     if not isinstance(result, list):

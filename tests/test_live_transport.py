@@ -165,3 +165,36 @@ def test_pinnapi_non_object_rejected(fake_get):
     with pytest.raises(TransportError) as exc_info:
         fetch_pinnapi_board("KEYXYZ")
     assert exc_info.value.kind == "PARSE"
+
+
+def test_api_tennis_failed_payload_diagnostic_does_not_leak_provider_text(fake_get):
+    fake_get.response = FakeResponse(
+        json_data={"success": 0, "error": {"message": "Invalid APIkey KEY123"}},
+    )
+    with pytest.raises(TransportError) as exc_info:
+        fetch_api_tennis_fixtures("KEY123", SLATE)
+    assert exc_info.value.kind == "PROVIDER_ERROR"
+    assert "diagnostic=AUTH_OR_KEY" in str(exc_info.value)
+    assert "KEY123" not in str(exc_info.value)
+    assert "Invalid APIkey" not in str(exc_info.value)
+
+
+def test_api_tennis_failed_payload_quota_and_unknown_categories(fake_get):
+    for error, expected in (
+        ("Daily quota exceeded ACCOUNT_SECRET", "QUOTA_OR_RATE"),
+        ("Subscription expired ACCOUNT_SECRET", "ACCOUNT_OR_PLAN"),
+        ("Unidentified server response ACCOUNT_SECRET", "UNCLASSIFIED"),
+    ):
+        fake_get.response = FakeResponse(json_data={"success": 0, "result": error})
+        with pytest.raises(TransportError) as exc_info:
+            fetch_api_tennis_fixtures("KEY123", SLATE)
+        assert exc_info.value.kind == "PROVIDER_ERROR"
+        assert f"diagnostic={expected}" in str(exc_info.value)
+        assert "ACCOUNT_SECRET" not in str(exc_info.value)
+
+
+def test_failed_provider_envelope_categorization_never_promotes_to_failover():
+    from sports_edge_tennis.live.provider_failures import classify_provider_failure
+    assert classify_provider_failure("PROVIDER_ERROR").failover_eligible is False
+    assert transport.api_tennis_failure_category(None) == "INVALID_ENVELOPE"
+    assert transport.api_tennis_failure_category({"success": 0}) == "UNCLASSIFIED"

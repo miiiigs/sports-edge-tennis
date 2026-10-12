@@ -934,7 +934,8 @@ def _process_resilient_chunk(
         print(
             "HISTORY_REFRESH_FAILED "
             f"kind={exc.kind} failed_start={start_date.isoformat()} "
-            f"failed_end={end_date.isoformat()} checkpoint_key={checkpoint_key}",
+            f"failed_end={end_date.isoformat()} checkpoint_key={checkpoint_key} "
+            f"reason={exc.message}",
             flush=True,
         )
         raise
