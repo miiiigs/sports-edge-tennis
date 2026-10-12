@@ -39,6 +39,11 @@ def _enable_owner_auth(monkeypatch, auth_store: AuthStore, *, signup: bool = Fal
         AuthSettings(enabled=True, allow_signup=signup, cookie_secure=False),
     )
     monkeypatch.setattr(owner_access, "_store", lambda: auth_store)
+    if signup:
+        monkeypatch.setenv(
+            "TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE",
+            "test-only-bootstrap-code-not-a-production-secret-12345",
+        )
     owner_access.templates.env.globals["tennis_auth_enabled"] = True
 
 
@@ -125,6 +130,7 @@ def test_authorized_bootstrap_login_logout_flow(auth_store: AuthStore, monkeypat
             "/signup",
             data={
                 "email": "other@example.com",
+                "bootstrap_code": "test-only-bootstrap-code-not-a-production-secret-12345",
                 "password": "strong-pass-123",
                 "confirm_password": "strong-pass-123",
                 "next": "/today",
@@ -137,6 +143,7 @@ def test_authorized_bootstrap_login_logout_flow(auth_store: AuthStore, monkeypat
             "/signup",
             data={
                 "email": "owner@example.com",
+                "bootstrap_code": "test-only-bootstrap-code-not-a-production-secret-12345",
                 "password": "strong-pass-123",
                 "confirm_password": "strong-pass-123",
                 "next": "/today",
@@ -183,3 +190,50 @@ def test_auth_disabled_preserves_existing_public_behavior(auth_store: AuthStore,
         login = client.get("/login")
         assert login.status_code == 303
         assert login.headers["location"] == "/today"
+
+
+
+def test_bootstrap_signup_refuses_missing_configuration(auth_store: AuthStore, monkeypatch):
+    _enable_owner_auth(monkeypatch, auth_store, signup=True)
+    monkeypatch.delenv("TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE", raising=False)
+
+    with TestClient(owner_access.app, follow_redirects=False) as client:
+        assert client.get("/signup").status_code == 303
+        assert client.post("/signup", data={
+            "email": "owner@example.com", "password": "strong-pass-123",
+            "confirm_password": "strong-pass-123",
+            "bootstrap_code": "anything",
+        }).status_code == 403
+    with auth_store._connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM sports_edge_auth.users").fetchone()[0] == 0
+
+
+def test_bootstrap_signup_refuses_wrong_query_or_missing_code(auth_store: AuthStore, monkeypatch):
+    _enable_owner_auth(monkeypatch, auth_store, signup=True)
+    secret = "test-only-bootstrap-code-not-a-production-secret-12345"
+
+    with TestClient(owner_access.app, follow_redirects=False) as client:
+        page = client.get("/signup")
+        assert page.status_code == 200
+        assert 'name="bootstrap_code"' in page.text
+        assert secret not in page.text
+
+        body = {
+            "email": "owner@example.com",
+            "password": "strong-pass-123",
+            "confirm_password": "strong-pass-123",
+        }
+        for code in (None, "wrong", "caf\u00e9"):
+            response = client.post("/signup", data={
+                **body, **({"bootstrap_code": code} if code is not None else {}),
+            })
+            assert response.status_code == 403
+            assert secret not in response.text
+            assert "set-cookie" not in response.headers
+
+        # Never accept an authentication code from URL parameters.
+        response = client.post(f"/signup?bootstrap_code={secret}", data=body)
+        assert response.status_code == 403
+
+    with auth_store._connect() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM sports_edge_auth.users").fetchone()[0] == 0
