@@ -207,3 +207,69 @@ def test_genuine_settlement_conflict_fails_closed_and_skips_shadow(monkeypatch, 
     out = capsys.readouterr().out
     assert "SETTLEMENT_CONFLICT" in out
     assert shadow_called == []
+
+
+def test_failed_live_batch_settles_existing_truth_only(monkeypatch, capsys):
+    """Live provider failure cannot block DB-only settlement or publish picks."""
+    _wire_validation_main(monkeypatch)
+    monkeypatch.setattr(production_batch, "validation_mode_enabled", lambda: False)
+    monkeypatch.setattr(
+        production_batch, "live_batch_main",
+        lambda argv, summary_sink=None, provider_decision=None: 2,
+    )
+    observed = {"settlement": 0}
+
+    def settled(conn, *, settled_at):
+        observed["settlement"] += 1
+        return SimpleNamespace(
+            eligible_decisions=4, pending_results=3, inserted=1,
+            existing=0, reconciled=0, won=1, lost=0, void=0, cancelled=0,
+        )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("degraded path must not start provider/shadow work")
+
+    monkeypatch.setattr(production_batch, "settle_type_a_match_winner_decisions", settled)
+    monkeypatch.setattr(production_batch, "_pending_result_refresh_cycle", forbidden)
+    monkeypatch.setattr(production_batch, "_shadow_cycle", forbidden)
+    monkeypatch.setattr(production_batch, "_a1_evidence_cycle", forbidden)
+    monkeypatch.setattr(production_batch, "_pncl_concordance_cycle", forbidden)
+
+    assert production_batch.main([]) == 2
+    assert observed["settlement"] == 1
+    assert "SETTLEMENT_DB_ONLY_AFTER_LIVE_FAILURE" in capsys.readouterr().out
+
+
+def test_failed_live_batch_validation_mode_remains_read_only(monkeypatch, capsys):
+    _wire_validation_main(monkeypatch)
+    monkeypatch.setattr(
+        production_batch, "live_batch_main",
+        lambda argv, summary_sink=None, provider_decision=None: 2,
+    )
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("validation must not settle")
+
+    monkeypatch.setattr(production_batch, "settle_type_a_match_winner_decisions", forbidden)
+    assert production_batch.main([]) == 2
+    assert "SETTLEMENT_SKIPPED reason=VALIDATION_MODE" in capsys.readouterr().out
+
+
+def test_failed_live_batch_immutable_settlement_conflict_does_not_rewrite(monkeypatch, capsys):
+    from sports_edge_tennis.settlement import SettlementEvidenceConflict
+
+    _wire_validation_main(monkeypatch)
+    monkeypatch.setattr(production_batch, "validation_mode_enabled", lambda: False)
+    monkeypatch.setattr(
+        production_batch, "live_batch_main",
+        lambda argv, summary_sink=None, provider_decision=None: 2,
+    )
+    monkeypatch.setattr(
+        production_batch,
+        "settle_type_a_match_winner_decisions",
+        lambda conn, *, settled_at: (_ for _ in ()).throw(
+            SettlementEvidenceConflict("verified truth conflicts with immutable settlement")
+        ),
+    )
+    assert production_batch.main([]) == 2
+    assert "SETTLEMENT_CONFLICT" in capsys.readouterr().out
