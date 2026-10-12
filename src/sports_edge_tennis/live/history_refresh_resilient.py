@@ -42,6 +42,13 @@ DEFAULT_CHUNK_DAYS = 7
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_BACKOFF_SECONDS = 2.0
 DEFAULT_MIN_CHUNK_DAYS = 1
+#: Already-completed trailing days re-fetched on each run. The daily job runs at
+#: 00:10 UTC for ``UTC today - 1``, so late-UTC matches (e.g. US evening sessions)
+#: are frequently still in progress and rejected as ``unsupported_event_status``.
+#: Without a re-scan the checkpoint moves past that day and the result is never
+#: observed. The CLI enables one day; the library default stays off.
+DEFAULT_SETTLE_LAG_DAYS = 1
+MAX_SETTLE_LAG_DAYS = 3
 A2_STATS_DRY_RUN_ENABLED_ENV = "A2_STATS_BACKFILL_DRY_RUN_ENABLED"
 A2_STATS_DRY_RUN_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_DAYS"
 A2_STATS_DRY_RUN_CHUNK_DAYS_ENV = "A2_STATS_BACKFILL_DRY_RUN_CHUNK_DAYS"
@@ -109,8 +116,9 @@ class HistoryRefreshTotals:
     results_unchanged: int = 0
     result_rejections: int = 0
     completed_chunks: int = 0
+    settle_lag_chunks: int = 0
 
-    def add(self, outcome: HistoryRefreshChunkOutcome) -> None:
+    def _accumulate(self, outcome: HistoryRefreshChunkOutcome) -> None:
         self.fixtures_seen += outcome.fixtures_seen
         self.fixtures_ingested += outcome.fixtures_ingested
         self.fixture_rejections += outcome.fixture_rejections
@@ -118,7 +126,15 @@ class HistoryRefreshTotals:
         self.results_inserted += outcome.results_inserted
         self.results_unchanged += outcome.results_unchanged
         self.result_rejections += outcome.result_rejections
+
+    def add(self, outcome: HistoryRefreshChunkOutcome) -> None:
+        self._accumulate(outcome)
         self.completed_chunks += 1
+
+    def add_rescan(self, outcome: HistoryRefreshChunkOutcome) -> None:
+        """Count a settle-lag re-scan; it is never a checkpoint-advancing chunk."""
+        self._accumulate(outcome)
+        self.settle_lag_chunks += 1
 
 
 RefreshChunk = Callable[..., HistoryRefreshChunkOutcome]
@@ -955,6 +971,50 @@ def _process_resilient_chunk(
     )
 
 
+def _rescan_settle_lag(
+    conn: psycopg.Connection, *, api_key: str, start_date: date, resume_from: date,
+    last_completed_end: date | None, settle_lag_days: int, max_attempts: int,
+    backoff_seconds: float, refresh_chunk: RefreshChunk, sleep: Sleep,
+    totals: HistoryRefreshTotals,
+) -> None:
+    """Re-fetch already-completed trailing days without moving the checkpoint.
+
+    Result persistence is idempotent (semantic-key ``unchanged``), so this only
+    adds terminal results that were still in progress when the day was first
+    fetched. It never advances, regresses or fails the checkpoint: a provider
+    failure here is logged and forward progress continues.
+    """
+    if settle_lag_days <= 0 or last_completed_end is None:
+        return
+    rescan_end = min(last_completed_end, resume_from - timedelta(days=1))
+    rescan_start = max(start_date, rescan_end - timedelta(days=settle_lag_days - 1))
+    if rescan_end < rescan_start:
+        return
+    try:
+        outcome = _attempt_chunk(
+            conn, api_key=api_key, start_date=rescan_start, end_date=rescan_end,
+            max_attempts=max_attempts, backoff_seconds=backoff_seconds,
+            refresh_chunk=refresh_chunk, sleep=sleep,
+        )
+    except TransportError as exc:
+        print(
+            "HISTORY_REFRESH_SETTLE_LAG_FAILED "
+            f"start={rescan_start.isoformat()} end={rescan_end.isoformat()} kind={exc.kind}",
+            flush=True,
+        )
+        return
+    totals.add_rescan(outcome)
+    print(
+        "HISTORY_REFRESH_SETTLE_LAG "
+        f"start={outcome.start_date.isoformat()} end={outcome.end_date.isoformat()} "
+        f"fixtures_seen={outcome.fixtures_seen} terminal_seen={outcome.terminal_results_seen} "
+        f"results_inserted={outcome.results_inserted} "
+        f"results_unchanged={outcome.results_unchanged} "
+        f"result_rejections={outcome.result_rejections}",
+        flush=True,
+    )
+
+
 def run_resilient_history_refresh(
     conn: psycopg.Connection, *, api_key: str, start_date: date, end_date: date,
     chunk_days: int = DEFAULT_CHUNK_DAYS,
@@ -963,6 +1023,7 @@ def run_resilient_history_refresh(
     backoff_seconds: float = DEFAULT_BACKOFF_SECONDS,
     min_chunk_days: int = DEFAULT_MIN_CHUNK_DAYS,
     restart_window: bool = False,
+    settle_lag_days: int = 0,
     refresh_chunk: RefreshChunk = refresh_history_chunk,
     sleep: Sleep = time.sleep,
 ) -> HistoryRefreshTotals:
@@ -978,6 +1039,8 @@ def run_resilient_history_refresh(
         raise ValueError("backoff_seconds must be >= 0")
     if (end_date - start_date).days + 1 > MAX_WINDOW_DAYS:
         raise ValueError(f"window may not exceed {MAX_WINDOW_DAYS} days")
+    if not 0 <= settle_lag_days <= MAX_SETTLE_LAG_DAYS:
+        raise ValueError(f"settle_lag_days must be between 0 and {MAX_SETTLE_LAG_DAYS}")
 
     lock_row = conn.execute("SELECT pg_try_advisory_lock(%s)", (_ADVISORY_LOCK_KEY,)).fetchone()
     if not lock_row or not bool(lock_row[0]):
@@ -995,6 +1058,13 @@ def run_resilient_history_refresh(
             f"requested_start={start_date.isoformat()} requested_end={end_date.isoformat()} "
             f"completed_chunks={checkpoint.completed_chunks}",
             flush=True,
+        )
+        _rescan_settle_lag(
+            conn, api_key=api_key, start_date=start_date, resume_from=resume_from,
+            last_completed_end=checkpoint.last_completed_end,
+            settle_lag_days=settle_lag_days, max_attempts=max_attempts,
+            backoff_seconds=backoff_seconds, refresh_chunk=refresh_chunk,
+            sleep=sleep, totals=totals,
         )
         cursor = resume_from
         while cursor <= end_date:
@@ -1024,6 +1094,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--backoff-seconds", type=float, default=DEFAULT_BACKOFF_SECONDS)
     parser.add_argument("--checkpoint-key", default=DEFAULT_CHECKPOINT_KEY)
     parser.add_argument("--restart-window", action="store_true")
+    parser.add_argument("--settle-lag-days", type=int, default=DEFAULT_SETTLE_LAG_DAYS)
     parser.add_argument("--dsn", default=_db_dsn())
     args = parser.parse_args(argv)
 
@@ -1039,6 +1110,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.max_attempts < 1 or args.backoff_seconds < 0:
         print("HISTORY_REFRESH_BLOCKED reason=INVALID_RETRY_CONFIG", flush=True)
+        return 2
+    if not 0 <= args.settle_lag_days <= MAX_SETTLE_LAG_DAYS:
+        print(
+            f"HISTORY_REFRESH_BLOCKED reason=SETTLE_LAG_DAYS_MAX_{MAX_SETTLE_LAG_DAYS}",
+            flush=True,
+        )
         return 2
     window_days = (args.end_date - start_date).days + 1
     if window_days > MAX_WINDOW_DAYS:
@@ -1089,7 +1166,8 @@ def main(argv: list[str] | None = None) -> int:
         "HISTORY_REFRESH_START "
         f"start_date={start_date.isoformat()} end_date={args.end_date.isoformat()} "
         f"chunk_days={args.chunk_days} min_chunk_days={args.min_chunk_days} "
-        f"max_attempts={args.max_attempts} checkpoint_key={args.checkpoint_key}",
+        f"max_attempts={args.max_attempts} checkpoint_key={args.checkpoint_key} "
+        f"settle_lag_days={args.settle_lag_days}",
         flush=True,
     )
     try:
@@ -1099,6 +1177,7 @@ def main(argv: list[str] | None = None) -> int:
                 chunk_days=args.chunk_days, checkpoint_key=args.checkpoint_key,
                 max_attempts=args.max_attempts, backoff_seconds=args.backoff_seconds,
                 min_chunk_days=args.min_chunk_days, restart_window=args.restart_window,
+                settle_lag_days=args.settle_lag_days,
             )
             _run_optional_a2_stats_dry_run(
                 conn,
@@ -1123,7 +1202,8 @@ def main(argv: list[str] | None = None) -> int:
         f"completed_chunks={totals.completed_chunks} fixtures_seen={totals.fixtures_seen} "
         f"fixtures_ingested={totals.fixtures_ingested} fixture_rejections={totals.fixture_rejections} "
         f"terminal_seen={totals.terminal_results_seen} results_inserted={totals.results_inserted} "
-        f"results_unchanged={totals.results_unchanged} result_rejections={totals.result_rejections}",
+        f"results_unchanged={totals.results_unchanged} result_rejections={totals.result_rejections} "
+        f"settle_lag_chunks={totals.settle_lag_chunks}",
         flush=True,
     )
     return 0

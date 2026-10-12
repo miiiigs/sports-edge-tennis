@@ -762,3 +762,141 @@ def test_offered_market_history_audit_handles_missing_api_event_id(capsys):
         and "SELECT provider_response_id, received_at" not in sql
     ]
     assert raw_count_queries == []
+
+
+def _seed_completed_checkpoint(db, *, checkpoint_key: str) -> None:
+    """Complete 2026-01-01..2026-01-04 so the next run resumes at 2026-01-05."""
+    run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 4),
+        chunk_days=2,
+        checkpoint_key=checkpoint_key,
+        restart_window=True,
+        refresh_chunk=lambda conn, *, api_key, start_date, end_date: _outcome(
+            start_date, end_date
+        ),
+        sleep=lambda _: None,
+    )
+
+
+def test_settle_lag_rescans_last_completed_day_without_moving_checkpoint(db):
+    # Production regression: a 22:40 UTC match was still in progress at the
+    # 00:10 UTC daily run, rejected as unsupported_event_status, and the
+    # checkpoint then moved past its date forever.
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG")
+    calls: list[tuple[date, date]] = []
+
+    def refresh(conn, *, api_key, start_date, end_date):
+        del conn, api_key
+        calls.append((start_date, end_date))
+        return _outcome(start_date, end_date)
+
+    totals = run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 6),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG",
+        settle_lag_days=1,
+        refresh_chunk=refresh,
+        sleep=lambda _: None,
+    )
+
+    assert calls == [
+        (date(2026, 1, 4), date(2026, 1, 4)),
+        (date(2026, 1, 5), date(2026, 1, 6)),
+    ]
+    assert totals.settle_lag_chunks == 1
+    assert totals.completed_chunks == 1
+    checkpoint = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG")
+    assert checkpoint is not None
+    assert checkpoint.next_start_date == date(2026, 1, 7)
+    assert checkpoint.last_completed_end == date(2026, 1, 6)
+
+
+def test_settle_lag_rescan_failure_does_not_block_or_fail_checkpoint(db):
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FAIL")
+    calls: list[tuple[date, date]] = []
+
+    def refresh(conn, *, api_key, start_date, end_date):
+        del conn, api_key
+        calls.append((start_date, end_date))
+        if start_date == date(2026, 1, 4):
+            raise TransportError("PARSE", "bad provider payload")
+        return _outcome(start_date, end_date)
+
+    totals = run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 6),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG_FAIL",
+        settle_lag_days=1,
+        refresh_chunk=refresh,
+        sleep=lambda _: None,
+    )
+
+    assert calls == [
+        (date(2026, 1, 4), date(2026, 1, 4)),
+        (date(2026, 1, 5), date(2026, 1, 6)),
+    ]
+    assert totals.settle_lag_chunks == 0
+    checkpoint = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FAIL")
+    assert checkpoint is not None
+    assert checkpoint.next_start_date == date(2026, 1, 7)
+    assert checkpoint.last_error_kind is None
+
+
+def test_settle_lag_is_disabled_by_default_and_skipped_without_progress(db):
+    calls: list[tuple[date, date]] = []
+
+    def refresh(conn, *, api_key, start_date, end_date):
+        del conn, api_key
+        calls.append((start_date, end_date))
+        return _outcome(start_date, end_date)
+
+    # Fresh checkpoint: nothing completed yet, so there is nothing to re-scan.
+    run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 2),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG_FRESH",
+        restart_window=True,
+        settle_lag_days=1,
+        refresh_chunk=refresh,
+        sleep=lambda _: None,
+    )
+    assert calls == [(date(2026, 1, 1), date(2026, 1, 2))]
+
+    calls.clear()
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_OFF")
+    run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 6),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG_OFF",
+        refresh_chunk=refresh,
+        sleep=lambda _: None,
+    )
+    assert calls == [(date(2026, 1, 5), date(2026, 1, 6))]
+
+
+def test_settle_lag_days_is_bounded(db):
+    with pytest.raises(ValueError, match="settle_lag_days"):
+        run_resilient_history_refresh(
+            db,
+            api_key="test-key",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 2),
+            settle_lag_days=4,
+            refresh_chunk=lambda conn, **_: None,
+            sleep=lambda _: None,
+        )
