@@ -805,9 +805,10 @@ def test_settle_lag_rescans_last_completed_day_without_moving_checkpoint(db):
         sleep=lambda _: None,
     )
 
+    # Forward progress first; the re-scan of the last pre-run day comes after.
     assert calls == [
-        (date(2026, 1, 4), date(2026, 1, 4)),
         (date(2026, 1, 5), date(2026, 1, 6)),
+        (date(2026, 1, 4), date(2026, 1, 4)),
     ]
     assert totals.settle_lag_chunks == 1
     assert totals.completed_chunks == 1
@@ -817,7 +818,7 @@ def test_settle_lag_rescans_last_completed_day_without_moving_checkpoint(db):
     assert checkpoint.last_completed_end == date(2026, 1, 6)
 
 
-def test_settle_lag_rescan_failure_does_not_block_or_fail_checkpoint(db):
+def test_settle_lag_rescan_failure_does_not_block_or_fail_checkpoint(db, capsys):
     _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FAIL")
     calls: list[tuple[date, date]] = []
 
@@ -840,15 +841,19 @@ def test_settle_lag_rescan_failure_does_not_block_or_fail_checkpoint(db):
         sleep=lambda _: None,
     )
 
+    # Forward progress first; the re-scan of the last pre-run day comes after.
     assert calls == [
-        (date(2026, 1, 4), date(2026, 1, 4)),
         (date(2026, 1, 5), date(2026, 1, 6)),
+        (date(2026, 1, 4), date(2026, 1, 4)),
     ]
     assert totals.settle_lag_chunks == 0
     checkpoint = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FAIL")
     assert checkpoint is not None
     assert checkpoint.next_start_date == date(2026, 1, 7)
     assert checkpoint.last_error_kind is None
+    out = capsys.readouterr().out
+    assert "HISTORY_REFRESH_SETTLE_LAG_FAILED start=2026-01-04 end=2026-01-04 kind=PARSE" in out
+    assert "bad provider payload" not in out
 
 
 def test_settle_lag_is_disabled_by_default_and_skipped_without_progress(db):
@@ -900,3 +905,130 @@ def test_settle_lag_days_is_bounded(db):
             refresh_chunk=lambda conn, **_: None,
             sleep=lambda _: None,
         )
+
+
+def _recording_refresh(calls, *, fail=None):
+    def refresh(conn, *, api_key, start_date, end_date):
+        del conn, api_key
+        calls.append((start_date, end_date))
+        if fail is not None:
+            exc = fail(start_date, end_date, len(calls))
+            if exc is not None:
+                raise exc
+        return _outcome(start_date, end_date)
+
+    return refresh
+
+
+def test_settle_lag_rescan_uses_bounded_retries(db):
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_RETRY")
+    calls: list[tuple[date, date]] = []
+    sleeps: list[float] = []
+
+    def fail(start, end, n):
+        del end
+        if start == date(2026, 1, 4):
+            return TransportError("TIMEOUT", "slow")
+        return None
+
+    totals = run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 6),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG_RETRY",
+        max_attempts=3,
+        backoff_seconds=1.0,
+        settle_lag_days=1,
+        refresh_chunk=_recording_refresh(calls, fail=fail),
+        sleep=sleeps.append,
+    )
+
+    rescans = [call for call in calls if call == (date(2026, 1, 4), date(2026, 1, 4))]
+    assert len(rescans) == 3  # max_attempts, never more
+    assert sleeps == [1.0, 2.0]
+    assert totals.settle_lag_chunks == 0
+    checkpoint = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_RETRY")
+    assert checkpoint is not None
+    assert checkpoint.next_start_date == date(2026, 1, 7)
+    assert checkpoint.last_error_kind is None
+
+
+def test_settle_lag_when_checkpoint_already_covers_requested_window(db):
+    # A second run on the same day: no forward work, one re-scan inside the
+    # requested window, checkpoint untouched.
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_AHEAD")
+    before = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_AHEAD")
+    calls: list[tuple[date, date]] = []
+
+    totals = run_resilient_history_refresh(
+        db,
+        api_key="test-key",
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 4),
+        chunk_days=2,
+        checkpoint_key="TEST_SETTLE_LAG_AHEAD",
+        settle_lag_days=3,
+        refresh_chunk=_recording_refresh(calls),
+        sleep=lambda _: None,
+    )
+
+    assert calls == [(date(2026, 1, 2), date(2026, 1, 4))]
+    assert totals.completed_chunks == 0
+    assert totals.settle_lag_chunks == 1
+    after = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_AHEAD")
+    assert after is not None and before is not None
+    assert after.next_start_date == before.next_start_date == date(2026, 1, 5)
+    assert after.last_completed_end == before.last_completed_end
+    assert after.completed_chunks == before.completed_chunks
+
+
+def test_settle_lag_request_behind_checkpoint_makes_no_provider_request(db):
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_CLAMP")
+    calls: list[tuple[date, date]] = []
+
+    with pytest.raises(ValueError, match="behind completed checkpoint"):
+        run_resilient_history_refresh(
+            db,
+            api_key="test-key",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 3),
+            chunk_days=2,
+            checkpoint_key="TEST_SETTLE_LAG_CLAMP",
+            settle_lag_days=1,
+            refresh_chunk=_recording_refresh(calls),
+            sleep=lambda _: None,
+        )
+
+    assert calls == []
+
+
+def test_forward_failure_skips_rescan_and_keeps_checkpoint(db):
+    _seed_completed_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FWD_FAIL")
+    calls: list[tuple[date, date]] = []
+
+    def fail(start, end, n):
+        del end, n
+        if start == date(2026, 1, 5):
+            return TransportError("HTTP_401", "denied")
+        return None
+
+    with pytest.raises(TransportError):
+        run_resilient_history_refresh(
+            db,
+            api_key="test-key",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 6),
+            chunk_days=2,
+            checkpoint_key="TEST_SETTLE_LAG_FWD_FAIL",
+            settle_lag_days=1,
+            refresh_chunk=_recording_refresh(calls, fail=fail),
+            sleep=lambda _: None,
+        )
+
+    assert (date(2026, 1, 4), date(2026, 1, 4)) not in calls
+    checkpoint = _load_checkpoint(db, checkpoint_key="TEST_SETTLE_LAG_FWD_FAIL")
+    assert checkpoint is not None
+    assert checkpoint.next_start_date == date(2026, 1, 5)
+    assert checkpoint.last_error_kind == "HTTP_401"

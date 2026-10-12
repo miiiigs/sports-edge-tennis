@@ -972,8 +972,9 @@ def _process_resilient_chunk(
 
 
 def _rescan_settle_lag(
-    conn: psycopg.Connection, *, api_key: str, start_date: date, resume_from: date,
-    last_completed_end: date | None, settle_lag_days: int, max_attempts: int,
+    conn: psycopg.Connection, *, api_key: str, start_date: date, end_date: date,
+    resume_from: date, last_completed_end: date | None, settle_lag_days: int,
+    max_attempts: int,
     backoff_seconds: float, refresh_chunk: RefreshChunk, sleep: Sleep,
     totals: HistoryRefreshTotals,
 ) -> None:
@@ -981,12 +982,14 @@ def _rescan_settle_lag(
 
     Result persistence is idempotent (semantic-key ``unchanged``), so this only
     adds terminal results that were still in progress when the day was first
-    fetched. It never advances, regresses or fails the checkpoint: a provider
-    failure here is logged and forward progress continues.
+    fetched. It runs after forward chunks and never advances, regresses or fails
+    the checkpoint: a provider failure here is logged and the run still succeeds.
+    The re-scan stays inside the requested window and the pre-run completed
+    progress, and costs one bounded chunk request (with the normal retries).
     """
     if settle_lag_days <= 0 or last_completed_end is None:
         return
-    rescan_end = min(last_completed_end, resume_from - timedelta(days=1))
+    rescan_end = min(last_completed_end, resume_from - timedelta(days=1), end_date)
     rescan_start = max(start_date, rescan_end - timedelta(days=settle_lag_days - 1))
     if rescan_end < rescan_start:
         return
@@ -1059,13 +1062,6 @@ def run_resilient_history_refresh(
             f"completed_chunks={checkpoint.completed_chunks}",
             flush=True,
         )
-        _rescan_settle_lag(
-            conn, api_key=api_key, start_date=start_date, resume_from=resume_from,
-            last_completed_end=checkpoint.last_completed_end,
-            settle_lag_days=settle_lag_days, max_attempts=max_attempts,
-            backoff_seconds=backoff_seconds, refresh_chunk=refresh_chunk,
-            sleep=sleep, totals=totals,
-        )
         cursor = resume_from
         while cursor <= end_date:
             chunk_end = min(end_date, cursor + timedelta(days=chunk_days - 1))
@@ -1076,6 +1072,15 @@ def run_resilient_history_refresh(
                 refresh_chunk=refresh_chunk, sleep=sleep, totals=totals,
             )
             cursor = chunk_end + timedelta(days=1)
+        # After forward progress is durably recorded, so a re-scan problem can
+        # never hold back the checkpoint. Bounds come from the pre-run checkpoint.
+        _rescan_settle_lag(
+            conn, api_key=api_key, start_date=start_date, end_date=end_date,
+            resume_from=resume_from, last_completed_end=checkpoint.last_completed_end,
+            settle_lag_days=settle_lag_days, max_attempts=max_attempts,
+            backoff_seconds=backoff_seconds, refresh_chunk=refresh_chunk,
+            sleep=sleep, totals=totals,
+        )
         return totals
     finally:
         conn.execute("SELECT pg_advisory_unlock(%s)", (_ADVISORY_LOCK_KEY,))

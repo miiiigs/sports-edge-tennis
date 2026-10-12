@@ -287,8 +287,16 @@ def pinnapi_failure_category(resp: Any) -> str:
 
     Distinguishes an edge/WAF challenge or HTML error page from a JSON account,
     key or quota refusal, so an HTTP_403 can be routed to the right owner.
-    Diagnostic only: never changes ``TransportError.kind`` or failover.
+    Diagnostic only: never changes ``TransportError.kind`` or failover, so it
+    must never raise; any unexpected response shape is ``UNCLASSIFIED``.
     """
+    try:
+        return _pinnapi_failure_category(resp)
+    except Exception:  # noqa: BLE001 - diagnostics must not alter failure handling
+        return "UNCLASSIFIED"
+
+
+def _pinnapi_failure_category(resp: Any) -> str:
     headers = getattr(resp, "headers", None) or {}
     header_names = {str(name).lower() for name in headers}
     content_type = ""

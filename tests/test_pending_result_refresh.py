@@ -745,7 +745,14 @@ def test_main_logs_dry_run_summary(monkeypatch, capsys):
 # ------------------------------------------------- settlement-eligible Type A
 
 
-def _seed_type_a_bet(conn, match_id: int, *, side: int = 1, created_at: datetime = RUN_AS_OF) -> int:
+def _seed_type_a_bet(
+    conn,
+    match_id: int,
+    *,
+    side: int = 1,
+    created_at: datetime = RUN_AS_OF,
+    market_type: str = "MATCH_WINNER",
+) -> int:
     """A settlement-eligible Type A BET on a match that is *not* a Model Pick."""
     run_id = _fv(
         conn,
@@ -765,22 +772,22 @@ def _seed_type_a_bet(conn, match_id: int, *, side: int = 1, created_at: datetime
             model_version, feature_version, as_of, prediction_locked_at, created_at
         ) VALUES (
             %s, %s, 'TYPE_A_MODEL_EDGE', 'BET', 'NONE',
-            'MATCH_WINNER', %s, %s, 0.60, 1.666667, 1.90, 1.85,
+            %s, %s, %s, 0.60, 1.666667, 1.90, 1.85,
             'OFFERED', 'BOOKIE', 'MULTIPLICATIVE', 1.85, 0.05, 1.70,
             2, 1, 'test-model', 'test-feature', %s, %s, %s
         ) RETURNING decision_id
         """,
         (
-            match_id, run_id, "PLAYER_1" if side == 1 else "PLAYER_2", side,
+            match_id, run_id, market_type, "PLAYER_1" if side == 1 else "PLAYER_2", side,
             created_at, created_at, created_at,
         ),
     )
 
 
 def test_pending_type_a_bet_without_model_pick_is_selected(db: psycopg.Connection):
-    # Production evidence (2026-10-12): settlement reported pending_results=10
-    # on Type A BET decisions while this refresh only checked Model Picks, so
-    # those decisions were never looked up by the same-day lane.
+    # Settlement reports pending_results on Type A BET decisions; this lane must
+    # cover that cohort directly rather than rely on every BET match also being
+    # a Model Pick (true for all 56 production BET matches so far, not enforced).
     target = _seed_target(db)
     _seed_type_a_bet(db, target["match_id"], side=2)
 
@@ -834,4 +841,45 @@ def test_type_a_bet_outside_window_excluded(db: psycopg.Connection):
         db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
     )
 
+    assert targets == ()
+
+
+def test_type_a_bet_on_model_pick_match_is_flagged_not_hidden(db: psycopg.Connection):
+    # DISTINCT ON keeps one row per match labelled by its earliest pick; the BET
+    # must still be visible so type_a_bet_targets reflects real BET coverage.
+    target = _seed_target(db, api_event="at-1")
+    seed_production_model_pick(db, target["match_id"])
+    _seed_type_a_bet(db, target["match_id"], created_at=RUN_AS_OF + timedelta(hours=1))
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
+    assert [t.match_id for t in targets] == [target["match_id"]]
+    assert targets[0].pick_source == prr.PICK_SOURCE_MANAGER
+    assert targets[0].has_type_a_bet is True
+
+    summary = _refresh(db, [_fixture()])
+    assert summary.checked == 1
+    assert summary.manager_targets == 1
+    assert summary.type_a_bet_targets == 1
+
+
+def test_model_pick_without_bet_is_not_flagged(db: psycopg.Connection):
+    target = _seed_target(db)
+    seed_production_model_pick(db, target["match_id"])
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
+    assert [t.has_type_a_bet for t in targets] == [False]
+
+
+def test_non_match_winner_bet_is_not_a_target(db: psycopg.Connection):
+    # Only the settlement-eligible cohort counts; other markets are never targets.
+    target = _seed_target(db)
+    _seed_type_a_bet(db, target["match_id"], market_type="GAME_HANDICAP")
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
     assert targets == ()

@@ -242,3 +242,23 @@ def test_pinnapi_category_tolerates_response_without_headers(fake_get):
     with pytest.raises(TransportError) as exc_info:
         fetch_pinnapi_board("SECRETKEY")
     assert exc_info.value.category == "UNCLASSIFIED"
+
+
+class _ExplodingResponse(FakeResponse):
+    """Unexpected response shape: headers and JSON access both blow up."""
+
+    @property
+    def headers(self):
+        raise RuntimeError("SECRETKEY in a header dump")
+
+    def json(self):
+        raise RuntimeError("unexpected decoder failure")
+
+
+def test_pinnapi_category_failure_never_replaces_transport_error(fake_get):
+    fake_get.response = _ExplodingResponse(status_code=403)
+    with pytest.raises(TransportError) as exc_info:
+        fetch_pinnapi_board("SECRETKEY")
+    assert exc_info.value.kind == "HTTP_403"
+    assert exc_info.value.category == "UNCLASSIFIED"
+    assert "SECRETKEY" not in str(exc_info.value)

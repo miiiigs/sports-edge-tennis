@@ -496,3 +496,53 @@ def test_ingest_still_rejects_unrelated_tournament_when_correction_exists(
         {"event_key": "7789001", "reason": "event_identity_conflict:tournament"},
     )
     assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
+
+
+def test_corrected_lineage_still_rejects_changed_player(db: psycopg.Connection):
+    canonical, _duplicate = _canonical_shanghai_with_duplicate_mapping(db)
+    _correct_tournament(db, "1667", canonical)
+    ingest_api_tennis_source_a_fixtures(db, [_shanghai_fixture()], received_at=_received_at())
+
+    conflicting = ingest_api_tennis_source_a_fixtures(
+        db,
+        [
+            _shanghai_fixture(
+                first_player_key="999999",
+                event_first_player="Carlos Alcaraz",
+                event_update="2026-07-20T11:15:00Z",
+            )
+        ],
+        received_at=datetime(2026, 7, 20, 11, 30, tzinfo=UTC),
+    )
+
+    assert conflicting.rejected_rows == (
+        {"event_key": "7789001", "reason": "event_identity_conflict:player_1"},
+    )
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM matches").fetchone()[0] == 1
+
+
+def test_correction_from_another_source_system_does_not_widen_identity(
+    db: psycopg.Connection,
+):
+    # Only a reviewed correction for this provider's own tournament id counts.
+    first = ingest_api_tennis_source_a_fixtures(db, [_fixture()], received_at=_received_at())
+    existing_tournament = _match_tournament(db)
+    db.execute(
+        "INSERT INTO tournament_identity_corrections "
+        "(source_system, source_tournament_id, canonical_tournament_id, reason) "
+        "VALUES ('SPORTRADAR', '7777', %s, 'REVIEWED')",
+        (existing_tournament,),
+    )
+
+    conflicting = ingest_api_tennis_source_a_fixtures(
+        db,
+        [_fixture(tournament_key="7777", tournament_name="ATP Challenger Milan")],
+        received_at=datetime(2026, 7, 20, 11, 30, tzinfo=UTC),
+    )
+
+    assert first.rows_ingested == 1
+    assert conflicting.rejected_rows == (
+        {"event_key": "7789001", "reason": "event_identity_conflict:tournament"},
+    )
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
