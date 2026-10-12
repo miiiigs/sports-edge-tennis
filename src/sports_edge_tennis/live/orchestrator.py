@@ -446,7 +446,22 @@ def run_live_mvp(
             try:
                 board_received_at, board_payload = fetch_board(pinnapi_key)
             except TransportError as exc:
-                raise LivePilotPinnapiFailed(exc.message) from exc
+                # Surface the stable transport kind for operator diagnosis,
+                # never the response body, credential or credential-bearing URL.
+                safe_kind = (
+                    exc.kind
+                    if exc.kind in {"NETWORK", "TIMEOUT", "PARSE", "PROVIDER_ERROR"}
+                    or (
+                        exc.kind.startswith("HTTP_")
+                        and len(exc.kind) == 8
+                        and exc.kind[5:].isascii()
+                        and exc.kind[5:].isdigit()
+                    )
+                    else "UNCLASSIFIED"
+                )
+                raise LivePilotPinnapiFailed(
+                    f"pinnapi transport failed kind={safe_kind}"
+                ) from exc
             pinnapi_requests = 1
             board_observation_id = board_observation_id_factory()
             parse_result = parse_board(board_payload, board_received_at, board_observation_id)
