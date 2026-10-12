@@ -323,3 +323,21 @@ def test_agent3_snapshots_use_match_time_for_decay_only_after_visibility():
         **{**observation.__dict__, "match_start_at": visible_at + timedelta(days=1)}
     )
     assert invalid_start.recency_anchor == visible_at
+
+
+def test_history_fetch_provider_failure_only_logs_safe_category(monkeypatch):
+    from sports_edge_tennis.live.transport import TransportError
+
+    class FailureResponse:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return {"success": 0, "error": "Subscription expired KEY_SECRET_99"}
+
+    monkeypatch.setattr(history_refresh.requests, "get", lambda *args, **kwargs: FailureResponse())
+    with pytest.raises(TransportError) as exc_info:
+        fetch_api_tennis_fixture_window("KEY_SECRET_99", date(2026, 10, 10), date(2026, 10, 11))
+    assert exc_info.value.kind == "PROVIDER_ERROR"
+    assert "diagnostic=ACCOUNT_OR_PLAN" in str(exc_info.value)
+    assert "KEY_SECRET_99" not in str(exc_info.value)
