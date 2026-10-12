@@ -198,3 +198,47 @@ def test_failed_provider_envelope_categorization_never_promotes_to_failover():
     assert classify_provider_failure("PROVIDER_ERROR").failover_eligible is False
     assert transport.api_tennis_failure_category(None) == "INVALID_ENVELOPE"
     assert transport.api_tennis_failure_category({"success": 0}) == "UNCLASSIFIED"
+
+
+class _HeaderResponse(FakeResponse):
+    def __init__(self, status_code, *, headers=None, json_data=None, json_error=False):
+        super().__init__(status_code=status_code, json_data=json_data, json_error=json_error)
+        self.headers = headers or {}
+
+
+@pytest.mark.parametrize(
+    ("response", "category"),
+    [
+        (
+            _HeaderResponse(403, json_data={"message": "Your subscription has expired"}),
+            "ACCOUNT_OR_PLAN",
+        ),
+        (_HeaderResponse(403, json_data={"detail": "Invalid API key"}), "AUTH_OR_KEY"),
+        (_HeaderResponse(403, json_data={"error": "Too many requests"}), "QUOTA_OR_RATE"),
+        (
+            _HeaderResponse(403, headers={"cf-mitigated": "challenge"}, json_error=True),
+            "EDGE_CHALLENGE",
+        ),
+        (
+            _HeaderResponse(403, headers={"Content-Type": "text/html; charset=UTF-8"}),
+            "HTML_RESPONSE",
+        ),
+        (_HeaderResponse(403, json_error=True), "UNCLASSIFIED"),
+        (_HeaderResponse(403, json_data={"message": "nope"}), "UNCLASSIFIED"),
+    ],
+)
+def test_pinnapi_non_200_carries_allowlisted_category(fake_get, response, category):
+    fake_get.response = response
+    with pytest.raises(TransportError) as exc_info:
+        fetch_pinnapi_board("SECRETKEY")
+    assert exc_info.value.kind == "HTTP_403"
+    assert exc_info.value.category == category
+    assert "SECRETKEY" not in str(exc_info.value)
+    assert "subscription" not in str(exc_info.value).lower()
+
+
+def test_pinnapi_category_tolerates_response_without_headers(fake_get):
+    fake_get.response = FakeResponse(status_code=403)
+    with pytest.raises(TransportError) as exc_info:
+        fetch_pinnapi_board("SECRETKEY")
+    assert exc_info.value.category == "UNCLASSIFIED"

@@ -10,8 +10,10 @@ Design constraints:
 
 * It never replaces or broadens the daily historical job.
 * It only ever looks at production Model Picks (first-production Manager CONSENSUS
-  plus the aligned A1/A2 wide-spread tracking picks) inside a minimal recent window
-  (default: UTC today and the previous day).
+  plus the aligned A1/A2 wide-spread tracking picks) and settlement-eligible Type A
+  match-winner BET decisions inside a minimal recent window (default: UTC today and
+  the previous day). The Type A cohort is the one ``settle_type_a_match_winner_decisions``
+  reports as ``pending_results``; it is only a lookup target here, never a wager.
 * Canonical identity is owned by the shared repository ingestion path, not by this
   module. A selected API-Tennis fixture is handed to the normal
   ``ingest_api_tennis_source_a_fixtures`` flow, which resolves identity as:
@@ -86,6 +88,7 @@ MAX_TARGETS_LIMIT = 200
 
 PICK_SOURCE_MANAGER = "MANAGER_CONSENSUS"
 PICK_SOURCE_WIDE_SPREAD = "A1_A2_WIDE_SPREAD"
+PICK_SOURCE_TYPE_A_BET = "TYPE_A_BET"
 
 _TERMINAL_OUTCOMES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED")
 _TERMINAL_SQL = ",".join(f"'{status}'" for status in _TERMINAL_OUTCOMES)
@@ -125,6 +128,7 @@ class PendingResultRefreshSummary:
     expected_void: int = 0
     manager_targets: int = 0
     wide_spread_targets: int = 0
+    type_a_bet_targets: int = 0
 
     def log_line(self) -> str:
         return (
@@ -142,7 +146,8 @@ class PendingResultRefreshSummary:
             f"unchanged={self.unchanged} expected_won={self.expected_won} "
             f"expected_lost={self.expected_lost} expected_void={self.expected_void} "
             f"manager_targets={self.manager_targets} "
-            f"wide_spread_targets={self.wide_spread_targets}"
+            f"wide_spread_targets={self.wide_spread_targets} "
+            f"type_a_bet_targets={self.type_a_bet_targets}"
         )
 
 
@@ -193,6 +198,17 @@ def _targets_sql() -> str:
                     selected_side,
                     '{PICK_SOURCE_WIDE_SPREAD}'::text AS pick_source
                 FROM aligned_model_picks
+                UNION ALL
+                SELECT
+                    match_id,
+                    created_at AS picked_at,
+                    selection_side AS selected_side,
+                    '{PICK_SOURCE_TYPE_A_BET}'::text AS pick_source
+                FROM decisions
+                WHERE signal_type = 'TYPE_A_MODEL_EDGE'
+                  AND decision_status = 'BET'
+                  AND market_type = 'MATCH_WINNER'
+                  AND selection_side IN (1, 2)
             ) combined
             ORDER BY match_id, picked_at
         ),
@@ -510,6 +526,9 @@ def refresh_pending_results(
         ),
         wide_spread_targets=sum(
             1 for target in targets if target.pick_source == PICK_SOURCE_WIDE_SPREAD
+        ),
+        type_a_bet_targets=sum(
+            1 for target in targets if target.pick_source == PICK_SOURCE_TYPE_A_BET
         ),
     )
 
