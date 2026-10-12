@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hmac
+import os
 from functools import lru_cache
 from urllib.parse import parse_qs, quote
 
@@ -17,10 +19,33 @@ from sports_edge_tennis.dashboard.auth import (
 )
 
 SETTINGS = AuthSettings.from_env()
+BOOTSTRAP_CODE_ENV = "TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE"
+# A known email address is not proof of ownership. Signup requires both the
+# email allowlist and a temporary, out-of-band bootstrap secret.
+MIN_BOOTSTRAP_CODE_BYTES = 32
 _PUBLIC_PATHS = {"/healthz", "/login", "/signup"}
 
 # Exposed to the shared base template without changing every route context.
 templates.env.globals["tennis_auth_enabled"] = SETTINGS.enabled
+
+
+def _bootstrap_code() -> str:
+    return os.getenv(BOOTSTRAP_CODE_ENV, "")
+
+
+def _signup_available() -> bool:
+    return (
+        SETTINGS.enabled
+        and SETTINGS.allow_signup
+        and len(_bootstrap_code().encode("utf-8")) >= MIN_BOOTSTRAP_CODE_BYTES
+    )
+
+
+def _valid_bootstrap_code(candidate: str) -> bool:
+    expected = _bootstrap_code()
+    if len(expected.encode("utf-8")) < MIN_BOOTSTRAP_CODE_BYTES:
+        return False
+    return hmac.compare_digest(candidate.encode("utf-8"), expected.encode("utf-8"))
 
 
 def _safe_next(value: str | None) -> str:
@@ -110,7 +135,7 @@ def login_page(request: Request, next: str | None = None):
             "mode": "login",
             "error": None,
             "next": _safe_next(next),
-            "signup_allowed": SETTINGS.allow_signup,
+            "signup_allowed": _signup_available(),
         },
     )
 
@@ -134,7 +159,7 @@ async def login_submit(request: Request):
                 "mode": "login",
                 "error": "Invalid email or password.",
                 "next": next_path,
-                "signup_allowed": SETTINGS.allow_signup,
+                "signup_allowed": _signup_available(),
             },
             status_code=400,
         )
@@ -145,7 +170,7 @@ async def login_submit(request: Request):
 
 @app.get("/signup", response_class=HTMLResponse)
 def signup_page(request: Request, next: str | None = None):
-    if not SETTINGS.enabled or not SETTINGS.allow_signup:
+    if not _signup_available():
         return RedirectResponse("/login", status_code=303)
     return templates.TemplateResponse(
         request,
@@ -161,9 +186,11 @@ def signup_page(request: Request, next: str | None = None):
 
 @app.post("/signup")
 async def signup_submit(request: Request):
-    if not SETTINGS.enabled or not SETTINGS.allow_signup:
+    if not _signup_available():
         return JSONResponse({"detail": "Account creation is disabled"}, status_code=403)
     fields = await _form_fields(request)
+    if not _valid_bootstrap_code(fields.get("bootstrap_code", "")):
+        return JSONResponse({"detail": "Invalid owner setup code"}, status_code=403)
     next_path = _safe_next(fields.get("next"))
     password = fields.get("password", "")
     if password != fields.get("confirm_password", ""):
