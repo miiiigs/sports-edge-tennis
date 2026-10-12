@@ -18,6 +18,11 @@ Authentication state is stored in the dedicated PostgreSQL schema `sports_edge_a
 - `TENNIS_DASHBOARD_AUTH_COOKIE_SECURE`
   - default: `1`
   - keep enabled on Railway HTTPS
+- `TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE`
+  - high-entropy temporary secret (at least 32 UTF-8 bytes) supplied out of band
+  - required in addition to the owner email allowlist when signup is temporarily enabled
+  - never place it in Git, browser JavaScript, URL query strings or logs
+  - clear/rotate it immediately after owner account creation
 
 The auth wrapper requires the same `TENNIS_DATABASE_URL` / `DATABASE_URL` already used by the dashboard. No password is stored in Railway variables or Git.
 
@@ -50,12 +55,12 @@ The public health check remains:
 2. Preserve the current dashboard source SHA and start command as the rollback point.
 3. Set `TENNIS_DASHBOARD_AUTH_ALLOWED_EMAILS` to the authorized email.
 4. Set `TENNIS_DASHBOARD_AUTH_ENABLED=1`.
-5. Temporarily set `TENNIS_DASHBOARD_AUTH_ALLOW_SIGNUP=1`.
+5. Configure a strong temporary `TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE` (at least 32 random bytes), and temporarily set `TENNIS_DASHBOARD_AUTH_ALLOW_SIGNUP=1`. The owner enters the code on the signup form; no email-only account creation is permitted.
 6. Deploy the reviewed `production_app:app` composition with auth enabled, preserving its evidence routes and current Railway start command.
 7. Verify `/healthz` remains `200` while an unauthenticated dashboard page redirects to `/login` and an unauthenticated dashboard API returns `401`.
-8. The owner creates the account through `/signup` using a password known only to them.
+8. The owner opens `/signup` in HTTPS, enters the exact allowed email plus the temporary setup code, and chooses a password known only to them. The setup code is submitted as a form field, never as a URL parameter.
 9. Verify sign-in, dashboard access, sign-out, and sign-in again.
-10. Set `TENNIS_DASHBOARD_AUTH_ALLOW_SIGNUP=0` and redeploy/apply the variable change.
+10. Set `TENNIS_DASHBOARD_AUTH_ALLOW_SIGNUP=0`, remove `TENNIS_DASHBOARD_AUTH_BOOTSTRAP_CODE`, and redeploy/apply the variable change.
 11. Verify `/signup` is no longer available while the existing owner account still signs in.
 
 Do not leave public signup enabled after bootstrap.
@@ -81,7 +86,7 @@ Do not drop `sports_edge_auth` during an operational rollback. Keeping the schem
 - HttpOnly cookie
 - SameSite=Lax
 - Secure cookie by default
-- owner email allowlist required for account creation
+- owner email allowlist and temporary setup code both required for account creation
 - signup disabled by default
 - no guest mode
 - `/healthz` remains public
