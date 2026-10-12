@@ -818,6 +818,34 @@ def _resolve_provider_decision(
     return decision
 
 
+def _settlement_cycle(dsn: str, *, settled_at: datetime) -> bool:
+    """Reconcile only verified persisted outcomes; never create new decisions.
+
+    The same append-only settlement service runs after successful live batches
+    and in the DB-only degraded path. Conflicts and DB failures fail closed.
+    """
+    try:
+        with psycopg.connect(dsn, autocommit=True) as conn:
+            outcome = settle_type_a_match_winner_decisions(conn, settled_at=settled_at)
+    except SettlementEvidenceConflict as exc:
+        _log(f"SETTLEMENT_CONFLICT error={exc}")
+        return False
+    except psycopg.Error as exc:
+        _log(f"SETTLEMENT_DB_FAILED error_type={type(exc).__name__}")
+        return False
+
+    _log(
+        "SETTLEMENT "
+        f"eligible={outcome.eligible_decisions} "
+        f"pending_results={outcome.pending_results} "
+        f"inserted={outcome.inserted} existing={outcome.existing} "
+        f"reconciled={outcome.reconciled} "
+        f"won={outcome.won} lost={outcome.lost} "
+        f"void={outcome.void} cancelled={outcome.cancelled}"
+    )
+    return True
+
+
 def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     shadow_cycle_started_at = datetime.now(timezone.utc)
 
@@ -935,7 +963,14 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         failed_slates=int(live_summary.get("failed_slates", 0)),
     )
     if live_status != 0:
-        _log(f"SETTLEMENT_SKIPPED live_batch_status={live_status}")
+        # An unavailable slate must not prevent reconciliation of already
+        # persisted, verified sporting truth. Do not fetch results, issue picks,
+        # publish, or run shadow work in this degraded path.
+        if validation_mode_enabled():
+            _log(f"SETTLEMENT_SKIPPED reason=VALIDATION_MODE live_batch_status={live_status}")
+        else:
+            _log(f"SETTLEMENT_DB_ONLY_AFTER_LIVE_FAILURE live_batch_status={live_status}")
+            _settlement_cycle(dsn, settled_at=datetime.now(timezone.utc))
         return live_status
 
     if validation_mode_enabled():
@@ -954,28 +989,8 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     settled_at = datetime.now(timezone.utc)
     _pncl_concordance_cycle(dsn, captured_at=settled_at)
 
-    try:
-        with psycopg.connect(dsn, autocommit=True) as conn:
-            outcome = settle_type_a_match_winner_decisions(
-                conn,
-                settled_at=settled_at,
-            )
-    except SettlementEvidenceConflict as exc:
-        _log(f"SETTLEMENT_CONFLICT error={exc}")
+    if not _settlement_cycle(dsn, settled_at=settled_at):
         return 2
-    except psycopg.Error as exc:
-        _log(f"SETTLEMENT_DB_FAILED error_type={type(exc).__name__}")
-        return 2
-
-    _log(
-        "SETTLEMENT "
-        f"eligible={outcome.eligible_decisions} "
-        f"pending_results={outcome.pending_results} "
-        f"inserted={outcome.inserted} existing={outcome.existing} "
-        f"reconciled={outcome.reconciled} "
-        f"won={outcome.won} lost={outcome.lost} "
-        f"void={outcome.void} cancelled={outcome.cancelled}"
-    )
 
     _shadow_cycle(
         dsn,

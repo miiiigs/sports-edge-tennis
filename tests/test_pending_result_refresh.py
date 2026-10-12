@@ -701,8 +701,10 @@ def test_pending_cycle_is_reachable_and_wired_before_settlement():
 
     source = inspect.getsource(production_batch._run_batch)
     assert "_pending_result_refresh_cycle(dsn)" in source
-    assert source.index("_pending_result_refresh_cycle(dsn)") < source.index(
-        "settle_type_a_match_winner_decisions("
+    # The degraded path also calls settlement, so compare against the
+    # successful-batch settlement call after the pending-result refresh.
+    assert source.index("_pending_result_refresh_cycle(dsn)") < source.rindex(
+        "_settlement_cycle(dsn, settled_at=settled_at)"
     )
 
 
