@@ -740,3 +740,98 @@ def test_main_logs_dry_run_summary(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "PENDING_RESULT_REFRESH_DRY_RUN writes=0" in out
     assert "PENDING_RESULT_REFRESH checked=0" in out
+
+
+# ------------------------------------------------- settlement-eligible Type A
+
+
+def _seed_type_a_bet(conn, match_id: int, *, side: int = 1, created_at: datetime = RUN_AS_OF) -> int:
+    """A settlement-eligible Type A BET on a match that is *not* a Model Pick."""
+    run_id = _fv(
+        conn,
+        "INSERT INTO prediction_runs (run_status, as_of, started_at, prediction_contract_version) "
+        "VALUES ('RUNNING', %s, %s, 'predictive_agent_result_v1') RETURNING prediction_run_id",
+        (created_at, created_at),
+    )
+    return _fv(
+        conn,
+        """
+        INSERT INTO decisions (
+            match_id, prediction_run_id, signal_type, decision_status, reason_code,
+            market_type, selection_type, selection_side, consensus_probability,
+            consensus_fair_odds, market_decimal_price, sharp_reference_price,
+            price_source_system, price_bookmaker_code, devig_method, devig_fair_odds,
+            edge_pct, min_acceptable_odds, active_agent_count, abstaining_agent_count,
+            model_version, feature_version, as_of, prediction_locked_at, created_at
+        ) VALUES (
+            %s, %s, 'TYPE_A_MODEL_EDGE', 'BET', 'NONE',
+            'MATCH_WINNER', %s, %s, 0.60, 1.666667, 1.90, 1.85,
+            'OFFERED', 'BOOKIE', 'MULTIPLICATIVE', 1.85, 0.05, 1.70,
+            2, 1, 'test-model', 'test-feature', %s, %s, %s
+        ) RETURNING decision_id
+        """,
+        (
+            match_id, run_id, "PLAYER_1" if side == 1 else "PLAYER_2", side,
+            created_at, created_at, created_at,
+        ),
+    )
+
+
+def test_pending_type_a_bet_without_model_pick_is_selected(db: psycopg.Connection):
+    # Production evidence (2026-10-12): settlement reported pending_results=10
+    # on Type A BET decisions while this refresh only checked Model Picks, so
+    # those decisions were never looked up by the same-day lane.
+    target = _seed_target(db)
+    _seed_type_a_bet(db, target["match_id"], side=2)
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
+
+    assert [t.match_id for t in targets] == [target["match_id"]]
+    assert targets[0].pick_source == prr.PICK_SOURCE_TYPE_A_BET
+    assert targets[0].selected_side == 2
+
+
+def test_repeated_type_a_bets_on_one_match_dedupe_to_one_target(db: psycopg.Connection):
+    target = _seed_target(db)
+    for hours in range(3):
+        _seed_type_a_bet(db, target["match_id"], created_at=RUN_AS_OF + timedelta(hours=hours))
+    seed_production_model_pick(db, target["match_id"])
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
+
+    assert [t.match_id for t in targets] == [target["match_id"]]
+
+
+def test_type_a_bet_terminal_result_persists_without_settling(db: psycopg.Connection):
+    target = _seed_target(db, api_event="at-1")
+    _seed_type_a_bet(db, target["match_id"], side=1)
+    before = _write_counts(db)
+
+    summary = _refresh(db, [_fixture()])
+
+    assert summary.checked == 1
+    assert summary.type_a_bet_targets == 1
+    assert summary.terminal_found == 1
+    assert summary.same_match == 1
+    assert summary.expected_won == 1
+    after = _write_counts(db)
+    assert after["match_result_observations"] == before["match_result_observations"] + 1
+    # Result ingestion only: settlement stays the settlement service's job.
+    assert after["decision_settlements"] == before["decision_settlements"]
+    assert _fv(db, "SELECT count(*) FROM decisions") == 1
+
+
+def test_type_a_bet_outside_window_excluded(db: psycopg.Connection):
+    old_start = MATCH_START - timedelta(days=5)
+    target = _seed_target(db, start=old_start, observed=old_start - timedelta(hours=1))
+    _seed_type_a_bet(db, target["match_id"], created_at=old_start - timedelta(hours=1))
+
+    targets = prr.load_pending_model_pick_targets(
+        db, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY, max_targets=10
+    )
+
+    assert targets == ()
