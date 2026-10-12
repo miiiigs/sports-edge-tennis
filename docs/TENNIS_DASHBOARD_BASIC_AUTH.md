@@ -11,7 +11,7 @@ Configure these **only on tennis-dashboard**, not on the live/validation runners
 - `TENNIS_DASHBOARD_BASIC_AUTH_ENABLED=1`
 - `TENNIS_DASHBOARD_BASIC_AUTH_USERNAME=brian`
 - `TENNIS_DASHBOARD_BASIC_AUTH_PASSWORD=<strong randomly generated password>`
-  - at least 20 UTF-8 bytes; prefer a randomly generated 24+ character secret.
+  - at least 15 UTF-8 bytes; prefer a randomly generated 24+ character secret.
   - **never** use `admin123` or another widely-known/test password.
   - do not put the password in Git, logs, URLs, or messages to untrusted parties.
 
