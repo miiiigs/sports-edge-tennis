@@ -44,6 +44,7 @@ from sports_edge_tennis.live.transport import (
     API_TENNIS_BASE_URL,
     DEFAULT_TIMEOUT,
     TransportError,
+    api_tennis_failure_category,
 )
 
 
@@ -200,7 +201,7 @@ def fetch_api_tennis_fixture_window(
     except ValueError as exc:
         raise TransportError("PARSE", "api-tennis history response was not valid JSON") from exc
     if not isinstance(payload, dict) or payload.get("success") != 1:
-        raise TransportError("PROVIDER_ERROR", "api-tennis history provider reported failure")
+        raise TransportError("PROVIDER_ERROR", f"api-tennis history provider reported failure diagnostic={api_tennis_failure_category(payload)}")
     result = payload.get("result")
     if not isinstance(result, list):
         raise TransportError("PARSE", "api-tennis history response missing result list")
