@@ -40,6 +40,8 @@
         <label for="password">Password</label>
         <input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'signup' else 'current-password' }}" minlength="8" required>
         {% if mode == 'signup' %}
+          <label for="bootstrap_code">One-time owner setup code</label>
+          <input id="bootstrap_code" name="bootstrap_code" type="password" autocomplete="off" required>
           <label for="confirm_password">Confirm password</label>
           <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
         {% endif %}
@@ -50,7 +52,7 @@
       {% elif mode == 'signup' %}
         <p class="switch"><a href="/login?next={{ next }}">Back to sign in</a></p>
       {% endif %}
-      <p class="note">Account creation is restricted by the server-side owner email allowlist.</p>
+      <p class="note">Owner setup requires an approved email and temporary setup code. Do not share your password or code.</p>
     </section>
   </main>
 </body>
