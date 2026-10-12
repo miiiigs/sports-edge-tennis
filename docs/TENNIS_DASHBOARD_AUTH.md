@@ -1,4 +1,10 @@
-# Tennis Dashboard Owner Authentication
+# Tennis Dashboard Owner Authentication (Legacy)
+
+> **Historical owner-login implementation, not current production.** The new
+> browser-native Basic gate is documented in
+> [TENNIS_DASHBOARD_BASIC_AUTH.md](TENNIS_DASHBOARD_BASIC_AUTH.md). The existing
+> email signup/session endpoints remain in source for rollback/testing, but
+> are no longer registered by the production entrypoint after the cutover.
 
 This dashboard authentication layer is optional and remains disabled until Railway is deliberately configured for owner-only access.
 
