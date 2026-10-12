@@ -276,7 +276,7 @@ def test_pinnapi_transport_error_becomes_live_pilot_failed():
     def fetch_board(key):
         raise TransportError("HTTP_401", "boom")
 
-    with pytest.raises(LivePilotPinnapiFailed):
+    with pytest.raises(LivePilotPinnapiFailed) as captured:
         run_live_mvp(
             None,
             slate_date=SLATE,
@@ -295,6 +295,8 @@ def test_pinnapi_transport_error_becomes_live_pilot_failed():
             write_summary=lambda summary, **k: "p",
             clock=lambda: FIXED,
         )
+    assert "kind=HTTP_401" in str(captured.value)
+    assert "K2" not in str(captured.value)
 
 
 def test_client_state_mapping():
