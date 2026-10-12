@@ -2,9 +2,13 @@
 
 from fastapi.responses import HTMLResponse
 
-# Use the same FastAPI object as the base dashboard, with owner-only
-# middleware and login routes installed before the production evidence routes.
-from sports_edge_tennis.dashboard.owner_access import app
+# Preserve the read-only dashboard routes, replacing the email/signup flow
+# with browser-native HTTP Basic for the Railway production composition.
+from sports_edge_tennis.dashboard.app import app, templates
+from sports_edge_tennis.dashboard.basic_access import install_production_basic_auth
+
+install_production_basic_auth(app)
+templates.env.globals["tennis_auth_enabled"] = False
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.model_pick_history import (
