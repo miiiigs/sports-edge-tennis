@@ -483,3 +483,38 @@ def test_missing_bookmaker_mapping_blocks(db: psycopg.Connection):
             write_summary=lambda summary, **k: "p",
             clock=lambda: FIXED,
         )
+
+
+@pytest.mark.parametrize(
+    ("category", "expected_suffix"),
+    [
+        ("ACCOUNT_OR_PLAN", " category=ACCOUNT_OR_PLAN"),
+        ("EDGE_CHALLENGE", " category=EDGE_CHALLENGE"),
+        ("raw provider text <script>", ""),
+        (None, ""),
+    ],
+)
+def test_pinnapi_failure_surfaces_only_allowlisted_category(category, expected_suffix):
+    def fetch_board(key):
+        raise TransportError("HTTP_403", "boom", category=category)
+
+    with pytest.raises(LivePilotPinnapiFailed) as captured:
+        run_live_mvp(
+            None,
+            slate_date=SLATE,
+            api_tennis_key="K",
+            pinnapi_key="K2",
+            preflight=lambda conn: None,
+            fetch_fixtures=lambda key, slate: (FIXED, [{"event_key": "e1"}]),
+            ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome([1001]),
+            run_slate=lambda conn, ids, as_of: _run_outcome(),
+            load_consensus=lambda conn, rid: [1001],
+            fetch_board=fetch_board,
+            parse_board=lambda payload, received_at, board_id: NS(board_identity="B", events=(), rejected_events=()),
+            process_event=lambda *a, **k: {"match_id": None, "reconciliation_status": "UNMATCHED"},
+            ensure_bookmaker_mapping=lambda conn, ot: None,
+            build_match_entries=lambda *a, **k: [],
+            write_summary=lambda summary, **k: "p",
+            clock=lambda: FIXED,
+        )
+    assert str(captured.value) == f"pinnapi transport failed kind=HTTP_403{expected_suffix}"
