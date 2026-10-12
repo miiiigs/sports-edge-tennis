@@ -61,6 +61,15 @@ def _run_fresh_process(*, mode: str, script: str) -> None:
         env["TENNIS_DASHBOARD_BASIC_AUTH_USERNAME"] = "brian"
         env["TENNIS_DASHBOARD_BASIC_AUTH_PASSWORD"] = PASSWORD
         env["RAILWAY_ENVIRONMENT_NAME"] = "production"
+    elif mode == "minimum_password":
+        env["TENNIS_DASHBOARD_BASIC_AUTH_ENABLED"] = "1"
+        env["TENNIS_DASHBOARD_BASIC_AUTH_USERNAME"] = "brian"
+        env["TENNIS_DASHBOARD_BASIC_AUTH_PASSWORD"] = "FifteenCharPwd!"
+        env["RAILWAY_PROJECT_ID"] = "synthetic-railway-project"
+    elif mode == "short_password":
+        env["TENNIS_DASHBOARD_BASIC_AUTH_ENABLED"] = "1"
+        env["TENNIS_DASHBOARD_BASIC_AUTH_PASSWORD"] = "FourteenChars!"
+        env["RAILWAY_PROJECT_ID"] = "synthetic-railway-project"
     elif mode == "missing_password":
         env["TENNIS_DASHBOARD_BASIC_AUTH_ENABLED"] = "1"
         env["RAILWAY_PROJECT_ID"] = "synthetic-railway-project"
@@ -114,6 +123,19 @@ with TestClient(app, follow_redirects=False) as client:
     )
 
 
+def test_production_browser_basic_accepts_minimum_length_with_named_user():
+    _run_fresh_process(
+        mode="minimum_password",
+        script="""
+with TestClient(app) as client:
+    assert client.get("/today").status_code == 401
+    assert client.get("/today", auth=("brian", "FifteenCharPwd!")).status_code == 200
+    assert client.get("/today", auth=("", "FifteenCharPwd!")).status_code == 401
+    assert client.get("/today", auth=("brian", "WrongPassword!")).status_code == 401
+""",
+    )
+
+
 def test_production_browser_basic_rejects_malformed_authorization():
     _run_fresh_process(
         mode="basic",
@@ -129,7 +151,7 @@ with TestClient(app) as client:
 
 
 def test_production_browser_basic_fails_closed_without_password():
-    for mode in ("missing_password", "weak_password", "missing_enable"):
+    for mode in ("missing_password", "weak_password", "short_password", "missing_enable"):
         _run_fresh_process(
             mode=mode,
             script="""
