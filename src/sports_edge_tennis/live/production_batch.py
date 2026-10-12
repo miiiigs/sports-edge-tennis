@@ -963,14 +963,17 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         failed_slates=int(live_summary.get("failed_slates", 0)),
     )
     if live_status != 0:
-        # An unavailable slate must not prevent reconciliation of already
-        # persisted, verified sporting truth. Do not fetch results, issue picks,
-        # publish, or run shadow work in this degraded path.
+        # Odds/fixture failures must not suppress bounded result recovery for
+        # already-issued production picks. This cannot issue new picks or wagers.
+        # In validation mode do not fetch or persist terminal results.
         if validation_mode_enabled():
             _log(f"SETTLEMENT_SKIPPED reason=VALIDATION_MODE live_batch_status={live_status}")
         else:
+            _log(f"PENDING_RESULT_REFRESH_AFTER_LIVE_FAILURE live_batch_status={live_status}")
+            _pending_result_refresh_cycle(dsn)
             _log(f"SETTLEMENT_DB_ONLY_AFTER_LIVE_FAILURE live_batch_status={live_status}")
             _settlement_cycle(dsn, settled_at=datetime.now(timezone.utc))
+        # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
     if validation_mode_enabled():
