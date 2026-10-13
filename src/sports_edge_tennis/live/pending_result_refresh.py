@@ -182,7 +182,12 @@ def window_bounds(as_of: datetime, window_days: int = DEFAULT_WINDOW_DAYS) -> tu
     return start, end
 
 
-def _targets_sql() -> str:
+def pending_pick_matches_ctes() -> str:
+    """CTE chain ending in ``pick_matches``: one earliest production pick per match.
+
+    Shared by the recovery lane and the read-only pending-result diagnostics so
+    both always reason about exactly the same pick population.
+    """
     # Imported lazily: the aligned Model Pick CTE lives with the dashboard read
     # model, and importing it at module import time would layer live on dashboard.
     from sports_edge_tennis.dashboard.model_pick_history import (
@@ -190,7 +195,7 @@ def _targets_sql() -> str:
     )
 
     return f"""
-        WITH {aligned_production_model_picks_cte()},
+        {aligned_production_model_picks_cte()},
         {first_production_model_picks_cte()},
         pick_matches AS (
             SELECT DISTINCT ON (match_id)
@@ -229,7 +234,13 @@ def _targets_sql() -> str:
                     WHEN '{PICK_SOURCE_WIDE_SPREAD}' THEN 1
                     ELSE 2
                 END
-        ),
+        )
+    """
+
+
+def _targets_sql() -> str:
+    return f"""
+        WITH {pending_pick_matches_ctes()},
         latest_versions AS (
             SELECT DISTINCT ON (mv.match_id)
                 mv.match_id,

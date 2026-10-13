@@ -18,6 +18,7 @@ from sports_edge_tennis.dashboard.model_pick_history import (
 from sports_edge_tennis.dashboard.observability_routes import (
     api_agent_abstention,
     api_calibration_health,
+    api_pending_results,
     api_result_coverage,
     calibration_diagnostics_page,
 )
@@ -82,6 +83,10 @@ app.get(
     name="api_result_coverage",
 )(api_result_coverage)
 app.get(
+    "/api/dashboard/pending-results",
+    name="api_pending_results",
+)(api_pending_results)
+app.get(
     "/api/dashboard/calibration-health",
     name="api_calibration_health",
 )(api_calibration_health)
@@ -105,6 +110,7 @@ _required_paths = {
     "/api/dashboard/sharp-blockers",
     "/api/dashboard/agent-abstention",
     "/api/dashboard/result-coverage",
+    "/api/dashboard/pending-results",
     "/api/dashboard/calibration-health",
     "/diagnostics/calibration",
 }
