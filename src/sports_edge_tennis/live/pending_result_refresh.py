@@ -10,8 +10,10 @@ Design constraints:
 
 * It never replaces or broadens the daily historical job.
 * It only ever looks at production Model Picks (first-production Manager CONSENSUS
-  plus the aligned A1/A2 wide-spread tracking picks) inside a minimal recent window
-  (default: UTC today and the previous day).
+  plus the aligned A1/A2 wide-spread tracking picks) and settlement-eligible Type A
+  match-winner BET decisions inside a minimal recent window (default: UTC today and
+  the previous day). The Type A cohort is the one ``settle_type_a_match_winner_decisions``
+  reports as ``pending_results``; it is only a lookup target here, never a wager.
 * Canonical identity is owned by the shared repository ingestion path, not by this
   module. A selected API-Tennis fixture is handed to the normal
   ``ingest_api_tennis_source_a_fixtures`` flow, which resolves identity as:
@@ -86,9 +88,17 @@ MAX_TARGETS_LIMIT = 200
 
 PICK_SOURCE_MANAGER = "MANAGER_CONSENSUS"
 PICK_SOURCE_WIDE_SPREAD = "A1_A2_WIDE_SPREAD"
+PICK_SOURCE_TYPE_A_BET = "TYPE_A_BET"
 
 _TERMINAL_OUTCOMES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED")
 _TERMINAL_SQL = ",".join(f"'{status}'" for status in _TERMINAL_OUTCOMES)
+# Exactly the cohort ``settle_type_a_match_winner_decisions`` treats as eligible.
+_TYPE_A_BET_PREDICATE = """
+    signal_type = 'TYPE_A_MODEL_EDGE'
+    AND decision_status = 'BET'
+    AND market_type = 'MATCH_WINNER'
+    AND selection_side IN (1, 2)
+"""
 
 FetchWindow = Callable[[str, date, date], tuple[datetime, list[dict[str, Any]]]]
 
@@ -105,6 +115,9 @@ class PendingPickTarget:
     season_year: int
     selected_side: int | None
     pick_source: str
+    # ``pick_source`` names only the earliest pick for the match; this flags any
+    # settlement-eligible Type A BET on it, so BET coverage is never hidden.
+    has_type_a_bet: bool = False
 
 
 @dataclass(frozen=True)
@@ -125,6 +138,7 @@ class PendingResultRefreshSummary:
     expected_void: int = 0
     manager_targets: int = 0
     wide_spread_targets: int = 0
+    type_a_bet_targets: int = 0
 
     def log_line(self) -> str:
         return (
@@ -142,7 +156,8 @@ class PendingResultRefreshSummary:
             f"unchanged={self.unchanged} expected_won={self.expected_won} "
             f"expected_lost={self.expected_lost} expected_void={self.expected_void} "
             f"manager_targets={self.manager_targets} "
-            f"wide_spread_targets={self.wide_spread_targets}"
+            f"wide_spread_targets={self.wide_spread_targets} "
+            f"type_a_bet_targets={self.type_a_bet_targets}"
         )
 
 
@@ -193,8 +208,23 @@ def _targets_sql() -> str:
                     selected_side,
                     '{PICK_SOURCE_WIDE_SPREAD}'::text AS pick_source
                 FROM aligned_model_picks
+                UNION ALL
+                SELECT
+                    match_id,
+                    created_at AS picked_at,
+                    selection_side AS selected_side,
+                    '{PICK_SOURCE_TYPE_A_BET}'::text AS pick_source
+                FROM decisions
+                WHERE {_TYPE_A_BET_PREDICATE}
             ) combined
-            ORDER BY match_id, picked_at
+            ORDER BY
+                match_id,
+                picked_at,
+                CASE pick_source
+                    WHEN '{PICK_SOURCE_MANAGER}' THEN 0
+                    WHEN '{PICK_SOURCE_WIDE_SPREAD}' THEN 1
+                    ELSE 2
+                END
         ),
         latest_versions AS (
             SELECT DISTINCT ON (mv.match_id)
@@ -218,7 +248,13 @@ def _targets_sql() -> str:
             te.tournament_id,
             te.season_year,
             pm.selected_side,
-            pm.pick_source
+            pm.pick_source,
+            EXISTS (
+                SELECT 1
+                FROM decisions d
+                WHERE d.match_id = pm.match_id
+                  AND {_TYPE_A_BET_PREDICATE}
+            ) AS has_type_a_bet
         FROM pick_matches pm
         JOIN latest_versions lv ON lv.match_id = pm.match_id
         JOIN matches m ON m.match_id = pm.match_id
@@ -272,6 +308,7 @@ def load_pending_model_pick_targets(
             season_year=int(row[5]),
             selected_side=int(row[6]) if row[6] is not None else None,
             pick_source=str(row[7]),
+            has_type_a_bet=bool(row[8]),
         )
         for row in rows
     )
@@ -511,6 +548,7 @@ def refresh_pending_results(
         wide_spread_targets=sum(
             1 for target in targets if target.pick_source == PICK_SOURCE_WIDE_SPREAD
         ),
+        type_a_bet_targets=sum(1 for target in targets if target.has_type_a_bet),
     )
 
 

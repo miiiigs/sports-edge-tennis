@@ -28,10 +28,12 @@ class TransportError(RuntimeError):
     credential or a credential-bearing URL.
     """
 
-    def __init__(self, kind: str, message: str):
+    def __init__(self, kind: str, message: str, *, category: str | None = None):
         super().__init__(message)
         self.kind = kind
         self.message = message
+        # Optional diagnostic from a fixed allowlist; never provider text.
+        self.category = category
 
 
 def _utc_now() -> datetime:
@@ -47,9 +49,12 @@ def api_tennis_failure_category(payload: Any) -> str:
     """
     if not isinstance(payload, dict):
         return "INVALID_ENVELOPE"
+    return _classify_failure_payload(payload, keys=("error", "message", "result"))
 
+
+def _classify_failure_payload(payload: dict[str, Any], *, keys: tuple[str, ...]) -> str:
     values: list[str] = []
-    for key in ("error", "message", "result"):
+    for key in keys:
         item = payload.get(key)
         if isinstance(item, str):
             values.append(item[:512].lower())
@@ -265,6 +270,55 @@ def fetch_api_tennis_odds(
     return received_at, normalized
 
 
+PINNAPI_FAILURE_CATEGORIES = frozenset(
+    {
+        "AUTH_OR_KEY",
+        "QUOTA_OR_RATE",
+        "ACCOUNT_OR_PLAN",
+        "EDGE_CHALLENGE",
+        "HTML_RESPONSE",
+        "UNCLASSIFIED",
+    }
+)
+
+
+def pinnapi_failure_category(resp: Any) -> str:
+    """Classify a non-200 Pinnapi response without retaining provider text.
+
+    Distinguishes an edge/WAF challenge or HTML error page from a JSON account,
+    key or quota refusal, so an HTTP_403 can be routed to the right owner.
+    Diagnostic only: never changes ``TransportError.kind`` or failover, so it
+    must never raise; any unexpected response shape is ``UNCLASSIFIED``.
+    """
+    try:
+        return _pinnapi_failure_category(resp)
+    except Exception:  # noqa: BLE001 - diagnostics must not alter failure handling
+        return "UNCLASSIFIED"
+
+
+def _pinnapi_failure_category(resp: Any) -> str:
+    headers = getattr(resp, "headers", None) or {}
+    header_names = {str(name).lower() for name in headers}
+    content_type = ""
+    for name in headers:
+        if str(name).lower() == "content-type":
+            content_type = str(headers[name]).lower()
+    if "cf-mitigated" in header_names:
+        return "EDGE_CHALLENGE"
+    if "text/html" in content_type:
+        return "HTML_RESPONSE"
+    try:
+        payload = resp.json()
+    except (ValueError, AttributeError):
+        return "UNCLASSIFIED"
+    if not isinstance(payload, dict):
+        return "UNCLASSIFIED"
+    category = _classify_failure_payload(
+        payload, keys=("error", "message", "detail", "result")
+    )
+    return category if category in PINNAPI_FAILURE_CATEGORIES else "UNCLASSIFIED"
+
+
 def fetch_pinnapi_board(
     pinnapi_key: str,
     *,
@@ -285,7 +339,11 @@ def fetch_pinnapi_board(
 
     received_at = clock()
     if resp.status_code != 200:
-        raise TransportError(f"HTTP_{resp.status_code}", "pinnapi non-200 response")
+        raise TransportError(
+            f"HTTP_{resp.status_code}",
+            "pinnapi non-200 response",
+            category=pinnapi_failure_category(resp),
+        )
 
     try:
         data = resp.json()

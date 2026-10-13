@@ -375,3 +375,174 @@ def test_ingest_api_tennis_source_a_status_update_keeps_match_and_adds_version(
         (first.matches[0].match_id,),
     ).fetchall()
     assert statuses == [("SCHEDULED",), ("POSTPONED",)]
+
+
+def _correct_tournament(db: psycopg.Connection, source_tournament_id: str, canonical_id: int) -> None:
+    db.execute(
+        "INSERT INTO tournament_identity_corrections "
+        "(source_system, source_tournament_id, canonical_tournament_id, reason) "
+        "VALUES (%s, %s, %s, 'REVIEWED')",
+        (SOURCE_SYSTEM, source_tournament_id, canonical_id),
+    )
+
+
+def _shanghai_fixture(**overrides):
+    return _fixture(
+        tournament_key="1667",
+        tournament_name="ATP Shanghai",
+        event_type_type="Atp Singles",
+        event_surface="Hard",
+        event_round="R64",
+        **overrides,
+    )
+
+
+def _canonical_shanghai_with_duplicate_mapping(db: psycopg.Connection) -> tuple[int, int]:
+    canonical = db.execute(
+        "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) "
+        "VALUES ('Shanghai Masters', 'ATP_MAIN', 'MASTERS_1000') RETURNING tournament_id"
+    ).fetchone()[0]
+    duplicate = db.execute(
+        "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) "
+        "VALUES ('Shanghai', 'ATP_MAIN', 'ATP_TOUR') RETURNING tournament_id"
+    ).fetchone()[0]
+    db.execute(
+        "INSERT INTO tournament_source_ids (tournament_id, source_system, source_tournament_id) "
+        "VALUES (%s, %s, '1667')",
+        (duplicate, SOURCE_SYSTEM),
+    )
+    return canonical, duplicate
+
+
+def _match_tournament(db: psycopg.Connection) -> int:
+    return db.execute(
+        "SELECT te.tournament_id FROM match_source_ids msi "
+        "JOIN matches m ON m.match_id = msi.match_id "
+        "JOIN tournament_editions te ON te.tournament_edition_id = m.tournament_edition_id "
+        "WHERE msi.source_system = %s AND msi.source_match_id = '7789001'",
+        (SOURCE_SYSTEM,),
+    ).fetchone()[0]
+
+
+def test_ingest_accepts_updates_for_event_created_under_corrected_tournament(
+    db: psycopg.Connection,
+):
+    # Production regression (ATP Shanghai 2026): matches created after the
+    # reviewed correction live under the corrected canonical tournament, while
+    # tournament_source_ids still carries the historical duplicate mapping.
+    # Later observations (status/result updates) must not be rejected.
+    canonical, _duplicate = _canonical_shanghai_with_duplicate_mapping(db)
+    _correct_tournament(db, "1667", canonical)
+
+    first = ingest_api_tennis_source_a_fixtures(
+        db, [_shanghai_fixture()], received_at=_received_at()
+    )
+    assert first.rows_ingested == 1
+    assert _match_tournament(db) == canonical
+
+    update = ingest_api_tennis_source_a_fixtures(
+        db,
+        [_shanghai_fixture(event_status="Finished", event_update="2026-07-21T16:45:00Z")],
+        received_at=datetime(2026, 7, 21, 17, 0, tzinfo=UTC),
+    )
+
+    assert update.rejected_rows == ()
+    assert update.rows_ingested == 1
+    assert db.execute("SELECT count(*) FROM matches").fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 2
+    latest_status = db.execute(
+        "SELECT match_status::text FROM match_versions ORDER BY match_version_id DESC LIMIT 1"
+    ).fetchone()[0]
+    assert latest_status == "COMPLETED"
+
+
+def test_ingest_accepts_updates_for_event_created_before_tournament_correction(
+    db: psycopg.Connection,
+):
+    canonical, duplicate = _canonical_shanghai_with_duplicate_mapping(db)
+    first = ingest_api_tennis_source_a_fixtures(
+        db, [_shanghai_fixture()], received_at=_received_at()
+    )
+    assert first.rows_ingested == 1
+    assert _match_tournament(db) == duplicate
+
+    _correct_tournament(db, "1667", canonical)
+    update = ingest_api_tennis_source_a_fixtures(
+        db,
+        [_shanghai_fixture(event_status="Finished", event_update="2026-07-21T16:45:00Z")],
+        received_at=datetime(2026, 7, 21, 17, 0, tzinfo=UTC),
+    )
+
+    assert update.rejected_rows == ()
+    assert db.execute("SELECT count(*) FROM matches").fetchone()[0] == 1
+    # Historical lineage is preserved; the match is not moved between tournaments.
+    assert _match_tournament(db) == duplicate
+
+
+def test_ingest_still_rejects_unrelated_tournament_when_correction_exists(
+    db: psycopg.Connection,
+):
+    canonical, _duplicate = _canonical_shanghai_with_duplicate_mapping(db)
+    _correct_tournament(db, "1667", canonical)
+    ingest_api_tennis_source_a_fixtures(db, [_shanghai_fixture()], received_at=_received_at())
+
+    conflicting = ingest_api_tennis_source_a_fixtures(
+        db,
+        [_fixture(tournament_key="7777", tournament_name="ATP Challenger Milan")],
+        received_at=datetime(2026, 7, 20, 11, 30, tzinfo=UTC),
+    )
+
+    assert conflicting.rejected_rows == (
+        {"event_key": "7789001", "reason": "event_identity_conflict:tournament"},
+    )
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
+
+
+def test_corrected_lineage_still_rejects_changed_player(db: psycopg.Connection):
+    canonical, _duplicate = _canonical_shanghai_with_duplicate_mapping(db)
+    _correct_tournament(db, "1667", canonical)
+    ingest_api_tennis_source_a_fixtures(db, [_shanghai_fixture()], received_at=_received_at())
+
+    conflicting = ingest_api_tennis_source_a_fixtures(
+        db,
+        [
+            _shanghai_fixture(
+                first_player_key="999999",
+                event_first_player="Carlos Alcaraz",
+                event_update="2026-07-20T11:15:00Z",
+            )
+        ],
+        received_at=datetime(2026, 7, 20, 11, 30, tzinfo=UTC),
+    )
+
+    assert conflicting.rejected_rows == (
+        {"event_key": "7789001", "reason": "event_identity_conflict:player_1"},
+    )
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
+    assert db.execute("SELECT count(*) FROM matches").fetchone()[0] == 1
+
+
+def test_correction_from_another_source_system_does_not_widen_identity(
+    db: psycopg.Connection,
+):
+    # Only a reviewed correction for this provider's own tournament id counts.
+    first = ingest_api_tennis_source_a_fixtures(db, [_fixture()], received_at=_received_at())
+    existing_tournament = _match_tournament(db)
+    db.execute(
+        "INSERT INTO tournament_identity_corrections "
+        "(source_system, source_tournament_id, canonical_tournament_id, reason) "
+        "VALUES ('SPORTRADAR', '7777', %s, 'REVIEWED')",
+        (existing_tournament,),
+    )
+
+    conflicting = ingest_api_tennis_source_a_fixtures(
+        db,
+        [_fixture(tournament_key="7777", tournament_name="ATP Challenger Milan")],
+        received_at=datetime(2026, 7, 20, 11, 30, tzinfo=UTC),
+    )
+
+    assert first.rows_ingested == 1
+    assert conflicting.rejected_rows == (
+        {"event_key": "7789001", "reason": "event_identity_conflict:tournament"},
+    )
+    assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1

@@ -27,6 +27,7 @@ _LEGACY_VALUE_FLAGS = {
     "--max-attempts",
     "--backoff-seconds",
     "--checkpoint-key",
+    "--settle-lag-days",
 }
 _LEGACY_BOOLEAN_FLAGS = {"--restart-window"}
 

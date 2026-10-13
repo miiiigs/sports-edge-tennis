@@ -35,6 +35,7 @@ from sports_edge_tennis.live.summary import (
     write_summary,
 )
 from sports_edge_tennis.live.transport import (
+    PINNAPI_FAILURE_CATEGORIES,
     TransportError,
     fetch_api_tennis_fixtures,
     fetch_pinnapi_board,
@@ -459,8 +460,14 @@ def run_live_mvp(
                     )
                     else "UNCLASSIFIED"
                 )
+                safe_category = (
+                    exc.category
+                    if getattr(exc, "category", None) in PINNAPI_FAILURE_CATEGORIES
+                    else None
+                )
                 raise LivePilotPinnapiFailed(
                     f"pinnapi transport failed kind={safe_kind}"
+                    + (f" category={safe_category}" if safe_category else "")
                 ) from exc
             pinnapi_requests = 1
             board_observation_id = board_observation_id_factory()

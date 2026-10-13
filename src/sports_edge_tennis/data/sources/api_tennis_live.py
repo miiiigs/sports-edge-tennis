@@ -464,13 +464,13 @@ def _ensure_existing_event_identity(
     _match_id, existing_player_1_id, existing_player_2_id, existing_tournament_id = existing
     player_1_id = _existing_api_tennis_player_id(conn, record.first_player_source_id)
     player_2_id = _existing_api_tennis_player_id(conn, record.second_player_source_id)
-    tournament_id = _existing_api_tennis_tournament_id(conn, record.tournament_source_id)
+    tournament_ids = _accepted_api_tennis_tournament_ids(conn, record.tournament_source_id)
 
     if player_1_id != existing_player_1_id:
         raise ApiTennisSourceAError("event_identity_conflict:player_1")
     if player_2_id != existing_player_2_id:
         raise ApiTennisSourceAError("event_identity_conflict:player_2")
-    if tournament_id != existing_tournament_id:
+    if existing_tournament_id not in tournament_ids:
         raise ApiTennisSourceAError("event_identity_conflict:tournament")
 
 
@@ -496,6 +496,33 @@ def _existing_api_tennis_tournament_id(conn: psycopg.Connection, source_tourname
         (SOURCE_SYSTEM, source_tournament_id),
     ).fetchone()
     return None if row is None else row[0]
+
+
+def _accepted_api_tennis_tournament_ids(
+    conn: psycopg.Connection, source_tournament_id: str
+) -> frozenset[int | None]:
+    """Canonical tournaments an existing event of this provider tournament may carry.
+
+    Canonical resolution consults the reviewed ``tournament_identity_corrections``
+    layer first, so a match created after a correction lives under the corrected
+    tournament while earlier matches keep the historical provider mapping. Both
+    are legitimate lineage for the same provider tournament; anything else is a
+    genuine identity conflict.
+    """
+    accepted: set[int | None] = {
+        _existing_api_tennis_tournament_id(conn, source_tournament_id)
+    }
+    row = conn.execute(
+        """
+        SELECT canonical_tournament_id
+        FROM tournament_identity_corrections
+        WHERE source_system = %s AND source_tournament_id = %s
+        """,
+        (SOURCE_SYSTEM, source_tournament_id),
+    ).fetchone()
+    if row is not None:
+        accepted.add(row[0])
+    return frozenset(accepted)
 
 
 def _classify_event_type(event_type_type: str, fixture: Mapping[str, Any]) -> tuple[str, str]:
