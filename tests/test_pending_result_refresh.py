@@ -633,13 +633,25 @@ def test_missing_api_key_raises(db: psycopg.Connection):
 def test_window_and_target_limits_guard():
     assert prr.window_bounds(NOW, 1) == (TODAY, TODAY)
     assert prr.window_bounds(NOW, 2) == (TODAY - timedelta(days=1), TODAY)
+    assert prr.window_bounds(NOW, 3) == (TODAY - timedelta(days=2), TODAY)
     with pytest.raises(ValueError):
-        prr.window_bounds(NOW, 3)
+        prr.window_bounds(NOW, 4)
     with pytest.raises(ValueError):
         prr.load_pending_model_pick_targets(
             None, as_of=NOW, window_start=MATCH_DAY, window_end=MATCH_DAY,
             max_targets=prr.MAX_TARGETS_LIMIT + 1,
         )
+
+
+def test_manila_previous_day_can_start_two_utc_dates_earlier():
+    # At 06:00 UTC Oct 13, a match beginning at 22:30 UTC Oct 11
+    # is shown on the dashboard as Oct 12 in Asia/Manila.
+    as_of = datetime(2026, 10, 13, 6, 0, tzinfo=UTC)
+    match_start = datetime(2026, 10, 11, 22, 30, tzinfo=UTC)
+    start, end = prr.window_bounds(as_of)
+    assert (start, end) == (datetime(2026, 10, 11).date(), datetime(2026, 10, 13).date())
+    assert start <= match_start.date() <= end
+    assert (match_start + timedelta(hours=8)).date() == datetime(2026, 10, 12).date()
 
 
 # ------------------------------------------------- no behavior change
