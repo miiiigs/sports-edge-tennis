@@ -708,6 +708,7 @@ def _pending_result_refresh_cycle(dsn: str) -> None:
                 as_of=datetime.now(UTC),
             )
         _log(summary.log_line())
+        _log(summary.detail_line())
     except Exception as exc:  # noqa: BLE001 - fail-isolated operational lane
         _log(f"PENDING_RESULT_REFRESH_FAILED error_type={type(exc).__name__}")
 
