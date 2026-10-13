@@ -71,11 +71,68 @@ def test_default_authority_keeps_current_production_path() -> None:
     assert value.target_requested is False
 
 
-def test_odds_only_cutover_is_rejected() -> None:
-    with pytest.raises(ValueError, match="Odds-only provider cutover"):
+def test_api_tennis_oddspapi_without_authorization_is_rejected() -> None:
+    with pytest.raises(ValueError, match=authority.ODDS_ONLY_AUTH_ENV):
         authority.load_provider_authority(
             {authority.ODDS_MODE_ENV: authority.TARGET_ODDS_MODE}
         )
+    with pytest.raises(ValueError, match=authority.ODDS_ONLY_AUTH_ENV):
+        authority.load_provider_authority(
+            {
+                authority.ODDS_MODE_ENV: authority.TARGET_ODDS_MODE,
+                authority.ODDS_ONLY_AUTH_ENV: "yes",
+            }
+        )
+
+
+def _api_tennis_oddspapi_env():
+    return {
+        authority.DATA_MODE_ENV: authority.LEGACY_DATA_MODE,
+        authority.ODDS_MODE_ENV: "oddspapi",
+        authority.ODDS_ONLY_AUTH_ENV: authority.ODDS_ONLY_AUTH_VALUE,
+        authority.ODDS_FAILOVER_AUTH_ENV: authority.ODDS_FAILOVER_AUTH_VALUE,
+        "API_TENNIS_API_KEY": "api-tennis-secret",
+        "ODDSPAPI_API_KEY": "odds-secret",
+    }
+
+
+def test_api_tennis_oddspapi_is_an_authorized_pair_with_alias() -> None:
+    value = authority.load_provider_authority(_api_tennis_oddspapi_env())
+    assert value.data_mode == authority.LEGACY_DATA_MODE
+    assert value.odds_mode == authority.TARGET_ODDS_MODE
+    assert value.api_tennis_oddspapi is True
+    assert value.full_target_requested is False
+    assert value.data_only is False
+
+
+def test_api_tennis_oddspapi_ready_without_any_sportradar_configuration() -> None:
+    result = authority.evaluate_cutover_readiness(
+        _FakeConn(history=False), env=_api_tennis_oddspapi_env()
+    )
+    assert result.ready is True, result.blockers
+    assert result.blockers == ()
+
+
+def test_api_tennis_oddspapi_requires_odds_gate_mapping_and_keys() -> None:
+    env = _api_tennis_oddspapi_env()
+    env.pop(authority.ODDS_FAILOVER_AUTH_ENV)
+    env.pop("API_TENNIS_API_KEY")
+    env.pop("ODDSPAPI_API_KEY")
+    result = authority.evaluate_cutover_readiness(
+        _FakeConn(sharp_mapping=False, offered_mapping=False, ledger_schema=False),
+        env=env,
+    )
+    assert result.ready is False
+    assert set(result.blockers) == {
+        "MISSING_ENV:API_TENNIS_API_KEY",
+        "ODDS_FAILOVER_AUTHORIZATION_MISSING",
+        "MISSING_ENV:ODDSPAPI_API_KEY",
+        "ODDSPAPI_LEDGER_SCHEMA_NOT_READY",
+        "ODDSPAPI_PINNACLE_SHARP_MAPPING_NOT_VERIFIED",
+        "ODDSPAPI_OFFERED_MAPPING_NOT_VERIFIED",
+    }
+    assert not any("SPORTRADAR" in blocker for blocker in result.blockers)
+    assert "DATA_FAILOVER_AUTHORIZATION_MISSING" not in result.blockers
 
 
 def test_data_only_failover_is_allowed_but_gated() -> None:

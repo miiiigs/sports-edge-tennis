@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -186,11 +188,28 @@ def test_cooldown_seconds_env_override() -> None:
 def test_supported_pairs_and_incompatible_pairs_rejected() -> None:
     assert pc.assert_compatible_pair(TARGET_DATA_MODE, TARGET_ODDS_MODE).role == "PRIMARY"
     assert pc.assert_compatible_pair(LEGACY_DATA_MODE, LEGACY_ODDS_MODE).role == "FALLBACK"
-    # The mission-critical unsafe mix and the odds-only cutover are rejected.
+    # API-Tennis + OddsPapi is a configured pair (authorization is enforced by
+    # provider_authority); Sportradar fixtures + legacy odds stays rejected here.
+    assert pc.assert_compatible_pair(LEGACY_DATA_MODE, TARGET_ODDS_MODE).role == "CONFIGURED"
     with pytest.raises(ValueError, match="incompatible provider pair"):
         pc.assert_compatible_pair(TARGET_DATA_MODE, LEGACY_ODDS_MODE)
     with pytest.raises(ValueError, match="incompatible provider pair"):
-        pc.assert_compatible_pair(LEGACY_DATA_MODE, TARGET_ODDS_MODE)
+        pc.assert_compatible_pair("GOALSERVE", TARGET_ODDS_MODE)
+
+
+def test_api_tennis_oddspapi_pair_never_activates_circuit_or_failover() -> None:
+    configured = SimpleNamespace(data_mode=LEGACY_DATA_MODE, odds_mode=TARGET_ODDS_MODE)
+    assert pc.circuit_is_active(configured) is False
+    decision = pc.disabled_decision(configured)
+    assert decision.active is False
+    assert decision.reason == pc.ODDS_ONLY_NO_FAILOVER
+    assert decision.authority.odds_mode == TARGET_ODDS_MODE
+    assert "reason=ODDS_ONLY_NO_FAILOVER" in decision.lineage()
+    assert "reason=ODDS_ONLY_NO_FAILOVER" in decision.telemetry()
+    legacy = pc.disabled_decision(
+        SimpleNamespace(data_mode=LEGACY_DATA_MODE, odds_mode=LEGACY_ODDS_MODE)
+    )
+    assert legacy.reason == "NOT_PRIMARY_AUTHORITY"
 
 
 def test_lineage_and_telemetry_never_contain_secrets() -> None:

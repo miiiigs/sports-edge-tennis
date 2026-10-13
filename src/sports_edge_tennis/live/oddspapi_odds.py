@@ -65,13 +65,20 @@ def ingest_oddspapi_tennis_odds(
             continue
         seen_fixture_ids.add(envelope.fixture_id)
         seen += 1
-        resolution = reconcile_oddspapi_event(
-            conn,
-            envelope=envelope,
-            candidate_match_ids=candidate_match_ids,
-            as_of=received_at,
-            persist=True,
-        )
+        try:
+            # The event mapping and participant bridge commit together or not at
+            # all; an identity conflict on one event never aborts the cycle.
+            with conn.transaction():
+                resolution = reconcile_oddspapi_event(
+                    conn,
+                    envelope=envelope,
+                    candidate_match_ids=candidate_match_ids,
+                    as_of=received_at,
+                    persist=True,
+                )
+        except OddspapiReconciliationError:
+            conflicts += 1
+            continue
         if resolution.status == "UNMATCHED":
             unmatched += 1
             continue

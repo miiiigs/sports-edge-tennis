@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 
 import sports_edge_tennis.live.oddspapi_odds as oddspapi_odds
@@ -14,6 +15,13 @@ from sports_edge_tennis.odds.normalizer import source_snapshot_id
 
 
 FIXTURE_ID = "id1203477074753146"
+
+
+class _TxConn:
+    """Ingestion wraps each event's reconciliation in a transaction."""
+
+    def transaction(self):
+        return nullcontext()
 
 
 def _price(price):
@@ -87,7 +95,7 @@ def test_warm_cache_board_rows_produce_fresh_observations(monkeypatch):
         resolutions=OddspapiEventResolution("EXISTING", 130870, None, 1),
     )
     outcome = oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=merged,
         received_at=received_at,
         candidate_match_ids=(130870,),
@@ -115,7 +123,7 @@ def test_no_discovery_and_no_cache_fails_closed(monkeypatch):
         resolutions=OddspapiEventResolution("UNMATCHED", None, None, 0),
     )
     outcome = oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=merged,
         received_at=datetime(2026, 9, 24, 9, 6, 56, tzinfo=UTC),
         candidate_match_ids=(130870,),
@@ -135,7 +143,7 @@ def test_cached_identity_mismatch_is_rejected(monkeypatch):
         resolutions=OddspapiEventResolution("CONFLICT", None, None, 1),
     )
     outcome = oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=merged,
         received_at=datetime(2026, 9, 24, 9, 6, 56, tzinfo=UTC),
         candidate_match_ids=(999,),
@@ -153,7 +161,7 @@ def test_replayed_board_snapshot_is_not_processed_twice(monkeypatch):
         resolutions=OddspapiEventResolution("EXISTING", 130870, None, 1),
     )
     outcome = oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=[payload, payload],
         received_at=received_at,
         candidate_match_ids=(130870,),
@@ -172,7 +180,7 @@ def test_hourly_refresh_advances_market_observation(monkeypatch):
         resolutions=OddspapiEventResolution("EXISTING", 130870, None, 1),
     )
     oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=[_board_payload()],
         received_at=first,
         candidate_match_ids=(130870,),
@@ -180,7 +188,7 @@ def test_hourly_refresh_advances_market_observation(monkeypatch):
     first_observations = list(captured)
     captured.clear()
     oddspapi_odds.ingest_oddspapi_tennis_odds(
-        None,
+        _TxConn(),
         payload_rows=[_board_payload()],
         received_at=second,
         candidate_match_ids=(130870,),

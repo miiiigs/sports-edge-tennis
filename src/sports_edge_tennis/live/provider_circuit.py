@@ -97,20 +97,27 @@ class ProviderPair:
 
 PRIMARY_PAIR = ProviderPair(TARGET_DATA_MODE, TARGET_ODDS_MODE, PRIMARY_ROLE)
 FALLBACK_PAIR = ProviderPair(LEGACY_DATA_MODE, LEGACY_ODDS_MODE, FALLBACK_ROLE)
-SUPPORTED_PAIR_KEYS = frozenset({PRIMARY_PAIR.key, FALLBACK_PAIR.key})
+# API-Tennis + OddsPapi runs as a configured pair with no circuit and no
+# failover: an OddsPapi outage fails closed (no sharp reference, zero bets)
+# rather than falling back to the retired Pinnapi legacy odds authority.
+ODDS_ONLY_PAIR = ProviderPair(LEGACY_DATA_MODE, TARGET_ODDS_MODE, CONFIGURED_ROLE)
+ODDS_ONLY_NO_FAILOVER = "ODDS_ONLY_NO_FAILOVER"
+SUPPORTED_PAIR_KEYS = frozenset(
+    {PRIMARY_PAIR.key, FALLBACK_PAIR.key, ODDS_ONLY_PAIR.key}
+)
 
 
 def assert_compatible_pair(data_mode: str, odds_mode: str) -> ProviderPair:
     """Return the supported pair for these modes or raise.
 
-    Only two pairs are ever allowed to run: the primary pair and the compatible
-    fallback pair. Mixing API-Tennis data with OddsPapi odds (or an odds-only
-    cutover) is a hard error.
+    Allowed pairs: the primary pair, the compatible fallback pair, and the
+    explicitly authorized API-Tennis + OddsPapi configured pair (see
+    ``provider_authority.load_provider_authority``). Anything else is a hard error.
     """
     data = str(data_mode or "").strip().upper()
     odds = str(odds_mode or "").strip().upper()
     pair = None
-    for candidate in (PRIMARY_PAIR, FALLBACK_PAIR):
+    for candidate in (PRIMARY_PAIR, FALLBACK_PAIR, ODDS_ONLY_PAIR):
         if candidate.data_mode == data and candidate.odds_mode == odds:
             pair = candidate
             break
@@ -118,7 +125,7 @@ def assert_compatible_pair(data_mode: str, odds_mode: str) -> ProviderPair:
         raise ValueError(
             "incompatible provider pair rejected: "
             f"data={data!r} odds={odds!r}; allowed pairs are "
-            f"{PRIMARY_PAIR.label} and {FALLBACK_PAIR.label}"
+            f"{PRIMARY_PAIR.label}, {FALLBACK_PAIR.label} and {ODDS_ONLY_PAIR.label}"
         )
     return pair
 
@@ -190,7 +197,7 @@ class CircuitDecision:
         if not self.active:
             return (
                 f"data={self.pair.data_mode} odds={self.pair.odds_mode} "
-                "circuit=DISABLED reason=NOT_PRIMARY_AUTHORITY"
+                f"circuit=DISABLED reason={self.reason}"
             )
         return (
             f"data={self.pair.data_mode} odds={self.pair.odds_mode} "
@@ -208,7 +215,7 @@ class CircuitDecision:
             return (
                 "PROVIDER_CIRCUIT state=DISABLED "
                 f"data={self.pair.data_mode} odds={self.pair.odds_mode} "
-                "reason=NOT_PRIMARY_AUTHORITY"
+                f"reason={self.reason}"
             )
         if self.state == STATE_CLOSED:
             return (
@@ -480,14 +487,19 @@ def assert_decision_ready(
 
 
 def disabled_decision(configured: Any) -> CircuitDecision:
+    pair = ProviderPair(
+        data_mode=str(getattr(configured, "data_mode", "")),
+        odds_mode=str(getattr(configured, "odds_mode", "")),
+        role=CONFIGURED_ROLE,
+    )
     return CircuitDecision(
-        pair=ProviderPair(
-            data_mode=str(getattr(configured, "data_mode", "")),
-            odds_mode=str(getattr(configured, "odds_mode", "")),
-            role=CONFIGURED_ROLE,
-        ),
+        pair=pair,
         state=STATE_DISABLED,
-        reason="NOT_PRIMARY_AUTHORITY",
+        reason=(
+            ODDS_ONLY_NO_FAILOVER
+            if pair.key == ODDS_ONLY_PAIR.key
+            else "NOT_PRIMARY_AUTHORITY"
+        ),
         active=False,
         scope=scope_for_environment(os.environ),
     )
@@ -755,6 +767,8 @@ __all__ = [
     "STATE_DISABLED",
     "STATE_HALF_OPEN",
     "STATE_OPEN",
+    "ODDS_ONLY_NO_FAILOVER",
+    "ODDS_ONLY_PAIR",
     "SUPPORTED_PAIR_KEYS",
     "assert_compatible_pair",
     "assert_decision_ready",

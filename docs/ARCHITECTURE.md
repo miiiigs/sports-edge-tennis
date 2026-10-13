@@ -53,13 +53,14 @@ The original Manager v1 contract remains historical replay truth. The current ta
 The provider cutover is also explicit and paired:
 
 ```text
-legacy: API_TENNIS + LEGACY_SPLIT
-target: SPORTRADAR_V3 + ODDSPAPI_TENNIS
+legacy:      API_TENNIS + LEGACY_SPLIT        (Pinnapi sharp; retired upstream, HTTP 403)
+selected:    API_TENNIS + ODDSPAPI_TENNIS     (requires TENNIS_ODDS_ONLY_AUTHORIZATION=API_TENNIS_ODDSPAPI_V1)
+target:      SPORTRADAR_V3 + ODDSPAPI_TENNIS  (not an intended production provider)
 ```
 
-A mixed state is invalid. Target activation requires strict Manager v2, the target provider credentials, verified OddsPapi SHARP/PINNACLE and OFFERED mappings, the canonical schema/history corpus, a successful read-only shadow comparison, and an explicit cutover authorization. Until those gates pass, production remains on legacy authority.
+The API-Tennis + OddsPapi pair is accepted only with its own explicit authorization and runs with no circuit and no failover: an OddsPapi failure leaves matches without a sharp reference, so the market evaluator produces zero bets rather than falling back to Pinnapi. See `docs/API_TENNIS_ODDSPAPI_CUTOVER.md`. Any other mixed state is invalid. Target activation requires strict Manager v2, the target provider credentials, verified OddsPapi SHARP/PINNACLE and OFFERED mappings, the canonical schema/history corpus, a successful read-only shadow comparison, and an explicit cutover authorization. Until those gates pass, production remains on legacy authority.
 
-Cross-provider identity is never resolved by creating parallel canonical matches. OddsPapi fixture IDs are reconciled to the existing canonical player/match universe first, preferring OddsPapi `externalProviders.betradarId` against persisted Sportradar event IDs and falling back only to deterministic participant/time matching. Ambiguous identity or multiple candidate matches fail closed. Stable provider IDs are appended only after exact reconciliation.
+Cross-provider identity is never resolved by creating parallel canonical matches. OddsPapi fixture IDs are reconciled to the existing canonical player/match universe first, using OddsPapi `externalProviders.betradarId` when the canonical match carries a persisted Sportradar event ID, and otherwise (always, for API-Tennis fixtures) deterministic participant names in exactly one orientation plus start time (≤60 minutes at discovery, ≤120 at ingestion). One OddsPapi fixture may link to a canonical match; a second fixture for an already-linked match is a CONFLICT. Ambiguous identity or multiple candidate matches fail closed. Stable provider IDs are appended only after exact reconciliation.
 ## T-ED0 contract lock
 
 - Sports Edge Tennis remains a dedicated repository, database, runtime, deployment, and

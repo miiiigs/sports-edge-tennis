@@ -41,6 +41,7 @@ from sports_edge_tennis.live.oddspapi_budget import (
     plan_oddspapi_qualification,
 )
 from sports_edge_tennis.live.oddspapi_ledger import (
+    OddspapiBudgetExceeded,
     OddspapiLedgerBinding,
     OddspapiLedgerConfig,
 )
@@ -50,6 +51,10 @@ from sports_edge_tennis.live.oddspapi_identity_cache import (
     upsert_cached_identity,
 )
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
+from sports_edge_tennis.live.oddspapi_reconciliation import (
+    OddspapiReconciliationError,
+    reconcile_oddspapi_event,
+)
 from sports_edge_tennis.live.offered import ingest_api_tennis_offered_odds
 from sports_edge_tennis.live.orchestrator import (
     LiveMvpError,
@@ -58,6 +63,7 @@ from sports_edge_tennis.live.orchestrator import (
     run_live_mvp,
 )
 from sports_edge_tennis.live.price_slate import load_price_scanner_candidate_match_ids
+from sports_edge_tennis.live.provider_failures import classify_provider_failure
 from sports_edge_tennis.live.provider_authority import (
     LEGACY_DATA_MODE,
     LEGACY_ODDS_MODE,
@@ -339,6 +345,95 @@ def _load_manager_consensus_context(
     return context
 
 
+# Discovery-time identity for API-Tennis fixtures has no Betradar bridge, so a
+# tighter start-time window than the reconciler default is used to admit a link.
+ODDSPAPI_DISCOVERY_MAX_START_DELTA_MINUTES = 60
+
+
+def _resolve_cold_oddspapi_identities(
+    conn: psycopg.Connection,
+    *,
+    discovery_rows: list[dict[str, Any]],
+    cold_context: list[dict[str, object]],
+    now: datetime,
+) -> tuple[list[int], int, int]:
+    """Link discovered OddsPapi fixtures to cold consensus matches, read-only.
+
+    Uses the shared reconciler without persisting: an existing ODDSPAPI mapping,
+    else a Betradar bridge when the canonical match has one (Sportradar data),
+    else deterministic participant names in exactly one orientation plus start
+    time (API-Tennis data). Only EXACT/EXISTING links inside the cold scope are
+    cached, with the reconciler's orientation. A match claimed by two fixtures,
+    or a fixture whose identity is inconsistent, is left uncached (fail closed).
+    Durable ``match_source_ids`` links are only written later by ingestion.
+
+    Returns ``(tournament_ids, cached, rejected)``.
+    """
+    by_match = {int(item["match_id"]): item for item in cold_context}
+    scope = tuple(sorted(by_match))
+    if not scope:
+        return [], 0, 0
+    links: dict[int, list[tuple[Any, Any]]] = {}
+    rejected = 0
+    for payload in discovery_rows:
+        try:
+            envelope = parse_oddspapi_tennis_fixture(payload)
+        except ValueError:
+            continue
+        try:
+            resolution = reconcile_oddspapi_event(
+                conn,
+                envelope=envelope,
+                candidate_match_ids=scope,
+                as_of=now,
+                max_start_delta_minutes=ODDSPAPI_DISCOVERY_MAX_START_DELTA_MINUTES,
+                persist=False,
+            )
+        except OddspapiReconciliationError:
+            rejected += 1
+            continue
+        if resolution.status in ("AMBIGUOUS", "CONFLICT"):
+            rejected += 1
+            continue
+        if (
+            resolution.status not in ("EXACT", "EXISTING")
+            or resolution.match_id not in by_match
+            or resolution.candidate is None
+        ):
+            continue
+        links.setdefault(int(resolution.match_id), []).append(
+            (envelope, resolution.candidate)
+        )
+
+    tournament_ids: list[int] = []
+    cached = 0
+    for match_id, found in sorted(links.items()):
+        fixture_ids = {envelope.fixture_id for envelope, _ in found}
+        if len(fixture_ids) != 1:
+            rejected += 1
+            continue
+        envelope, candidate = found[0]
+        item = by_match[match_id]
+        tournament_ids.append(envelope.tournament_id)
+        upsert_cached_identity(
+            conn,
+            OddspapiCachedIdentity(
+                canonical_match_id=match_id,
+                sportradar_event_id=item.get("sportradar_event_id"),
+                oddspapi_event_id=envelope.fixture_id,
+                betradar_id=envelope.betradar_id,
+                oddspapi_tournament_id=envelope.tournament_id,
+                player_orientation=candidate.provider_orientation,
+                resolution_status="EXACT",
+                scheduled_start=item["scheduled_start"],
+                resolved_at=now,
+                last_verified_at=now,
+            ),
+        )
+        cached += 1
+    return tournament_ids, cached, rejected
+
+
 def main(
     argv: list[str] | None = None,
     *,
@@ -535,13 +630,8 @@ def _run_batch(
         circuit_decision = provider_decision
     provider_authority = circuit_decision.authority
     provider_env = circuit_decision.apply_env(os.environ)
-    if (
-        provider_authority.data_mode,
-        provider_authority.odds_mode,
-    ) == (LEGACY_DATA_MODE, TARGET_ODDS_MODE):
-        raise RuntimeError(
-            "unsafe mixed provider pair rejected: API_TENNIS + ODDSPAPI_TENNIS"
-        )
+    # API_TENNIS + ODDSPAPI_TENNIS is admitted only by load_provider_authority's
+    # explicit authorization gate; readiness is asserted below like every pair.
     _log(
         "LIVE_PROVIDER_AUTHORITY "
         f"data_provider={provider_authority.data_mode} "
@@ -862,12 +952,14 @@ def _run_batch(
                                 for ident in warm.values()
                                 if getattr(ident, "oddspapi_event_id", None)
                             ]
-                            cold_by_betradar = {
-                                item["betradar_id"]: item
+                            cold_context = [
+                                item
                                 for item in consensus_context
-                                if item["match_id"] in cold and item["betradar_id"]
-                            }
-                            if cold_by_betradar:
+                                if item["match_id"] in cold
+                            ]
+                            discovery_performed = False
+                            cold_cached = cold_rejected = 0
+                            if cold_context:
                                 window_start = datetime.combine(
                                     args.start_date,
                                     datetime.min.time(),
@@ -883,39 +975,24 @@ def _run_batch(
                                         ledger=discovery_ledger,
                                     )
                                 )
+                                discovery_performed = True
                                 totals["offered_requests"] += 1
-                                for payload in discovery_rows:
-                                    try:
-                                        envelope = parse_oddspapi_tennis_fixture(payload)
-                                    except ValueError:
-                                        continue
-                                    item = (
-                                        cold_by_betradar.get(envelope.betradar_id)
-                                        if envelope.betradar_id
-                                        else None
-                                    )
-                                    if item is None:
-                                        continue
-                                    tournament_ids.append(envelope.tournament_id)
-                                    upsert_cached_identity(
-                                        conn,
-                                        OddspapiCachedIdentity(
-                                            canonical_match_id=item["match_id"],
-                                            sportradar_event_id=item["sportradar_event_id"],
-                                            oddspapi_event_id=envelope.fixture_id,
-                                            betradar_id=envelope.betradar_id,
-                                            oddspapi_tournament_id=envelope.tournament_id,
-                                            player_orientation="DIRECT",
-                                            resolution_status="EXACT",
-                                            scheduled_start=item["scheduled_start"],
-                                            resolved_at=now,
-                                            last_verified_at=now,
-                                        ),
-                                    )
+                                (
+                                    discovered_tournaments,
+                                    cold_cached,
+                                    cold_rejected,
+                                ) = _resolve_cold_oddspapi_identities(
+                                    conn,
+                                    discovery_rows=discovery_rows,
+                                    cold_context=cold_context,
+                                    now=now,
+                                )
+                                tournament_ids.extend(discovered_tournaments)
                             _log(
                                 "ODDSPAPI_IDENTITY_CACHE "
                                 f"warm={len(warm)} cold={len(cold)} "
-                                f"cold_discovered={len(cold_by_betradar)}"
+                                f"cold_discovered={cold_cached} "
+                                f"cold_rejected={cold_rejected}"
                             )
 
                             plan = plan_oddspapi_qualification(
@@ -923,7 +1000,9 @@ def _run_batch(
                                 books=ODDSPAPI_PLAN_BOOKMAKERS,
                                 discovery_book=ODDSPAPI_SHARP_BOOKMAKER,
                                 policy=budget_policy,
-                                include_discovery=False,
+                                # A discovery call already made this cycle counts
+                                # against the same per-cycle cap.
+                                include_discovery=discovery_performed,
                             )
                             enforce_oddspapi_budget(plan, policy=budget_policy)
                             # Extra requests allowed for 404 individual retries stay
@@ -996,10 +1075,17 @@ def _run_batch(
                                 f"unknown_bookmaker={oddspapi.unknown_bookmaker_groups} "
                                 f"unknown_participant={oddspapi.unknown_participant_groups}"
                             )
-                        except OddspapiBudgetError as exc:
+                        except (OddspapiBudgetError, OddspapiBudgetExceeded) as exc:
+                            # Fail closed: no OddsPapi quotes, so no sharp
+                            # reference and therefore zero bets this cycle.
                             _log(f"ODDSPAPI_BUDGET_BLOCKED {exc}")
                         except TransportError as exc:
-                            _log(f"OFFERED_ODDS_UNAVAILABLE kind={exc.kind}")
+                            failure = classify_provider_failure(exc.kind)
+                            _log(
+                                "OFFERED_ODDS_UNAVAILABLE "
+                                f"provider=ODDSPAPI_TENNIS kind={exc.kind} "
+                                f"class={failure.label}"
+                            )
 
 
             policy = None

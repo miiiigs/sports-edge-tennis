@@ -77,6 +77,8 @@ def reconcile_oddspapi_event(
         candidate = _load_one_candidate(conn, match_id=match_id, as_of=as_of, envelope=envelope, max_start_delta_minutes=max_start_delta_minutes)
         if candidate is None:
             return OddspapiEventResolution("CONFLICT", None, None, 1, "betradar_mapping_evidence_conflict")
+        if _match_mapped_to_other_fixture(conn, match_id=match_id, fixture_id=envelope.fixture_id):
+            return OddspapiEventResolution("CONFLICT", None, None, 1, "match_mapped_to_other_fixture")
         if persist:
             _persist_event_mapping(conn, envelope=envelope, candidate=candidate)
             _apply_identity_bridge(conn, envelope=envelope, candidate=candidate)
@@ -96,6 +98,10 @@ def reconcile_oddspapi_event(
     if not matches:
         return OddspapiEventResolution("UNMATCHED", None, None, 0, "name_time_unmatched")
     candidate = matches[0]
+    # One OddsPapi fixture per canonical match: a second fixture resolving to an
+    # already-linked match would create competing quotes, so it fails closed.
+    if _match_mapped_to_other_fixture(conn, match_id=candidate.match_id, fixture_id=envelope.fixture_id):
+        return OddspapiEventResolution("CONFLICT", None, None, 1, "match_mapped_to_other_fixture")
     if persist:
         _persist_event_mapping(conn, envelope=envelope, candidate=candidate)
         _apply_identity_bridge(conn, envelope=envelope, candidate=candidate)
@@ -116,6 +122,21 @@ def _existing_mapping(conn: psycopg.Connection, fixture_id: str) -> int | None:
     if len(rows) > 1:
         raise OddspapiReconciliationError("oddspapi_event_identity_conflict")
     return int(rows[0][0]) if rows else None
+
+
+def _match_mapped_to_other_fixture(conn: psycopg.Connection, *, match_id: int, fixture_id: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM match_source_ids
+        WHERE source_system = %s
+          AND match_id = %s
+          AND source_match_id IS DISTINCT FROM %s
+        LIMIT 1
+        """,
+        (SOURCE_SYSTEM, match_id, fixture_id),
+    ).fetchone()
+    return row is not None
 
 
 def _betradar_matches(conn: psycopg.Connection, betradar_id: str | None) -> tuple[int, ...]:
