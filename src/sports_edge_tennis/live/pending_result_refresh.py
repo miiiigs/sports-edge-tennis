@@ -81,8 +81,12 @@ from sports_edge_tennis.live.production_lock import (
 from sports_edge_tennis.live.transport import TransportError
 from sports_edge_tennis.performance.regimes import first_production_model_picks_cte
 
-DEFAULT_WINDOW_DAYS = 2
-MAX_WINDOW_DAYS = 2
+# Include the previous two UTC dates so matches shown on the prior
+# Asia/Manila dashboard day (UTC+8) are not stranded outside recovery.
+# Still one bounded provider request at most, and only when a pick lacks
+# a canonical terminal result.
+DEFAULT_WINDOW_DAYS = 3
+MAX_WINDOW_DAYS = 3
 DEFAULT_MAX_TARGETS = 50
 MAX_TARGETS_LIMIT = 200
 
