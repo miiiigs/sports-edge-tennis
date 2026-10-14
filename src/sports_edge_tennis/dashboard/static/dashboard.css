@@ -1088,3 +1088,9 @@ a.pagination-link:hover {
     justify-content: center;
   }
 }
+
+/* Provider schedule change under a Model Pick: original and updated start. */
+.schedule-change {
+  display: block;
+  margin-top: 4px;
+}

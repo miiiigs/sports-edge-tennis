@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Iterable
+from zoneinfo import ZoneInfo
 
 import psycopg
 from fastapi import APIRouter, Query, Request
@@ -43,6 +44,7 @@ from sports_edge_tennis.dashboard.timezone import (
     DashboardTimezone,
     dashboard_today,
 )
+from sports_edge_tennis.live.pending_result_diagnostics import is_schedule_change
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
     ModelRegimeIdentity,
@@ -97,6 +99,24 @@ class ModelPickRow:
     agent_config_versions: tuple[str | None, ...] = (None, None, None)
     pick_type: str | None = None
     match_id: int | None = None
+    # Latest persisted provider fixture state for the same canonical match. The
+    # pick stays dated by ``match_start_at`` (the point-in-time start it was
+    # issued against); these only explain a later schedule change.
+    latest_match_start_at: datetime | None = None
+    latest_fixture_status: str | None = None
+    # Set by the loader with the shared ``is_schedule_change`` rule evaluated
+    # in the dashboard timezone, so a move across local midnight is caught.
+    schedule_changed: bool = False
+
+    @property
+    def is_rescheduled(self) -> bool:
+        """Provider moved the start after the pick was issued."""
+        return self.schedule_changed and self.latest_match_start_at is not None
+
+    @property
+    def is_postponed(self) -> bool:
+        """Provider currently marks the fixture postponed; it is never graded."""
+        return self.result_status == "PENDING" and self.latest_fixture_status == "POSTPONED"
 
     @property
     def is_wide_spread(self) -> bool:
@@ -516,6 +536,7 @@ def load_aligned_daily_model_picks(
     summary's pick count for that day. Wide-spread rows are tracking-only and
     are labelled through ``pick_type``.
     """
+    local_zone = ZoneInfo(timezone_name)
     veto_available = veto_audits_available(conn)
     rows = conn.execute(
         f"""
@@ -549,7 +570,9 @@ def load_aligned_daily_model_picks(
             ) AS is_value_bet,
             mpv.policy_version AS manager_policy_version,
             p.aligned_pick_type,
-            p.match_id
+            p.match_id,
+            lv.match_start_at AS latest_match_start_at,
+            lv.match_status AS latest_fixture_status
         FROM aligned_model_picks p
         JOIN matches m ON m.match_id = p.match_id
         JOIN tournament_editions te
@@ -585,6 +608,17 @@ def load_aligned_daily_model_picks(
                      mro.match_result_observation_id DESC
             LIMIT 1
         ) r ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT
+                mv1.match_start_at,
+                mv1.match_status::text AS match_status
+            FROM match_versions mv1
+            WHERE mv1.match_id = p.match_id
+            ORDER BY mv1.as_of DESC,
+                     mv1.source_observed_at DESC,
+                     mv1.match_version_id DESC
+            LIMIT 1
+        ) lv ON TRUE
         LEFT JOIN first_bets fb ON fb.match_id = p.match_id
         LEFT JOIN manager_consensus_results mcr2
           ON mcr2.manager_consensus_result_id = p.manager_consensus_result_id
@@ -613,6 +647,11 @@ def load_aligned_daily_model_picks(
             agent_config_versions=(None, None, None),
             pick_type=str(row[11]) if row[11] is not None else None,
             match_id=int(row[12]) if row[12] is not None else None,
+            latest_match_start_at=row[13],
+            latest_fixture_status=str(row[14]) if row[14] is not None else None,
+            schedule_changed=is_schedule_change(
+                row[2], row[13], local_timezone=local_zone
+            ),
         )
         for row in rows
     )
@@ -891,6 +930,13 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     "manager_policy_version": row.manager_policy_version,
                     "model_regime_key": row.model_regime_key,
                     "agent_config_versions": list(row.agent_config_versions),
+                    "match_id": row.match_id,
+                    "latest_match_start_at": row.latest_match_start_at.isoformat()
+                    if row.latest_match_start_at
+                    else None,
+                    "latest_fixture_status": row.latest_fixture_status,
+                    "rescheduled": row.is_rescheduled,
+                    "postponed": row.is_postponed,
                 }
                 for row in view.picks
             ],

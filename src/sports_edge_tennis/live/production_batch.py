@@ -711,6 +711,37 @@ def _pending_result_refresh_cycle(dsn: str) -> None:
         _log(summary.detail_line())
     except Exception as exc:  # noqa: BLE001 - fail-isolated operational lane
         _log(f"PENDING_RESULT_REFRESH_FAILED error_type={type(exc).__name__}")
+    _pending_result_diagnostics_cycle(dsn)
+
+
+# Only reasons an operator must act on are itemized in the hourly log; routine
+# NOT_STARTED / AWAITING_RESULT picks are counted in the summary line only.
+_PENDING_DIAGNOSTIC_ITEM_LOG_LIMIT = 25
+
+
+def _pending_result_diagnostics_cycle(dsn: str) -> None:
+    """Log a match-level reason for every pending pick. Read-only, never raises."""
+    try:
+        from sports_edge_tennis.live.pending_result_diagnostics import (
+            REASON_AWAITING_RESULT,
+            REASON_NOT_STARTED,
+            load_pending_result_diagnostics,
+        )
+
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            report = load_pending_result_diagnostics(conn)
+        _log(report.summary_line())
+        actionable = [
+            item
+            for item in report.items
+            if item.reason not in (REASON_NOT_STARTED, REASON_AWAITING_RESULT)
+        ]
+        for item in actionable[:_PENDING_DIAGNOSTIC_ITEM_LOG_LIMIT]:
+            _log(item.log_line())
+    except Exception as exc:  # noqa: BLE001 - diagnostics must not affect the batch
+        _log(f"PENDING_RESULT_DIAGNOSTICS_FAILED error_type={type(exc).__name__}")
 
 
 def _a1_evidence_cycle(dsn: str) -> None:

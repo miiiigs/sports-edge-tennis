@@ -14,6 +14,10 @@ from sports_edge_tennis.dashboard.app import DEMO_MODE, _connect
 from sports_edge_tennis.dashboard.result_coverage import (
     load_terminal_fixtures_without_result,
 )
+from sports_edge_tennis.live.pending_result_diagnostics import (
+    load_pending_result_diagnostics,
+    report_json,
+)
 from sports_edge_tennis.performance.abstention_evidence import (
     AbstentionWindow,
     load_abstention_windows,
@@ -142,6 +146,46 @@ def api_result_coverage(
     )
 
 
+def api_pending_results(
+    lookback_days: int = Query(default=60, ge=1, le=400),
+    limit: int = Query(default=500, ge=1, le=2000),
+):
+    if DEMO_MODE:
+        return JSONResponse(
+            {
+                "initialized": False,
+                "reason": "pending result diagnostics require persisted production evidence",
+            }
+        )
+    conn = _connect()
+    if conn is None:
+        return JSONResponse(
+            {"initialized": False, "reason": _DB_UNAVAILABLE}, status_code=503
+        )
+    try:
+        # Defence in depth: the diagnostics only SELECT, but the session is
+        # forced read-only so no future change here can write production data.
+        conn.execute("SET default_transaction_read_only = on")
+        report = load_pending_result_diagnostics(
+            conn, lookback_days=lookback_days, limit=limit
+        )
+    except Exception:
+        return JSONResponse(
+            {"initialized": False, "reason": "pending result diagnostics unavailable"},
+            status_code=503,
+        )
+    finally:
+        conn.close()
+
+    payload = report_json(report)
+    payload["initialized"] = True
+    payload["scope"] = (
+        "production Model Picks and settlement-eligible Type A BETs with no terminal "
+        "match_result_observations row; one primary reason per match, read-only"
+    )
+    return JSONResponse(payload)
+
+
 def _calibration_health_payload() -> tuple[dict | None, int]:
     if DEMO_MODE:
         return {"initialized": False, "reason": "calibration health requires persisted evidence"}, 200
@@ -236,6 +280,7 @@ Reference date {_html_escape(payload['reference_date'])}.</p>
 __all__ = [
     "api_agent_abstention",
     "api_calibration_health",
+    "api_pending_results",
     "api_result_coverage",
     "calibration_diagnostics_page",
 ]
