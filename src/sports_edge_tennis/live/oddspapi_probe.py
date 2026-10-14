@@ -57,12 +57,14 @@ from sports_edge_tennis.live.oddspapi_reconciliation import (
 )
 from sports_edge_tennis.live.transport import TransportError
 from sports_edge_tennis.odds.providers.oddspapi_tennis import (
+    ODDSPAPI_MATCH_WINNER_MARKET_ID,
     build_oddspapi_tennis_observation,
 )
 from sports_edge_tennis.performance.regimes import PRODUCTION_RUN_PREDICATE
 
 HARD_MAX_REQUESTS = 5
 PROBE_MAX_START_DELTA_MINUTES = 60
+MAX_UNMATCHED_REPORTED = 40
 EXPECTED_MAPPINGS = {
     "pinnacle+30": ("SHARP", "PINNACLE"),
     "1xbet": ("OFFERED", None),
@@ -83,6 +85,9 @@ class ProbeReport:
     discovery_valid_tennis: int = 0
     resolutions: dict[str, int] = field(default_factory=dict)
     contested_matches: int = 0
+    discovery_received_at: str | None = None
+    odds_received_at: str | None = None
+    unmatched: list[dict[str, Any]] = field(default_factory=list)
     matched: list[dict[str, Any]] = field(default_factory=list)
     tournaments_qualified: list[int] = field(default_factory=list)
     mappings: dict[str, Any] = field(default_factory=dict)
@@ -102,6 +107,9 @@ class ProbeReport:
             "discovery_valid_tennis": self.discovery_valid_tennis,
             "resolutions": self.resolutions,
             "contested_matches": self.contested_matches,
+            "discovery_received_at": self.discovery_received_at,
+            "odds_received_at": self.odds_received_at,
+            "unmatched": self.unmatched,
             "matched": self.matched,
             "tournaments_qualified": self.tournaments_qualified,
             "mappings": self.mappings,
@@ -244,6 +252,7 @@ def run_probe(
         )
         auth = True
         report.discovery_rows = len(discovery_rows)
+        report.discovery_received_at = discovery_at.isoformat()
 
         scope_ids = tuple(item["match_id"] for item in scope)
         claims: dict[int, list[tuple[Any, Any]]] = {}
@@ -268,6 +277,16 @@ def run_probe(
             report.resolutions[resolution.status] = report.resolutions.get(resolution.status, 0) + 1
             if resolution.status in ("EXACT", "EXISTING") and resolution.candidate is not None:
                 claims.setdefault(int(resolution.match_id), []).append((envelope, resolution))
+            elif len(report.unmatched) < MAX_UNMATCHED_REPORTED:
+                report.unmatched.append(
+                    {
+                        "oddspapi_fixture_id": envelope.fixture_id,
+                        "tournament_id": envelope.tournament_id,
+                        "provider_players": [envelope.participant_1_name, envelope.participant_2_name],
+                        "start": envelope.match_start_at.isoformat(),
+                        "resolution": resolution.status,
+                    }
+                )
 
         accepted: list[tuple[Any, Any]] = []
         for match_id, found in sorted(claims.items()):
@@ -303,6 +322,7 @@ def run_probe(
                 ledger=binding("QUALIFICATION"),
                 fallback_budget=0,
             )
+            report.odds_received_at = odds_at.isoformat()
             rows = merge_oddspapi_odds_books(
                 discovery_rows,
                 board_rows,
@@ -325,6 +345,7 @@ def run_probe(
                             "bookmaker_key": market.provider_bookmaker_key,
                             "market_status": market.market_status,
                             "selections": len(market.selections),
+                            "prices": _selection_prices(envelope, payload, market),
                             "received_at": odds_at.isoformat(),
                             "prematch": envelope.match_start_at > odds_at,
                         }
@@ -341,6 +362,29 @@ def run_probe(
 
     report.acceptance = _acceptance(report, sharp_ok=sharp_ok, offered_ok=offered_ok, auth=auth)
     return report
+
+
+def _selection_prices(envelope: Any, payload: dict[str, Any], market: Any) -> list[dict[str, Any]]:
+    """Provider-side prices with OddsPapi's last-change mark, for the probe evidence only."""
+    names = {
+        envelope.participant_1_id: envelope.participant_1_name,
+        envelope.participant_2_id: envelope.participant_2_name,
+    }
+    raw_market = (
+        ((payload.get("bookmakerOdds") or {}).get(market.provider_bookmaker_key) or {}).get("markets") or {}
+    ).get(ODDSPAPI_MATCH_WINNER_MARKET_ID) or {}
+    out = []
+    for selection in market.selections:
+        outcome = ((raw_market.get("outcomes") or {}).get(selection.provider_selection_key) or {})
+        player_zero = (outcome.get("players") or {}).get("0") or {}
+        out.append(
+            {
+                "provider_player": names.get(selection.provider_player_id, selection.provider_player_id),
+                "decimal_price": str(selection.decimal_price),
+                "changed_at": player_zero.get("changedAt"),
+            }
+        )
+    return out
 
 
 def _acceptance(

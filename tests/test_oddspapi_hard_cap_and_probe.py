@@ -307,6 +307,46 @@ def test_probe_full_run_within_cap_writes_only_ledger_rows(db: psycopg.Connectio
     assert _oddspapi_links(db, match_id) == []
 
 
+def _book(price_1: str, price_2: str, changed_at: str) -> dict:
+    def outcome(price):
+        return {"players": {"0": {"active": True, "price": price, "changedAt": changed_at}}}
+
+    return {"markets": {"121": {"outcomes": {"121": outcome(price_1), "122": outcome(price_2)}}}}
+
+
+def test_probe_reports_prices_change_marks_and_unmatched_fixtures(db: psycopg.Connection, monkeypatch):
+    match_id = _seed_consensus(db, monkeypatch)
+    stranger = _payload("id-stranger", p1_id=7, p2_id=8)
+    stranger.update(participant1Name="Somebody Else", participant2Name="Another Player")
+
+    def fixtures(key, *, ledger, **kw):
+        ledger.reserve(endpoint="fixtures")
+        return AS_OF, [_payload("id-probe", p1_id=1, p2_id=2), stranger]
+
+    def odds(key, *, tournament_ids, bookmakers, ledger, fallback_budget, **kw):
+        for book in bookmakers:
+            ledger.reserve(endpoint="odds-by-tournaments", bookmaker=book)
+        row = _payload("id-probe", p1_id=1, p2_id=2)
+        row["bookmakerOdds"] = {
+            "pinnacle+30": _book("1.50", "2.80", "2026-10-11T09:00:00Z"),
+            "bet365": _book("1.44", "2.75", "2026-10-11T08:00:00Z"),
+        }
+        return AS_OF, [row], len(bookmakers)
+
+    report = run_probe(db, api_key="k", now=NOW, execute=True, fetch_fixtures=fixtures, fetch_odds=odds)
+
+    assert report.stop_reason == "COMPLETED" and report.attempts_used == 5
+    assert [u["oddspapi_fixture_id"] for u in report.unmatched] == ["id-stranger"]
+    assert report.odds_received_at == AS_OF.isoformat()
+    by_book = {q["bookmaker_key"]: q for q in report.quotes}
+    assert by_book["pinnacle+30"]["match_id"] == match_id
+    assert by_book["pinnacle+30"]["prices"] == [
+        {"provider_player": "Novak Djokovic", "decimal_price": "1.50", "changed_at": "2026-10-11T09:00:00Z"},
+        {"provider_player": "Daniil Medvedev", "decimal_price": "2.80", "changed_at": "2026-10-11T09:00:00Z"},
+    ]
+    assert [p["decimal_price"] for p in by_book["bet365"]["prices"]] == ["1.44", "2.75"]
+
+
 def test_probe_stops_at_cap_when_retries_consume_it(db: psycopg.Connection, monkeypatch):
     _seed_consensus(db, monkeypatch)
 
