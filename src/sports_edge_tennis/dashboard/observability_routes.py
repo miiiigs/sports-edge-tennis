@@ -201,7 +201,13 @@ def api_monitoring_summary(include_calibration: bool = Query(default=True)):
             {"initialized": False, "reason": _DB_UNAVAILABLE}, status_code=503
         )
     try:
+        conn.execute("SET default_transaction_read_only = on")
         payload = load_monitoring_summary(conn, include_calibration=include_calibration)
+    except Exception:
+        return JSONResponse(
+            {"initialized": False, "reason": "monitoring summary unavailable"},
+            status_code=503,
+        )
     finally:
         conn.close()
     payload["initialized"] = True

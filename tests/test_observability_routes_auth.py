@@ -14,6 +14,7 @@ API_PATHS = (
     "/api/dashboard/agent-abstention",
     "/api/dashboard/result-coverage",
     "/api/dashboard/pending-results",
+    "/api/dashboard/monitoring-summary",
     "/api/dashboard/calibration-health",
 )
 HTML_PATHS = ("/diagnostics/calibration",)

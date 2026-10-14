@@ -93,9 +93,9 @@ def evaluate_alerts(snapshot: dict[str, Any], *, now: datetime) -> list[Monitori
             MonitoringAlert(
                 "SHARP_REFERENCE_STALE",
                 STATUS_RED,
-                "no SHARP/PINNACLE snapshot; Type A bets cannot qualify"
+                "no live SHARP snapshot from any provider; Type A bets cannot qualify"
                 if sharp_age is None
-                else f"latest SHARP/PINNACLE snapshot {sharp_age / 60:.1f} h old; "
+                else f"latest live SHARP snapshot {sharp_age / 60:.1f} h old; "
                 "Type A bets cannot qualify",
             )
         )
@@ -148,6 +148,31 @@ def evaluate_alerts(snapshot: dict[str, Any], *, now: datetime) -> list[Monitori
             )
         )
 
+    by_reason = pending.get("by_reason") or {}
+    unmatched = int(by_reason.get("NO_API_TENNIS_LINK", 0)) + int(
+        by_reason.get("TERMINAL_FIXTURE_WITHOUT_RESULT", 0)
+    )
+    if unmatched:
+        alerts.append(
+            MonitoringAlert(
+                "PENDING_RESULTS_UNMATCHED",
+                STATUS_AMBER,
+                f"{unmatched} pending pick(s) whose result cannot be matched: "
+                "no API-Tennis link, or terminal fixture without a parseable result",
+            )
+        )
+
+    cycles = snapshot.get("prediction_cycles_24h")
+    predicting = snapshot.get("prediction_cycles_with_predictions_24h")
+    if cycles and predicting == 0:
+        alerts.append(
+            MonitoringAlert(
+                "PREDICTION_CYCLES_EMPTY",
+                STATUS_AMBER,
+                f"{cycles} finalized production run(s) in 24h, none produced a prediction",
+            )
+        )
+
     for flag in snapshot.get("calibration_flags", ()):
         alerts.append(MonitoringAlert(f"CALIBRATION_{flag}", STATUS_AMBER, flag))
 
@@ -165,13 +190,21 @@ def overall_status(alerts: list[MonitoringAlert]) -> str:
 def _load_snapshot(conn: psycopg.Connection, *, now: datetime) -> dict[str, Any]:
     latest_cycle = conn.execute(
         f"""
-        SELECT max(pr.prediction_finalized_at), count(*) FILTER (
-            WHERE pr.prediction_finalized_at >= %s
-        )
+        SELECT
+            max(pr.prediction_finalized_at),
+            count(*) FILTER (WHERE pr.prediction_finalized_at >= %(since)s),
+            count(*) FILTER (
+                WHERE pr.prediction_finalized_at >= %(since)s
+                  AND EXISTS (
+                      SELECT 1 FROM predictions p
+                      WHERE p.prediction_run_id = pr.prediction_run_id
+                  )
+            )
         FROM prediction_runs pr
         WHERE {PRODUCTION_RUN_PREDICATE}
+          AND pr.prediction_finalized_at <= %(now)s
         """,
-        (now - timedelta(hours=24),),
+        {"since": now - timedelta(hours=24), "now": now},
     ).fetchone()
 
     window_start = now - timedelta(hours=PROVIDER_FAILURE_WINDOW_HOURS)
@@ -217,23 +250,36 @@ def _load_snapshot(conn: psycopg.Connection, *, now: datetime) -> dict[str, Any]
         default=None,
     )
 
+    # Forward-issued live provider evidence only: HISTORICAL/SYNTHETIC rows
+    # (backfills, replays) must never make a dead feed look fresh. Grouped by
+    # provider so a Pinnapi outage and an OddsPapi feed are told apart.
     odds = [
         {
             "normalization_class": str(row[0]),
-            "bookmaker_code": str(row[1]),
-            "latest_observed_at": row[2],
-            "snapshots_24h": int(row[3]),
+            "provider_code": str(row[1]) if row[1] is not None else None,
+            "bookmaker_code": str(row[2]),
+            "latest_observed_at": row[3],
+            "snapshots_24h": int(row[4]),
         }
         for row in conn.execute(
             """
-            SELECT source_system, bookmaker_code, max(source_observed_at),
-                   count(*) FILTER (WHERE source_observed_at >= %s)
-            FROM odds_snapshots
-            WHERE source_observed_at >= %s
-            GROUP BY source_system, bookmaker_code
-            ORDER BY source_system, bookmaker_code
+            SELECT os.source_system, pbm.provider_code, os.bookmaker_code,
+                   max(os.source_observed_at),
+                   count(*) FILTER (WHERE os.source_observed_at >= %(since_24h)s)
+            FROM odds_snapshots os
+            LEFT JOIN provider_bookmaker_mappings pbm
+              ON pbm.provider_bookmaker_mapping_id = os.provider_bookmaker_mapping_id
+            WHERE os.source_observed_at >= %(since)s
+              AND os.source_observed_at <= %(now)s
+              AND os.odds_origin = 'LIVE_PROVIDER'
+            GROUP BY 1, 2, 3
+            ORDER BY 1, 2, 3
             """,
-            (now - timedelta(hours=24), now - timedelta(days=60)),
+            {
+                "since_24h": now - timedelta(hours=24),
+                "since": now - timedelta(days=60),
+                "now": now,
+            },
         ).fetchall()
     ]
     sharp = max(
@@ -271,6 +317,7 @@ def _load_snapshot(conn: psycopg.Connection, *, now: datetime) -> dict[str, Any]
     return {
         "latest_prediction_cycle_at": latest_cycle[0] if latest_cycle else None,
         "prediction_cycles_24h": int(latest_cycle[1]) if latest_cycle else 0,
+        "prediction_cycles_with_predictions_24h": int(latest_cycle[2]) if latest_cycle else 0,
         "latest_result_refresh_at": result_refresh,
         "provider_feeds": feeds,
         "odds": odds,

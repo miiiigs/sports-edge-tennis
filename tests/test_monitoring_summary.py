@@ -119,3 +119,121 @@ def test_summary_contract_shape_on_empty_database(db: psycopg.Connection):
     assert tennis["pending"]["total"] == 0
     assert tennis["oddspapi_usage"]["requests_month_to_date"] == 0
     assert tennis["provider_feeds"] == [] and tennis["odds"] == []
+
+
+def test_unmatched_results_raise_amber_independently_of_stranding():
+    alerts = evaluate_alerts(
+        _healthy(
+            pending={
+                "by_flag": {},
+                "by_reason": {"NO_API_TENNIS_LINK": 1, "TERMINAL_FIXTURE_WITHOUT_RESULT": 2},
+            }
+        ),
+        now=NOW,
+    )
+    assert _codes(alerts) == ["PENDING_RESULTS_UNMATCHED"]
+    assert alerts[0].detail.startswith("3 pending pick(s)")
+    assert overall_status(alerts) == STATUS_AMBER
+
+
+def test_postponed_and_awaiting_picks_do_not_alert():
+    alerts = evaluate_alerts(
+        _healthy(
+            pending={
+                "by_flag": {"RESCHEDULED": 2},
+                "by_reason": {"FIXTURE_POSTPONED": 1, "AWAITING_RESULT": 3, "NOT_STARTED": 9},
+            }
+        ),
+        now=NOW,
+    )
+    assert alerts == []
+
+
+def test_cycles_that_predict_nothing_are_not_genuine():
+    alerts = evaluate_alerts(
+        _healthy(prediction_cycles_24h=24, prediction_cycles_with_predictions_24h=0),
+        now=NOW,
+    )
+    assert _codes(alerts) == ["PREDICTION_CYCLES_EMPTY"]
+    assert evaluate_alerts(
+        _healthy(prediction_cycles_24h=24, prediction_cycles_with_predictions_24h=20),
+        now=NOW,
+    ) == []
+
+
+def test_sharp_and_result_freshness_are_independent():
+    sharp_only = evaluate_alerts(
+        _healthy(latest_sharp_observed_at=NOW - timedelta(hours=7)), now=NOW
+    )
+    result_only = evaluate_alerts(
+        _healthy(latest_result_refresh_at=NOW - timedelta(minutes=181)), now=NOW
+    )
+    assert _codes(sharp_only) == ["SHARP_REFERENCE_STALE"]
+    assert _codes(result_only) == ["RESULT_REFRESH_STALE"]
+
+
+def test_backfilled_sharp_odds_never_make_the_feed_look_fresh(db: psycopg.Connection):
+    from tests.abstention_helpers import insert_match
+
+    match_id = insert_match(db, match_start_at=NOW - timedelta(days=3))
+    fresh = NOW - timedelta(minutes=5)
+    for origin, key in (("HISTORICAL", "hist-1"), ("SYNTHETIC", "syn-1")):
+        db.execute(
+            """
+            INSERT INTO odds_snapshots (
+                match_id, source_system, bookmaker_code, market_type, selection_type,
+                decimal_price, source_snapshot_id, source_observed_at, as_of, odds_origin
+            )
+            VALUES (%s, 'SHARP', 'PINNACLE', 'MATCH_WINNER', 'PLAYER_1', 1.80, %s, %s, %s, %s)
+            """,
+            (match_id, key, fresh, fresh, origin),
+        )
+
+    payload = load_monitoring_summary(db, now=NOW, include_calibration=False)
+
+    assert payload["tennis"]["odds"] == []
+    assert payload["tennis"]["latest_sharp_observed_at"] is None
+    assert "SHARP_REFERENCE_STALE" in {alert["code"] for alert in payload["alerts"]}
+
+
+def test_monitoring_endpoint_is_read_only(db: psycopg.Connection, migrated_postgres: str, monkeypatch):
+    import pytest
+    from fastapi.testclient import TestClient
+
+    import sports_edge_tennis.dashboard.observability_routes as routes
+    from sports_edge_tennis.dashboard.production_app import app
+
+    monkeypatch.setenv("TENNIS_DATABASE_URL", migrated_postgres)
+    real = routes.load_monitoring_summary
+
+    def probe(conn, **kwargs):
+        with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+            conn.execute("CREATE TEMP TABLE monitoring_probe (id int)")
+        return real(conn, **kwargs)
+
+    monkeypatch.setattr(routes, "load_monitoring_summary", probe)
+    response = TestClient(app).get("/api/dashboard/monitoring-summary?include_calibration=false")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["contract"] == CONTRACT_VERSION
+    assert body["read_only"] is True
+
+
+def test_monitoring_endpoint_returns_503_without_leaking_errors(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import sports_edge_tennis.dashboard.observability_routes as routes
+    from sports_edge_tennis.dashboard.production_app import app
+
+    class _Conn:
+        def execute(self, *_args, **_kwargs):
+            raise psycopg.OperationalError("password=secret")
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(routes, "DEMO_MODE", False)
+    monkeypatch.setattr(routes, "_connect", lambda: _Conn())
+    response = TestClient(app).get("/api/dashboard/monitoring-summary")
+    assert response.status_code == 503
+    assert "secret" not in response.text
