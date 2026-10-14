@@ -25,6 +25,7 @@ from sports_edge_tennis.performance.abstention_evidence import (
 from sports_edge_tennis.performance.calibration_monitor import (
     load_calibration_health,
 )
+from sports_edge_tennis.performance.monitoring_summary import load_monitoring_summary
 
 _DB_UNAVAILABLE = "database unavailable"
 
@@ -186,6 +187,33 @@ def api_pending_results(
     return JSONResponse(payload)
 
 
+def api_monitoring_summary(include_calibration: bool = Query(default=True)):
+    if DEMO_MODE:
+        return JSONResponse(
+            {
+                "initialized": False,
+                "reason": "monitoring summary requires persisted production evidence",
+            }
+        )
+    conn = _connect()
+    if conn is None:
+        return JSONResponse(
+            {"initialized": False, "reason": _DB_UNAVAILABLE}, status_code=503
+        )
+    try:
+        conn.execute("SET default_transaction_read_only = on")
+        payload = load_monitoring_summary(conn, include_calibration=include_calibration)
+    except Exception:
+        return JSONResponse(
+            {"initialized": False, "reason": "monitoring summary unavailable"},
+            status_code=503,
+        )
+    finally:
+        conn.close()
+    payload["initialized"] = True
+    return JSONResponse(payload)
+
+
 def _calibration_health_payload() -> tuple[dict | None, int]:
     if DEMO_MODE:
         return {"initialized": False, "reason": "calibration health requires persisted evidence"}, 200
@@ -280,6 +308,7 @@ Reference date {_html_escape(payload['reference_date'])}.</p>
 __all__ = [
     "api_agent_abstention",
     "api_calibration_health",
+    "api_monitoring_summary",
     "api_pending_results",
     "api_result_coverage",
     "calibration_diagnostics_page",
