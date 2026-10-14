@@ -198,3 +198,84 @@ def test_loader_marks_terminal_fixture_without_result(db: psycopg.Connection):
     assert [(i.match_id, i.reason) for i in report.items] == [
         (match_id, REASON_TERMINAL_FIXTURE_WITHOUT_RESULT)
     ]
+
+
+# --- endpoint -------------------------------------------------------------
+
+from sports_edge_tennis.live.pending_result_refresh import (  # noqa: E402
+    load_pending_model_pick_targets,
+)
+
+
+def test_diagnostics_use_the_same_population_as_recovery_targets(db: psycopg.Connection):
+    """Inside the recovery window both readers see exactly the same pending picks."""
+    pending = _setup_aligned_pick(db, match_status="SCHEDULED")
+    now = datetime(2026, 9, 2, 12, tzinfo=UTC)
+
+    targets = load_pending_model_pick_targets(
+        db, as_of=now, window_start=date(2026, 8, 31), window_end=date(2026, 9, 2)
+    )
+    report = load_pending_result_diagnostics(db, now=now, lookback_days=30)
+
+    assert [t.match_id for t in targets] == [pending]
+    assert [item.match_id for item in report.items] == [pending]
+
+
+def test_pending_results_endpoint_is_read_only(
+    db: psycopg.Connection, migrated_postgres: str, monkeypatch
+):
+    from fastapi.testclient import TestClient
+
+    import sports_edge_tennis.dashboard.observability_routes as routes
+    from sports_edge_tennis.dashboard.production_app import app
+
+    pending = _setup_aligned_pick(db, match_status="SCHEDULED")
+    monkeypatch.setenv("TENNIS_DATABASE_URL", migrated_postgres)
+    captured: list[psycopg.Connection] = []
+    real_connect = routes._connect
+
+    def spy_connect():
+        conn = real_connect()
+        captured.append(conn)
+        return conn
+
+    def probe_write(conn, **kwargs):
+        with pytest.raises(psycopg.errors.ReadOnlySqlTransaction):
+            conn.execute("CREATE TEMP TABLE pending_probe (id int)")
+        return load_pending_result_diagnostics(conn, **kwargs)
+
+    monkeypatch.setattr(routes, "_connect", spy_connect)
+    monkeypatch.setattr(routes, "load_pending_result_diagnostics", probe_write)
+
+    response = TestClient(app).get("/api/dashboard/pending-results")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["initialized"] is True
+    assert [item["match_id"] for item in body["items"]] == [pending]
+    assert captured and captured[0].closed
+
+
+def test_pending_results_endpoint_returns_503_without_leaking_errors(monkeypatch):
+    from fastapi.testclient import TestClient
+
+    import sports_edge_tennis.dashboard.observability_routes as routes
+    from sports_edge_tennis.dashboard.production_app import app
+
+    class _Conn:
+        closed = False
+
+        def execute(self, *_args, **_kwargs):
+            raise psycopg.OperationalError("password=secret host=internal")
+
+        def close(self):
+            self.closed = True
+
+    monkeypatch.setattr(routes, "DEMO_MODE", False)
+    monkeypatch.setattr(routes, "_connect", lambda: _Conn())
+
+    response = TestClient(app).get("/api/dashboard/pending-results")
+
+    assert response.status_code == 503
+    assert "secret" not in response.text
+    assert response.json()["initialized"] is False

@@ -21,7 +21,7 @@ import os
 import sys
 from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 
 import psycopg
 
@@ -37,6 +37,7 @@ REASON_RESULT_DELAYED = "RESULT_DELAYED"
 REASON_TERMINAL_FIXTURE_WITHOUT_RESULT = "TERMINAL_FIXTURE_WITHOUT_RESULT"
 REASON_FIXTURE_NOT_REOBSERVED = "PROVIDER_FIXTURE_NOT_REOBSERVED"
 REASON_NO_API_TENNIS_LINK = "NO_API_TENNIS_LINK"
+REASON_FIXTURE_POSTPONED = "FIXTURE_POSTPONED"
 
 FLAG_RESCHEDULED = "RESCHEDULED"
 FLAG_OUTSIDE_RECOVERY_WINDOW = "OUTSIDE_RECOVERY_WINDOW"
@@ -50,11 +51,17 @@ AGE_OVER_72H = "GT_72H"
 
 DEFAULT_GRACE_HOURS = 6
 DEFAULT_NOT_REOBSERVED_HOURS = 6
-DEFAULT_RESCHEDULE_MINUTES = 60
+# Tennis starts are order-of-play estimates: a match listed for 11:30 often
+# starts 1-4 h later because earlier matches ran long. Production on 2026-10-12
+# had 15/28 picks drift >=60 min, all same-day. A real schedule change is a
+# placeholder or postponement moving the match by hours or to another day.
+DEFAULT_RESCHEDULE_MINUTES = 360
+DAY_CHANGE_MIN_MINUTES = 60
 DEFAULT_LIMIT = 500
 MAX_LIMIT = 2000
 
 _TERMINAL = frozenset({"COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"})
+_POSTPONED = "POSTPONED"
 API_TENNIS_SOURCE = "API_TENNIS"
 
 
@@ -170,6 +177,35 @@ def age_bucket(hours_since_start: float | None) -> str:
     return AGE_OVER_72H
 
 
+def is_schedule_change(
+    pit_match_start_at: datetime | None,
+    latest_match_start_at: datetime | None,
+    *,
+    reschedule_minutes: int = DEFAULT_RESCHEDULE_MINUTES,
+    local_timezone: tzinfo | None = None,
+) -> bool:
+    """True only when persisted fixture versions show the start really moved.
+
+    Evidence is the point-in-time start the pick was issued against versus the
+    latest provider start for the same canonical match. A move counts when it is
+    at least ``reschedule_minutes``, or, given ``local_timezone``, when it moves
+    the match to another local day by at least ``DAY_CHANGE_MIN_MINUTES``. How
+    long a pick has been pending is never used: a slow result feed is not a
+    reschedule, and ordinary order-of-play drift is not either.
+    """
+    if pit_match_start_at is None or latest_match_start_at is None:
+        return False
+    delta = abs((latest_match_start_at - pit_match_start_at).total_seconds())
+    if delta >= reschedule_minutes * 60:
+        return True
+    return (
+        local_timezone is not None
+        and delta >= DAY_CHANGE_MIN_MINUTES * 60
+        and pit_match_start_at.astimezone(local_timezone).date()
+        != latest_match_start_at.astimezone(local_timezone).date()
+    )
+
+
 def classify_pending_pick(
     evidence: PendingPickEvidence,
     *,
@@ -188,11 +224,8 @@ def classify_pending_pick(
     since_observed = _hours(now, evidence.last_fixture_observed_at)
 
     flags: list[str] = []
-    pit = evidence.pit_match_start_at
-    if (
-        pit is not None
-        and start is not None
-        and abs((start - pit).total_seconds()) >= reschedule_minutes * 60
+    if is_schedule_change(
+        evidence.pit_match_start_at, start, reschedule_minutes=reschedule_minutes
     ):
         flags.append(FLAG_RESCHEDULED)
     if start is not None and start.astimezone(UTC).date() < recovery_window_start:
@@ -202,6 +235,10 @@ def classify_pending_pick(
 
     if start is not None and start > now:
         reason = REASON_NOT_STARTED
+    elif evidence.latest_match_status == _POSTPONED:
+        # Provider marked the fixture postponed and has not yet published a new
+        # future start. Not a result-ingestion failure, and never graded.
+        reason = REASON_FIXTURE_POSTPONED
     elif (evidence.latest_match_status or "") in _TERMINAL:
         # Fixture feed says the match ended but no parseable terminal result was
         # persisted (e.g. no winner reported). Never inferred into a result here.

@@ -125,7 +125,7 @@
 {% if selected_summary %}
 <section class="section" aria-label="Selected aligned model-pick day">
   <h2 class="section-title">{{ selected_date.strftime('%a %d %b %Y') }}</h2>
-  <p class="section-note">Every aligned Model Pick whose match day is this date in {{ dashboard_timezone.display_label }}.</p>
+  <p class="section-note">Every aligned Model Pick whose match day is this date in {{ dashboard_timezone.display_label }}. A pick stays on the day of the start time it was issued against; <span class="badge badge-blocked">RESCHEDULED</span> marks a later provider schedule change.</p>
 
   <div class="stat-grid" style="margin-bottom: 14px;">
     <div class="stat"><span class="stat-value">{{ selected_summary.picks }}</span><span class="stat-label">Picks</span></div>
@@ -155,6 +155,10 @@
           <td class="wrap">
             {{ pick.player_1 or 'Player 1' }} vs {{ pick.player_2 or 'Player 2' }}<br>
             <span class="stat-note">{{ pick.tournament or 'Tournament unavailable' }}{% if pick.match_start_at %} · {{ tz_datetime(pick.match_start_at) }}{% endif %}</span>
+            {% if pick.is_rescheduled %}
+            <br><span class="badge badge-blocked" title="The provider moved this match after the pick was issued. It stays listed on its original day.">RESCHEDULED</span>
+            <span class="stat-note schedule-change">Originally {{ tz_datetime(pick.match_start_at) }} → now {{ tz_datetime(pick.latest_match_start_at) }}</span>
+            {% endif %}
           </td>
           <td class="num">
             {% if pick.consensus_probability is not none %}{{ pick.probability_display_text }}{% else %}—{% endif %}<br>
@@ -162,6 +166,11 @@
           </td>
           <td>
             <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.result_status }}</span>
+            {% if pick.is_postponed %}
+            <br><span class="stat-note">Postponed by provider · not graded</span>
+            {% elif pick.result_status == 'PENDING' and pick.is_rescheduled %}
+            <br><span class="stat-note">Awaiting rescheduled match</span>
+            {% endif %}
           </td>
           <td>
             {% if pick.is_wide_spread %}

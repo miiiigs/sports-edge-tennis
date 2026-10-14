@@ -13,6 +13,7 @@ import sports_edge_tennis.dashboard.production_app  # noqa: F401  registers the 
 API_PATHS = (
     "/api/dashboard/agent-abstention",
     "/api/dashboard/result-coverage",
+    "/api/dashboard/pending-results",
     "/api/dashboard/calibration-health",
 )
 HTML_PATHS = ("/diagnostics/calibration",)

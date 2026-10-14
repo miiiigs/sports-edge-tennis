@@ -163,8 +163,16 @@ def api_pending_results(
             {"initialized": False, "reason": _DB_UNAVAILABLE}, status_code=503
         )
     try:
+        # Defence in depth: the diagnostics only SELECT, but the session is
+        # forced read-only so no future change here can write production data.
+        conn.execute("SET default_transaction_read_only = on")
         report = load_pending_result_diagnostics(
             conn, lookback_days=lookback_days, limit=limit
+        )
+    except Exception:
+        return JSONResponse(
+            {"initialized": False, "reason": "pending result diagnostics unavailable"},
+            status_code=503,
         )
     finally:
         conn.close()
