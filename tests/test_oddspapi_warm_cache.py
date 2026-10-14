@@ -66,9 +66,12 @@ def _install_fakes(monkeypatch, *, resolutions):
     captured = []
     calls = {"reconcile": 0}
 
-    def fake_reconcile(conn, *, envelope, candidate_match_ids, as_of, persist=True):
+    def fake_reconcile(conn, *, envelope, candidate_match_ids, as_of, persist=True, **_window):
         assert envelope.fixture_id == FIXTURE_ID
-        calls["reconcile"] += 1
+        # Count persisting reconciliations; ingestion also runs a read-only
+        # preview pass to detect matches claimed by two fixtures.
+        if persist:
+            calls["reconcile"] += 1
         return resolutions
 
     def fake_ingest(conn, observation):

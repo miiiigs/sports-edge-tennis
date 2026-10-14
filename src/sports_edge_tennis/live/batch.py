@@ -41,6 +41,7 @@ from sports_edge_tennis.live.oddspapi_budget import (
     plan_oddspapi_qualification,
 )
 from sports_edge_tennis.live.oddspapi_ledger import (
+    OddspapiAttemptCap,
     OddspapiBudgetExceeded,
     OddspapiLedgerBinding,
     OddspapiLedgerConfig,
@@ -912,12 +913,19 @@ def _run_batch(
                     else:
                         ledger_config = _oddspapi_ledger_config_from_env()
                         correlation_id = f"live:{args.start_date.isoformat()}"
+                        # Every billable attempt (retries included) in this cycle
+                        # draws from one hard cap, so 429/5xx retries can never
+                        # push a cycle past per_cycle_limit.
+                        cycle_attempt_cap = OddspapiAttemptCap(
+                            int(budget_policy.per_cycle_limit)
+                        )
                         discovery_ledger = OddspapiLedgerBinding(
                             conn=conn,
                             config=ledger_config,
                             request_purpose="DISCOVERY",
                             classification="PRODUCTION",
                             correlation_id=correlation_id,
+                            attempt_cap=cycle_attempt_cap,
                         )
                         qualification_ledger = OddspapiLedgerBinding(
                             conn=conn,
@@ -925,6 +933,7 @@ def _run_batch(
                             request_purpose="QUALIFICATION",
                             classification="PRODUCTION",
                             correlation_id=correlation_id,
+                            attempt_cap=cycle_attempt_cap,
                         )
                         try:
                             now = market_as_of
@@ -1049,6 +1058,13 @@ def _run_batch(
                                 payload_rows=odds_rows,
                                 received_at=odds_received_at,
                                 candidate_match_ids=candidate_match_ids,
+                                # Same identity window as cold discovery: API-Tennis
+                                # fixtures have no Betradar id to fall back on.
+                                max_start_delta_minutes=(
+                                    ODDSPAPI_DISCOVERY_MAX_START_DELTA_MINUTES
+                                    if provider_authority.data_mode == LEGACY_DATA_MODE
+                                    else None
+                                ),
                             )
                             totals["offered_quotes"] = oddspapi.normalized_quotes
                             totals["oddspapi_events"] = oddspapi.provider_events_seen
@@ -1085,6 +1101,15 @@ def _run_batch(
                                 "OFFERED_ODDS_UNAVAILABLE "
                                 f"provider=ODDSPAPI_TENNIS kind={exc.kind} "
                                 f"class={failure.label}"
+                            )
+                        except Exception as exc:  # noqa: BLE001 - fail closed, keep cycle
+                            # Any other OddsPapi failure (DB integrity, parsing,
+                            # ledger write) leaves no trusted quotes, so zero bets;
+                            # Market, Type B and CLV close evidence still run.
+                            _log(
+                                "OFFERED_ODDS_UNAVAILABLE "
+                                "provider=ODDSPAPI_TENNIS kind=IMPLEMENTATION "
+                                f"class={type(exc).__name__}"
                             )
 
 

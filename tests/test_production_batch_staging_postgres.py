@@ -62,14 +62,14 @@ def _seed(conn) -> None:
         "INSERT INTO provider_bookmaker_mappings "
         "(provider_code, provider_bookmaker_key, mapping_version, bookmaker_code, "
         " normalization_class, effective_from) "
-        "VALUES ('ODDSPAPI', 'pinnacle', 1, 'PINNACLE', 'SHARP', %s)",
+        "VALUES ('ODDSPAPI', 'pinnacle+30', 1, 'PINNACLE', 'SHARP', %s)",
         (earlier,),
     )
     conn.execute(
         "INSERT INTO provider_bookmaker_mappings "
         "(provider_code, provider_bookmaker_key, mapping_version, bookmaker_code, "
         " normalization_class, effective_from) "
-        "VALUES ('ODDSPAPI', 'soft-book', 1, 'BET365', 'OFFERED', %s)",
+        "VALUES ('ODDSPAPI', 'bet365', 1, 'BET365', 'OFFERED', %s)",
         (earlier,),
     )
 

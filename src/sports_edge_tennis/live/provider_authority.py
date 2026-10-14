@@ -254,6 +254,12 @@ def _historical_corpus_present(conn: psycopg.Connection) -> bool:
     return bool(row and int(row[0]) > 0 and int(row[1]) > 0)
 
 
+# Mirrors live.oddspapi.ODDSPAPI_SHARP_BOOKMAKER / ODDSPAPI_PLAN_BOOKMAKERS;
+# kept literal to avoid importing the HTTP transport here (asserted by tests).
+ODDSPAPI_SHARP_KEY = "pinnacle+30"
+ODDSPAPI_OFFERED_KEYS = ("1xbet", "unibet", "bet365")
+
+
 def _oddspapi_mapping_state(
     conn: psycopg.Connection,
 ) -> tuple[bool, bool]:
@@ -273,15 +279,27 @@ def _oddspapi_mapping_state(
                 provider_bookmaker_mapping_id DESC
         )
         SELECT
-            bool_or(
-                normalization_class = 'SHARP'
+            -- The exact key the batch requests must be the sharp reference;
+            -- any other SHARP key would leave every sharp quote unmapped.
+            COALESCE(bool_or(
+                provider_bookmaker_key = %(sharp_key)s
+                AND normalization_class = 'SHARP'
                 AND bookmaker_code = 'PINNACLE'
-            ) AS sharp_pinnacle,
-            bool_or(
-                normalization_class = 'OFFERED'
-            ) AS offered_book
+            ), FALSE)
+            AND NOT COALESCE(bool_or(
+                provider_bookmaker_key = ANY(%(offered_keys)s)
+                AND normalization_class = 'SHARP'
+            ), FALSE) AS sharp_pinnacle,
+            COALESCE(bool_or(
+                provider_bookmaker_key = ANY(%(offered_keys)s)
+                AND normalization_class = 'OFFERED'
+            ), FALSE) AS offered_book
         FROM latest
-        """
+        """,
+        {
+            "sharp_key": ODDSPAPI_SHARP_KEY,
+            "offered_keys": list(ODDSPAPI_OFFERED_KEYS),
+        },
     ).fetchone()
     if row is None:
         return False, False
