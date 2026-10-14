@@ -37,6 +37,15 @@ been able to qualify since then.
   - The 3 events whose matches carry an API-Tennis link resolved to exactly the recorded match. The other 15 were out of replay scope (Sportradar-era matches without an API-Tennis link).
 - Tests: `tests/test_api_tennis_oddspapi_pairing.py` (PostgreSQL identity integration, discovery unit, batch wiring, 403/429 handling) plus the updated authority, circuit, reconciliation and warm-cache suites.
 
+## Dry-run evidence (2026-10-14, read-only, 0 requests)
+
+- Rebased onto `main` 757c43e (#227 + #229). `tennis-live-runner` and `tennis-dashboard` run 757c43e with `TENNIS_DATA_PROVIDER_MODE=API_TENNIS`, `TENNIS_ODDS_PROVIDER_MODE=LEGACY_SPLIT`, `TENNIS_ODDS_FAILOVER_AUTHORIZATION=ODDSPAPI_ODDS_V1`; `TENNIS_ODDS_ONLY_AUTHORIZATION` is unset. Merging this PR therefore changes nothing until the variables change.
+- `evaluate_cutover_readiness` against production with the proposed cutover variables: `ready=True`, no blockers (ledger and identity-cache schema present, `pinnacle+30` SHARP/PINNACLE, three OFFERED keys).
+- Probe dry run: mappings 4/4 PASS, 11 upcoming consensus matches (all Challenger, 2026-10-14 03:00–22:00 UTC), stop reason `DRY_RUN_NO_REQUESTS`, `attempts_used=0`.
+- Ledger: 117 rows, all 2026-09 (109 SUCCESS, 8 FAILURE, PRODUCTION shadow); 0 in 2026-10. Identity cache: 6 rows.
+- Live odds currently in production: newest SHARP snapshot is Pinnapi PINNACLE at 2026-10-01 19:05 UTC; newest API-Tennis OFFERED snapshots are 2026-10-10 21:00 UTC; OddsPapi OFFERED last 2026-09-26. No live odds in the last 24 h, so no Type A bet can currently qualify.
+- Coverage risk: the scope is Challenger-only. The 2026-09 shadow linked 3 of 18 events, so criterion 10 may come back FAIL on coverage alone; that would be a real finding, not a probe defect.
+
 ## Remaining gates before enabling (need approval)
 
 1. **Live readiness probe**, at most 5 OddsPapi requests. Needs an approved budget.
@@ -63,11 +72,23 @@ CLI: `python -m sports_edge_tennis.live.oddspapi_probe` (`live/oddspapi_probe.py
 
 Commands (on approval only):
 
+Run from a checkout of this branch (the deployed runner image does not contain the probe until merge):
+
 ```
 # free: shows consensus scope and mapping state, makes no OddsPapi request
-railway run --service tennis-live-runner -- python -m sports_edge_tennis.live.oddspapi_probe
+railway run --service tennis-live-runner -- python ops/validation/oddspapi_readiness_probe_local.py
 # billable, ≤5 requests
-railway run --service tennis-live-runner -- python -m sports_edge_tennis.live.oddspapi_probe --execute
+railway run --service tennis-live-runner -- python ops/validation/oddspapi_readiness_probe_local.py --execute
+```
+
+`railway run` supplies `ODDSPAPI_API_KEY`. The runner's `TENNIS_DATABASE_URL` is a private `*.railway.internal` host, so the wrapper builds the Postgres TCP-proxy DSN in memory from `railway variables --service Postgres-Sdqz` and refuses `--dsn`. Nothing secret is printed; the start line shows only `api_key_present=True|False`. `--max-requests N` (N ≤ 5) lowers the cap further.
+
+Verify spend afterwards (read-only):
+
+```sql
+SELECT request_purpose, attempt_status, http_status, retry_sequence, count(*)
+FROM oddspapi_request_ledger WHERE correlation_id = '<probe correlation_id>'
+GROUP BY 1, 2, 3, 4;
 ```
 
 It prints one `ODDSPAPI_PROBE {json}` line, including `attempts_used` and verdicts for the ten acceptance criteria:
