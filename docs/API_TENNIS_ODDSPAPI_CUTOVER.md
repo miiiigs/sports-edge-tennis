@@ -5,10 +5,11 @@ surfaces, history, match stats) + **OddsPapi** (match-winner market `121`, Pinna
 `pinnacle+30` sharp reference, offered books `1xbet`/`unibet`/`bet365`, snapshots, CLV).
 Sportradar and GoalServe are not intended production providers.
 
-**Status (2026-10-13): implemented and tested, not enabled.** Production still runs
-`API_TENNIS + LEGACY_SPLIT`, and Pinnapi has returned `HTTP_403` on every hourly run.
-The last Pinnacle sharp snapshot was taken at 2026-10-01 19:05Z, so no Type A bet has
-been able to qualify since then.
+**Status (2026-10-14): implemented, tested and live-probed (10/10 acceptance PASS), not
+enabled.** Production still runs `API_TENNIS + LEGACY_SPLIT`, and Pinnapi has returned
+`HTTP_403` on every hourly run. The last Pinnacle sharp snapshot was taken at
+2026-10-01 19:05Z and the last API-Tennis offered snapshot at 2026-10-10 21:00Z (see
+"Why API-Tennis offered odds stopped"), so no Type A bet has been able to qualify.
 
 ## What the pairing does
 
@@ -46,14 +47,71 @@ been able to qualify since then.
 - Live odds currently in production: newest SHARP snapshot is Pinnapi PINNACLE at 2026-10-01 19:05 UTC; newest API-Tennis OFFERED snapshots are 2026-10-10 21:00 UTC; OddsPapi OFFERED last 2026-09-26. No live odds in the last 24 h, so no Type A bet can currently qualify.
 - Coverage risk: the scope is Challenger-only. The 2026-09 shadow linked 3 of 18 events, so criterion 10 may come back FAIL on coverage alone; that would be a real finding, not a probe defect.
 
+## Live probe result (2026-10-14, 5 billable requests, owner-approved)
+
+Run from `5d0fc01` with the workstation wrapper. Correlation id
+`probe:20261014T0606Z:4853029d`. Ledger rows 126–130: 1 `fixtures` DISCOVERY + 4
+`tournament odds` QUALIFICATION (`pinnacle+30`, `1xbet`, `unibet`, `bet365`, chunk 3),
+all `DIAGNOSTIC`, HTTP 200, `retry_sequence=0`. October total: 5. No raw observations,
+snapshots, identity-cache rows or source ids were written.
+
+- Acceptance: **10/10 PASS**.
+- Scope: 11 upcoming consensus matches (run 1164, all Challenger).
+- Discovery: 43 tennis fixtures (06:35–17:30Z), 5 `EXACT`, 38 `UNMATCHED` (other events,
+  doubles, WTA), 0 contested, 0 reconciliation errors.
+- Matched 5/11, all DIRECT, tournaments 30869, 40709, 52078. Start deltas are 0 min, except
+  132137 at 20 min.
+
+| match | players (OddsPapi P1 / P2) | pinnacle+30 | 1xbet | unibet | bet365 |
+|---|---|---|---|---|---|
+| 132126 | Martinez, Pedro / Dodig, Matej | 2.46 / 1.595 | 2.39 / 1.51 | 2.38 / 1.55 | 2.50 / 1.47 |
+| 132127 | Moller, Elmer / Neumayer, Lukas | 2.06 / 1.826 | 2.02 / 1.69 | 2.07 / 1.72 | 2.20 / 1.58 |
+| 132128 | Passaro, Francesco / Torres, Tiago | 1.289 / 3.80 | 1.26 / 3.485 | 1.26 / 3.65 | 1.27 / 3.40 |
+| 132137 | Guerrieri, Andrea / Kasnikowski, Maks | 1.598 / 2.42 | 1.60 / 2.196 | 1.62 / 2.23 | 1.58 / 2.20 |
+| 132148 | Jianu, Filip Cristian / Kolar, Zdenek | 2.10 / 1.769 | 2.079 / 1.67 | 2.12 / 1.68 | 2.20 / 1.58 |
+
+All 20 markets were OPEN and pre-match, received 2026-10-14 06:06:56Z. OddsPapi `changedAt`
+ranged from 2026-10-11 21:57Z (unibet) to 2026-10-14 05:34Z.
+
+**Coverage gap: 6 of 11 consensus matches were absent from discovery.** They were 132164,
+132165 and 132166 at 14:00Z, 132160 at 18:00Z, 132140 at 20:30Z and 132163 at 22:00Z
+(South-American Challengers). The request window reached 2026-10-15 00:00Z, but no
+`pinnacle+30` fixture after 17:30Z came back. The most likely reason is that Pinnacle had
+not listed them yet at 06:06Z. Proving it would take another request. Hourly cycles retry
+cold matches, so coverage should rise closer to start. Watch `cold_rejected` after cutover.
+
+## Why API-Tennis offered odds stopped (2026-10-10 21:00Z)
+
+Root cause: a control-flow coupling, not an API-Tennis outage.
+
+- `run_live_mvp` calls Pinnapi only when the slate has Manager consensus. Pinnapi returns
+  `HTTP_403` (logged as `non-200 response` before #218), and `LivePilotPinnapiFailed` is
+  raised after predictions are written.
+- `batch.py` catches only the API-Tennis and Sportradar failures per slate. The Pinnapi
+  failure escapes to the outer `except LiveMvpError` and returns exit 2
+  (`LIVE_OPERATIONAL_HEALTH status=ERROR live_batch_status=2`, Railway `CRASHED`). The
+  API-Tennis offered leg is never reached.
+- DB evidence: from 2026-10-09 18:00Z, API-Tennis `LIVE_ODDS` ingests occur **only** in
+  cycles with zero consensus. Those were runs 1090 and 1101–1109, plus the
+  no-prediction-run cycles at 20:03Z and 21:00Z on 2026-10-10. Every cycle with consensus
+  ≥1 has none. Since 2026-10-10 21:00Z every cycle has had consensus (11 per run today).
+- Not the cause: API-Tennis fixtures, results and stats ingests still complete hourly (last
+  2026-10-14 05:04Z), so the key, quota and auth are fine. Polling cadence and freshness
+  filters play no part, because the fetch never runs.
+- Side observation: each successful offered cycle also logged ~10–20 `FAILED` per-event
+  `ingest_runs` beside the `COMPLETED` ones. This is unrelated to the stoppage and needs a
+  separate look.
+- Under `ODDSPAPI_TENNIS` the runner passes `pinnapi_key=None`, so this abort path disappears
+  with the cutover. Fixing it under `LEGACY_SPLIT` (treat a Pinnapi failure as "no sharp"
+  and continue) is a separate change.
+
 ## Remaining gates before enabling (need approval)
 
-1. **Live readiness probe**, at most 5 OddsPapi requests. Needs an approved budget.
-   See "Live readiness probe" below.
+1. ~~Live readiness probe~~ done 2026-10-14, 10/10 PASS (above).
 2. Review and merge the draft PR.
 3. Owner approval for the provider variable change.
 
-## Live readiness probe (prepared, not run)
+## Live readiness probe (procedure)
 
 CLI: `python -m sports_edge_tennis.live.oddspapi_probe` (`live/oddspapi_probe.py`).
 
