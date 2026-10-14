@@ -13,17 +13,23 @@ class _Result:
     def fetchall(self):
         return list(self.rows)
 
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
 
 class _Conn:
     def __init__(self, start_at):
         self.start_at = start_at
         self.calls = []
+        self.other_fixture_rows = []
 
     def execute(self, sql, params=None):
         normalized = " ".join(sql.split()).lower()
         self.calls.append((normalized, params))
         if "where source_system = %s and source_match_id = %s" in normalized:
             return _Result([])
+        if "source_match_id is distinct from %s" in normalized:
+            return _Result(list(self.other_fixture_rows))
         if (
             "select distinct match_id" in normalized
             and "source_match_id = any" in normalized

@@ -42,15 +42,21 @@ def ingest_oddspapi_tennis_odds(
     received_at: datetime,
     candidate_match_ids: tuple[int, ...],
     response_id: str | None = None,
+    max_start_delta_minutes: int | None = None,
 ) -> OddspapiOddsIngestOutcome:
     if received_at.tzinfo is None:
         raise ValueError("received_at must be timezone-aware")
     response_id = response_id or new_oddspapi_response_id(received_at=received_at)
+    window: dict[str, int] = (
+        {} if max_start_delta_minutes is None
+        else {"max_start_delta_minutes": int(max_start_delta_minutes)}
+    )
 
     exact = existing = unmatched = ambiguous = conflicts = 0
     normalized_quotes = unknown_bookmaker = unknown_participant = 0
     seen = 0
     seen_fixture_ids: set[str] = set()
+    events: list[tuple[Mapping[str, Any], Any]] = []
 
     for payload in payload_rows:
         try:
@@ -65,13 +71,48 @@ def ingest_oddspapi_tennis_odds(
             continue
         seen_fixture_ids.add(envelope.fixture_id)
         seen += 1
-        resolution = reconcile_oddspapi_event(
+        events.append((payload, envelope))
+
+    # Pass 1 (read-only): a canonical match claimed by two different fixtures in
+    # this batch is linked to neither, independent of payload order.
+    claims: dict[int, set[str]] = {}
+    for _payload, envelope in events:
+        preview = reconcile_oddspapi_event(
             conn,
             envelope=envelope,
             candidate_match_ids=candidate_match_ids,
             as_of=received_at,
-            persist=True,
+            persist=False,
+            **window,
         )
+        if preview.status in ("EXACT", "EXISTING") and preview.match_id is not None:
+            claims.setdefault(int(preview.match_id), set()).add(envelope.fixture_id)
+    contested = {
+        fixture_id
+        for fixtures in claims.values()
+        if len(fixtures) > 1
+        for fixture_id in fixtures
+    }
+
+    for payload, envelope in events:
+        if envelope.fixture_id in contested:
+            conflicts += 1
+            continue
+        try:
+            # The event mapping and participant bridge commit together or not at
+            # all; an identity conflict on one event never aborts the cycle.
+            with conn.transaction():
+                resolution = reconcile_oddspapi_event(
+                    conn,
+                    envelope=envelope,
+                    candidate_match_ids=candidate_match_ids,
+                    as_of=received_at,
+                    persist=True,
+                    **window,
+                )
+        except OddspapiReconciliationError:
+            conflicts += 1
+            continue
         if resolution.status == "UNMATCHED":
             unmatched += 1
             continue

@@ -19,6 +19,12 @@ DATA_FAILOVER_AUTH_ENV = "TENNIS_DATA_FAILOVER_AUTHORIZATION"
 DATA_FAILOVER_AUTH_VALUE = "SPORTRADAR_DATA_ONLY_V1"
 ODDS_FAILOVER_AUTH_ENV = "TENNIS_ODDS_FAILOVER_AUTHORIZATION"
 ODDS_FAILOVER_AUTH_VALUE = "ODDSPAPI_ODDS_V1"
+# API-Tennis fixtures/results scored against OddsPapi odds (Pinnapi retired).
+# Separate from the Sportradar cutover so neither authorization implies the other.
+ODDS_ONLY_AUTH_ENV = "TENNIS_ODDS_ONLY_AUTHORIZATION"
+ODDS_ONLY_AUTH_VALUE = "API_TENNIS_ODDSPAPI_V1"
+# Operator-friendly spelling accepted for the target odds mode.
+_ODDS_MODE_ALIASES = {"ODDSPAPI": TARGET_ODDS_MODE}
 
 SPORTRADAR_REQUIRED_ENV = (
     "SPORTRADAR_TENNIS_API_KEY",
@@ -43,6 +49,11 @@ class ProviderAuthority:
         return self.data_mode == TARGET_DATA_MODE and self.odds_mode == TARGET_ODDS_MODE
 
     @property
+    def api_tennis_oddspapi(self) -> bool:
+        """API-Tennis fixtures/results with OddsPapi sharp + offered odds."""
+        return self.data_mode == LEGACY_DATA_MODE and self.odds_mode == TARGET_ODDS_MODE
+
+    @property
     def data_only(self) -> bool:
         """Sportradar fixtures scored against the legacy odds authority."""
         return self.data_mode == TARGET_DATA_MODE and self.odds_mode == LEGACY_ODDS_MODE
@@ -58,19 +69,28 @@ class CutoverReadiness:
 def load_provider_authority(env: Mapping[str, str]) -> ProviderAuthority:
     data_mode = str(env.get(DATA_MODE_ENV) or LEGACY_DATA_MODE).strip().upper()
     odds_mode = str(env.get(ODDS_MODE_ENV) or LEGACY_ODDS_MODE).strip().upper()
+    odds_mode = _ODDS_MODE_ALIASES.get(odds_mode, odds_mode)
 
     if data_mode not in {LEGACY_DATA_MODE, TARGET_DATA_MODE}:
         raise ValueError(f"unsupported {DATA_MODE_ENV}={data_mode!r}")
     if odds_mode not in {LEGACY_ODDS_MODE, TARGET_ODDS_MODE}:
         raise ValueError(f"unsupported {ODDS_MODE_ENV}={odds_mode!r}")
 
-    # An odds-only cutover is forbidden: scoring the legacy fixture universe
-    # against the target odds universe is unsafe. A data-only failover
-    # (Sportradar fixtures + legacy odds) is permitted and gated by its own
-    # explicit readiness check in evaluate_cutover_readiness.
-    if data_mode == LEGACY_DATA_MODE and odds_mode == TARGET_ODDS_MODE:
+    # API-Tennis fixtures + OddsPapi odds is only a supported pair under its
+    # own explicit authorization: OddsPapi events are then linked to API-Tennis
+    # fixtures by deterministic participant/start-time reconciliation instead of
+    # Betradar ids. Without the authorization it stays a hard error, so a stray
+    # odds-mode variable can never silently change the odds authority. A
+    # data-only failover (Sportradar fixtures + legacy odds) is gated separately
+    # in evaluate_cutover_readiness.
+    if (
+        data_mode == LEGACY_DATA_MODE
+        and odds_mode == TARGET_ODDS_MODE
+        and str(env.get(ODDS_ONLY_AUTH_ENV) or "").strip() != ODDS_ONLY_AUTH_VALUE
+    ):
         raise ValueError(
-            "Odds-only provider cutover is forbidden; switch data authority with odds"
+            "API_TENNIS + ODDSPAPI_TENNIS requires "
+            f"{ODDS_ONLY_AUTH_ENV}={ODDS_ONLY_AUTH_VALUE}"
         )
     return ProviderAuthority(data_mode=data_mode, odds_mode=odds_mode)
 
@@ -90,7 +110,11 @@ def evaluate_cutover_readiness(
     # the OddsPapi odds failover are independent of the Manager policy version;
     # Manager v2 / A3 v2 remain separate future switches and are never required
     # to change a data or odds provider.
-    blockers.extend(_data_readiness_blockers(conn, env))
+    if authority.data_mode == TARGET_DATA_MODE:
+        blockers.extend(_data_readiness_blockers(conn, env))
+    else:
+        # API-Tennis stays the data authority; Sportradar is never required.
+        blockers.extend(_api_tennis_data_blockers(conn, env))
     if authority.odds_mode == TARGET_ODDS_MODE:
         blockers.extend(_odds_readiness_blockers(conn, env))
 
@@ -115,6 +139,18 @@ def _data_readiness_blockers(
         blockers.append("CORE_SCHEMA_INCOMPLETE")
     if not _historical_corpus_present(conn):
         blockers.append("HISTORICAL_CORPUS_EMPTY")
+    return blockers
+
+
+def _api_tennis_data_blockers(
+    conn: psycopg.Connection,
+    env: Mapping[str, str],
+) -> list[str]:
+    blockers: list[str] = []
+    if not str(env.get("API_TENNIS_API_KEY") or "").strip():
+        blockers.append("MISSING_ENV:API_TENNIS_API_KEY")
+    if not _core_schema_present(conn):
+        blockers.append("CORE_SCHEMA_INCOMPLETE")
     return blockers
 
 
@@ -218,6 +254,12 @@ def _historical_corpus_present(conn: psycopg.Connection) -> bool:
     return bool(row and int(row[0]) > 0 and int(row[1]) > 0)
 
 
+# Mirrors live.oddspapi.ODDSPAPI_SHARP_BOOKMAKER / ODDSPAPI_PLAN_BOOKMAKERS;
+# kept literal to avoid importing the HTTP transport here (asserted by tests).
+ODDSPAPI_SHARP_KEY = "pinnacle+30"
+ODDSPAPI_OFFERED_KEYS = ("1xbet", "unibet", "bet365")
+
+
 def _oddspapi_mapping_state(
     conn: psycopg.Connection,
 ) -> tuple[bool, bool]:
@@ -237,15 +279,27 @@ def _oddspapi_mapping_state(
                 provider_bookmaker_mapping_id DESC
         )
         SELECT
-            bool_or(
-                normalization_class = 'SHARP'
+            -- The exact key the batch requests must be the sharp reference;
+            -- any other SHARP key would leave every sharp quote unmapped.
+            COALESCE(bool_or(
+                provider_bookmaker_key = %(sharp_key)s
+                AND normalization_class = 'SHARP'
                 AND bookmaker_code = 'PINNACLE'
-            ) AS sharp_pinnacle,
-            bool_or(
-                normalization_class = 'OFFERED'
-            ) AS offered_book
+            ), FALSE)
+            AND NOT COALESCE(bool_or(
+                provider_bookmaker_key = ANY(%(offered_keys)s)
+                AND normalization_class = 'SHARP'
+            ), FALSE) AS sharp_pinnacle,
+            COALESCE(bool_or(
+                provider_bookmaker_key = ANY(%(offered_keys)s)
+                AND normalization_class = 'OFFERED'
+            ), FALSE) AS offered_book
         FROM latest
-        """
+        """,
+        {
+            "sharp_key": ODDSPAPI_SHARP_KEY,
+            "offered_keys": list(ODDSPAPI_OFFERED_KEYS),
+        },
     ).fetchone()
     if row is None:
         return False, False
@@ -266,6 +320,8 @@ __all__ = [
     "ODDS_FAILOVER_AUTH_ENV",
     "ODDS_FAILOVER_AUTH_VALUE",
     "ODDS_MODE_ENV",
+    "ODDS_ONLY_AUTH_ENV",
+    "ODDS_ONLY_AUTH_VALUE",
     "ProviderAuthority",
     "SPORTRADAR_REQUIRED_ENV",
     "TARGET_DATA_MODE",

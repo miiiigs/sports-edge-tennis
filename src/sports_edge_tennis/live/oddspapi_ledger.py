@@ -166,6 +166,33 @@ def projected_monthly(*, requests_per_cycle: int, cycles_per_month: int) -> int:
     return int(requests_per_cycle) * int(cycles_per_month)
 
 
+class OddspapiAttemptCap:
+    """Hard per-cycle (or per-probe) cap on billable HTTP attempts.
+
+    The plan-level per-cycle check counts planned calls, but each call may be
+    retried on 429/5xx and every retry is billable. One cap instance is shared by
+    every ledger binding in a cycle; ``take()`` runs before the ledger row is
+    reserved and before any socket is opened, so the cap can never be exceeded.
+    """
+
+    def __init__(self, limit: int) -> None:
+        if int(limit) < 0:
+            raise ValueError("limit must be >= 0")
+        self.limit = int(limit)
+        self.used = 0
+
+    @property
+    def remaining(self) -> int:
+        return max(0, self.limit - self.used)
+
+    def take(self) -> None:
+        if self.used >= self.limit:
+            raise OddspapiBudgetExceeded(
+                f"per-cycle attempt cap reached used={self.used} limit={self.limit}"
+            )
+        self.used += 1
+
+
 class OddspapiLedgerBinding:
     """Binds a database connection and classification for transport accounting."""
 
@@ -177,6 +204,7 @@ class OddspapiLedgerBinding:
         request_purpose: str,
         classification: str,
         correlation_id: str,
+        attempt_cap: OddspapiAttemptCap | None = None,
     ) -> None:
         if request_purpose not in REQUEST_PURPOSES:
             raise ValueError(f"unsupported request_purpose {request_purpose!r}")
@@ -187,6 +215,7 @@ class OddspapiLedgerBinding:
         self.request_purpose = request_purpose
         self.classification = classification
         self.correlation_id = correlation_id
+        self.attempt_cap = attempt_cap
 
     def reserve(
         self,
@@ -197,6 +226,8 @@ class OddspapiLedgerBinding:
         retry_sequence: int = 0,
         now: datetime | None = None,
     ) -> int:
+        if self.attempt_cap is not None:
+            self.attempt_cap.take()
         return reserve_attempt(
             self.conn,
             config=self.config,
@@ -234,6 +265,7 @@ __all__ = [
     "LEDGER_LOCK_KEY",
     "LEDGER_TABLE",
     "REQUEST_PURPOSES",
+    "OddspapiAttemptCap",
     "OddspapiBudgetExceeded",
     "OddspapiLedgerBinding",
     "OddspapiLedgerConfig",

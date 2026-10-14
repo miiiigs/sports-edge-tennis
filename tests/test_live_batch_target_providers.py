@@ -4,6 +4,10 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import sports_edge_tennis.live.batch as batch
+from sports_edge_tennis.live.oddspapi_reconciliation import (
+    OddspapiCanonicalCandidate,
+    OddspapiEventResolution,
+)
 
 
 class _Conn:
@@ -142,7 +146,32 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
         "partition_cached_identities",
         lambda conn, candidates, now: ({}, [1]),
     )
-    monkeypatch.setattr(batch, "upsert_cached_identity", lambda conn, identity: None)
+    cached_identities = []
+    monkeypatch.setattr(
+        batch,
+        "upsert_cached_identity",
+        lambda conn, identity: cached_identities.append(identity),
+    )
+    monkeypatch.setattr(
+        batch,
+        "reconcile_oddspapi_event",
+        lambda conn, **kwargs: OddspapiEventResolution(
+            "EXACT",
+            1,
+            OddspapiCanonicalCandidate(
+                match_id=1,
+                match_version_id=10,
+                canonical_player_1_id=11,
+                canonical_player_2_id=22,
+                canonical_player_1_name="A",
+                canonical_player_2_name="B",
+                provider_orientation="DIRECT",
+                start_delta_minutes=0,
+            ),
+            1,
+            "BETRADAR_ID",
+        ),
+    )
 
     board_calls = []
 
