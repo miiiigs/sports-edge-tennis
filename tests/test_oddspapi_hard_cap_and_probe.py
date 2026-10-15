@@ -432,3 +432,40 @@ def test_local_probe_wrapper_refuses_an_explicit_dsn():
     wrapper = _load_local_probe_wrapper()
     with pytest.raises(SystemExit, match="DSN_IS_RESOLVED_BY_WRAPPER"):
         wrapper.main(["--dsn", "somewhere-else"])
+
+
+def test_answered_diagnostic_attempts_draw_from_the_monthly_allowance(db: psycopg.Connection):
+    """A probe request OddsPapi answered is billed; an unsent synthetic reservation is not."""
+    from sports_edge_tennis.live.oddspapi_ledger import (
+        month_to_date_count,
+        record_outcome,
+        reserve_attempt,
+    )
+
+    now = datetime(2091, 3, 15, 12, 0, tzinfo=UTC)
+    month = "2091-03"
+    config = OddspapiLedgerConfig(monthly_limit=3, reserve=0)
+    db.execute("DELETE FROM oddspapi_request_ledger WHERE billing_month = %s", (month,))
+
+    def _reserve(classification: str) -> int:
+        return reserve_attempt(
+            db,
+            config=config,
+            endpoint="odds-by-tournaments",
+            request_purpose="DIAGNOSTIC" if classification == "DIAGNOSTIC" else "QUALIFICATION",
+            classification=classification,
+            now=now,
+            correlation_id=_cid(),
+        )
+
+    record_outcome(db, ledger_id=_reserve("DIAGNOSTIC"), success=True, http_status=200)
+    record_outcome(db, ledger_id=_reserve("DIAGNOSTIC"), success=False, http_status=429)
+    _reserve("DIAGNOSTIC")  # synthetic: never sent, no outcome
+    assert month_to_date_count(db, month=month) == 2
+
+    _reserve("PRODUCTION")  # reserved before the socket opens: always counted
+    assert month_to_date_count(db, month=month) == 3
+    with pytest.raises(OddspapiBudgetExceeded):
+        _reserve("PRODUCTION")
+
+    db.execute("DELETE FROM oddspapi_request_ledger WHERE billing_month = %s", (month,))
