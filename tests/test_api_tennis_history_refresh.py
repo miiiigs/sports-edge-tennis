@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 import psycopg
 import pytest
 
+from sports_edge_tennis.data.agent1_history import _bridged_player_pair, load_agent1_history
 from sports_edge_tennis.data.agent3_history import (
     Agent3HistoricalMatch,
     build_history_snapshot,
@@ -289,6 +290,51 @@ def test_agent3_history_bridges_new_api_results_to_existing_historical_identity(
         """
     ).fetchone()[0]
     assert api_player_id != historical_id
+
+
+def test_agent1_history_bridges_api_results_only_when_opted_in(
+    db: psycopg.Connection,
+):
+    historical_id = _seed_historical_identity(db, "Carlos Alcaraz")
+    received_at = _received()
+    refresh_history_chunk(
+        db,
+        api_key="secret",
+        start_date=date(2026, 8, 15),
+        end_date=date(2026, 8, 15),
+        fetch_window=_fetch_at(received_at, [_fixture()]),
+    )
+    api_player_id = db.execute(
+        """
+        SELECT player_id FROM player_source_ids
+        WHERE source_system = 'API_TENNIS' AND source_player_id = 'api-alcaraz'
+        """
+    ).fetchone()[0]
+    assert api_player_id != historical_id
+    cutoff = received_at + timedelta(seconds=1)
+
+    # Production default is unchanged: the API-Tennis result stays on the live ID.
+    default = load_agent1_history(db, cutoff=cutoff)
+    recent_default = next(item for item in default if item.match_start_at.year == 2026)
+    assert recent_default.player_1_id == api_player_id
+
+    bridged = load_agent1_history(db, cutoff=cutoff, bridge_model_identities=True)
+    recent = next(item for item in bridged if item.match_start_at.year == 2026)
+    assert recent.player_1_id == historical_id
+    assert recent.player_2_id == recent_default.player_2_id
+    assert [item.match_id for item in bridged] == [item.match_id for item in default]
+
+    # Before the API result is visible, opting in changes nothing.
+    earlier = received_at - timedelta(days=1)
+    assert load_agent1_history(db, cutoff=earlier, bridge_model_identities=True) == load_agent1_history(
+        db, cutoff=earlier
+    )
+
+
+def test_agent1_bridged_pair_keeps_both_ids_when_bridges_collide():
+    assert _bridged_player_pair({10: 1, 20: 1}, 10, 20) == (10, 20)
+    assert _bridged_player_pair({10: 1}, 10, 20) == (1, 20)
+    assert _bridged_player_pair({}, 10, 20) == (10, 20)
 
 
 def test_agent3_snapshots_use_match_time_for_decay_only_after_visibility():
