@@ -86,13 +86,26 @@ Type A, first BET per match:
 | mean CLV | −6.6% over 48 bets; 2% positive |
 | dashboard all-time | 57 bets, 26/28, −8.21 u, ROI −14.7% (extra production/publication filters) |
 
-Mean claimed edge is 30–40%, while CLV is negative on 98% of bets. The
-divergence from the market is model error, not edge. Shadow strategy
+Mean claimed edge is 30–40%. Read CLV with care: `clv/service.py:451`
+computes `price_taken / close_same / (1 + same_book_margin) − 1`. That is CLV
+against the margin-free closing price, so an unchanged line scores about −margin
+(≈ −6%). The −6.6% mean is therefore mostly bookmaker margin, with a small adverse
+drift (Pinnacle lengthened on 24 of 50 bets and shortened on 17). It is not, on its
+own, proof that the model is wrong. The outcome evidence is: bets where Pinnacle
+priced the pick as the underdog went 9 W / 20 L (model 62% vs Pinnacle 39%).
+Pinnacle favourites went 17 W / 9 L, at Pinnacle's own 65%. Shadow strategy
 `A1_A2_AGREE_A3_ABSTAIN_V1`: 97 settled, ROI −21.9%, mean CLV −6.9%.
 
-The dashboard's "aligned live history" (+1.66 u on 44 bets) applies today's
-60% floor retroactively to Sep 10+ decisions. It is hindsight-selected and
-must not be read as a forward record.
+The dashboard's "aligned live history" (+1.66 u on 44 bets) applies the 60% rule,
+merged 2026-09-26 10:09Z (#189/#191), retroactively to Sep 10–26 decisions. Only
+decisions after that time are forward under the rule.
+
+**Correction (same day, follow-up analysis):** the Model Picks headline (71.6%,
+385 W / 153 L, first qualifying pick per match since Sep 10) holds up forward.
+Picks issued after the rule was merged: 343 scored, 72.0%, 95% CI 67.0–76.5%.
+Taking the first evaluation per match and then applying the 60% floor changes only
+3 matches. Earlier wording that called the aligned Model Picks history
+"hindsight-selected" was too strong.
 
 Agents (last pre-start prediction per match, completed results):
 
