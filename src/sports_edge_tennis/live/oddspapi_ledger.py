@@ -60,11 +60,15 @@ def would_exceed_monthly(*, used: int, config: OddspapiLedgerConfig) -> bool:
 
 
 def month_to_date_count(conn, *, month: str) -> int:
+    # OddsPapi bills every request it receives, including diagnostic probes. A
+    # DIAGNOSTIC row is skipped only while it is still RESERVED with no recorded
+    # provider outcome (synthetic ledger tests); once it records SUCCESS/FAILURE
+    # it was a real provider attempt and draws from the allowance.
     row = conn.execute(
         f"""
         SELECT count(*) FROM {LEDGER_TABLE}
         WHERE billing_month = %s
-          AND classification <> 'DIAGNOSTIC'
+          AND (classification <> 'DIAGNOSTIC' OR attempt_status <> 'RESERVED')
         """,
         (month,),
     ).fetchone()

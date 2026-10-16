@@ -128,13 +128,16 @@ def parse_api_tennis_fixtures(
         try:
             records.append(_parse_fixture(fixture, row_number=row_number, received_at=observed_received_at))
         except ApiTennisSourceAError as exc:
-            rejected_rows.append(
-                {
-                    "row_number": row_number,
-                    "event_key": _safe_str(fixture.get("event_key")),
-                    "reason": str(exc),
-                }
-            )
+            rejected = {
+                "row_number": row_number,
+                "event_key": _safe_str(fixture.get("event_key")),
+                "reason": str(exc),
+            }
+            if str(exc) == "unsupported_event_status":
+                # Keep the provider's unmapped token so an intermittent status can be
+                # diagnosed from ingest_runs.error_summary. It is never mapped here.
+                rejected["raw_event_status"] = _bounded_token(fixture.get("event_status"))
+            rejected_rows.append(rejected)
     return records, rejected_rows
 
 
@@ -714,6 +717,16 @@ def _safe_str(value: Any) -> str | None:
         return None
     text = collapse_whitespace(str(value))
     return text or None
+
+
+_MAX_DIAGNOSTIC_TOKEN_CHARS = 40
+
+
+def _bounded_token(value: Any) -> str | None:
+    text = _safe_str(value)
+    if text is None:
+        return None
+    return text[:_MAX_DIAGNOSTIC_TOKEN_CHARS]
 
 
 def _normalize_token(value: str) -> str:

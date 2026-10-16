@@ -106,6 +106,35 @@ def test_batch_runs_bounded_three_day_horizon(monkeypatch, tmp_path, capsys):
     assert "type_b_value_signals=0" in out
 
 
+def test_batch_logs_raw_unsupported_event_statuses(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(batch, "load_secret", lambda name: "key" if name == "API_TENNIS_API_KEY" else None)
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    _stub_price_slate(monkeypatch)
+
+    def fake_run(conn, *, slate_date, **kwargs):
+        statuses = (("Pending", 29), ("Set 1", 1)) if slate_date == date(2026, 9, 8) else ()
+        return _live_result(
+            slate_date=slate_date.isoformat(),
+            target_count=0,
+            fixture_unsupported_statuses=statuses,
+        )
+
+    monkeypatch.setattr(batch, "run_live_mvp", fake_run)
+
+    rc = batch.main([
+        "--start-date", "2026-09-07",
+        "--days", "2",
+        "--dsn", "postgresql://example",
+        "--artifacts-dir", str(tmp_path),
+    ])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert 'FIXTURE_UNSUPPORTED_STATUS date=2026-09-08 values="Pending"=29,"Set 1"=1' in out
+    assert "FIXTURE_UNSUPPORTED_STATUS date=2026-09-07" not in out
+
+
 def test_batch_caps_pinnapi_to_one_board_request_per_cycle(monkeypatch, tmp_path):
     seen_keys = []
 

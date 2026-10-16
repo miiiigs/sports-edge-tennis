@@ -16,6 +16,7 @@ from sports_edge_tennis.live.orchestrator import (
     _final_status,
     fixture_reconciliation_summary,
     run_live_mvp,
+    unsupported_event_status_counts,
 )
 from sports_edge_tennis.live.transport import TransportError
 from sports_edge_tennis.odds.persistence import insert_bookmaker_mapping
@@ -193,6 +194,21 @@ def test_fixture_reconciliation_invariant_fails_closed():
 
     with pytest.raises(RuntimeError, match="rows_seen must equal"):
         fixture_reconciliation_summary(bad)
+
+
+def test_unsupported_event_status_counts_groups_raw_tokens():
+    outcome = _ingest_outcome(
+        [],
+        rejected_rows=(
+            {"reason": "unsupported_event_status", "raw_event_status": "Pending"},
+            {"reason": "unsupported_event_status", "raw_event_status": "Pending"},
+            {"reason": "unsupported_event_status"},
+            {"reason": "out_of_scope_event_type"},
+        ),
+    )
+
+    assert unsupported_event_status_counts(outcome) == (("Pending", 2), ("UNKNOWN", 1))
+    assert unsupported_event_status_counts(_ingest_outcome([1])) == ()
 
 
 def test_zero_consensus_makes_zero_pinnapi_requests():

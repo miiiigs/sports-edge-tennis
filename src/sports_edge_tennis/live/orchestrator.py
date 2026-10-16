@@ -148,6 +148,7 @@ class LiveMvpResult:
     matches: tuple[dict[str, Any], ...]
     summary_path: str | None
     notes: tuple[str, ...] = ()
+    fixture_unsupported_statuses: tuple[tuple[str, int], ...] = ()
 
 
 def _utc_now() -> datetime:
@@ -226,6 +227,18 @@ def fixture_reconciliation_summary(outcome: ApiTennisIngestOutcome) -> dict[str,
         "fixture_rows_rejected": outcome.rows_rejected,
         "fixture_rejection_reasons": dict(sorted(reason_counts.items())),
     }
+
+
+def unsupported_event_status_counts(outcome: ApiTennisIngestOutcome) -> tuple[tuple[str, int], ...]:
+    """Count the raw provider tokens behind ``unsupported_event_status`` rejections."""
+    counts: dict[str, int] = {}
+    for row in outcome.rejected_rows:
+        if row.get("reason") != "unsupported_event_status":
+            continue
+        raw = row.get("raw_event_status")
+        key = str(raw) if raw is not None else "UNKNOWN"
+        counts[key] = counts.get(key, 0) + 1
+    return tuple(sorted(counts.items()))
 
 
 def _parse_board(
@@ -536,6 +549,7 @@ def run_live_mvp(
         matches=tuple(matches),
         summary_path=str(summary_path),
         notes=tuple(notes),
+        fixture_unsupported_statuses=unsupported_event_status_counts(ingest_outcome),
     )
 
 

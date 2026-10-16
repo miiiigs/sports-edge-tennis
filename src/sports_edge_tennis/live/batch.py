@@ -11,6 +11,7 @@ finalization reuses already-persisted odds snapshots and makes no provider calls
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -779,6 +780,17 @@ def _run_batch(
                     "reasons="
                     f"{_format_fixture_rejection_reasons(result.fixture_rejection_reasons)}"
                 )
+                unsupported_statuses = getattr(result, "fixture_unsupported_statuses", ())
+                if unsupported_statuses:
+                    _log(
+                        "FIXTURE_UNSUPPORTED_STATUS "
+                        f"date={result.slate_date} "
+                        "values="
+                        + ",".join(
+                            f"{json.dumps(value)}={count}"
+                            for value, count in unsupported_statuses
+                        )
+                    )
                 if result.prediction_run_id is not None:
                     prediction_run_ids.append(result.prediction_run_id)
                     reason_counts = _load_manager_reason_counts(

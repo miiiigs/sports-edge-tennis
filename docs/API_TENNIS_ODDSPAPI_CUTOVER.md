@@ -5,8 +5,14 @@ surfaces, history, match stats) + **OddsPapi** (match-winner market `121`, Pinna
 `pinnacle+30` sharp reference, offered books `1xbet`/`unibet`/`bet365`, snapshots, CLV).
 Sportradar and GoalServe are not intended production providers.
 
-**Status (2026-10-14): implemented, tested and live-probed (10/10 acceptance PASS), not
-enabled.** Production still runs `API_TENNIS + LEGACY_SPLIT`, and Pinnapi has returned
+**Status (2026-10-15 audit): ENABLED in production.** Every `tennis-live-runner` cycle
+since deployment `f621c023` (2026-10-14 08:45Z, main `a823832`) logs
+`data_provider=API_TENNIS odds_provider=ODDSPAPI_TENNIS circuit=DISABLED
+reason=ODDS_ONLY_NO_FAILOVER`; 4–5 ledgered requests per consensus cycle, 0 on
+zero-consensus cycles. See `docs/research/TENNIS_PRODUCTION_AUDIT_20261015.md`.
+
+Status before enablement (2026-10-14): implemented, tested and live-probed (10/10 acceptance
+PASS). Production then ran `API_TENNIS + LEGACY_SPLIT`, and Pinnapi had returned
 `HTTP_403` on every hourly run. The last Pinnacle sharp snapshot was taken at
 2026-10-01 19:05Z and the last API-Tennis offered snapshot at 2026-10-10 21:00Z (see
 "Why API-Tennis offered odds stopped"), so no Type A bet has been able to qualify.

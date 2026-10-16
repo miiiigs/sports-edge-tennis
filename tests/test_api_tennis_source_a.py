@@ -104,6 +104,35 @@ def test_parse_api_tennis_source_a_rejects_out_of_scope_and_incomplete_fixtures(
     ]
 
 
+def test_parse_api_tennis_source_a_keeps_raw_token_for_unsupported_status_only():
+    records, rejected = parse_api_tennis_fixtures(
+        [
+            _fixture(event_key="1", event_status="  Set   1 "),
+            _fixture(event_key="2", event_status="X" * 90),
+            _fixture(event_key="3", event_type_type="Wta Singles", event_status="Odd"),
+            _fixture(event_key="4"),
+        ],
+        received_at=_received_at(),
+    )
+
+    assert [record.source_match_id for record in records] == ["4"]
+    assert rejected == [
+        {
+            "row_number": 1,
+            "event_key": "1",
+            "reason": "unsupported_event_status",
+            "raw_event_status": "Set 1",
+        },
+        {
+            "row_number": 2,
+            "event_key": "2",
+            "reason": "unsupported_event_status",
+            "raw_event_status": "X" * 40,
+        },
+        {"row_number": 3, "event_key": "3", "reason": "out_of_scope_event_type"},
+    ]
+
+
 def test_ingest_api_tennis_source_a_persists_source_ids_and_player_order(db: psycopg.Connection):
     outcome = ingest_api_tennis_source_a_fixtures(db, [_fixture()], received_at=_received_at())
 

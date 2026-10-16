@@ -20,6 +20,8 @@ TARGET ACTIVATION: BLOCKED / NOT YET AUTHORIZED
 
 Railway `tennis-live-runner`, `tennis-validation-runner`, and `tennis-dashboard` are now sourced from canonical `main`. The live runner remains hourly and the validation runner remains daily at 00:10 UTC. The live and validation services are explicitly pinned with `TENNIS_DATA_PROVIDER_MODE=API_TENNIS`, `TENNIS_ODDS_PROVIDER_MODE=LEGACY_SPLIT`, and `TENNIS_MANAGER_POLICY_VERSION=v1`.
 
+> 2026-10-15 audit correction: `tennis-validation-runner` is scheduled `10 8 * * *` (08:10 UTC), not 00:10; no run occurred on 2026-10-11 while the schedule changed (the checkpoint window covered that day on 2026-10-12). `tennis-live-runner` odds mode is now `ODDSPAPI_TENNIS` (since 2026-10-14 08:45Z). Manager remains `v1`, which accepts an Agent 3 abstention: every production BET to date is 2 active + 1 abstaining. See `docs/research/TENNIS_PRODUCTION_AUDIT_20261015.md`.
+
 PR #162 prepares, but does not activate, the target stack. It includes:
 
 - strict Manager v2 while preserving immutable v1 replay;
