@@ -5,6 +5,16 @@ from datetime import date, datetime
 import psycopg
 
 from sports_edge_tennis.agents.agent1_surface_elo import HistoricalMatchObservation
+from sports_edge_tennis.data.model_identity import resolve_model_player_ids
+
+
+def _bridged_player_pair(model_player_ids: dict[int, int], player_1_id: int, player_2_id: int) -> tuple[int, int]:
+    """Map a history pair into the model namespace; a colliding bridge keeps both IDs."""
+    model_1 = model_player_ids.get(player_1_id, player_1_id)
+    model_2 = model_player_ids.get(player_2_id, player_2_id)
+    if model_1 == model_2:
+        return player_1_id, player_2_id
+    return model_1, model_2
 
 
 def load_agent1_history(
@@ -17,7 +27,15 @@ def load_agent1_history(
     year_end: int | None = None,
     date_start: date | None = None,
     date_end: date | None = None,
+    bridge_model_identities: bool = False,
 ) -> list[HistoricalMatchObservation]:
+    """Load PIT-visible Agent 1 history.
+
+    ``bridge_model_identities`` maps live-provider player IDs into the model
+    namespace, as A2/A3 history and live targets already do. It defaults to False,
+    so production Agent 1 inputs are unchanged until the bridged variant has been
+    reviewed and explicitly activated; shadow evaluation opts in.
+    """
     result_filters = [
         "mro.source_observed_at <= %(cutoff)s",
         "mro.as_of <= %(cutoff)s",
@@ -115,11 +133,19 @@ def load_agent1_history(
     """
 
     rows = conn.execute(query, params).fetchall()
+    model_player_ids: dict[int, int] = {}
+    if bridge_model_identities and rows:
+        model_player_ids = resolve_model_player_ids(
+            conn,
+            player_ids={int(row[1]) for row in rows} | {int(row[2]) for row in rows},
+            as_of=cutoff,
+        )
+    pairs = [_bridged_player_pair(model_player_ids, int(row[1]), int(row[2])) for row in rows]
     return [
         HistoricalMatchObservation(
             match_id=row[0],
-            player_1_id=row[1],
-            player_2_id=row[2],
+            player_1_id=pair[0],
+            player_2_id=pair[1],
             surface=row[3],
             tour_scope=row[4],
             competition_tier=row[5],
@@ -131,5 +157,5 @@ def load_agent1_history(
             source_observed_at=row[11],
             as_of=row[12],
         )
-        for row in rows
+        for row, pair in zip(rows, pairs)
     ]
