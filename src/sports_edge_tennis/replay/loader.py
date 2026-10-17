@@ -542,8 +542,22 @@ def load_replay_inputs(
     )
 
 
+#: Versioned market-timing policy. Production evaluates the market in the same
+#: hourly batch shortly after predictions; measured ``decision_as_of - run.as_of``
+#: p50 ~87s (and ``decision_as_of`` tracks the odds receive time). The replay
+#: anchors the market cutoff at the prediction run plus this deterministic
+#: sequencing delay. Market's freshness rule is unchanged.
+MARKET_CUTOFF_PIT_POLICY_VERSION = "market_cutoff_pit_v1"
+DEFAULT_MARKET_DELAY_SECONDS = 90
+
+
 def _floor_hour(value: datetime) -> datetime:
     return value.replace(minute=0, second=0, microsecond=0)
+
+
+def _ceil_hour(value: datetime) -> datetime:
+    base = value.replace(minute=0, second=0, microsecond=0)
+    return base if base == value else base + timedelta(hours=1)
 
 
 def _load_match_visibility(
@@ -587,47 +601,54 @@ def derive_run_specs_pit_safe(
     *,
     match_ids: tuple[int, ...],
     policy: ReplayDecisionTimePolicy = ReplayDecisionTimePolicy(),
+    market_delay_seconds: int = DEFAULT_MARKET_DELAY_SECONDS,
 ) -> tuple[ReplayRunSpec, ...]:
-    """Plan per-match PIT-safe cutoffs on production hourly-run boundaries.
+    """Plan production-faithful PIT-safe cutoffs on hourly-run boundaries.
 
-    Production evaluates a match on an hourly run at/after the fixture became
-    visible and before the match starts. This planner picks, for each match, the
-    **latest** hourly boundary strictly before ``match_start`` that is still at or
-    after ``first_visible``, then groups matches that share the same boundary.
-    That stabs every recoverable interval with a small number of runs, so a daily
-    cutoff no longer excludes later-ingested same-day fixtures.
+    Production predicts a match on the **first hourly run at/after** its fixture
+    became visible (fixtures publish roughly a day ahead, so this is typically
+    many hours before start) and evaluates the market a short time later in the
+    same batch. Per match:
 
-    Matches whose fixture first became visible at/after their own start are not
-    recoverable and are never assigned a valid prediction cutoff; they are
-    attached to the earliest run so they fail closed as an exclusion instead of
-    being silently dropped.
+    - ``prediction_as_of`` = ``ceil_hour(first_visible)``;
+    - ``market_as_of`` = ``prediction_as_of + market_delay_seconds`` (production
+      sequencing; default measured median ~90s), capped strictly before the
+      earliest match start in the group.
+
+    Grouping matches by identical prediction hour yields production-faithful
+    runs. Matches whose fixture first became visible at/after their own start are
+    not recoverable and are attached to the earliest run so they fail closed.
     """
 
     visibility = _load_match_visibility(conn, match_ids=match_ids)
-    ordered = sorted(visibility.items(), key=lambda item: item[1][1])
     groups: dict[datetime, list[int]] = {}
+    starts: dict[int, datetime] = {}
     unrecoverable: list[int] = []
-    last_cutoff: datetime | None = None
-    for match_id, (first_visible, start) in ordered:
-        if last_cutoff is not None and first_visible <= last_cutoff < start:
-            groups[last_cutoff].append(match_id)
-            continue
-        candidate = _floor_hour(start - timedelta(seconds=1))
-        if candidate < first_visible:
+    for match_id, (first_visible, start) in visibility.items():
+        cutoff = _ceil_hour(first_visible)
+        if cutoff >= start:
             unrecoverable.append(match_id)
             continue
-        last_cutoff = candidate
-        groups.setdefault(candidate, []).append(match_id)
+        starts[match_id] = start
+        groups.setdefault(cutoff, []).append(match_id)
 
     specs: list[ReplayRunSpec] = []
     for sequence, cutoff in enumerate(sorted(groups), start=1):
+        group = groups[cutoff]
+        earliest_start = min(starts[match_id] for match_id in group)
+        market_as_of = cutoff + timedelta(seconds=market_delay_seconds)
+        cap = earliest_start - timedelta(seconds=1)
+        if market_as_of > cap:
+            market_as_of = cap
+        if market_as_of < cutoff:
+            market_as_of = cutoff
         specs.append(
             ReplayRunSpec(
                 run_id=f"replay-{cutoff.isoformat()}",
                 run_sequence=sequence,
                 prediction_as_of=cutoff,
-                market_as_of=cutoff,
-                match_ids=tuple(sorted(groups[cutoff])),
+                market_as_of=market_as_of,
+                match_ids=tuple(sorted(group)),
             )
         )
     if unrecoverable:
@@ -646,7 +667,7 @@ def derive_run_specs_pit_safe(
                     run_id=f"replay-{fallback.isoformat()}",
                     run_sequence=1,
                     prediction_as_of=fallback,
-                    market_as_of=fallback,
+                    market_as_of=fallback + timedelta(seconds=market_delay_seconds),
                     match_ids=tuple(sorted(unrecoverable)),
                 )
             )

@@ -397,6 +397,7 @@ def _evaluate_match(
         identity_status=match.identity_status,
         surface_status=match.surface_status,
         actual_result=model_actual,
+        a3_diagnostics=dict(a3.diagnostics_payload) if a3.diagnostics_payload else None,
     )
 
     if manager_result.manager_status != "CONSENSUS":
