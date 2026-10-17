@@ -74,6 +74,23 @@ def _classify_failure_payload(payload: dict[str, Any], *, keys: tuple[str, ...])
     return "UNCLASSIFIED"
 
 
+def api_tennis_result_shape(result: Any) -> str:
+    """Allowlisted diagnostics for malformed provider results; never output payloads."""
+    if result is None:
+        return "NULL"
+    if isinstance(result, list):
+        return "LIST"
+    if isinstance(result, dict):
+        return "OBJECT"
+    if isinstance(result, str):
+        return "STRING"
+    if isinstance(result, bool):
+        return "BOOLEAN"
+    if isinstance(result, (int, float)):
+        return "NUMBER"
+    return "OTHER"
+
+
 def fetch_api_tennis_fixtures(
     api_key: str,
     slate_date: date,
@@ -112,7 +129,12 @@ def fetch_api_tennis_fixtures(
 
     result = data.get("result")
     if not isinstance(result, list):
-        raise TransportError("PARSE", "api-tennis response missing result list")
+        raise TransportError(
+            "PARSE",
+            "api-tennis response missing result list "
+            f"shape={api_tennis_result_shape(result)} "
+            f"diagnostic={api_tennis_failure_category(data)}",
+        )
 
     return received_at, result
 
