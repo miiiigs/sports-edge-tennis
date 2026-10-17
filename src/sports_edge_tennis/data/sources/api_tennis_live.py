@@ -40,6 +40,7 @@ _STATUS_MAP = {
     "cancelled": "CANCELLED",
     "canceled": "CANCELLED",
     "walkover": "WALKOVER",
+    "walk over": "WALKOVER",
     "retired": "RETIRED",
     "finished": "COMPLETED",
     "completed": "COMPLETED",
