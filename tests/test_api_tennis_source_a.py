@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 
 import psycopg
+import pytest
 
 from sports_edge_tennis.data.sources.api_tennis_live import (
     SOURCE_SYSTEM,
@@ -131,6 +132,31 @@ def test_parse_api_tennis_source_a_keeps_raw_token_for_unsupported_status_only()
         },
         {"row_number": 3, "event_key": "3", "reason": "out_of_scope_event_type"},
     ]
+
+
+@pytest.mark.parametrize("walkover", ["Walk Over", "Walkover", "WALK OVER"])
+def test_walkover_status_maps_to_terminal_and_never_to_scheduled(walkover):
+    records, rejected = parse_api_tennis_fixtures(
+        [_fixture(event_key="7892026", event_status=walkover)],
+        received_at=_received_at(),
+    )
+    assert rejected == []
+    assert len(records) == 1
+    assert records[0].match_status == "WALKOVER"
+
+
+def test_unknown_numeric_and_in_play_statuses_remain_rejected():
+    records, rejected = parse_api_tennis_fixtures(
+        [
+            _fixture(event_key="1", event_status="1"),
+            _fixture(event_key="2", event_status="Set 1"),
+            _fixture(event_key="3", event_status="Set 3"),
+        ],
+        received_at=_received_at(),
+    )
+    assert records == []
+    assert [item["raw_event_status"] for item in rejected] == ["1", "Set 1", "Set 3"]
+    assert all(item["reason"] == "unsupported_event_status" for item in rejected)
 
 
 def test_ingest_api_tennis_source_a_persists_source_ids_and_player_order(db: psycopg.Connection):
