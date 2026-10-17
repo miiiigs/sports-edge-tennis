@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Overview — Sports Edge{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Sports Edge</h1>
+  <p class="page-subtitle">Two independent models. One workspace.</p>
+  <p class="page-note">
+    Tennis and Football keep separate data, models, accounting and bankrolls.
+    Nothing on this page combines the two.
+  </p>
+</header>
+
+<section class="section" aria-label="Sports" style="margin-top: 0;">
+  <div class="sport-grid">
+    <article class="sport-card">
+      <header class="sport-card-head">
+        <h2 class="sport-card-title">Tennis</h2>
+        {% if tennis.available %}
+          {% if tennis.system_state == 'HEALTHY' %}
+          <span class="badge badge-won">Healthy</span>
+          {% elif tennis.system_state in ['WARNING', 'ERROR'] %}
+          <span class="badge badge-blocked">{{ tennis.system_state|title }}</span>
+          {% else %}
+          <span class="badge badge-neutral">Unknown</span>
+          {% endif %}
+        {% else %}
+        <span class="badge badge-blocked">Unavailable</span>
+        {% endif %}
+      </header>
+
+      {% if not tennis.available %}
+      <p class="sport-card-note">Tennis data is temporarily unavailable.</p>
+      {% else %}
+      <dl class="sport-card-metrics">
+        <div class="sport-metric">
+          <dt>Latest activity</dt>
+          <dd>{{ tz_datetime(tennis.latest_activity) }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Today's picks</dt>
+          <dd>{{ tennis.pick_count if tennis.pick_count is not none else '—' }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Value bets</dt>
+          <dd>{{ tennis.value_bet_count if tennis.value_bet_count is not none else '—' }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Model picks</dt>
+          <dd>{{ tennis.model_pick_count if tennis.model_pick_count is not none else '—' }}</dd>
+        </div>
+      </dl>
+      {% endif %}
+
+      <div class="sport-card-actions">
+        <a class="date-link" href="/tennis">Open Tennis</a>
+        <a class="date-link" href="/tennis/performance">Performance</a>
+      </div>
+    </article>
+
+    <article class="sport-card">
+      <header class="sport-card-head">
+        <h2 class="sport-card-title">Football</h2>
+        {% if football.available %}
+        <span class="badge badge-neutral">Connected</span>
+        {% else %}
+        <span class="badge badge-blocked">Unavailable</span>
+        {% endif %}
+      </header>
+
+      {% if not football.available %}
+      <p class="sport-card-note">{{ football.message }}</p>
+      {% else %}
+      <dl class="sport-card-metrics">
+        <div class="sport-metric">
+          <dt>Picks today</dt>
+          <dd>{{ football.total }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Asian Handicap</dt>
+          <dd>{{ football.ah_count }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Corners</dt>
+          <dd>{{ football.corners_count }}</dd>
+        </div>
+        <div class="sport-metric">
+          <dt>Bet / no bet</dt>
+          <dd>{{ football.bet_count }} / {{ football.no_bet_count }}</dd>
+        </div>
+      </dl>
+      {% endif %}
+
+      <div class="sport-card-actions">
+        <a class="date-link" href="/football">Open Football</a>
+        <a class="date-link" href="/football/performance">Performance</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+<p class="section-note" style="margin-top: 24px;">
+  Each sport's results, units and ROI are reported separately. There is no combined
+  Sports Edge profit figure because the two systems do not share a bankroll.
+</p>
+{% endblock %}
