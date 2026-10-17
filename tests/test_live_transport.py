@@ -135,6 +135,30 @@ def test_api_tennis_invalid_json(fake_get):
     assert exc_info.value.kind == "PARSE"
 
 
+@pytest.mark.parametrize(
+    ("payload", "shape", "category"),
+    [
+        ({"success": 1}, "NULL", "UNCLASSIFIED"),
+        ({"success": 1, "result": None}, "NULL", "UNCLASSIFIED"),
+        ({"success": 1, "result": "NO_DATA SECRET_KEY"}, "STRING", "UNCLASSIFIED"),
+        ({"success": 1, "result": {"error": "Too many requests SECRET_KEY"}}, "OBJECT", "QUOTA_OR_RATE"),
+        ({"success": 1, "result": 42}, "NUMBER", "UNCLASSIFIED"),
+        ({"success": 1, "result": False}, "BOOLEAN", "UNCLASSIFIED"),
+    ],
+)
+def test_api_tennis_success_envelope_missing_list_is_safe_and_fail_closed(
+    fake_get, payload, shape, category
+):
+    fake_get.response = FakeResponse(json_data=payload)
+    with pytest.raises(TransportError) as err:
+        fetch_api_tennis_fixtures("SECRET_KEY", SLATE, clock=lambda: CLOCK)
+    assert err.value.kind == "PARSE"
+    assert f"shape={shape}" in str(err.value)
+    assert f"diagnostic={category}" in str(err.value)
+    assert "SECRET_KEY" not in str(err.value)
+    assert "NO_DATA" not in str(err.value)
+
+
 def test_pinnapi_endpoint_and_header(fake_get):
     fake_get.response = FakeResponse(json_data={"events": []})
     fetch_pinnapi_board("KEYXYZ", clock=lambda: CLOCK)
