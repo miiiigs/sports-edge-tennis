@@ -377,7 +377,9 @@ def test_today_uses_issued_player_side_and_start_after_provider_reschedule_or_sw
     db: psycopg.Connection,
 ) -> None:
     """Current provider corrections cannot silently rewrite a historic pick."""
-    start = datetime(2026, 10, 19, 15, 0, tzinfo=UTC)
+    # Historical synthetic fixture: all event times must precede real CI time
+    # because append-only predictions validate ingested_at >= as_of.
+    start = datetime(2026, 10, 18, 15, 0, tzinfo=UTC)
     match_id = _seed_pick_at_start(db, label="IssuedParity", start=start)
     old = db.execute(
         """
@@ -406,7 +408,7 @@ def test_today_uses_issued_player_side_and_start_after_provider_reschedule_or_sw
          correction_at, correction_at, correction_at),
     )
 
-    state = get_issued_day_state(db, date(2026, 10, 19))
+    state = get_issued_day_state(db, date(2026, 10, 18))
     assert state.kind == "POPULATED"
     assert len(state.matches) == 1
     issued = state.matches[0]
