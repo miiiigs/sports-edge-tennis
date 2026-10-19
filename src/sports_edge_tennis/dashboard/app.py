@@ -244,6 +244,35 @@ def _load_guide_odds(
         conn.close()
 
 
+def _load_issued_model_pick_results(
+    requested_date: date, tz: DashboardTimezone | None = None
+) -> dict[int, str]:
+    """Scored outcomes from the same aligned, first-issued Model Picks ledger."""
+    if DEMO_MODE:
+        return {}
+    conn = _connect()
+    if conn is None:
+        return {}
+    try:
+        # Imported lazily: model_pick_history's route module also imports app.
+        from sports_edge_tennis.dashboard.model_pick_history import (
+            load_aligned_daily_model_picks,
+        )
+        rows = load_aligned_daily_model_picks(
+            conn, decision_date=requested_date, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
+        return {
+            int(row.match_id): row.result_status
+            for row in rows
+            if row.match_id is not None
+        }
+    except psycopg.Error:
+        logger.exception("Model Pick result lookup unavailable")
+        return {}
+    finally:
+        conn.close()
+
+
 def _load_market_overlay(prediction_run_id: int | None):
     if DEMO_MODE:
         return build_demo_market_decisions()
@@ -387,6 +416,7 @@ def _pick_payload(pick) -> dict:
         ),
         "guide_odds_source": pick.guide_odds_source,
         "guide_quote_after_issue": pick.guide_quote_after_issue,
+        "result_status": pick.result_status,
         "bookmaker": pick.bookmaker,
         "edge_pct": pick.edge_text,
         "stake": pick.stake_text,
@@ -416,7 +446,10 @@ def today(request: Request, date: str | None = Query(default=None)):
     state = _load_state(requested_date, tz)
     market_by_match = _load_issued_market_overlay(requested_date, tz)
     today_picks = build_today_picks(
-        state.matches, market_by_match, _load_guide_odds(requested_date, tz)
+        state.matches,
+        market_by_match,
+        _load_guide_odds(requested_date, tz),
+        _load_issued_model_pick_results(requested_date, tz),
     )
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
@@ -526,7 +559,10 @@ def api_today(request: Request, date: str | None = Query(default=None)):
     upcoming = _load_upcoming()
     operational_health = _load_live_health()
     today_picks = build_today_picks(
-        state.matches, market_by_match, _load_guide_odds(requested_date, tz)
+        state.matches,
+        market_by_match,
+        _load_guide_odds(requested_date, tz),
+        _load_issued_model_pick_results(requested_date, tz),
     )
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
