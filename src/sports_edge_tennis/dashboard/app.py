@@ -73,6 +73,11 @@ class DashboardTemplates(Jinja2Templates):
     def TemplateResponse(self, request, name, context=None, *args, **kwargs):
         tz = _request_timezone(request)
         merged = dict(context or {})
+        # Shared Sports Edge shell defaults. Existing Tennis templates emit
+        # active_sport="tennis" implicitly; Football routes override it.
+        merged.setdefault("active_sport", "tennis")
+        merged.setdefault("latest_activity", None)
+        merged.setdefault("sport_status", None)
         merged.setdefault("dashboard_timezone", tz)
         merged.setdefault("dashboard_timezone_options", SUPPORTED_TIMEZONES)
         merged.setdefault("tz_time", lambda value, fmt="%H:%M": format_dashboard_time(value, tz, fmt))
@@ -90,6 +95,8 @@ class DashboardTemplates(Jinja2Templates):
 app = FastAPI(title="Sports Edge Tennis", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=str(_BASE_DIR / "static")), name="static")
 templates = DashboardTemplates(directory=str(_BASE_DIR / "templates"))
+# ``pres`` is available to every template, including the shared shell.
+templates.env.globals["pres"] = pres
 
 
 def _request_timezone(request: Request) -> DashboardTimezone:
@@ -363,7 +370,7 @@ def _pick_payload(pick) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return RedirectResponse(url="/today")
+    return RedirectResponse(url="/overview")
 
 
 @app.get("/today", response_class=HTMLResponse)
@@ -663,3 +670,11 @@ def api_clv():
             "interpretation": "Prospective closing-line evidence only; not proof of profitability.",
         }
     )
+
+
+# The unified Sports Edge UI routes are registered onto this single app object.
+# Importing last guarantees every name above is already defined, and keeps the
+# routes present for app, owner_access and production_app entrypoints alike.
+from sports_edge_tennis.dashboard import (
+    unified_routes as _unified_routes,  # noqa: F401
+)

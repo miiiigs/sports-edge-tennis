@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Sports Edge Tennis{% endblock %}</title>
+  <title>{% block title %}Sports Edge{% endblock %}</title>
   <link rel="stylesheet" href="/static/dashboard.css">
   <link rel="stylesheet" href="/static/auth.css">
 </head>
@@ -11,25 +11,36 @@
   <a class="visually-hidden" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="header-inner">
-      <a class="brand" href="/today">
+      <a class="brand" href="/overview">
         <span class="brand-mark" aria-hidden="true">SE</span>
         <span class="brand-text">
           <span class="brand-name">Sports Edge</span>
-          <span class="brand-sub">Tennis</span>
+          <span class="brand-sub">{% if active_sport == 'football' %}Football{% elif active_sport == 'overview' %}Overview{% else %}Tennis{% endif %}</span>
         </span>
       </a>
-      <nav class="main-nav" aria-label="Primary">
+
+      <nav class="sport-switch" aria-label="Sport">
+        <a href="/tennis" class="sport-link{% if active_sport == 'tennis' %} is-active{% endif %}"{% if active_sport == 'tennis' %} aria-current="page"{% endif %}>Tennis</a>
+        <a href="/football" class="sport-link{% if active_sport == 'football' %} is-active{% endif %}"{% if active_sport == 'football' %} aria-current="page"{% endif %}>Football</a>
+      </nav>
+
+      {% if active_sport == 'football' %}
+      <nav class="main-nav" aria-label="Football sections">
+        <a href="/football" class="nav-link{% if active_nav == 'football_picks' %} is-active{% endif %}"{% if active_nav == 'football_picks' %} aria-current="page"{% endif %}>Picks</a>
+        <a href="/football/performance" class="nav-link{% if active_nav == 'football_performance' %} is-active{% endif %}"{% if active_nav == 'football_performance' %} aria-current="page"{% endif %}>Performance</a>
+        <a href="/football/history" class="nav-link{% if active_nav == 'football_history' %} is-active{% endif %}"{% if active_nav == 'football_history' %} aria-current="page"{% endif %}>History</a>
+        <a href="/football/system" class="nav-link{% if active_nav == 'football_system' %} is-active{% endif %}"{% if active_nav == 'football_system' %} aria-current="page"{% endif %}>System</a>
+      </nav>
+      {% elif active_sport != 'overview' %}
+      <nav class="main-nav" aria-label="Tennis sections">
         <a href="/today" class="nav-link{% if active_nav == 'today' %} is-active{% endif %}"{% if active_nav == 'today' %} aria-current="page"{% endif %}>Today</a>
         <a href="/value" class="nav-link{% if active_nav == 'value' %} is-active{% endif %}"{% if active_nav == 'value' %} aria-current="page"{% endif %}>Value</a>
         <a href="/model-pick-results" class="nav-link{% if active_nav == 'model_results' %} is-active{% endif %}"{% if active_nav == 'model_results' %} aria-current="page"{% endif %}>Model Picks</a>
         <a href="/value-bet-results" class="nav-link{% if active_nav == 'value_results' %} is-active{% endif %}"{% if active_nav == 'value_results' %} aria-current="page"{% endif %}>Value Bets</a>
         <a href="/performance" class="nav-link{% if active_nav == 'performance' %} is-active{% endif %}"{% if active_nav == 'performance' %} aria-current="page"{% endif %}>Performance</a>
-        {% if tennis_auth_enabled %}
-        <form class="auth-signout-form" method="post" action="/logout">
-          <button class="nav-link auth-signout" type="submit">Sign out</button>
-        </form>
-        {% endif %}
       </nav>
+      {% endif %}
+
       <div class="header-meta">
         <div class="tz-picker">
           <label class="tz-picker-label" for="tz-select">Time zone</label>
@@ -39,11 +50,20 @@
             {% endfor %}
           </select>
         </div>
-        {% set status_class, status_label = pres.system_status(latest_activity) %}
+        {% if sport_status %}
+          {% set status_class, status_label = sport_status %}
+        {% else %}
+          {% set status_class, status_label = pres.system_status(latest_activity) %}
+        {% endif %}
         <span class="status-dot status-{{ status_class }}" aria-hidden="true"></span>
         <span class="status-label">{{ status_label }}</span>
         {% if latest_activity %}
         <span class="updated">· {{ tz_time(latest_activity) }}</span>
+        {% endif %}
+        {% if tennis_auth_enabled %}
+        <form class="auth-signout-form" method="post" action="/logout">
+          <button class="nav-link auth-signout" type="submit">Sign out</button>
+        </form>
         {% endif %}
       </div>
     </div>
@@ -69,7 +89,7 @@
   </main>
 
   <footer class="site-footer">
-    <span>Sports Edge Tennis — probabilistic model analysis, not guaranteed outcomes.</span>
+    <span>Sports Edge — probabilistic model analysis, not guaranteed outcomes.</span>
   </footer>
 
   <script src="/static/dashboard.js"></script>

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "_football_macros.html" as fb %}
+{% block title %}Football System — Sports Edge{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Football System</h1>
+  <p class="page-subtitle">Read-only status of the independent Football platform.</p>
+  <p class="page-note">
+    Football runs in its own runtime and database. These values are read
+    server-to-server; no Football credentials or backend addresses are shown
+    here.
+  </p>
+</header>
+
+{% if not view.available %}
+{{ fb.degraded(view) }}
+{% else %}
+<section class="section" aria-label="Football system status" style="margin-top: 0;">
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Component</th>
+          <th scope="col">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.rows %}
+        <tr>
+          <th scope="row">{{ row.label }}</th>
+          <td><span class="badge badge-{{ row.tone if row.tone in ['value', 'blocked'] else 'neutral' }}">{{ row.value }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section" aria-label="Football system notes">
+  <div class="notice">
+    <h3>Operational, not analytical</h3>
+    <p>This page reports feed and pipeline status only. Football picks are on <a href="/football">Picks</a>; results are on <a href="/football/performance">Performance</a>.</p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

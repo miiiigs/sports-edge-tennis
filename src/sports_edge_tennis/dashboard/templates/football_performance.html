@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% import "_football_macros.html" as fb %}
+{% block title %}Football Performance — Sports Edge{% endblock %}
+
+{% block content %}
+<header class="page-header">
+  <h1 class="page-title">Football Performance</h1>
+  <p class="page-subtitle">Qualified Football bet record, kept separate from Tennis.</p>
+  <p class="page-note">
+    Football results, units and ROI are reported on their own. They are never
+    combined with Tennis figures, and no metric is fabricated when evidence is
+    missing.
+  </p>
+</header>
+
+{% if not view.available %}
+{{ fb.degraded(view) }}
+{% else %}
+
+<section class="section" aria-label="Football performance" style="margin-top: 0;">
+  <div class="stat-grid">
+    {% for metric in view.metrics %}
+    <article class="stat">
+      <span class="stat-value">{{ metric.value }}</span>
+      <span class="stat-label">{{ metric.label }}</span>
+      {% if metric.note %}<span class="stat-note">{{ metric.note }}</span>{% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if view.markets %}
+<section class="section" aria-label="Football performance by market">
+  <h2 class="section-title">By market</h2>
+  <p class="section-note">Asian Handicap and Corners are shown first. Small samples are flagged rather than hidden.</p>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Market</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Settled</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">Win rate</th>
+          <th scope="col">Units</th>
+          <th scope="col">ROI</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.markets %}
+        <tr>
+          <th scope="row" class="wrap">
+            {{ row.label }}
+            {% if row.low_sample %}<span class="badge badge-weak" style="margin-left: 6px;">LOW SAMPLE</span>{% endif %}
+          </th>
+          <td class="num">{{ row.bets }}</td>
+          <td class="num">{{ row.settled }}</td>
+          <td class="num">{{ row.wins }}</td>
+          <td class="num">{{ row.losses }}</td>
+          <td class="num">{{ row.strike_rate or '—' }}</td>
+          <td class="num">{{ row.net_units or '—' }}</td>
+          <td class="num">{{ row.roi or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+{% if view.windows %}
+<section class="section" aria-label="Football performance windows">
+  <h2 class="section-title">Periods</h2>
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th scope="col">Period</th>
+          <th scope="col">Bets</th>
+          <th scope="col">Settled</th>
+          <th scope="col">Won</th>
+          <th scope="col">Lost</th>
+          <th scope="col">ROI</th>
+          <th scope="col">Units</th>
+          <th scope="col">CLV</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in view.windows %}
+        <tr>
+          <th scope="row">{{ row.window }}</th>
+          <td class="num">{{ row.suggested_bets if row.suggested_bets is not none else '—' }}</td>
+          <td class="num">{{ row.settled if row.settled is not none else '—' }}</td>
+          <td class="num">{{ row.wins if row.wins is not none else '—' }}</td>
+          <td class="num">{{ row.losses if row.losses is not none else '—' }}</td>
+          <td class="num">{% if row.roi is not none %}{{ '%.1f%%'|format(row.roi * 100) }}{% else %}—{% endif %}</td>
+          <td class="num">{% if row.net_units is not none %}{{ '%+.2fu'|format(row.net_units) }}{% else %}—{% endif %}</td>
+          <td class="num">{% if row.clv is not none %}{{ '%.1f%%'|format(row.clv * 100) }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="section" aria-label="Football performance notes">
+  <div class="notice">
+    <h3>Reading these figures</h3>
+    <p>
+      {% if view.streak %}Current streak: {{ view.streak }}. {% endif %}
+      {% if view.clv_label %}Closing-line value: {{ view.clv_label }}.{% else %}Closing-line evidence is not yet available.{% endif %}
+      Positive CLV over a small sample is not proof of profitability.
+    </p>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
