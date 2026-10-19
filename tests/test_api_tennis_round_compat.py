@@ -156,3 +156,37 @@ def test_unknown_qualifying_stage_fails_closed():
     )
 
     assert "round_code" not in normalized
+
+
+def test_window_truncated_qualifying_final_is_not_labelled_q1():
+    # Production regression (2026-10-12): Monday runs saw only next week's
+    # Challenger qualifying finals ("Jinan - Final", "Olbia - Final", ...);
+    # the qualifying first round was played before the fetch window, so depth
+    # measurement made every qualifying final "Q1".
+    normalized = normalize_api_tennis_fixture_rounds(
+        [
+            _fixture(
+                event_key="q-final-a",
+                tournament_key="7001",
+                tournament_round="Jinan - Final",
+                event_qualification="True",
+            ),
+            _fixture(
+                event_key="q-final-b",
+                tournament_key="7001",
+                tournament_round="Jinan - Final",
+                event_qualification="True",
+            ),
+        ]
+    )
+
+    assert all("round_code" not in row for row in normalized)
+    assert all(row["qualifying_flag"] is True for row in normalized)
+
+
+def test_main_draw_final_alone_still_maps_to_f():
+    [normalized] = normalize_api_tennis_fixture_rounds(
+        [_fixture(tournament_round="Jinan - Final", event_qualification="False")]
+    )
+
+    assert normalized["round_code"] == "F"

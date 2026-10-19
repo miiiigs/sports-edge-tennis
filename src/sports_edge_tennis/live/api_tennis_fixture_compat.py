@@ -232,6 +232,11 @@ def normalize_api_tennis_fixture_rounds(
     the code is derived from the bracket depth relative to the final, so a
     two-round qualifying yields ``Q1`` (first round) and ``Q2`` (final round)
     instead of ``SF``/``F``.
+
+    Depth is only measured within the fetched window. When the qualifying final
+    is the only visible round of its bracket (earlier rounds were played before
+    the window), its stage number cannot be proven, so the code stays missing
+    rather than being mislabelled ``Q1``.
     """
     rows = [dict(fixture) for fixture in fixtures]
 
@@ -286,7 +291,7 @@ def normalize_api_tennis_fixture_rounds(
             continue
         depth = _MAIN_DRAW_ROUND_DEPTH.get(base_code)
         total = group_depth.get(_qualifying_group_key(row), 0)
-        if depth is None or total == 0:
+        if depth is None or total <= 1:
             print(
                 "ROUND_QUALIFYING_STAGE_UNRESOLVED "
                 f"event_key={_text(row.get('event_key')) or '-'} "
