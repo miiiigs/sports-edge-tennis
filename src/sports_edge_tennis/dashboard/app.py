@@ -17,6 +17,7 @@ from sports_edge_tennis.clv import ClvSummary, load_clv_summary
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.demo import (
     build_demo_market_decisions,
+    build_demo_guide_odds,
     build_demo_state,
 )
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
@@ -228,7 +229,7 @@ def _load_guide_odds(
 ):
     """Independent read-only offered-price lookup, not Value Bet qualification."""
     if DEMO_MODE:
-        return {}
+        return build_demo_guide_odds()
     conn = _connect()
     if conn is None:
         return {}
