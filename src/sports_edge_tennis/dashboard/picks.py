@@ -98,6 +98,8 @@ class PickCard:
     guide_quote_observed_at: datetime | None = None
     guide_odds_source: str | None = None
     guide_quote_after_issue: bool = False
+    guide_quote_available_at: datetime | None = None
+    guide_snapshot_id: int | None = None
     result_status: str | None = None
 
     @property
@@ -118,7 +120,7 @@ class PickCard:
         if self.guide_odds_price is None:
             return "No verified price for this player and match."
         if self.guide_quote_after_issue:
-            return "Bookmaker quote observed after the pick was issued (guide only)."
+            return "Quote first available after the pick was issued (guide only; not publication-time odds)."
         if self.guide_odds_source == "ISSUED_BET":
             return "Original issued bet price; not a model probability."
         return "Bookmaker quote matched to the original pick and player."
@@ -409,6 +411,8 @@ def _guide_fields(
             "guide_odds_price": guide_quote.decimal_price,
             "guide_bookmaker": guide_quote.bookmaker_code,
             "guide_quote_observed_at": guide_quote.observed_at,
+            "guide_quote_available_at": guide_quote.available_at,
+            "guide_snapshot_id": guide_quote.odds_snapshot_id,
             "guide_odds_source": "OFFERED_LIVE_PROVIDER",
             "guide_quote_after_issue": guide_quote.issued_before_quote,
         }
