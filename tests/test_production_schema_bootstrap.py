@@ -215,9 +215,18 @@ def test_live_operational_health_cycle_forwards_failed_slates(monkeypatch, capsy
         cycle_started_at=datetime(2026, 9, 19, 2, 0, tzinfo=UTC),
         live_status=0,
         failed_slates=1,
+        fixture_warning_slates=2,
+        fixture_unknown_status_rows=51,
+        fixture_unverified_rejection_rows=53,
+        fixture_out_of_scope_empty_slates=1,
+        fixture_no_source_slates=0,
     )
 
     assert captured["failed_slates"] == 1
+    assert captured["fixture_warning_slates"] == 2
+    assert captured["fixture_unknown_status_rows"] == 51
+    assert captured["fixture_unverified_rejection_rows"] == 53
+    assert captured["fixture_out_of_scope_empty_slates"] == 1
     assert "LIVE_OPERATIONAL_HEALTH status=WARNING" in capsys.readouterr().out
 
 
