@@ -67,10 +67,12 @@ def classify_slate_fixture_coverage(
     )
     # If a source only supplies aggregate rejected count, it is NOT evidence
     # those rejections were benign and should never be silently ignored.
-    unmatched = max(0, rejected - sum(reasons.values()))
+    reason_count_total = sum(reasons.values())
+    unmatched = max(0, rejected - reason_count_total)
     unverified += unmatched
 
-    if seen != ingested + rejected or targets > ingested:
+    if (seen != ingested + rejected or targets > ingested
+            or reason_count_total > rejected):
         status, reason = "WARNING", "RECONCILIATION_MISMATCH"
     elif unknown_status_rows:
         status, reason = "WARNING", "UNSUPPORTED_EVENT_STATUS"
