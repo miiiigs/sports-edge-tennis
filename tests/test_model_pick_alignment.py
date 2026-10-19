@@ -24,6 +24,7 @@ from test_performance_regime_cohorting import (
 
 from sports_edge_tennis.agents.contracts import AGENT_PROBABILITY_REPRESENTATIONS
 from sports_edge_tennis.dashboard import model_pick_history
+from sports_edge_tennis.dashboard.read_model import get_issued_day_state
 from sports_edge_tennis.dashboard.model_pick_history import (
     DailyModelPickSummary,
     ModelPickResultsView,
@@ -370,3 +371,50 @@ def test_aligned_excludes_sub_60_manager_consensus(
     # The original first-production ledger still records the pick unchanged.
     original = load_daily_model_pick_summaries(db)
     assert any(row.decision_date == day for row in original)
+
+
+def test_today_uses_issued_player_side_and_start_after_provider_reschedule_or_swap(
+    db: psycopg.Connection,
+) -> None:
+    """Current provider corrections cannot silently rewrite a historic pick."""
+    start = datetime(2026, 10, 19, 15, 0, tzinfo=UTC)
+    match_id = _seed_pick_at_start(db, label="IssuedParity", start=start)
+    old = db.execute(
+        """
+        SELECT player_1_id, player_2_id
+        FROM match_versions WHERE match_id = %s
+        ORDER BY match_version_id ASC LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    assert old is not None
+    p1, p2 = old
+    correction_at = start - timedelta(hours=1)  # after original pick
+    rescheduled_start = start + timedelta(hours=2)
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at,
+            tour_scope, competition_tier, surface, round_code,
+            best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32',
+                3, FALSE, 'SCHEDULED', %s, %s, %s)
+        """,
+        (match_id, p2, p1, rescheduled_start,
+         correction_at, correction_at, correction_at),
+    )
+
+    state = get_issued_day_state(db, date(2026, 10, 19))
+    assert state.kind == "POPULATED"
+    assert len(state.matches) == 1
+    issued = state.matches[0]
+    assert issued.match_id == match_id
+    assert issued.player_1 == "IssuedParity One"
+    assert issued.player_2 == "IssuedParity Two"
+    assert issued.selected_side == 1
+    assert issued.selected_player == "IssuedParity One"
+    assert issued.scheduled_start == start
+    assert issued.consensus_probability is not None
+    assert issued.consensus_probability >= Decimal("0.60")
