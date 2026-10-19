@@ -23,9 +23,11 @@ def _result(slate_date: date, *, prediction_run_id: int | None, targets: int = 0
     return SimpleNamespace(
         slate_date=slate_date.isoformat(),
         status="LIVE_MVP_SUCCESS" if targets else "LIVE_MVP_SUCCESS_EMPTY_SLATE",
-        fixture_count=10 if targets else 0,
-        fixture_rows_seen=10 if targets else 0,
-        fixture_rows_ingested=10 if targets else 0,
+        # Keep the fixture counts coherent with the prediction targets.
+        # The old mock had 29 targets from only 10 ingested fixtures.
+        fixture_count=targets,
+        fixture_rows_seen=targets,
+        fixture_rows_ingested=targets,
         fixture_rows_rejected=0,
         fixture_rejection_reasons=(),
         target_count=targets,
@@ -93,7 +95,7 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
             "fixture_unverified_rejection_rows": 0,
             "fixture_out_of_scope_empty_slates": 0,
             "fixture_no_source_slates": 1,
-            "fixtures": 10,
+            "fixtures": 29,
             "targets": 29,
             "consensus": 7,
             "price_candidates": 0,
