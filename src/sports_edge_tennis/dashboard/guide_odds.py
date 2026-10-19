@@ -21,9 +21,24 @@ import psycopg
 
 from sports_edge_tennis.dashboard.aligned_model_picks import (
     ALIGNED_PICK_DATE_FILTER,
-    PIT_MATCH_START_LATERAL,
     aligned_production_model_picks_cte,
 )
+
+
+# Same issued-at point-in-time fixture version as the aligned Model Picks
+# ledger, with the player orientation retained for a fail-closed drift check.
+ISSUED_MATCH_VERSION_LATERAL = """
+    LEFT JOIN LATERAL (
+        SELECT mv0.match_start_at, mv0.player_1_id, mv0.player_2_id
+        FROM match_versions mv0
+        WHERE mv0.match_id = p.match_id
+          AND mv0.as_of <= p.picked_at
+          AND mv0.source_observed_at <= p.picked_at
+        ORDER BY mv0.as_of DESC, mv0.source_observed_at DESC,
+                 mv0.match_version_id DESC
+        LIMIT 1
+    ) mv ON TRUE
+"""
 
 
 @dataclass(frozen=True)
@@ -66,7 +81,15 @@ def get_issued_guide_odds(
             g.odds_snapshot_id,
             g.source_observed_at > p.picked_at AS quote_after_issue
         FROM aligned_model_picks p
-        {PIT_MATCH_START_LATERAL}
+        {ISSUED_MATCH_VERSION_LATERAL}
+        LEFT JOIN LATERAL (
+            SELECT lv.player_1_id, lv.player_2_id
+            FROM match_versions lv
+            WHERE lv.match_id = p.match_id
+            ORDER BY lv.as_of DESC, lv.source_observed_at DESC,
+                     lv.match_version_id DESC
+            LIMIT 1
+        ) latest_mv ON TRUE
         LEFT JOIN LATERAL (
             SELECT
                 o.decimal_price, o.bookmaker_code,
@@ -82,6 +105,10 @@ def get_issued_guide_odds(
                        WHEN p.selected_side = 2 THEN 'PLAYER_2'
                        ELSE 'INVALID' END
               AND p.picked_at < mv.match_start_at
+              -- Refuse to attach an old PLAYER_1/PLAYER_2 quote to a
+              -- currently-rendered player if provider orientation changed.
+              AND mv.player_1_id = latest_mv.player_1_id
+              AND mv.player_2_id = latest_mv.player_2_id
               AND o.source_observed_at <= CURRENT_TIMESTAMP
               AND o.as_of <= CURRENT_TIMESTAMP
               AND o.source_observed_at <= mv.match_start_at
