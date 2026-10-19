@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -19,6 +20,7 @@ from sports_edge_tennis.dashboard.demo import (
     build_demo_state,
 )
 from sports_edge_tennis.dashboard.market_overlay import get_market_decisions_for_run
+from sports_edge_tennis.dashboard.guide_odds import get_issued_guide_odds
 from sports_edge_tennis.dashboard.pagination import (
     DEFAULT_PAGE_SIZE,
     build_page_url,
@@ -58,6 +60,7 @@ from sports_edge_tennis.performance.regimes import (
 )
 
 _BASE_DIR = Path(__file__).resolve().parent
+logger = logging.getLogger(__name__)
 
 _TIMEZONE_COOKIE_MAX_AGE = 365 * 24 * 60 * 60
 
@@ -220,6 +223,27 @@ def _load_issued_market_overlay(
         conn.close()
 
 
+def _load_guide_odds(
+    requested_date: date, tz: DashboardTimezone | None = None
+):
+    """Independent read-only offered-price lookup, not Value Bet qualification."""
+    if DEMO_MODE:
+        return {}
+    conn = _connect()
+    if conn is None:
+        return {}
+    try:
+        return get_issued_guide_odds(
+            conn, decision_date=requested_date, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
+    except psycopg.Error:
+        # Missing quote evidence must not prevent Model Picks from rendering.
+        logger.exception("Guide odds lookup unavailable; displaying missing prices")
+        return {}
+    finally:
+        conn.close()
+
+
 def _load_market_overlay(prediction_run_id: int | None):
     if DEMO_MODE:
         return build_demo_market_decisions()
@@ -353,6 +377,16 @@ def _pick_payload(pick) -> dict:
         ),
         "is_actionable_bet": pick.is_actionable_bet,
         "offered_price": str(pick.offered_price) if pick.offered_price else None,
+        "guide_odds": (
+            str(pick.guide_odds_price) if pick.guide_odds_price is not None else None
+        ),
+        "guide_bookmaker": pick.guide_bookmaker,
+        "guide_quote_observed_at": (
+            pick.guide_quote_observed_at.isoformat()
+            if pick.guide_quote_observed_at else None
+        ),
+        "guide_odds_source": pick.guide_odds_source,
+        "guide_quote_after_issue": pick.guide_quote_after_issue,
         "bookmaker": pick.bookmaker,
         "edge_pct": pick.edge_text,
         "stake": pick.stake_text,
@@ -381,7 +415,9 @@ def today(request: Request, date: str | None = Query(default=None)):
 
     state = _load_state(requested_date, tz)
     market_by_match = _load_issued_market_overlay(requested_date, tz)
-    today_picks = build_today_picks(state.matches, market_by_match)
+    today_picks = build_today_picks(
+        state.matches, market_by_match, _load_guide_odds(requested_date, tz)
+    )
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
         request,
@@ -489,7 +525,9 @@ def api_today(request: Request, date: str | None = Query(default=None)):
     market_by_match = _load_issued_market_overlay(requested_date, tz)
     upcoming = _load_upcoming()
     operational_health = _load_live_health()
-    today_picks = build_today_picks(state.matches, market_by_match)
+    today_picks = build_today_picks(
+        state.matches, market_by_match, _load_guide_odds(requested_date, tz)
+    )
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
         # Canonical timestamps stay timezone-aware ISO-8601 UTC. This block only
