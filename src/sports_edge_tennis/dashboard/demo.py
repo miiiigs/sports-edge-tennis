@@ -10,6 +10,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sports_edge_tennis.dashboard.market_overlay import MarketDecisionView
+from sports_edge_tennis.dashboard.guide_odds import GuideOddsQuote
 from sports_edge_tennis.dashboard.read_model import AgentView, MatchView, RunState
 
 
@@ -120,5 +121,26 @@ def build_demo_market_decisions() -> dict[int, MarketDecisionView]:
             min_acceptable_odds=Decimal("1.86"),
             suggested_stake_fraction=None,
             published_at=None,
+        ),
+    }
+
+
+def build_demo_guide_odds() -> dict[int, GuideOddsQuote]:
+    """Preview-only source-priced, non-bet Model Pick and missing price state.
+
+    These samples are clearly marked DEMO in the shell; they do not assert
+    that any such price was observed in production or persisted in the DB.
+    """
+    when = datetime(2026, 9, 7, 14, 10, tzinfo=timezone.utc)
+    return {
+        2: GuideOddsQuote(
+            match_id=2,
+            selected_side=1,
+            decimal_price=Decimal("1.64"),
+            bookmaker_code="UNIBET",
+            observed_at=when,
+            odds_snapshot_id=9002,
+            issued_before_quote=True,
+            available_at=when,
         ),
     }

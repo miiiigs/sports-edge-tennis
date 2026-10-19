@@ -1128,3 +1128,63 @@ a.pagination-link:hover {
     white-space: normal;
   }
 }
+
+/* Brian Model Picks mobile scannability */
+/* Scoped to /today: the archive and operational pages retain their layouts. */
+#today-pick-list .pick-meta {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+#today-pick-list .pick-details {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+#today-pick-list .pick-details summary {
+  cursor: pointer;
+  font-size: var(--step-2);
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+#today-pick-list .metric-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+#today-pick-list .metric {
+  flex: 1 1 40%;
+}
+@media (max-width: 420px) {
+  #today-pick-list .pick-card {
+    padding: 14px;
+    gap: 11px;
+  }
+  #today-pick-list .pick-top {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+  #today-pick-list .pick-identity {
+    min-width: 0;
+    flex: 1 1 58%;
+  }
+  #today-pick-list .pick-probability {
+    min-width: 0;
+    flex: 0 1 42%;
+    text-align: right;
+  }
+  #today-pick-list .pick-player {
+    font-size: var(--step-4);
+  }
+  #today-pick-list .prob-value {
+    font-size: 1.875rem;
+  }
+  #today-pick-list .prob-label {
+    letter-spacing: 0;
+    font-size: var(--step-1);
+    overflow-wrap: anywhere;
+  }
+  #today-pick-list .metric-row {
+    padding-top: 10px;
+  }
+}

@@ -1,13 +1,14 @@
 {% extends "base.html" %}
 {% set active_nav = 'today' %}
-{% block title %}Today's Picks — Sports Edge Tennis{% endblock %}
+{% block title %}Model Picks — Sports Edge Tennis{% endblock %}
 
 {% block content %}
 <header class="page-header">
-  <h1 class="page-title">Today's Picks</h1>
+  <h1 class="page-title">Model Picks</h1>
   <p class="page-subtitle">
     {{ selected_date.strftime('%A, %d %B %Y') }}{% if not today_picks.is_empty %} · {{ today_picks.count_text }}{% endif %}
   </p>
+  <p class="page-note">Model Picks are predictions, not necessarily Value Bets. Guide odds are bookmaker prices for the selected player when verified — even if the price offers no model value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
   <p class="page-note">
     <span class="health-inline"><span class="health-dot" aria-hidden="true"></span>System healthy</span>
@@ -21,7 +22,7 @@
     {% if operational_health.status == 'ERROR' %}
     Live data collection reported errors. Today's picks may be incomplete.
     {% else %}
-    Live data is older than expected. Today's picks may not reflect the latest prices.
+    Live data coverage or freshness requires attention. Today's picks may be incomplete or out of date.
     {% endif %}
     Checked {{ tz_time(operational_health.checked_at) }}.
   </span>
@@ -50,19 +51,19 @@
 {% else %}
 <div class="weak-filter-bar" aria-label="Weak pick display controls">
   <button class="weak-filter-toggle" type="button" id="weak-filter-toggle" aria-pressed="false">
-    Filter weak bets: <strong id="weak-filter-state">Disabled</strong>
+    Filter lower-confidence picks: <strong id="weak-filter-state">Disabled</strong>
   </button>
   <span class="weak-filter-note">Weak = below 60% Manager win probability, or below 60% A1/A2 tracking average for wide-spread picks. Display only.</span>
 </div>
 
 <section class="pick-list" id="today-pick-list" aria-label="Today's picks">
   {% for pick in today_picks.picks %}
-  <article class="pick-card{% if pick.kind == 'VALUE_BET' %} is-value{% elif pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
+  <article class="pick-card{% if pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
     <div class="pick-top">
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
         <p class="pick-opponent">vs {{ pick.opponent }}</p>
-        <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }}</p>
+        <p class="pick-context">{{ tz_datetime(pick.scheduled_start, '%d %b %Y %H:%M') }} · {{ pick.tournament }}</p>
       </div>
       <div class="pick-probability">
         {% if pick.is_wide_spread %}
@@ -75,69 +76,62 @@
     </div>
 
     <div class="pick-meta" style="align-items: flex-start;">
-      <span class="badge badge-{{ 'value' if pick.kind == 'VALUE_BET' else ('blocked' if pick.kind == 'BLOCKED' else 'model') }}">{{ pick.kind_label }}</span>
-      {% if pick.is_weak %}
-      <span class="badge badge-weak" title="{{ pick.weak_reason or 'Weak confidence' }}">WEAK</span>
+      <span class="badge badge-model">MODEL PICK</span>
+      {% if pick.is_wide_spread %}
+      <span class="badge badge-weak">A1/A2 tracking · not Manager consensus</span>
       {% endif %}
-      <p class="pick-summary">{{ pick.kind_summary }}</p>
-    </div>
-
-    {% if pick.is_wide_spread %}
-    <div class="metric-row">
-      <div class="metric">
-        <span class="metric-label">A1 confidence</span>
-        <span class="metric-value">{{ pick.primary_a1_probability_display_text }}</span>
-      </div>
-      <div class="metric">
-        <span class="metric-label">A2 confidence</span>
-        <span class="metric-value">{{ pick.primary_a2_probability_display_text }}</span>
-      </div>
-      <div class="metric">
-        <span class="metric-label">Confidence spread</span>
-        <span class="metric-value">{{ pick.primary_probability_spread_text }}</span>
-      </div>
-      <div class="metric">
-        <span class="metric-label">Manager gate</span>
-        <span class="metric-value">≤ 6.00%</span>
-      </div>
-      <div class="metric">
-        <span class="metric-label">Bet status</span>
-        <span class="metric-value">Tracking only · not market-qualified</span>
-      </div>
-    </div>
-    {% endif %}
-
-    {% if pick.is_actionable_bet %}
-    <div class="metric-row">
-      {% if pick.offered_price %}
-      <div class="metric">
-        <span class="metric-label">Odds</span>
-        <span class="metric-value">{{ pick.offered_price }}</span>
-      </div>
-      {% endif %}
-      {% if pick.bookmaker %}
-      <div class="metric">
-        <span class="metric-label">Bookmaker</span>
-        <span class="metric-value">{{ pick.bookmaker }}</span>
-      </div>
-      {% endif %}
-      {% if pick.stake_text %}
-      <div class="metric">
-        <span class="metric-label">Stake</span>
-        <span class="metric-value">{{ pick.stake_text }}</span>
-      </div>
+      {% if pick.kind == 'BLOCKED' %}
+      <span class="badge badge-blocked">Market veto · not betting</span>
       {% endif %}
     </div>
-    {% endif %}
+    <div class="metric-row" aria-label="Guide odds and result">
+      <div class="metric">
+        <span class="metric-label">Guide odds · fractional</span>
+        <span class="metric-value">{{ pick.guide_odds_fractional_text }}</span>
+        {% if pick.guide_odds_price is not none %}
+        <span class="stat-note">Decimal {{ pick.guide_odds_display_text }} · Market implied {{ pick.guide_market_implied_probability_text }}</span>
+        {% endif %}
+        {% if pick.guide_bookmaker %}
+        <span class="stat-note">{{ pick.guide_bookmaker }}</span>
+        {% endif %}
+        {% if pick.guide_quote_observed_at %}
+        <span class="stat-note">Quote {{ tz_datetime(pick.guide_quote_observed_at) }}</span>
+        {% endif %}
+        {% if pick.guide_quote_after_issue %}
+        <span class="stat-note">First available after selection · guide only</span>
+        {% endif %}
+        {% if pick.guide_odds_price is none %}
+        <span class="stat-note">No verified price for this match and player</span>
+        {% endif %}
+      </div>
+      <div class="metric">
+        <span class="metric-label">Result</span>
+        <span class="metric-value">{{ pick.result_display_text }}</span>
+        {% if pick.result_status is none %}
+        <span class="stat-note">Result not yet verified</span>
+        {% endif %}
+      </div>
+    </div>
+    <details class="pick-details">
+      <summary>Prediction details</summary>
+      <p class="stat-note">Fractional odds describe potential payout, not how many people placed bets. Market-implied percentage comes from bookmaker odds, not the model.</p>
+      <p class="section-note" style="margin-top: 12px;">{{ pick.kind_summary }}</p>
+      <p class="stat-note">{{ pick.guide_odds_note }}</p>
+      {% if pick.guide_quote_available_at %}
+      <p class="stat-note">Price available at: {{ tz_datetime(pick.guide_quote_available_at) }}</p>
+      {% endif %}
+      {% if pick.guide_snapshot_id %}
+      <p class="stat-note">Price evidence #{{ pick.guide_snapshot_id }}</p>
+      {% endif %}
+      {% if pick.is_wide_spread %}
+      <p class="stat-note">A1 {{ pick.primary_a1_probability_display_text }} · A2 {{ pick.primary_a2_probability_display_text }} · Spread {{ pick.primary_probability_spread_text }}. This tracking average is not a calibrated Manager probability.</p>
+      {% endif %}
+    </details>
   </article>
   {% endfor %}
 </section>
 
-{% if today_picks.value_bet_count %}
-<p class="section-note" style="margin-top: 18px;">
-  Full market detail for the {{ today_picks.value_bet_count }} value bet{{ '' if today_picks.value_bet_count == 1 else 's' }} is on the <a href="/value">Value</a> page.
-</p>
-{% endif %}
+
 {% endif %}
 
 {% set display_no_bet_matches = no_bet_matches | rejectattr('reason_code', 'equalto', 'AGENT3_ABSTENTION_SPREAD_EXCEEDED') | list %}
