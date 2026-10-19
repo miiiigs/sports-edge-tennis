@@ -92,3 +92,23 @@ def test_negative_counts_fail_closed():
     with pytest.raises(ValueError):
         _classify(seen=1, ingested=0, rejected=1, targets=0,
                   reasons=(("unsupported_event_status", -1),))
+
+
+def test_overreported_out_of_scope_reason_cannot_hide_behind_healthy_targets():
+    # Ten observed, eight ingested, two rejected: a scope reason of three
+    # is contradictory even when five valid targets exist on the same date.
+    r = _classify(
+        seen=10, ingested=8, rejected=2, targets=5,
+        reasons=(("out_of_scope_event_type", 3),),
+    )
+    assert r.status == "WARNING"
+    assert r.reason == "RECONCILIATION_MISMATCH"
+
+
+def test_overreported_out_of_scope_reason_is_not_legitimate_empty_slate():
+    r = _classify(
+        seen=3, ingested=0, rejected=3, targets=0,
+        reasons=(("out_of_scope_event_type", 4),),
+    )
+    assert r.status == "WARNING"
+    assert r.reason == "RECONCILIATION_MISMATCH"
