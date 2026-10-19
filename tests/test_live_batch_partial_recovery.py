@@ -88,6 +88,11 @@ def test_later_api_tennis_failure_does_not_discard_successful_market_run(monkeyp
         {
             "slates": 2,
             "failed_slates": 1,
+            "fixture_warning_slates": 0,
+            "fixture_unknown_status_rows": 0,
+            "fixture_unverified_rejection_rows": 0,
+            "fixture_out_of_scope_empty_slates": 0,
+            "fixture_no_source_slates": 1,
             "fixtures": 10,
             "targets": 29,
             "consensus": 7,
