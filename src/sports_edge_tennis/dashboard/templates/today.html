@@ -8,6 +8,7 @@
   <p class="page-subtitle">
     {{ selected_date.strftime('%A, %d %B %Y') }}{% if not today_picks.is_empty %} · {{ today_picks.count_text }}{% endif %}
   </p>
+  <p class="page-note">Model Picks are predictions, not necessarily Value Bets. Guide odds are bookmaker prices for the selected player when verified — even if the price offers no model value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
   <p class="page-note">
     <span class="health-inline"><span class="health-dot" aria-hidden="true"></span>System healthy</span>
@@ -85,8 +86,11 @@
     </div>
     <div class="metric-row" aria-label="Guide odds and result">
       <div class="metric">
-        <span class="metric-label">Guide odds</span>
-        <span class="metric-value">{{ pick.guide_odds_display_text }}</span>
+        <span class="metric-label">Guide odds · fractional</span>
+        <span class="metric-value">{{ pick.guide_odds_fractional_text }}</span>
+        {% if pick.guide_odds_price is not none %}
+        <span class="stat-note">Decimal {{ pick.guide_odds_display_text }} · Market implied {{ pick.guide_market_implied_probability_text }}</span>
+        {% endif %}
         {% if pick.guide_bookmaker %}
         <span class="stat-note">{{ pick.guide_bookmaker }}</span>
         {% endif %}
@@ -110,6 +114,7 @@
     </div>
     <details class="pick-details">
       <summary>Prediction details</summary>
+      <p class="stat-note">Fractional odds describe potential payout, not how many people placed bets. Market-implied percentage comes from bookmaker odds, not the model.</p>
       <p class="section-note" style="margin-top: 12px;">{{ pick.kind_summary }}</p>
       <p class="stat-note">{{ pick.guide_odds_note }}</p>
       {% if pick.guide_quote_available_at %}
