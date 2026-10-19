@@ -29,6 +29,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sports_edge_tennis.dashboard import presentation as pres
+from sports_edge_tennis.dashboard.guide_odds import GuideOddsQuote
 from sports_edge_tennis.runner.contracts import AGENT_1, AGENT_2, AGENT_3
 
 # Internal classifications from pres.recommendation_classification, grouped into
@@ -92,6 +93,28 @@ class PickCard:
     primary_a2_probability: Decimal | None = None
     primary_average_probability: Decimal | None = None
     primary_probability_spread: Decimal | None = None
+    guide_odds_price: Decimal | None = None
+    guide_bookmaker: str | None = None
+    guide_quote_observed_at: datetime | None = None
+    guide_odds_source: str | None = None
+    guide_quote_after_issue: bool = False
+
+    @property
+    def guide_odds_display_text(self) -> str:
+        """A market quote, not model-implied odds."""
+        if self.guide_odds_price is None:
+            return "Unavailable"
+        return f"{Decimal(self.guide_odds_price):.2f}"
+
+    @property
+    def guide_odds_note(self) -> str:
+        if self.guide_odds_price is None:
+            return "No verified price for this player and match."
+        if self.guide_quote_after_issue:
+            return "Bookmaker quote observed after the pick was issued (guide only)."
+        if self.guide_odds_source == "ISSUED_BET":
+            return "Original issued bet price; not a model probability."
+        return "Bookmaker quote matched to the original pick and player."
 
     @property
     def is_wide_spread(self) -> bool:
@@ -362,7 +385,43 @@ def wide_spread_primary_details(
     )
 
 
-def build_pick_card(match, decision) -> PickCard | None:
+def _guide_fields(
+    selected_side: int | None,
+    decision,
+    guide_quote: GuideOddsQuote | None,
+) -> dict:
+    """Fail closed on a side mismatch, never synthesize a price from probability."""
+    if (
+        guide_quote is not None
+        and guide_quote.selected_side == selected_side
+        and guide_quote.decimal_price > 1
+    ):
+        return {
+            "guide_odds_price": guide_quote.decimal_price,
+            "guide_bookmaker": guide_quote.bookmaker_code,
+            "guide_quote_observed_at": guide_quote.observed_at,
+            "guide_odds_source": "OFFERED_LIVE_PROVIDER",
+            "guide_quote_after_issue": guide_quote.issued_before_quote,
+        }
+    if (
+        decision is not None
+        and decision.decision_status == "BET"
+        and decision.selected_side == selected_side
+        and decision.market_decimal_price is not None
+        and decision.market_decimal_price > 1
+    ):
+        return {
+            "guide_odds_price": decision.market_decimal_price,
+            "guide_bookmaker": decision.price_bookmaker_code,
+            "guide_quote_observed_at": None,
+            "guide_odds_source": "ISSUED_BET",
+        }
+    return {}
+
+
+def build_pick_card(
+    match, decision, guide_quote: GuideOddsQuote | None = None
+) -> PickCard | None:
     """Build one card, or ``None`` when the match is not a client-visible pick.
 
     ``match`` is a ``read_model.MatchView``; ``decision`` is an optional
@@ -390,6 +449,7 @@ def build_pick_card(match, decision) -> PickCard | None:
             primary_a2_probability=a2_probability,
             primary_average_probability=average_probability,
             primary_probability_spread=spread,
+            **_guide_fields(selected_side, None, guide_quote),
         )
 
     decision_status = decision.decision_status if decision is not None else None
@@ -423,10 +483,11 @@ def build_pick_card(match, decision) -> PickCard | None:
         sharp_reference_price=decision.sharp_reference_price if decision else None,
         market_reason_code=decision.reason_code if decision else None,
         published_at=decision.published_at if decision else None,
+        **_guide_fields(match.selected_side, decision, guide_quote),
     )
 
 
-def build_today_picks(matches, market_by_match) -> TodayPicks:
+def build_today_picks(matches, market_by_match, guide_by_match=None) -> TodayPicks:
     """Filter an evaluated slate down to the client-visible picks.
 
     ``matches`` is every evaluated target in the run. Manager consensus picks
@@ -434,8 +495,13 @@ def build_today_picks(matches, market_by_match) -> TodayPicks:
     case. All other Manager NO_BET records remain off the primary pick list.
     """
     cards: list[PickCard] = []
+    guide_by_match = guide_by_match or {}
     for match in matches:
-        card = build_pick_card(match, market_by_match.get(match.match_id))
+        card = build_pick_card(
+            match,
+            market_by_match.get(match.match_id),
+            guide_by_match.get(match.match_id),
+        )
         if card is not None:
             cards.append(card)
 
