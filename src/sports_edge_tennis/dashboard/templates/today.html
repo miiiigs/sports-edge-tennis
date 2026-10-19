@@ -94,7 +94,7 @@
         <span class="stat-note">Quote {{ tz_datetime(pick.guide_quote_observed_at) }}</span>
         {% endif %}
         {% if pick.guide_quote_after_issue %}
-        <span class="stat-note">Observed after selection · guide only</span>
+        <span class="stat-note">First available after selection · guide only</span>
         {% endif %}
         {% if pick.guide_odds_price is none %}
         <span class="stat-note">No verified price for this match and player</span>
@@ -112,6 +112,12 @@
       <summary>Prediction details</summary>
       <p class="section-note" style="margin-top: 12px;">{{ pick.kind_summary }}</p>
       <p class="stat-note">{{ pick.guide_odds_note }}</p>
+      {% if pick.guide_quote_available_at %}
+      <p class="stat-note">Price available at: {{ tz_datetime(pick.guide_quote_available_at) }}</p>
+      {% endif %}
+      {% if pick.guide_snapshot_id %}
+      <p class="stat-note">Price evidence #{{ pick.guide_snapshot_id }}</p>
+      {% endif %}
       {% if pick.is_wide_spread %}
       <p class="stat-note">A1 {{ pick.primary_a1_probability_display_text }} · A2 {{ pick.primary_a2_probability_display_text }} · Spread {{ pick.primary_probability_spread_text }}. This tracking average is not a calibrated Manager probability.</p>
       {% endif %}
