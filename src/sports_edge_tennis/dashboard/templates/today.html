@@ -21,7 +21,7 @@
     {% if operational_health.status == 'ERROR' %}
     Live data collection reported errors. Today's picks may be incomplete.
     {% else %}
-    Live data is older than expected. Today's picks may not reflect the latest prices.
+    Live data coverage or freshness requires attention. Today's picks may be incomplete or out of date.
     {% endif %}
     Checked {{ tz_time(operational_health.checked_at) }}.
   </span>
@@ -62,7 +62,7 @@
       <div class="pick-identity">
         <h2 class="pick-player">{{ pick.player }}</h2>
         <p class="pick-opponent">vs {{ pick.opponent }}</p>
-        <p class="pick-context">{{ tz_time(pick.scheduled_start) }} · {{ pick.tournament }}</p>
+        <p class="pick-context">{{ tz_datetime(pick.scheduled_start, '%d %b %Y %H:%M') }} · {{ pick.tournament }}</p>
       </div>
       <div class="pick-probability">
         {% if pick.is_wide_spread %}
