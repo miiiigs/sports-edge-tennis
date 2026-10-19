@@ -98,6 +98,13 @@ class PickCard:
     guide_quote_observed_at: datetime | None = None
     guide_odds_source: str | None = None
     guide_quote_after_issue: bool = False
+    result_status: str | None = None
+
+    @property
+    def result_display_text(self) -> str:
+        if self.result_status in {"WON", "LOST", "VOID", "PENDING"}:
+            return {"WON": "Won", "LOST": "Lost", "VOID": "Void", "PENDING": "Pending"}[self.result_status]
+        return "Unavailable"
 
     @property
     def guide_odds_display_text(self) -> str:
@@ -420,7 +427,8 @@ def _guide_fields(
 
 
 def build_pick_card(
-    match, decision, guide_quote: GuideOddsQuote | None = None
+    match, decision, guide_quote: GuideOddsQuote | None = None,
+    result_status: str | None = None,
 ) -> PickCard | None:
     """Build one card, or ``None`` when the match is not a client-visible pick.
 
@@ -450,6 +458,7 @@ def build_pick_card(
             primary_average_probability=average_probability,
             primary_probability_spread=spread,
             **_guide_fields(selected_side, None, guide_quote),
+            result_status=result_status,
         )
 
     decision_status = decision.decision_status if decision is not None else None
@@ -484,10 +493,13 @@ def build_pick_card(
         market_reason_code=decision.reason_code if decision else None,
         published_at=decision.published_at if decision else None,
         **_guide_fields(match.selected_side, decision, guide_quote),
+        result_status=result_status,
     )
 
 
-def build_today_picks(matches, market_by_match, guide_by_match=None) -> TodayPicks:
+def build_today_picks(
+    matches, market_by_match, guide_by_match=None, result_by_match=None
+) -> TodayPicks:
     """Filter an evaluated slate down to the client-visible picks.
 
     ``matches`` is every evaluated target in the run. Manager consensus picks
@@ -496,11 +508,13 @@ def build_today_picks(matches, market_by_match, guide_by_match=None) -> TodayPic
     """
     cards: list[PickCard] = []
     guide_by_match = guide_by_match or {}
+    result_by_match = result_by_match or {}
     for match in matches:
         card = build_pick_card(
             match,
             market_by_match.get(match.match_id),
             guide_by_match.get(match.match_id),
+            result_by_match.get(match.match_id),
         )
         if card is not None:
             cards.append(card)
