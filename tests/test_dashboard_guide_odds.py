@@ -294,3 +294,51 @@ def test_real_postgres_quote_has_match_side_source_and_receipt_provenance(db):
     # reoriented/ambiguous fixture identity.
     after_swap = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
     assert match_id not in after_swap
+
+
+@pytest.mark.parametrize(
+    ("decimal_odds", "fractional_odds", "market_implied"),
+    [
+        ("1.01", "1/100", "99.0%"),
+        ("1.50", "1/2", "66.7%"),
+        ("1.64", "16/25", "61.0%"),
+        ("2.50", "3/2", "40.0%"),
+        ("4.00", "3/1", "25.0%"),
+    ],
+)
+def test_observed_fractional_and_decimal_guide_odds_are_consistent(
+    decimal_odds, fractional_odds, market_implied
+):
+    (pick,) = build_today_picks(
+        [_match()], {}, {11: _quote(price=decimal_odds)}
+    ).picks
+    assert pick.kind == "MODEL_PICK"
+    assert not pick.is_actionable_bet
+    assert pick.guide_odds_fractional_text == fractional_odds
+    assert pick.guide_odds_display_text == f"{Decimal(decimal_odds):.2f}"
+    assert pick.guide_market_implied_probability_text == market_implied
+
+
+def test_fractional_guide_unavailable_without_verified_bookmaker_price():
+    (pick,) = build_today_picks([_match()], {}, {}).picks
+    assert pick.probability_display_text == "80%"
+    assert pick.guide_odds_fractional_text == "Unavailable"
+    assert pick.guide_market_implied_probability_text is None
+
+
+def test_fractional_odds_in_mobile_html_and_today_api(monkeypatch):
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    client = TestClient(app)
+    html = client.get("/today")
+    assert html.status_code == 200
+    assert "Guide odds · fractional" in html.text
+    assert "not how many people placed bets" in html.text
+    assert "Decimal" in html.text
+    api = client.get("/api/dashboard/today")
+    assert api.status_code == 200
+    for pick in api.json()["picks"]:
+        assert "guide_odds_fractional" in pick
+        assert "guide_market_implied_probability" in pick
+        if pick["guide_odds"] is None:
+            assert pick["guide_odds_fractional"] is None
+            assert pick["guide_market_implied_probability"] is None
