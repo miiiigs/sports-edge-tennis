@@ -26,7 +26,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
+from fractions import Fraction
 
 from sports_edge_tennis.dashboard import presentation as pres
 from sports_edge_tennis.dashboard.guide_odds import GuideOddsQuote
@@ -114,6 +115,41 @@ class PickCard:
         if self.guide_odds_price is None:
             return "Unavailable"
         return f"{Decimal(self.guide_odds_price):.2f}"
+
+    @property
+    def guide_odds_fractional_text(self) -> str:
+        """Fractional payout from the *observed* decimal quote, not our model.
+
+        Example: a bookmaker price of 1.50 is 1/2 fractional (profit of
+        1 for each 2 staked); 1.01 is 1/100. Never manufacture a fraction
+        from the predicted probability when the bookmaker price is missing.
+        Fractional form is rounded to 1,000ths only for unusually
+        high-precision feeds; normal two-decimal prices convert exactly.
+        """
+        if self.guide_odds_price is None:
+            return "Unavailable"
+        price = Decimal(self.guide_odds_price)
+        if not price.is_finite() or price <= 1:
+            return "Unavailable"
+        net = Fraction(price - Decimal("1"))
+        fractional = net.limit_denominator(1000)
+        if fractional.numerator == 0:
+            return "Below 1/1000"
+        prefix = "≈" if fractional != net else ""
+        return f"{prefix}{fractional.numerator}/{fractional.denominator}"
+
+    @property
+    def guide_market_implied_probability_text(self) -> str | None:
+        """Bookmaker price implication before margin; NOT betting volume."""
+        if self.guide_odds_price is None:
+            return None
+        price = Decimal(self.guide_odds_price)
+        if not price.is_finite() or price <= 1:
+            return None
+        pct = (Decimal("100") / price).quantize(
+            Decimal("0.1"), rounding=ROUND_HALF_UP
+        )
+        return f"{pct}%"
 
     @property
     def guide_odds_note(self) -> str:

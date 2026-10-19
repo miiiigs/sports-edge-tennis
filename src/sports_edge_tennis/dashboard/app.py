@@ -410,6 +410,8 @@ def _pick_payload(pick) -> dict:
         "guide_odds": (
             str(pick.guide_odds_price) if pick.guide_odds_price is not None else None
         ),
+        "guide_odds_fractional": pick.guide_odds_fractional_text if pick.guide_odds_price is not None else None,
+        "guide_market_implied_probability": pick.guide_market_implied_probability_text,
         "guide_bookmaker": pick.guide_bookmaker,
         "guide_quote_observed_at": (
             pick.guide_quote_observed_at.isoformat()
