@@ -117,6 +117,15 @@ def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evide
     assert "o.as_of <= CURRENT_TIMESTAMP" in sql
 
 
+
+
+def test_read_only_guide_query_executes_on_postgres_schema(db):
+    """Catch schema/SQL contract errors without buying odds or changing rows."""
+    guide = get_issued_guide_odds(
+        db, decision_date=date(2026, 10, 19), timezone_name="UTC"
+    )
+    assert isinstance(guide, dict)
+
 def test_model_pick_receives_observed_guide_odds_without_becoming_value_bet():
     (pick,) = build_today_picks(
         [_match()], {}, {11: _quote()}, {11: "WON"}
