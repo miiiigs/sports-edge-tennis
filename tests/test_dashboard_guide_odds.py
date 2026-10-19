@@ -85,10 +85,10 @@ class _Connection:
 
 def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evidence():
     conn = _Connection([
-        (11, 1, Decimal("1.50"), "BET365", NOW, 912, False),
-        (12, 2, Decimal("2.75"), "UNIBET", NOW, 913, True),
-        (13, 1, None, None, None, None, None),
-        (14, 1, Decimal("0.90"), "BET365", NOW, 915, False),
+        (11, 1, Decimal("1.50"), "BET365", NOW, 912, NOW, False),
+        (12, 2, Decimal("2.75"), "UNIBET", NOW, 913, NOW, True),
+        (13, 1, None, None, None, None, None, None),
+        (14, 1, Decimal("0.90"), "BET365", NOW, 915, NOW, False),
     ])
     result = get_issued_guide_odds(
         conn, decision_date=date(2026, 10, 19), timezone_name="Asia/Manila"
@@ -109,12 +109,16 @@ def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evide
         "o.selection_type::text",
         "mv.player_1_id = latest_mv.player_1_id",
         "mv.player_2_id = latest_mv.player_2_id",
-        "o.source_observed_at <= mv.match_start_at",
+        "GREATEST(o.as_of, o.ingested_at, o.source_observed_at)",
+        "o.bookmaker_code IN ('BET365', 'UNIBET', '1XBET')",
+        "mv.player_1_id = latest_mv.player_1_id",
         "p.picked_at < mv.match_start_at",
     ):
         assert invariant in sql
     assert "o.source_observed_at <= p.picked_at + INTERVAL '24 hours'" in sql
     assert "o.as_of <= CURRENT_TIMESTAMP" in sql
+    assert "o.ingested_at <= CURRENT_TIMESTAMP" in sql
+    assert "g.ingested_at" in sql
 
 
 
