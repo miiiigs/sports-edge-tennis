@@ -329,7 +329,7 @@ def test_today_demo_populated(client, monkeypatch):
     resp = client.get("/today")
     assert resp.status_code == 200
     assert "Demo data" in resp.text
-    assert "Today's Picks" in resp.text
+    assert "Model Picks" in resp.text
     assert "Carlos Alcaraz" in resp.text
     # The demo slate evaluates five matches but only three are picks.
     assert "3 picks today" in resp.text
