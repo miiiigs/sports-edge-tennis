@@ -100,13 +100,15 @@ def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evide
     assert conn.params == ("Asia/Manila", "Asia/Manila", date(2026, 10, 19))
     sql = conn.sql
     for invariant in (
-        "aligned_production_model_picks_cte" if False else "aligned_model_picks AS",
+        "aligned_model_picks AS",
         "o.match_id = p.match_id",
         "o.source_system = 'OFFERED'",
         "o.odds_origin = 'LIVE_PROVIDER'",
         "o.market_type = 'MATCH_WINNER'",
         "o.market_status = 'OPEN'",
         "o.selection_type::text",
+        "mv.player_1_id = latest_mv.player_1_id",
+        "mv.player_2_id = latest_mv.player_2_id",
         "o.source_observed_at <= mv.match_start_at",
         "p.picked_at < mv.match_start_at",
     ):
