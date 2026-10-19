@@ -321,7 +321,7 @@ def _load_aligned_match_views(
     views: dict[int, MatchView] = {}
     for run_id, run_picks in by_run.items():
         match_ids = [pick.match_id for pick in run_picks]
-        base = _load_match_base(conn, match_ids)
+        base = _load_issued_match_base(conn, run_picks)
         predictions = _load_predictions(conn, run_id)
         manager = _load_manager(conn, run_id)
         sharp = _load_sharp(conn, match_ids)
@@ -646,6 +646,63 @@ def _run_counts(conn: psycopg.Connection, prediction_run_id: int) -> dict[str, i
         "consensus_count": consensus_count,
         "no_bet_count": no_bet_count,
         "sharp_count": sharp_count,
+    }
+
+
+def _load_issued_match_base(
+    conn: psycopg.Connection, picks: list[AlignedPick]
+) -> dict[int, dict]:
+    """Read the player orientation, tournament and start visible *at issuance*.
+
+    The existing generic fixture reader intentionally uses the newest match
+    version; it is not safe for a historical Model Pick because provider
+    identity corrections can swap sides after the model has selected PLAYER_1
+    or PLAYER_2. Render the original issued side and scheduled start instead.
+    """
+    if not picks:
+        return {}
+    rows = conn.execute(
+        """
+        SELECT
+            selected.match_id,
+            t.canonical_name,
+            mv.competition_tier::text,
+            mv.match_start_at,
+            p1.canonical_name,
+            p2.canonical_name
+        FROM unnest(%s::bigint[], %s::timestamptz[])
+             AS selected(match_id, picked_at)
+        JOIN matches m ON m.match_id = selected.match_id
+        JOIN tournament_editions te
+          ON te.tournament_edition_id = m.tournament_edition_id
+        JOIN tournaments t ON t.tournament_id = te.tournament_id
+        JOIN LATERAL (
+            SELECT
+                mv0.player_1_id, mv0.player_2_id,
+                mv0.competition_tier, mv0.match_start_at
+            FROM match_versions mv0
+            WHERE mv0.match_id = selected.match_id
+              AND mv0.as_of <= selected.picked_at
+              AND mv0.source_observed_at <= selected.picked_at
+            ORDER BY
+                mv0.as_of DESC, mv0.source_observed_at DESC,
+                mv0.match_version_id DESC
+            LIMIT 1
+        ) mv ON TRUE
+        JOIN players p1 ON p1.player_id = mv.player_1_id
+        JOIN players p2 ON p2.player_id = mv.player_2_id
+        """,
+        ([p.match_id for p in picks], [p.picked_at for p in picks]),
+    ).fetchall()
+    return {
+        int(row[0]): {
+            "tournament": row[1],
+            "competition_tier": row[2],
+            "scheduled_start": row[3],
+            "player_1": row[4],
+            "player_2": row[5],
+        }
+        for row in rows
     }
 
 
