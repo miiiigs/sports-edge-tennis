@@ -1,0 +1,130 @@
+"""Read-only, player-side-specific guide prices for issued Model Picks.
+
+Guide odds are observed OFFERED bookmaker quotes, never the reciprocal of the
+model's probability or an odds feed for a different player/market. This query
+uses the *same first-qualified production population* as the Model Picks ledger.
+The first eligible quote around issuance is selected deterministically, so a
+later price refresh does not silently rewrite historical guide evidence.
+
+A quote can arrive after the prediction (model decisions are made before the
+OddsPapi fetch). Such quotes are display-only; they are not model inputs and
+must not be treated as odds available at the moment the pick was issued.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from decimal import Decimal
+
+import psycopg
+
+from sports_edge_tennis.dashboard.aligned_model_picks import (
+    ALIGNED_PICK_DATE_FILTER,
+    PIT_MATCH_START_LATERAL,
+    aligned_production_model_picks_cte,
+)
+
+
+@dataclass(frozen=True)
+class GuideOddsQuote:
+    match_id: int
+    selected_side: int
+    decimal_price: Decimal
+    bookmaker_code: str
+    observed_at: datetime
+    odds_snapshot_id: int
+    issued_before_quote: bool
+
+
+def get_issued_guide_odds(
+    conn: psycopg.Connection,
+    *,
+    decision_date: date,
+    timezone_name: str = "UTC",
+) -> dict[int, GuideOddsQuote]:
+    """Map first-qualified Model Picks to valid, time-bounded offered quotes.
+
+    No synthetic/sharp/unknown-origin record is accepted. For each player, the
+    latest qualifying quote observed in the 12 hours *before* issue takes
+    priority. If none existed, the earliest quote up to 24 hours *after* issue
+    may be a guide only if it still precedes the match start. Later quotes never
+    replace that first published evidence in this view.
+
+    Exact canonical match_id and PLAYER_1/PLAYER_2 orientation are mandatory;
+    missing evidence yields an unavailable price rather than a fallback.
+    """
+    rows = conn.execute(
+        f"""
+        WITH {aligned_production_model_picks_cte()}
+        SELECT
+            p.match_id,
+            p.selected_side,
+            g.decimal_price,
+            g.bookmaker_code,
+            g.source_observed_at,
+            g.odds_snapshot_id,
+            g.source_observed_at > p.picked_at AS quote_after_issue
+        FROM aligned_model_picks p
+        {PIT_MATCH_START_LATERAL}
+        LEFT JOIN LATERAL (
+            SELECT
+                o.decimal_price, o.bookmaker_code,
+                o.source_observed_at, o.odds_snapshot_id
+            FROM odds_snapshots o
+            WHERE o.match_id = p.match_id
+              AND o.source_system = 'OFFERED'
+              AND o.odds_origin = 'LIVE_PROVIDER'
+              AND o.market_type = 'MATCH_WINNER'
+              AND o.market_status = 'OPEN'
+              AND o.selection_type::text =
+                  CASE WHEN p.selected_side = 1 THEN 'PLAYER_1'
+                       WHEN p.selected_side = 2 THEN 'PLAYER_2'
+                       ELSE 'INVALID' END
+              AND p.picked_at < mv.match_start_at
+              AND o.source_observed_at <= CURRENT_TIMESTAMP
+              AND o.as_of <= CURRENT_TIMESTAMP
+              AND o.source_observed_at <= mv.match_start_at
+              AND o.as_of <= mv.match_start_at
+              AND o.source_observed_at >= p.picked_at - INTERVAL '12 hours'
+              AND o.source_observed_at <= p.picked_at + INTERVAL '24 hours'
+            ORDER BY
+              CASE WHEN o.source_observed_at <= p.picked_at THEN 0 ELSE 1 END,
+              CASE WHEN o.source_observed_at <= p.picked_at
+                   THEN o.source_observed_at END DESC NULLS LAST,
+              CASE WHEN o.source_observed_at > p.picked_at
+                   THEN o.source_observed_at END ASC NULLS LAST,
+              o.odds_snapshot_id ASC
+            LIMIT 1
+        ) g ON TRUE
+        WHERE {ALIGNED_PICK_DATE_FILTER}
+        ORDER BY p.match_id
+        """,
+        (timezone_name, timezone_name, decision_date),
+    ).fetchall()
+
+    guide: dict[int, GuideOddsQuote] = {}
+    for row in rows:
+        match_id, selected_side, price, book, observed, snapshot_id, after = row
+        if (
+            selected_side not in (1, 2)
+            or price is None
+            or Decimal(price) <= 1
+            or not book
+            or observed is None
+            or snapshot_id is None
+        ):
+            continue
+        guide[int(match_id)] = GuideOddsQuote(
+            match_id=int(match_id),
+            selected_side=int(selected_side),
+            decimal_price=Decimal(price),
+            bookmaker_code=str(book),
+            observed_at=observed,
+            odds_snapshot_id=int(snapshot_id),
+            issued_before_quote=bool(after),
+        )
+    return guide
+
+
+__all__ = ["GuideOddsQuote", "get_issued_guide_odds"]
