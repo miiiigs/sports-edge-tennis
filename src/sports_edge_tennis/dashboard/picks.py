@@ -393,6 +393,7 @@ def wide_spread_primary_details(
 
 
 def _guide_fields(
+    match_id: int,
     selected_side: int | None,
     decision,
     guide_quote: GuideOddsQuote | None,
@@ -400,6 +401,7 @@ def _guide_fields(
     """Fail closed on a side mismatch, never synthesize a price from probability."""
     if (
         guide_quote is not None
+        and guide_quote.match_id == match_id
         and guide_quote.selected_side == selected_side
         and guide_quote.decimal_price > 1
     ):
@@ -457,7 +459,7 @@ def build_pick_card(
             primary_a2_probability=a2_probability,
             primary_average_probability=average_probability,
             primary_probability_spread=spread,
-            **_guide_fields(selected_side, None, guide_quote),
+            **_guide_fields(match.match_id, selected_side, None, guide_quote),
             result_status=result_status,
         )
 
@@ -492,7 +494,7 @@ def build_pick_card(
         sharp_reference_price=decision.sharp_reference_price if decision else None,
         market_reason_code=decision.reason_code if decision else None,
         published_at=decision.published_at if decision else None,
-        **_guide_fields(match.selected_side, decision, guide_quote),
+        **_guide_fields(match.match_id, match.selected_side, decision, guide_quote),
         result_status=result_status,
     )
 
