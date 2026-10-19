@@ -38,7 +38,14 @@ def _dsn() -> str | None:
 
 
 def _git_sha() -> str:
-    override = (os.environ.get("TENNIS_REPLAY_GIT_SHA") or "").strip()
+    # A2_RESEARCH_GIT_SHA is the explicit research-code provenance override.  The
+    # TENNIS_REPLAY_GIT_SHA fallback is the deployed service's SHA when the
+    # extractor is piped through Railway SSH; it is not the research branch SHA.
+    override = (
+        os.environ.get("A2_RESEARCH_GIT_SHA")
+        or os.environ.get("TENNIS_REPLAY_GIT_SHA")
+        or ""
+    ).strip()
     if override:
         return override
     try:
@@ -299,6 +306,9 @@ def main(argv: list[str] | None = None) -> int:
                 "cutoff": cutoff.isoformat(),
                 "source_database": source_database,
                 "git_sha": _git_sha(),
+                "remote_service_git_sha": (
+                    os.environ.get("TENNIS_REPLAY_GIT_SHA") or None
+                ),
                 "season_min": MIN_SEASON,
                 "season_max": MAX_SEASON,
                 "counts": counts,

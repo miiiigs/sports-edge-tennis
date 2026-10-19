@@ -1,0 +1,39 @@
+{
+  "experiment_id": "a2_form_lookback_shadow_20261019",
+  "branch": "research/a2-form-lookback-shadow-20261019",
+  "starting_origin_main_sha": "b6b7e50",
+  "harness_code_sha": "9392752",
+  "remote_service_git_sha": "e1cb79b107081c70cedc3437db3cd447a94063cf",
+  "dataset_sha256": "5dceb73fdfda3ae247e72ae2a1f98ac7e63069a0a49743b07a9297b39eb6b1d5",
+  "dataset_rows": 117713,
+  "eligible_matches": 111649,
+  "tournament_groups": 2202,
+  "bootstrap_reps": 1000,
+  "bootstrap_seed": 20261019,
+  "numpy_version": "2.2.6",
+  "variants": {
+    "baseline": {
+      "window_days": null,
+      "prediction_records": 77171,
+      "runtime_seconds": 1912.72
+    },
+    "365": {
+      "window_days": 365,
+      "prediction_records": 77171,
+      "runtime_seconds": 1843.47
+    },
+    "730": {
+      "window_days": 730,
+      "prediction_records": 77171,
+      "runtime_seconds": 1888.97
+    },
+    "1460": {
+      "window_days": 1460,
+      "prediction_records": 77171,
+      "runtime_seconds": 1901.95
+    }
+  },
+  "analysis_runtime_seconds": 15.18,
+  "production_changed": false,
+  "database_writes": false
+}

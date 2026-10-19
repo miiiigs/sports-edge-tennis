@@ -1,0 +1,30 @@
+{
+  "dataset_manifest": {
+    "counts": {
+      "completed": 113152,
+      "rows": 117713,
+      "stats_present": 117713,
+      "supported_tour": 117713,
+      "surface_present": 117713
+    },
+    "cutoff": "2026-01-01T00:00:00+00:00",
+    "dataset_schema_version": "a2_form_lookback_dataset_v1",
+    "dataset_sha256": "5dceb73fdfda3ae247e72ae2a1f98ac7e63069a0a49743b07a9297b39eb6b1d5",
+    "extraction_utc": "2026-10-19T06:11:50.719381+00:00",
+    "git_sha": "e1cb79b107081c70cedc3437db3cd447a94063cf",
+    "read_only": true,
+    "season_max": 2025,
+    "season_min": 2016,
+    "source_database": "railway"
+  },
+  "population_sha256": "e8607d5e80d7d1fdf7d827a60bdf3de5b46622afd283eb6ecf624b37de1c17c4",
+  "population_matches": 111649,
+  "tournament_groups": 2202,
+  "splits": {
+    "burn_in": 34478,
+    "validation": 37131,
+    "test": 40040
+  },
+  "extraction_command": "Get-Content -Raw research/a2_form_lookback/extract_dataset.py | railway ssh -s tennis-replay-v2-final -- python -",
+  "note": "The dataset _manifest.git_sha is the remote service's TENNIS_REPLAY_GIT_SHA (e1cb79b). The extractor SQL was from research branch commit 9392752. Only the remote service environment supplied that override."
+}

@@ -90,6 +90,9 @@ This is an inactivity proxy, not verified injury data.
 
 ```powershell
 # 1. Read-only extraction (requires DATABASE_URL or TENNIS_DATABASE_URL)
+#    Set A2_RESEARCH_GIT_SHA when piping through a remote service so the
+#    manifest records the research branch SHA, not the deployed service SHA.
+$env:A2_RESEARCH_GIT_SHA = (git rev-parse HEAD)
 python research/a2_form_lookback/extract_dataset.py > tmp/a2_frozen_20261019.jsonl
 
 # 2. Four deterministic variant replays (parallel by default)
