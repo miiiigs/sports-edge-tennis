@@ -8,7 +8,8 @@ browser, or blur a model prediction into an executable bet.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from dataclasses import replace
 from decimal import Decimal
 
 import pytest
@@ -350,20 +351,29 @@ def test_zero_or_missing_stake_is_never_shown_as_a_placeholder() -> None:
 # ------------------------------------------------------------------ ordering
 
 
-def test_value_bets_sort_above_model_picks_and_blocked() -> None:
+def test_model_picks_default_sort_is_match_time_not_hidden_value_class() -> None:
+    # The non-bet pick starts first, then the priced bet, then the blocked
+    # pick. No hidden BET-first sort is allowed in Brian's unified Pick list.
     matches = [
-        _match(1, manager_status="CONSENSUS"),
-        _match(2, manager_status="CONSENSUS"),
-        _match(3, manager_status="CONSENSUS"),
+        replace(
+            _match(1, manager_status="CONSENSUS"),
+            scheduled_start=START + timedelta(hours=2),
+        ),
+        replace(
+            _match(2, manager_status="CONSENSUS"),
+            scheduled_start=START,
+        ),
+        replace(
+            _match(3, manager_status="CONSENSUS"),
+            scheduled_start=START + timedelta(hours=1),
+        ),
     ]
     decisions = {
         1: _decision(1, decision_status="VETOED", reason_code="VETO_TRIGGERED"),
         3: _decision(3, decision_status="BET", stake="0.0142"),
     }
-
     kinds = [p.kind for p in build_today_picks(matches, decisions).picks]
-
-    assert kinds == [VALUE_BET, MODEL_PICK, BLOCKED]
+    assert kinds == [MODEL_PICK, VALUE_BET, BLOCKED]
 
 
 # ---------------------------------------------------------------- value page
