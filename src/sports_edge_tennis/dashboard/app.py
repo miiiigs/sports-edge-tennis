@@ -414,6 +414,11 @@ def _pick_payload(pick) -> dict:
             pick.guide_quote_observed_at.isoformat()
             if pick.guide_quote_observed_at else None
         ),
+        "guide_quote_available_at": (
+            pick.guide_quote_available_at.isoformat()
+            if pick.guide_quote_available_at else None
+        ),
+        "guide_snapshot_id": pick.guide_snapshot_id,
         "guide_odds_source": pick.guide_odds_source,
         "guide_quote_after_issue": pick.guide_quote_after_issue,
         "result_status": pick.result_status,
