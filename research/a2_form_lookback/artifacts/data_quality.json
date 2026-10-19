@@ -1,0 +1,61 @@
+{
+  "experiment_period": "2016-01-01 through 2025-12-31",
+  "extraction_cutoff": "2026-01-01T00:00:00+00:00",
+  "rows_extracted": 117713,
+  "completed": 113152,
+  "non_completed_excluded": 4561,
+  "eligible_matches": 111649,
+  "splits": {
+    "burn_in_2016_2018": 34478,
+    "validation_2019_2022": 37131,
+    "test_2023_2025": 40040
+  },
+  "all_extracted_rows_have_surface_and_two_sided_stats": true,
+  "match_start_at": {
+    "experiment_rows_with_start": 0,
+    "note": "Only 2026 has match_start_at (14,740 matches). Of those, 1,962 have any version visible at least 6h before start and 1,492 of those have a surface. A per-match pre-2026 pre-match replay is not reconstructable."
+  },
+  "version_visibility": "2016-2025 selected fixture versions, results and stats become visible at the tournament-end boundary. The replay predicts each tournament cohort before applying any result from that edition.",
+  "null_surface": {
+    "count_all_latest_versions": 12403,
+    "note": "All 12,403 null-surface latest-version rows are 2026 rows outside the experiment."
+  },
+  "duplicate_records": {
+    "matches_with_two_result_observations": 567,
+    "matches_with_four_raw_stat_rows": 389,
+    "matches_with_six_raw_stat_rows": 1,
+    "selection": "Latest result at the extraction cutoff; latest coherent two-row stat cohort. All variants share the identical selected rows."
+  },
+  "identity": {
+    "players": 6133,
+    "duplicate_canonical_names_observed": "40+",
+    "api_tennis_alias_collisions_observed": "40+",
+    "source_player_id_collisions": 0,
+    "model_identity_bridge_events": 1,
+    "note": "Stored model player IDs are used consistently for every variant. Identity was not re-resolved point-in-time, so some histories may be split or merged."
+  },
+  "odds": {
+    "earliest_snapshot": "2026-09-09T11:32:16Z",
+    "latest_snapshot": "2026-10-19T05:05:07Z",
+    "snapshots": 126402,
+    "matches": 1550,
+    "note": "No valid 2016-2025 match-winner prices; bookmaker-favourite baseline not evaluable."
+  },
+  "status_counts_all_years": {
+    "COMPLETED": 127158,
+    "RETIRED": 4413,
+    "WALKOVER": 623,
+    "CANCELLED": 477
+  },
+  "covid_2020": "4,480 eligible matches in 2020 vs 10,873 in 2019 and 9,632 in 2021.",
+  "surface_distribution": {
+    "HARD": 59406,
+    "CLAY": 46623,
+    "GRASS": 5524,
+    "CARPET": 96
+  },
+  "tour_distribution": {
+    "CHALLENGER": 76311,
+    "ATP_MAIN": 35338
+  }
+}
