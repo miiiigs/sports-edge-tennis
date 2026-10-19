@@ -202,6 +202,9 @@ class ModelPickLedgerRow:
     identity_status: str
     surface_status: str
     actual_result: ReplayOutcome | None
+    #: Exact Agent 3 support diagnostics from the same evaluation that produced
+    #: this pick (observational only; never feeds back into the model).
+    a3_diagnostics: dict | None = None
 
 
 @dataclass(frozen=True)

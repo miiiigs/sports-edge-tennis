@@ -161,3 +161,35 @@ def test_pit_safe_planner_keeps_after_start_matches_visible_to_loader(db: psycop
     safe = derive_run_specs_pit_safe(db, match_ids=(late_fixture, normal))
     seen = {mid for spec in safe for mid in spec.match_ids}
     assert seen == {late_fixture, normal}
+
+
+def test_pit_safe_planner_uses_first_visible_hour(db: psycopg.Connection):
+    # Fixture visible 20:30 -> first production run is the 21:00 boundary, not the
+    # last hour before an 18:00 next-day start.
+    match_id = _insert_match(
+        db, datetime(2026, 9, 12, 18, 0, tzinfo=UTC),
+        observed=datetime(2026, 9, 11, 20, 30, tzinfo=UTC),
+    )
+    spec = derive_run_specs_pit_safe(db, match_ids=(match_id,))[0]
+    assert spec.prediction_as_of == datetime(2026, 9, 11, 21, 0, tzinfo=UTC)
+
+
+def test_pit_safe_planner_applies_market_delay(db: psycopg.Connection):
+    match_id = _insert_match(
+        db, datetime(2026, 9, 12, 20, 0, tzinfo=UTC),
+        observed=datetime(2026, 9, 12, 10, 0, tzinfo=UTC),
+    )
+    spec = derive_run_specs_pit_safe(db, match_ids=(match_id,), market_delay_seconds=90)[0]
+    assert spec.prediction_as_of == datetime(2026, 9, 12, 10, 0, tzinfo=UTC)
+    assert spec.market_as_of == spec.prediction_as_of + timedelta(seconds=90)
+    assert spec.market_as_of < datetime(2026, 9, 12, 20, 0, tzinfo=UTC)
+
+
+def test_pit_safe_planner_market_cutoff_capped_before_start(db: psycopg.Connection):
+    match_id = _insert_match(
+        db, datetime(2026, 9, 12, 10, 0, 30, tzinfo=UTC),
+        observed=datetime(2026, 9, 12, 4, 0, tzinfo=UTC),
+    )
+    spec = derive_run_specs_pit_safe(db, match_ids=(match_id,), market_delay_seconds=600)[0]
+    assert spec.market_as_of < datetime(2026, 9, 12, 10, 0, 30, tzinfo=UTC)
+    assert spec.market_as_of >= spec.prediction_as_of

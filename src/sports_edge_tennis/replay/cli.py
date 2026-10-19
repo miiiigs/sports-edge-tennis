@@ -39,6 +39,7 @@ from sports_edge_tennis.replay.first_qualified import (
     value_bet_metrics,
 )
 from sports_edge_tennis.replay.loader import (
+    DEFAULT_MARKET_DELAY_SECONDS,
     ReplayDecisionTimePolicy,
     ReplayLoadRequest,
     derive_run_specs_from_match_days,
@@ -113,6 +114,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifacts-root", type=Path, default=Path("artifacts/replay"))
     parser.add_argument("--replay-id", default=REPLAY_ID)
     parser.add_argument(
+        "--market-delay-seconds",
+        type=int,
+        default=DEFAULT_MARKET_DELAY_SECONDS,
+        help="Production sequencing delay between prediction and market "
+        "evaluation (market_cutoff_pit_v1).",
+    )
+    parser.add_argument(
         "--run-planner",
         choices=("pit_safe", "daily_earliest"),
         default="pit_safe",
@@ -151,6 +159,7 @@ def main(argv: list[str] | None = None) -> int:
                 conn,
                 match_ids=tuple(match_ids),
                 policy=ReplayDecisionTimePolicy(),
+                market_delay_seconds=args.market_delay_seconds,
             )
         else:
             specs = derive_run_specs_from_match_days(
