@@ -64,3 +64,22 @@ def test_model_lab_separates_prediction_quality_from_profit(monkeypatch):
     assert "Performance" in response.text
     assert "prediction quality" in response.text
     assert "whether the system makes money" in response.text
+
+
+def test_today_card_shows_original_match_date_time_and_zone(monkeypatch):
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    client = TestClient(app)
+    utc = client.get("/today?tz=utc")
+    ph = client.get("/today?tz=philippines")
+    assert utc.status_code == 200
+    assert ph.status_code == 200
+    # The same original canonical fixture instant, localized, includes date.
+    assert "07 Sep 2026 14:00 UTC" in utc.text
+    assert "07 Sep 2026 22:00 PHT" in ph.text
+
+
+def test_today_warning_copy_does_not_assume_every_warning_is_stale_odds():
+    path = Path(dashboard_app.__file__).resolve().parent / "templates" / "today.html"
+    body = path.read_text(encoding="utf-8")
+    assert "Live data coverage or freshness requires attention." in body
+    assert "Live data is older than expected." not in body
