@@ -336,15 +336,18 @@ def pick_kind(classification: str) -> str | None:
     return None
 
 
-def _sort_key(card: PickCard) -> tuple[int, float, str]:
-    """Value bets first, then model picks, then blocked; each by start time."""
-    order = {VALUE_BET: 0, MODEL_PICK: 1, BLOCKED: 2}
+def _sort_key(card: PickCard) -> tuple[float, str, int]:
+    """Chronological Model Picks, with deterministic ties.
+
+    Market qualification must not secretly reorder a client view that no
+    longer distinguishes Value Bets as a primary product section.
+    """
     start = (
         card.scheduled_start.timestamp()
         if card.scheduled_start is not None
         else float("inf")
     )
-    return (order.get(card.kind, 3), start, card.player)
+    return (start, card.player, card.match_id)
 
 
 def wide_spread_primary_details(
