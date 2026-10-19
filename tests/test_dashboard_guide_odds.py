@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from decimal import Decimal
 
 import pytest
@@ -194,3 +194,103 @@ def test_current_client_hides_value_nav_but_preserves_read_only_old_routes(monke
     assert all("guide_odds" in pick for pick in api["picks"])
     assert all("result_status" in pick for pick in api["picks"])
     assert all("match_id" not in pick for pick in api["picks"])
+
+
+def test_real_postgres_quote_has_match_side_source_and_receipt_provenance(db):
+    """True PostgreSQL join, not only a mocked response or a zero-row query."""
+    from test_model_pick_alignment import _seed_pick_at_start
+
+    start = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
+    issued = start - timedelta(hours=4)
+    received = issued + timedelta(minutes=30)
+    observed = issued + timedelta(minutes=20)
+    match_id = _seed_pick_at_start(db, label="GuideQuote", start=start)
+    ingest_id = db.execute(
+        """
+        INSERT INTO ingest_runs (
+            source_system, source_dataset, started_at, finished_at, status
+        ) VALUES ('ODDSPAPI', 'test_guide_quote', %s, %s, 'COMPLETED')
+        RETURNING ingest_run_id
+        """,
+        (observed, received),
+    ).fetchone()[0]
+    mapping_id = db.execute(
+        """
+        INSERT INTO provider_bookmaker_mappings (
+            provider_code, provider_bookmaker_key, mapping_version,
+            bookmaker_code, normalization_class, effective_from
+        ) VALUES ('ODDSPAPI', 'bet365', 1, 'BET365', 'OFFERED', %s)
+        RETURNING provider_bookmaker_mapping_id
+        """,
+        (issued - timedelta(days=30),),
+    ).fetchone()[0]
+    raw_id = db.execute(
+        """
+        INSERT INTO raw_odds_observations (
+            ingest_run_id, provider_code, provider_event_id,
+            provider_observation_key, received_at, observation_time,
+            observation_time_basis, payload_hash, payload_json,
+            adapter_version, normalizer_version
+        ) VALUES (%s, 'ODDSPAPI', 'test-event', 'test-observation',
+                  %s, %s, 'RECEIVE_TIME', 'test-sha', '{}'::jsonb,
+                  'test', 'test')
+        RETURNING raw_odds_observation_id
+        """,
+        (ingest_id, received, received),
+    ).fetchone()[0]
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id, source_system, bookmaker_code, market_type,
+            selection_type, decimal_price, market_status,
+            source_snapshot_id, source_observed_at, as_of, ingested_at,
+            raw_odds_observation_id, provider_bookmaker_mapping_id, odds_origin
+        ) VALUES
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_1', 1.50,
+             'OPEN', 'test-price-1', %s, %s, %s, %s, %s, 'LIVE_PROVIDER'),
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_2', 2.65,
+             'OPEN', 'test-price-2', %s, %s, %s, %s, %s, 'LIVE_PROVIDER')
+        """,
+        (match_id, observed, received, received, raw_id, mapping_id,
+         match_id, observed, received, received, raw_id, mapping_id),
+    )
+    quotes = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
+    assert set(quotes) == {match_id}
+    quote = quotes[match_id]
+    assert quote.selected_side == 1
+    assert quote.decimal_price == Decimal("1.50")
+    assert quote.bookmaker_code == "BET365"
+    assert quote.issued_before_quote is True
+    assert quote.available_at == received
+    assert quote.observed_at == observed
+    assert quote.odds_snapshot_id > 0
+
+    # The source kept its ORIGINAL selected side even if the provider
+    # publishes a later correction swapping player 1 and player 2.
+    old = db.execute(
+        """
+        SELECT player_1_id, player_2_id
+        FROM match_versions WHERE match_id = %s
+        ORDER BY match_version_id LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    correction = issued + timedelta(minutes=45)
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at,
+            tour_scope, competition_tier, surface, round_code,
+            best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32',
+                3, FALSE, 'SCHEDULED', %s, %s, %s)
+        """,
+        (match_id, old[1], old[0], start,
+         correction, correction, correction),
+    )
+    # Guard: Do not display a pre-swap PLAYER_1 quote next to a
+    # reoriented/ambiguous fixture identity.
+    after_swap = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
+    assert match_id not in after_swap
