@@ -417,7 +417,7 @@ def test_today_page_renders_only_picks(demo_client) -> None:
 
     assert response.status_code == 200
     body = response.text
-    assert "Today's Picks" in body
+    assert "Model Picks" in body
     # Demo slate: 5 evaluated, 3 consensus picks.
     assert "3 picks today" in body
     assert "Carlos Alcaraz" in body
@@ -450,7 +450,7 @@ def test_today_page_shows_probability_prominently(demo_client) -> None:
 def test_today_page_has_weak_pick_toggle(demo_client) -> None:
     body = demo_client.get("/today").text
 
-    assert "Filter weak bets:" in body
+    assert "Filter lower-confidence picks:" in body
     assert 'id="weak-filter-state">Disabled<' in body
     assert "below 60% Manager win probability" in body
     assert "below 60% A1/A2 tracking average" in body
