@@ -65,6 +65,7 @@ from sports_edge_tennis.live.orchestrator import (
     run_live_mvp,
 )
 from sports_edge_tennis.live.price_slate import load_price_scanner_candidate_match_ids
+from sports_edge_tennis.live.slate_coverage import classify_slate_fixture_coverage
 from sports_edge_tennis.live.provider_failures import classify_provider_failure
 from sports_edge_tennis.live.provider_authority import (
     LEGACY_DATA_MODE,
@@ -681,6 +682,11 @@ def _run_batch(
     totals = {
         "slates": 0,
         "failed_slates": 0,
+        "fixture_warning_slates": 0,
+        "fixture_unknown_status_rows": 0,
+        "fixture_unverified_rejection_rows": 0,
+        "fixture_out_of_scope_empty_slates": 0,
+        "fixture_no_source_slates": 0,
         "fixtures": 0,
         "targets": 0,
         "consensus": 0,
@@ -779,6 +785,31 @@ def _run_batch(
                     f"rejected={result.fixture_rows_rejected} "
                     "reasons="
                     f"{_format_fixture_rejection_reasons(result.fixture_rejection_reasons)}"
+                )
+                coverage = classify_slate_fixture_coverage(
+                    seen=result.fixture_rows_seen,
+                    ingested=result.fixture_rows_ingested,
+                    rejected=result.fixture_rows_rejected,
+                    targets=result.target_count,
+                    rejection_reasons=result.fixture_rejection_reasons,
+                )
+                totals["fixture_warning_slates"] += int(coverage.is_warning)
+                totals["fixture_unknown_status_rows"] += coverage.unknown_status_rows
+                totals["fixture_unverified_rejection_rows"] += coverage.unverified_rejections
+                totals["fixture_out_of_scope_empty_slates"] += int(
+                    coverage.status == "EMPTY_OUT_OF_SCOPE"
+                )
+                totals["fixture_no_source_slates"] += int(
+                    coverage.status == "EMPTY_NO_SOURCE"
+                )
+                _log(
+                    "SLATE_COVERAGE "
+                    f"date={result.slate_date} status={coverage.status} "
+                    f"reason={coverage.reason} "
+                    f"seen={coverage.seen} ingested={coverage.ingested} "
+                    f"rejected={coverage.rejected} targets={coverage.targets} "
+                    f"unknown_status_rows={coverage.unknown_status_rows} "
+                    f"unverified_rejections={coverage.unverified_rejections}"
                 )
                 unsupported_statuses = getattr(result, "fixture_unsupported_statuses", ())
                 if unsupported_statuses:
