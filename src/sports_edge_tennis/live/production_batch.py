@@ -144,6 +144,11 @@ def _live_operational_health_cycle(
     cycle_started_at: datetime,
     live_status: int,
     failed_slates: int = 0,
+    fixture_warning_slates: int = 0,
+    fixture_unknown_status_rows: int = 0,
+    fixture_unverified_rejection_rows: int = 0,
+    fixture_out_of_scope_empty_slates: int = 0,
+    fixture_no_source_slates: int = 0,
 ) -> None:
     checked_at = datetime.now(timezone.utc)
     try:
@@ -153,6 +158,11 @@ def _live_operational_health_cycle(
                 cycle_started_at=cycle_started_at,
                 live_status=live_status,
                 failed_slates=failed_slates,
+                fixture_warning_slates=fixture_warning_slates,
+                fixture_unknown_status_rows=fixture_unknown_status_rows,
+                fixture_unverified_rejection_rows=fixture_unverified_rejection_rows,
+                fixture_out_of_scope_empty_slates=fixture_out_of_scope_empty_slates,
+                fixture_no_source_slates=fixture_no_source_slates,
             )
             persist_live_operational_health(
                 conn,
@@ -993,6 +1003,15 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         cycle_started_at=shadow_cycle_started_at,
         live_status=live_status,
         failed_slates=int(live_summary.get("failed_slates", 0)),
+        fixture_warning_slates=int(live_summary.get("fixture_warning_slates", 0)),
+        fixture_unknown_status_rows=int(live_summary.get("fixture_unknown_status_rows", 0)),
+        fixture_unverified_rejection_rows=int(
+            live_summary.get("fixture_unverified_rejection_rows", 0)
+        ),
+        fixture_out_of_scope_empty_slates=int(
+            live_summary.get("fixture_out_of_scope_empty_slates", 0)
+        ),
+        fixture_no_source_slates=int(live_summary.get("fixture_no_source_slates", 0)),
     )
     if live_status != 0:
         # Odds/fixture failures must not suppress bounded result recovery for

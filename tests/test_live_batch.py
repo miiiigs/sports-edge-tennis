@@ -607,3 +607,79 @@ def test_missing_market_diagnostics_distinguish_provider_absence_and_normalized_
     _, params = conn.calls[0]
     assert params[1] == decision_as_of
     assert params[2] == 337
+
+
+def test_batch_keeps_one_unverified_empty_date_visible_despite_good_other_date(
+    monkeypatch, tmp_path, capsys,
+):
+    summaries = []
+    monkeypatch.setattr(
+        batch, "load_secret",
+        lambda name: "key" if name == "API_TENNIS_API_KEY" else None,
+    )
+    monkeypatch.setattr(batch.psycopg, "connect", _Connect())
+    monkeypatch.setattr(batch, "ensure_pinnapi_bookmaker_mapping", lambda conn: None)
+    _stub_price_slate(monkeypatch)
+
+    def fake_run(conn, *, slate_date, **kwargs):
+        if slate_date == date(2026, 9, 7):
+            return _live_result(
+                slate_date=slate_date.isoformat(),
+                status="LIVE_MVP_SUCCESS", fixture_count=50,
+                fixture_rows_seen=50, fixture_rows_ingested=50,
+                fixture_rows_rejected=0, fixture_rejection_reasons=(),
+                target_count=50,
+            )
+        if slate_date == date(2026, 9, 8):
+            return _live_result(
+                slate_date=slate_date.isoformat(),
+                status="LIVE_MVP_SUCCESS_EMPTY_SLATE", fixture_count=140,
+                fixture_rows_seen=140, fixture_rows_ingested=0,
+                fixture_rows_rejected=140,
+                fixture_rejection_reasons=(
+                    ("out_of_scope_event_type", 89),
+                    ("unsupported_event_status", 51),
+                ),
+                fixture_unsupported_statuses=(("1", 51),),
+                target_count=0,
+            )
+        return _live_result(
+            slate_date=slate_date.isoformat(),
+            status="LIVE_MVP_SUCCESS_EMPTY_SLATE", fixture_count=16,
+            fixture_rows_seen=16, fixture_rows_ingested=0,
+            fixture_rows_rejected=16,
+            fixture_rejection_reasons=(("out_of_scope_event_type", 16),),
+            target_count=0,
+        )
+
+    monkeypatch.setattr(batch, "run_live_mvp", fake_run)
+    rc = batch.main(
+        ["--start-date", "2026-09-07", "--days", "3",
+         "--dsn", "postgresql://example", "--artifacts-dir", str(tmp_path)],
+        summary_sink=summaries.append,
+    )
+    out = capsys.readouterr().out
+
+    assert rc == 0  # data warning is NOT a new prediction/job failure
+    assert (
+        "SLATE_COVERAGE date=2026-09-07 status=HEALTHY "
+        "reason=SCHEDULED_TARGETS_PRESENT" in out
+    )
+    assert (
+        "SLATE_COVERAGE date=2026-09-08 status=WARNING "
+        "reason=UNSUPPORTED_EVENT_STATUS" in out
+    )
+    assert 'FIXTURE_UNSUPPORTED_STATUS date=2026-09-08 values="1"=51' in out
+    assert (
+        "SLATE_COVERAGE date=2026-09-09 status=EMPTY_OUT_OF_SCOPE "
+        "reason=ALL_FIXTURES_EXCLUDED_BY_SCOPE" in out
+    )
+    assert len(summaries) == 1
+    assert summaries[0]["targets"] == 50
+    assert summaries[0]["fixture_warning_slates"] == 1
+    assert summaries[0]["fixture_unknown_status_rows"] == 51
+    assert summaries[0]["fixture_unverified_rejection_rows"] == 51
+    assert summaries[0]["fixture_out_of_scope_empty_slates"] == 1
+    assert summaries[0]["fixture_no_source_slates"] == 0
+    # No source was translated into a new scheduled fixture or a fresh bet.
+    assert summaries[0]["bets"] == 0

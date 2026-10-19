@@ -146,3 +146,59 @@ def test_persist_live_operational_health_appends_health_row():
     assert params[4] == "FRESH"
     assert params[5] == 0
     assert params[6] == "HEALTHY"
+
+
+def test_one_unknown_status_slate_degrades_healthy_other_slate():
+    conn = _Conn((2, 50, NOW))
+    health = evaluate_live_operational_health(
+        conn,
+        cycle_started_at=CYCLE_START,
+        live_status=0,
+        fixture_warning_slates=1,
+        fixture_unknown_status_rows=51,
+        fixture_unverified_rejection_rows=51,
+        fixture_out_of_scope_empty_slates=0,
+    )
+    assert health.status == "WARNING"
+    assert health.freshness_state == "FRESH"
+    assert health.target_count == 50  # another date did process
+    assert health.error_count == 0  # a data warning, not a failed worker
+    assert "partial_fixture_coverage=1" in health.notes
+    assert "fixture_warning_slates=1" in health.notes
+    assert "unknown_status_rows=51" in health.notes
+
+
+def test_only_out_of_scope_empty_slate_can_be_normal_when_other_date_processed():
+    conn = _Conn((1, 50, NOW))
+    health = evaluate_live_operational_health(
+        conn, cycle_started_at=CYCLE_START, live_status=0,
+        fixture_warning_slates=0,
+        fixture_out_of_scope_empty_slates=1,
+    )
+    assert health.status == "HEALTHY"
+    assert "out_of_scope_empty_slates=1" in health.notes
+
+
+def test_real_failed_slate_plus_warning_counts_are_both_retained():
+    conn = _Conn((1, 10, NOW))
+    health = evaluate_live_operational_health(
+        conn, cycle_started_at=CYCLE_START, live_status=0,
+        failed_slates=1,
+        fixture_warning_slates=1,
+        fixture_unverified_rejection_rows=3,
+    )
+    assert health.status == "WARNING"
+    assert health.error_count == 1
+    assert "partial_slate_failure=1" in health.notes
+    assert "partial_fixture_coverage=1" in health.notes
+
+
+def test_empty_cycle_preserves_per_slate_coverage_evidence():
+    conn = _Conn((0, 0, None))
+    health = evaluate_live_operational_health(
+        conn, cycle_started_at=CYCLE_START, live_status=0,
+        fixture_warning_slates=2,
+        fixture_unknown_status_rows=17,
+    )
+    assert health.status == "WARNING"
+    assert "unknown_status_rows=17" in health.notes
