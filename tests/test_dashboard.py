@@ -357,7 +357,8 @@ def test_today_renders_operational_warning(client, monkeypatch):
     resp = client.get("/today")
 
     assert resp.status_code == 200
-    assert "Today's picks may not reflect the latest prices" in resp.text
+    assert "Live data coverage or freshness requires attention." in resp.text
+    assert "Today's picks may be incomplete or out of date." in resp.text
     assert "16:03 UTC" in resp.text
     # Internal operational notes must never reach the client surface.
     assert "zero_volume" not in resp.text
