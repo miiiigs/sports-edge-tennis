@@ -116,3 +116,65 @@ def test_0021_snapshot_and_manifest():
         "schema_snapshot": "db/schema/0021_walkover_winner_optional.sql",
     }
     assert UP.is_file() and DOWN.is_file()
+
+
+def _down_migration_transaction_body() -> str:
+    """Exercise actual DOWN statements in the fixture's rollbackable transaction."""
+    script = DOWN.read_text(encoding="utf-8").strip()
+    assert script.startswith("BEGIN;")
+    assert script.endswith("COMMIT;")
+    return script[len("BEGIN;") : -len("COMMIT;")].strip()
+
+
+def test_down_rejects_null_winner_walkover_without_losing_row_or_constraint(
+    db: psycopg.Connection,
+):
+    """Rollback must fail closed after a legitimate winnerless WALKOVER was stored."""
+    match_id = _seed_match(db)
+    observed_at = datetime(2026, 10, 17, 8, 12, tzinfo=UTC)
+    db.execute(
+        """
+        INSERT INTO match_result_observations (
+            match_id, outcome_status, winner_side, source_observed_at, as_of
+        ) VALUES (%s, 'WALKOVER', NULL, %s, %s)
+        """,
+        (match_id, observed_at, observed_at),
+    )
+    with pytest.raises(psycopg.errors.RaiseException, match="Cannot reverse migration 0021"):
+        with db.transaction():
+            db.execute(_down_migration_transaction_body(), prepare=False)
+
+    assert db.execute(
+        "SELECT outcome_status::text, winner_side FROM match_result_observations "
+        "WHERE match_id = %s",
+        (match_id,),
+    ).fetchone() == ("WALKOVER", None)
+    assert db.execute(
+        "SELECT 1 FROM pg_constraint WHERE conrelid = "
+        "'match_result_observations'::regclass AND "
+        "conname = 'chk_match_result_terminal_winner'"
+    ).fetchone() == (1,)
+
+
+def test_down_allows_schema_reversal_only_without_null_winner_walkovers(
+    db: psycopg.Connection,
+):
+    """Exercise complete DOWN in a disposable savepoint, then restore forward schema."""
+    class UndoDownProbe(Exception):
+        pass
+
+    with pytest.raises(UndoDownProbe):
+        with db.transaction():
+            db.execute(_down_migration_transaction_body(), prepare=False)
+            assert db.execute(
+                "SELECT 1 FROM pg_constraint WHERE conrelid = "
+                "'match_result_observations'::regclass AND "
+                "conname = 'chk_match_result_terminal_winner_required'"
+            ).fetchone() == (1,)
+            raise UndoDownProbe()
+
+    assert db.execute(
+        "SELECT 1 FROM pg_constraint WHERE conrelid = "
+        "'match_result_observations'::regclass AND "
+        "conname = 'chk_match_result_terminal_winner'"
+    ).fetchone() == (1,)
