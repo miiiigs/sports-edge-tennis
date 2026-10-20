@@ -83,3 +83,70 @@ def test_today_warning_copy_does_not_assume_every_warning_is_stale_odds():
     body = path.read_text(encoding="utf-8")
     assert "Live data coverage or freshness requires attention." in body
     assert "Live data is older than expected." not in body
+
+
+def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypatch):
+    """Do not present an unqualified A1/A2 average as a customer Model Pick."""
+    from dataclasses import replace
+    from decimal import Decimal
+
+    from sports_edge_tennis.dashboard.demo import build_demo_state
+    from sports_edge_tennis.dashboard.read_model import AgentView
+
+    original = build_demo_state()
+    source = original.matches[0]
+    tracking_only = replace(
+        source,
+        match_id=987654,
+        player_1="TRACKING TEST PLAYER",
+        player_2="TRACKING TEST OPPONENT",
+        manager_status="NO_BET",
+        selected_side=None,
+        consensus_probability=None,
+        reason_code="AGENT3_ABSTENTION_SPREAD_EXCEEDED",
+        active_agent_count=2,
+        abstaining_agent_count=1,
+        agents={
+            "AGENT_1_SURFACE_ELO": AgentView(
+                code="AGENT_1_SURFACE_ELO",
+                status="PREDICTED",
+                selection=1,
+                probability=Decimal("0.81"),
+            ),
+            "AGENT_2_HIERARCHICAL_MARKOV": AgentView(
+                code="AGENT_2_HIERARCHICAL_MARKOV",
+                status="PREDICTED",
+                selection=1,
+                probability=Decimal("0.65"),
+            ),
+            "AGENT_3_INTRANSITIVITY": AgentView(
+                code="AGENT_3_INTRANSITIVITY",
+                status="ABSTAINED",
+                selection=None,
+                probability=None,
+            ),
+        },
+    )
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    monkeypatch.setattr(
+        dashboard_app,
+        "build_demo_state",
+        lambda: replace(original, matches=(*original.matches, tracking_only)),
+    )
+    response = TestClient(app).get("/today?tz=utc")
+    assert response.status_code == 200
+    page = response.text
+    assert "3 Manager-qualified selections" in page
+    assert 'id="tracking-only-disclosure"' in page
+    assert "TRACKING TEST PLAYER" in page
+    assert "research-only tracking" in page
+    assert "not published Manager Model Picks" in page
+    main_cards = page.split('id="today-pick-list"', 1)[1].split("</section>", 1)[0]
+    assert "Carlos Alcaraz" in main_cards
+    assert "TRACKING TEST PLAYER" not in main_cards
+    tracking_section = page.split('id="tracking-only-disclosure"', 1)[1]
+    assert "TRACKING TEST PLAYER" in tracking_section
+    assert "16.00%" in tracking_section
+    # Historical/JSON source populations are intentionally not mutated.
+    source_api = TestClient(app).get("/api/dashboard/today?tz=utc").json()
+    assert source_api["counts"]["total_model_picks"] == 4
