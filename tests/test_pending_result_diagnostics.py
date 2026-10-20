@@ -15,6 +15,7 @@ from sports_edge_tennis.live.pending_result_diagnostics import (
     FLAG_OUTSIDE_RECOVERY_WINDOW,
     FLAG_RESCHEDULED,
     FLAG_TYPE_A_BET,
+    FLAG_WALKOVER_TERMINAL,
     REASON_AWAITING_RESULT,
     REASON_FIXTURE_NOT_REOBSERVED,
     REASON_NO_API_TENNIS_LINK,
@@ -111,6 +112,18 @@ def test_terminal_fixture_without_result_wins_over_other_reasons():
         )
     )
     assert item.reason == REASON_TERMINAL_FIXTURE_WITHOUT_RESULT
+
+
+def test_explicit_walkover_terminal_is_flagged_but_not_graded():
+    item = _classify(
+        _evidence(
+            latest_match_status="WALKOVER",
+            api_tennis_event_key="12171502",
+            last_fixture_observed_at=NOW - timedelta(days=3),
+        )
+    )
+    assert item.reason == REASON_TERMINAL_FIXTURE_WITHOUT_RESULT
+    assert FLAG_WALKOVER_TERMINAL in item.flags
 
 
 def test_missing_api_tennis_link():

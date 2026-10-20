@@ -42,6 +42,7 @@ REASON_FIXTURE_POSTPONED = "FIXTURE_POSTPONED"
 FLAG_RESCHEDULED = "RESCHEDULED"
 FLAG_OUTSIDE_RECOVERY_WINDOW = "OUTSIDE_RECOVERY_WINDOW"
 FLAG_TYPE_A_BET = "TYPE_A_BET"
+FLAG_WALKOVER_TERMINAL = "WALKOVER_TERMINAL"
 
 AGE_NOT_STARTED = "NOT_STARTED"
 AGE_UNDER_6H = "LT_6H"
@@ -232,6 +233,8 @@ def classify_pending_pick(
         flags.append(FLAG_OUTSIDE_RECOVERY_WINDOW)
     if evidence.has_type_a_bet:
         flags.append(FLAG_TYPE_A_BET)
+    if (evidence.latest_match_status or "") == "WALKOVER":
+        flags.append(FLAG_WALKOVER_TERMINAL)
 
     if start is not None and start > now:
         reason = REASON_NOT_STARTED
