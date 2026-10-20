@@ -10,7 +10,7 @@
   <p class="page-subtitle">
     {{ selected_date.strftime('%A, %d %B %Y') }} · {{ main_picks|length }} Manager-qualified selection{{ '' if main_picks|length == 1 else 's' }}
   </p>
-  <p class="page-note">Model Picks are predictions, not necessarily Value Bets. Guide odds are bookmaker prices for the selected player when verified — even if the price offers no model value.</p>
+  <p class="page-note">Model Picks are predictions, not betting instructions. Guide odds show verified bookmaker prices when available; a quoted price does not establish betting value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
   <p class="page-note">
     <span class="health-inline"><span class="health-dot" aria-hidden="true"></span>System healthy</span>
@@ -166,7 +166,9 @@
 </details>
 {% endif %}
 
-{% set display_no_bet_matches = no_bet_matches | rejectattr('reason_code', 'equalto', 'AGENT3_ABSTENTION_SPREAD_EXCEEDED') | list %}
+{# Only suppress NO_BET rows actually represented in the research disclosure. #}
+{% set tracking_match_ids = tracking_picks | map(attribute='match_id') | list %}
+{% set display_no_bet_matches = no_bet_matches | rejectattr('match_id', 'in', tracking_match_ids) | list %}
 {% if display_no_bet_matches %}
 <details class="no-bet-disclosure section">
   <summary class="no-bet-toggle">
