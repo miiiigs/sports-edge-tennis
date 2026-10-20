@@ -26,7 +26,6 @@ from sports_edge_tennis.dashboard.aligned_model_picks import (
     aligned_production_model_picks_cte,
 )
 
-
 # Same issued-at point-in-time fixture version as the aligned Model Picks
 # ledger, with the player orientation retained for a fail-closed drift check.
 ISSUED_MATCH_VERSION_LATERAL = """
@@ -65,8 +64,9 @@ def get_issued_guide_odds(
 
     No synthetic/sharp/unknown-origin record is accepted. For each player, the
     latest qualifying quote available in the 12 hours *before* issue takes
-    priority. If none existed, the earliest quote up to 24 hours *after* issue
-    may be a guide only if it was both received and observed before match start.
+    priority. If none existed, the earliest quote observed before match start
+    may be a guide; long-horizon picks must not lose a price merely because the
+    bookmaker listed the match more than 24 hours after the pick was issued.
     Prices displayed after issue are never passed off as publication-time bets.
 
     Exact canonical match_id and PLAYER_1/PLAYER_2 orientation are mandatory;
@@ -126,9 +126,6 @@ def get_issued_guide_odds(
               AND GREATEST(o.as_of, o.ingested_at, o.source_observed_at)
                   <= mv.match_start_at
               AND o.source_observed_at >= p.picked_at - INTERVAL '12 hours'
-              AND o.source_observed_at <= p.picked_at + INTERVAL '24 hours'
-              AND GREATEST(o.as_of, o.ingested_at, o.source_observed_at)
-                  <= p.picked_at + INTERVAL '24 hours'
             ORDER BY
               CASE WHEN GREATEST(o.as_of, o.ingested_at, o.source_observed_at)
                         <= p.picked_at THEN 0 ELSE 1 END,
