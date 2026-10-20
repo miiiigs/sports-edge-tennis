@@ -189,6 +189,33 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     assert 'id="tracking-only-disclosure"' in only_tracking_page
     assert "TRACKING TEST PLAYER" in only_tracking_page
 
+    # A NO_BET row with the same reason code but no valid A1/A2
+    # tracking card must remain visible in the ordinary disclosure.
+    invalid_tracking = replace(
+        tracking_only,
+        match_id=987655,
+        player_1="NONQUALIFYING SPREAD PLAYER",
+        agents={
+            **tracking_only.agents,
+            "AGENT_2_HIERARCHICAL_MARKOV": replace(
+                tracking_only.agents["AGENT_2_HIERARCHICAL_MARKOV"],
+                selection=2,
+            ),
+        },
+    )
+    monkeypatch.setattr(
+        dashboard_app,
+        "build_demo_state",
+        lambda: replace(original, matches=(tracking_only, invalid_tracking)),
+    )
+    mixed_no_bet_page = TestClient(app).get("/today?tz=utc").text
+    ordinary_no_bets = mixed_no_bet_page.split("Show no-bet matches", 1)[1]
+    research_section = mixed_no_bet_page.split(
+        'id="tracking-only-disclosure"', 1
+    )[1].split("</details>", 1)[0]
+    assert "NONQUALIFYING SPREAD PLAYER" in ordinary_no_bets
+    assert "NONQUALIFYING SPREAD PLAYER" not in research_section
+
 
 def test_primary_cards_contain_complete_identity_time_probability_price_and_result(monkeypatch):
     """Each customer pick exposes the information needed on a phone."""
