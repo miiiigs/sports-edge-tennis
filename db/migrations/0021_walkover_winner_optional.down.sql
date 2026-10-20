@@ -4,7 +4,7 @@ BEGIN;
 -- rewritten with an invented winner, or silently invalidated by schema rollback.
 -- Fail BEFORE dropping the new constraint. PostgreSQL rolls back the transaction,
 -- leaving both the records and the forward schema intact.
-DO $
+DO $$
 BEGIN
     IF EXISTS (
         SELECT 1
@@ -19,7 +19,7 @@ BEGIN
             USING ERRCODE = 'P0001';
     END IF;
 END;
-$;
+$$;
 
 ALTER TABLE match_result_observations
     DROP CONSTRAINT IF EXISTS chk_match_result_terminal_winner;
