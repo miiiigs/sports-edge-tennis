@@ -253,3 +253,44 @@ Future shadow evaluation plan:
   including adapter tests, dry-run backfill and verification.
 - Agent 1 bridge shadow evaluation: **~3–5 days** of compute/analysis plus forward
   shadow time; no production activation.
+
+
+## 10. Migration 0021 rollback and recovery safety
+
+Migration 0021 intentionally permits legitimate WALKOVER results with `winner_side=NULL`.
+The old schema forbids those rows. Consequently, **the old schema is not a valid
+rollback target after a null-winner WALKOVER has been recorded**.
+
+The DOWN migration now checks for such rows and raises a clear error *before*
+changing the forward constraint. It **never** deletes results, changes recorded
+winners, alters historical predictions, or treats a failed migration as success.
+
+Validated in disposable PostgreSQL regression tests:
+
+- With a stored null-winner WALKOVER, executing the DOWN body raises an explicit
+  error; the original result and the forward winner-optional constraint persist.
+- Without these rows, the full DOWN body can reverse the schema; the test runs
+  inside a transaction that is deliberately rolled back so the test database
+  retains the forward schema.
+
+**Operational rollback policy (requires owner/release approval):**
+
+1. Before applying 0021, obtain a consistent production PostgreSQL backup and
+   prove restore access in an isolated environment. Record schema version,
+   checksum, read-only 132211/131036 baselines and all existing settlement rows.
+2. Deploy 0021 only during an approved controlled release window. Verify that
+   the application and settlement readers can handle a null winner for WALKOVER.
+3. If code must be reverted after a null-winner WALKOVER has been appended,
+   **retain the 0021 forward schema** while independently verifying the old
+   application's read/settlement compatibility. Do not automatically run DOWN.
+4. If old application code is incompatible, stop and obtain approval for a
+   compatible forward-fix or an independently validated data-preserving recovery
+   procedure. Do not fabricate a winner, delete the result or blindly restore
+   an old backup over new legitimate records.
+5. DOWN may be considered only if a fresh read-only audit establishes **zero**
+   null-winner WALKOVER rows and the owner authorizes schema reversal. Recheck
+   in the same transaction because the state may change.
+
+The tests prove safe failure and transactional integrity of the schema reversal,
+not that a production database is backed up, the older app is compatible, or
+an owner has approved migration or result settlement. Those gates remain open.
