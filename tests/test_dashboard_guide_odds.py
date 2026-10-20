@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -18,7 +18,7 @@ from sports_edge_tennis.dashboard.picks import build_today_picks
 from sports_edge_tennis.dashboard.production_app import app
 from sports_edge_tennis.dashboard.read_model import MatchView
 
-NOW = datetime(2026, 10, 19, 7, 10, tzinfo=timezone.utc)
+NOW = datetime(2026, 10, 19, 7, 10, tzinfo=UTC)
 
 
 def _match(*, match_id=11, selected_side=1):
@@ -115,7 +115,9 @@ def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evide
         "p.picked_at < mv.match_start_at",
     ):
         assert invariant in sql
-    assert "o.source_observed_at <= p.picked_at + INTERVAL '24 hours'" in sql
+    assert "p.picked_at + INTERVAL '24 hours'" not in sql
+    assert "<= mv.match_start_at" in sql
+    assert "o.source_observed_at >= p.picked_at - INTERVAL '12 hours'" in sql
     assert "o.as_of <= CURRENT_TIMESTAMP" in sql
     assert "o.ingested_at <= CURRENT_TIMESTAMP" in sql
     assert "g.ingested_at" in sql
@@ -200,7 +202,7 @@ def test_real_postgres_quote_has_match_side_source_and_receipt_provenance(db):
     """True PostgreSQL join, not only a mocked response or a zero-row query."""
     from test_model_pick_alignment import _seed_pick_at_start
 
-    start = datetime(2026, 10, 18, 12, 0, tzinfo=timezone.utc)
+    start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
     issued = start - timedelta(hours=4)
     received = issued + timedelta(minutes=30)
     observed = issued + timedelta(minutes=20)
@@ -294,6 +296,88 @@ def test_real_postgres_quote_has_match_side_source_and_receipt_provenance(db):
     # reoriented/ambiguous fixture identity.
     after_swap = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
     assert match_id not in after_swap
+
+
+def test_pre_match_quote_more_than_24h_after_issue_remains_available(db):
+    """A long-horizon pick keeps a valid quote observed after the old cap."""
+    from test_performance_regime_cohorting import (
+        _policy_id,
+        _seed_match,
+        _seed_run,
+    )
+
+    from sports_edge_tennis.manager import evaluate_and_persist_manager_consensus
+
+    start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+    issued = start - timedelta(hours=30)
+    match_id = _seed_match(db, label="LongHorizon", start=start)
+    run_id = _seed_run(db, match_id=match_id, as_of=issued)
+    outcome = evaluate_and_persist_manager_consensus(
+        db,
+        prediction_run_id=run_id,
+        manager_policy_version_id=_policy_id(db, "v1"),
+    )
+    assert outcome.status == "PERSISTED"
+
+    observed = start - timedelta(hours=4)
+    received = observed + timedelta(minutes=1)
+    ingest_id = db.execute(
+        """
+        INSERT INTO ingest_runs (
+            source_system, source_dataset, started_at, finished_at, status
+        ) VALUES ('ODDSPAPI', 'test_guide_quote_long', %s, %s, 'COMPLETED')
+        RETURNING ingest_run_id
+        """,
+        (observed, received),
+    ).fetchone()[0]
+    mapping_id = db.execute(
+        """
+        INSERT INTO provider_bookmaker_mappings (
+            provider_code, provider_bookmaker_key, mapping_version,
+            bookmaker_code, normalization_class, effective_from
+        ) VALUES ('ODDSPAPI', 'bet365', 1, 'BET365', 'OFFERED', %s)
+        RETURNING provider_bookmaker_mapping_id
+        """,
+        (issued - timedelta(days=30),),
+    ).fetchone()[0]
+    raw_id = db.execute(
+        """
+        INSERT INTO raw_odds_observations (
+            ingest_run_id, provider_code, provider_event_id,
+            provider_observation_key, received_at, observation_time,
+            observation_time_basis, payload_hash, payload_json,
+            adapter_version, normalizer_version
+        ) VALUES (%s, 'ODDSPAPI', 'test-event-long', 'test-observation-long',
+                  %s, %s, 'RECEIVE_TIME', 'test-sha-long', '{}'::jsonb,
+                  'test', 'test')
+        RETURNING raw_odds_observation_id
+        """,
+        (ingest_id, received, received),
+    ).fetchone()[0]
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id, source_system, bookmaker_code, market_type,
+            selection_type, decimal_price, market_status,
+            source_snapshot_id, source_observed_at, as_of, ingested_at,
+            raw_odds_observation_id, provider_bookmaker_mapping_id, odds_origin
+        ) VALUES
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_1', 1.80,
+             'OPEN', 'test-price-long-1', %s, %s, %s, %s, %s, 'LIVE_PROVIDER'),
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_2', 2.05,
+             'OPEN', 'test-price-long-2', %s, %s, %s, %s, %s, 'LIVE_PROVIDER')
+        """,
+        (match_id, observed, received, received, raw_id, mapping_id,
+         match_id, observed, received, received, raw_id, mapping_id),
+    )
+
+    quotes = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
+    assert set(quotes) == {match_id}
+    quote = quotes[match_id]
+    assert quote.selected_side == 1
+    assert quote.decimal_price == Decimal("1.80")
+    assert quote.issued_before_quote is True
+    assert quote.observed_at == observed
 
 
 @pytest.mark.parametrize(
