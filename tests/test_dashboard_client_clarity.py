@@ -147,6 +147,71 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     tracking_section = page.split('id="tracking-only-disclosure"', 1)[1]
     assert "TRACKING TEST PLAYER" in tracking_section
     assert "16.00%" in tracking_section
-    # Historical/JSON source populations are intentionally not mutated.
+    # The presentation-only split must NOT remove tracking from the issued
+    # picks API or the complete evaluated match source population.
     source_api = TestClient(app).get("/api/dashboard/today?tz=utc").json()
-    assert source_api["counts"]["total_model_picks"] == 3
+    counts = source_api["pick_counts"]
+    assert counts["total"] == 4  # three Manager picks + one tracking row
+    assert counts["wide_spread_model_picks"] == 1
+    assert counts["total_model_picks"] == counts["qualified_model_picks"] + 1
+    assert len(source_api["picks"]) == counts["total"]
+    assert len(source_api["matches"]) == len(original.matches) + 1
+    tracking_api = [
+        pick for pick in source_api["picks"]
+        if pick["probability_basis"] == "A1_A2_TRACKING_AVERAGE"
+    ]
+    assert len(tracking_api) == 1
+    assert tracking_api[0]["player"] == "TRACKING TEST PLAYER"
+    assert tracking_api[0]["tracking_probability"] == "73.0%"
+    assert tracking_api[0]["is_actionable_bet"] is False
+    assert all(
+        pick["probability_basis"] == "MANAGER_CONSENSUS"
+        for pick in source_api["picks"]
+        if pick["player"] != "TRACKING TEST PLAYER"
+    )
+    assert any(
+        match["player_1"] == "TRACKING TEST PLAYER"
+        and match["manager_status"] == "NO_BET"
+        for match in source_api["matches"]
+    )
+
+    # Tracking-only day: empty customer list must not hide the disclosure
+    # or claim the A1/A2 average passed the Manager gate.
+    monkeypatch.setattr(
+        dashboard_app,
+        "build_demo_state",
+        lambda: replace(original, matches=(tracking_only,)),
+    )
+    only_tracking_page = TestClient(app).get("/today?tz=utc").text
+    assert "0 Manager-qualified selections" in only_tracking_page
+    assert "No Manager-qualified Model Picks yet today" in only_tracking_page
+    assert 'id="today-pick-list"' not in only_tracking_page
+    assert 'id="tracking-only-disclosure"' in only_tracking_page
+    assert "TRACKING TEST PLAYER" in only_tracking_page
+
+
+def test_primary_cards_contain_complete_identity_time_probability_price_and_result(monkeypatch):
+    """Each customer pick exposes the information needed on a phone."""
+    import re
+
+    monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    response = TestClient(app).get("/today?tz=utc")
+    assert response.status_code == 200
+    primary = response.text.split('id="today-pick-list"', 1)[1].split(
+        "</section>", 1
+    )[0]
+    cards = re.findall(r'<article class="pick-card[^"]*".*?</article>', primary, re.S)
+    assert len(cards) == 3
+    for card in cards:
+        assert '<h2 class="pick-player">' in card
+        assert '<p class="pick-opponent">vs ' in card
+        assert re.search(r"\\d{2} [A-Z][a-z]{2} 20\\d{2} \\d{2}:\\d{2} UTC", card)
+        assert "Model Probability · Uncalibrated" in card
+        assert "Basis: Manager Consensus" in card
+        assert re.search(r'<span class="prob-value">\\d+%</span>', card)
+        assert "Guide odds · fractional" in card
+        assert "Result" in card
+        assert (
+            "Unavailable" in card
+            or re.search(r'\\d+/\\d+', card)
+        )
