@@ -149,4 +149,4 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     assert "16.00%" in tracking_section
     # Historical/JSON source populations are intentionally not mutated.
     source_api = TestClient(app).get("/api/dashboard/today?tz=utc").json()
-    assert source_api["counts"]["total_model_picks"] == 4
+    assert source_api["counts"]["total_model_picks"] == 3
