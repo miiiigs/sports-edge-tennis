@@ -211,6 +211,15 @@ append-only provenance and versioned observation tables.
 - `decision_clv`
 - `data_health_checks`
 
+### WALKOVER result representation
+
+Migration `0021_walkover_winner_optional` allows `match_result_observations` to
+store `outcome_status = 'WALKOVER'` with `winner_side = NULL` because providers may
+correctly report a walkover without publishing a winner or scoreline. Settlement
+policy maps every WALKOVER to `VOID`; it never derives an ordinary WON/LOST outcome
+from an absent winner. `COMPLETED` and `RETIRED` still require `winner_side`.
+Existing WALKOVER rows that carry a winner remain valid.
+
 ## Point-in-time rule
 
 For historical reconstruction at time `T`, future code must query only records where:
