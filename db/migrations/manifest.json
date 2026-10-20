@@ -141,6 +141,13 @@
       "up": "db/migrations/0020_a3_support_diagnostics.up.sql",
       "down": "db/migrations/0020_a3_support_diagnostics.down.sql",
       "schema_snapshot": "db/schema/0020_a3_support_diagnostics.sql"
+    },
+    {
+      "version": "0021",
+      "name": "walkover_winner_optional",
+      "up": "db/migrations/0021_walkover_winner_optional.up.sql",
+      "down": "db/migrations/0021_walkover_winner_optional.down.sql",
+      "schema_snapshot": "db/schema/0021_walkover_winner_optional.sql"
     }
   ]
 }
