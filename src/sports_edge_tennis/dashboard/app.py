@@ -588,6 +588,12 @@ def api_today(request: Request, date: str | None = Query(default=None)):
             "model_picks": today_picks.model_pick_count,
             "blocked": today_picks.blocked_count,
             "evaluated": today_picks.evaluated_count,
+            # Primary-card total: Model Picks + Value Bets + Veto-blocked.
+            # qualified_model_picks excludes Veto-blocked; blocked is the
+            # difference between the two definitions.
+            "manager_qualified_selections": (
+                today_picks.manager_qualified_selection_count
+            ),
             "qualified_model_picks": today_picks.qualified_model_pick_count,
             "wide_spread_model_picks": today_picks.wide_spread_model_pick_count,
             "total_model_picks": today_picks.total_model_pick_count,

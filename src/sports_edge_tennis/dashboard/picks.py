@@ -339,7 +339,12 @@ class TodayPicks:
 
     @property
     def qualified_model_pick_count(self) -> int:
-        """Issued Manager-qualified Model Picks (includes those that became Value Bets)."""
+        """Non-blocked Manager-qualified Model Picks (Model Picks and Value Bets).
+
+        Veto-blocked selections are Manager-qualified but are counted separately
+        in ``blocked_count``; they are not included here. Use
+        ``manager_qualified_selection_count`` for the primary-card total.
+        """
         return sum(
             1
             for card in self.picks
@@ -347,12 +352,25 @@ class TodayPicks:
         )
 
     @property
+    def manager_qualified_selection_count(self) -> int:
+        """Every non-tracking selection shown in the primary Model Picks cards.
+
+        Includes Model Picks, Value Bets, and Veto-blocked selections. Excludes
+        the additive A1/A2 wide-spread research-only rows.
+        """
+        return sum(1 for card in self.picks if not card.is_wide_spread)
+
+    @property
     def wide_spread_model_pick_count(self) -> int:
         return sum(1 for card in self.picks if card.is_wide_spread)
 
     @property
     def total_model_pick_count(self) -> int:
-        """Unique Model Picks: qualified issued picks plus additive Wide-Spread tracking."""
+        """Non-blocked Model Picks plus additive Wide-Spread tracking.
+
+        Veto-blocked selections remain in ``total`` and ``blocked_count`` but are
+        intentionally excluded from this model-pick total.
+        """
         return self.qualified_model_pick_count + self.wide_spread_model_pick_count
 
 
