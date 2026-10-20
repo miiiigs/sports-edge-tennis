@@ -448,6 +448,24 @@ def test_walkover_persists_as_walkover(db: psycopg.Connection):
     ).fetchone()[0] == "WALKOVER"
 
 
+def test_walkover_without_provider_winner_stays_pending(db: psycopg.Connection):
+    target = _seed_target(db, api_event="at-1")
+    seed_production_model_pick(db, target["match_id"])
+    summary = _refresh(
+        db,
+        [_fixture(event_status="Walkover", event_winner=None, event_final_result="-")],
+    )
+    assert summary.persisted == 0
+    assert summary.unsafe == 1
+    assert (
+        db.execute(
+            "SELECT count(*) FROM match_result_observations WHERE match_id = %s",
+            (target["match_id"],),
+        ).fetchone()[0]
+        == 0
+    )
+
+
 def test_cancelled_persists_as_cancelled(db: psycopg.Connection):
     target = _seed_target(db, api_event="at-1")
     seed_production_model_pick(db, target["match_id"])

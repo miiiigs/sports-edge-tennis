@@ -28,7 +28,9 @@ It never writes, voids or forces a result.
 
 Flags: `RESCHEDULED` (see the shared rule below), `OUTSIDE_RECOVERY_WINDOW` (older than the 3 UTC
 dates the hourly recovery covers; it will not be retried automatically),
-`TYPE_A_BET`.
+`TYPE_A_BET`, `WALKOVER_TERMINAL` (the provider explicitly reports `WALKOVER`
+but no terminal result was persisted; settlement policy maps a verified
+walkover to `VOID`, never to an ordinary win or loss).
 
 Age buckets are hours since latest start: `NOT_STARTED`, `LT_6H`, `6H_24H`, `24H_72H`, `GT_72H`.
 
