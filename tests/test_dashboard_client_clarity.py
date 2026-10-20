@@ -205,13 +205,13 @@ def test_primary_cards_contain_complete_identity_time_probability_price_and_resu
     for card in cards:
         assert '<h2 class="pick-player">' in card
         assert '<p class="pick-opponent">vs ' in card
-        assert re.search(r"\\d{2} [A-Z][a-z]{2} 20\\d{2} \\d{2}:\\d{2} UTC", card)
+        assert re.search(r"[0-9]{2} [A-Z][a-z]{2} 20[0-9]{2} [0-9]{2}:[0-9]{2} UTC", card)
         assert "Model Probability · Uncalibrated" in card
         assert "Basis: Manager Consensus" in card
-        assert re.search(r'<span class="prob-value">\\d+%</span>', card)
+        assert re.search(r'<span class="prob-value">[0-9]+%</span>', card)
         assert "Guide odds · fractional" in card
         assert "Result" in card
         assert (
             "Unavailable" in card
-            or re.search(r'\\d+/\\d+', card)
+            or re.search(r'[0-9]+/[0-9]+', card)
         )
