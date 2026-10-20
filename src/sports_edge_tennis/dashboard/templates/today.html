@@ -3,10 +3,12 @@
 {% block title %}Model Picks — Sports Edge Tennis{% endblock %}
 
 {% block content %}
+{% set main_picks = today_picks.picks | rejectattr('is_wide_spread') | list %}
+{% set tracking_picks = today_picks.picks | selectattr('is_wide_spread') | list %}
 <header class="page-header">
   <h1 class="page-title">Model Picks</h1>
   <p class="page-subtitle">
-    {{ selected_date.strftime('%A, %d %B %Y') }}{% if not today_picks.is_empty %} · {{ today_picks.count_text }}{% endif %}
+    {{ selected_date.strftime('%A, %d %B %Y') }} · {{ main_picks|length }} Manager-qualified selection{{ '' if main_picks|length == 1 else 's' }}
   </p>
   <p class="page-note">Model Picks are predictions, not necessarily Value Bets. Guide odds are bookmaker prices for the selected player when verified — even if the price offers no model value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
@@ -35,9 +37,9 @@
   <p class="empty-body">We could not reach the results store. Nothing has been lost — please check back shortly.</p>
 </section>
 
-{% elif today_picks.is_empty %}
+{% elif not main_picks %}
 <section class="empty-state">
-  <h2 class="empty-title">No picks yet today</h2>
+  <h2 class="empty-title">No Manager-qualified Model Picks yet today</h2>
   <p class="empty-body">
     {% if state.kind == 'NO_RUN' %}
     Today's slate has not been evaluated yet.
@@ -57,7 +59,7 @@
 </div>
 
 <section class="pick-list" id="today-pick-list" aria-label="Today's picks">
-  {% for pick in today_picks.picks %}
+  {% for pick in main_picks %}
   <article class="pick-card{% if pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
     <div class="pick-top">
       <div class="pick-identity">
@@ -132,6 +134,36 @@
 </section>
 
 
+{% endif %}
+
+
+{% if tracking_picks %}
+<details class="no-bet-disclosure section" id="tracking-only-disclosure">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy">
+      <span class="no-bet-toggle-title">A1/A2 research-only tracking</span>
+      <span class="no-bet-toggle-subtitle">{{ tracking_picks|length }} additional agreement{{ '' if tracking_picks|length == 1 else 's' }} did not pass Manager confidence rules · not published Manager Model Picks</span>
+    </span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="no-bet-panel">
+    <p class="no-bet-intro">These are retained for research, not promoted to Model Picks. A1 and A2 selected the same player, but their probability spread exceeded the Manager gate. Their tracking average is not a Manager win probability or betting recommendation.</p>
+    <div class="no-bet-list">
+      {% for pick in tracking_picks %}
+      <article class="no-bet-card">
+        <div class="no-bet-card-main">
+          <h3 class="no-bet-match">{{ pick.player }} <span>vs</span> {{ pick.opponent }}</h3>
+          <p class="no-bet-context">{{ tz_datetime(pick.scheduled_start, '%d %b %Y %H:%M') }} · {{ pick.tournament }}</p>
+        </div>
+        <div class="no-bet-reason">
+          <span class="badge badge-weak">Tracking only</span>
+          <p>A1/A2 average {{ pick.primary_average_probability_display_text }} · confidence spread {{ pick.primary_probability_spread_text }}; Manager gate not passed.</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</details>
 {% endif %}
 
 {% set display_no_bet_matches = no_bet_matches | rejectattr('reason_code', 'equalto', 'AGENT3_ABSTENTION_SPREAD_EXCEEDED') | list %}
