@@ -153,6 +153,10 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     counts = source_api["pick_counts"]
     assert counts["total"] == 4  # three Manager picks + one tracking row
     assert counts["wide_spread_model_picks"] == 1
+    assert counts["manager_qualified_selections"] == 3
+    assert counts["manager_qualified_selections"] == (
+        counts["qualified_model_picks"] + counts["blocked"]
+    )
     assert counts["total_model_picks"] == counts["qualified_model_picks"] + 1
     assert len(source_api["picks"]) == counts["total"]
     assert len(source_api["matches"]) == len(original.matches) + 1

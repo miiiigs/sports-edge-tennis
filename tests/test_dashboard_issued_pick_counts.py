@@ -80,6 +80,20 @@ def _bet(match_id: int, *, bookmaker="UNIBET", price="1.98", edge="0.135272", st
     )
 
 
+def _veto(match_id: int, *, price="1.98") -> MarketDecisionView:
+    return MarketDecisionView(
+        match_id=match_id,
+        decision_status="VETOED",
+        reason_code="VETOED",
+        selected_side=1,
+        market_decimal_price=Decimal(price),
+        sharp_reference_price=Decimal("1.85"),
+        price_bookmaker_code="UNIBET",
+        edge_pct=Decimal("0.10"),
+        min_acceptable_odds=Decimal("1.90"),
+    )
+
+
 def test_daily_composition_counts_qualified_wide_and_value_subset():
     # Issued ledger: 4 qualified (m1,m3 also Value Bets) + 1 additive wide-spread.
     matches = [
@@ -94,6 +108,7 @@ def test_daily_composition_counts_qualified_wide_and_value_subset():
     result = build_today_picks(matches, decisions)
 
     assert result.qualified_model_pick_count == 4
+    assert result.manager_qualified_selection_count == 4
     assert result.wide_spread_model_pick_count == 1
     assert result.total_model_pick_count == 5
     assert result.value_bet_count == 2
@@ -120,6 +135,25 @@ def test_daily_composition_counts_qualified_wide_and_value_subset():
     assert wide.is_wide_spread is True
     assert wide.is_actionable_bet is False
     assert wide.stake_text is None
+
+
+def test_primary_selection_count_includes_blocked_but_model_pick_total_does_not():
+    """The API exposes both definitions explicitly instead of silently merging them."""
+    matches = [_qualified(1, 1, "0.62"), _qualified(2, 2, "0.62"), _wide(3)]
+    decisions = {1: _bet(1), 2: _veto(2)}
+
+    result = build_today_picks(matches, decisions)
+
+    assert result.manager_qualified_selection_count == 2
+    assert result.qualified_model_pick_count == 1
+    assert result.blocked_count == 1
+    assert result.wide_spread_model_pick_count == 1
+    assert result.total_model_pick_count == 2
+    assert result.total == 3
+    assert (
+        result.manager_qualified_selection_count
+        == result.qualified_model_pick_count + result.blocked_count
+    )
 
 
 def test_qualified_precedence_over_wide_spread_for_same_match():

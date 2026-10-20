@@ -520,10 +520,23 @@ def test_empty_slate_renders_a_polished_empty_state(monkeypatch) -> None:
 def test_today_api_exposes_picks_without_internal_identifiers(demo_client) -> None:
     body = demo_client.get("/api/dashboard/today").json()
 
-    assert body["pick_counts"]["evaluated"] == 5
-    assert body["pick_counts"]["total"] == 3
-    assert body["pick_counts"]["value_bets"] == 1
-    assert body["pick_counts"]["blocked"] == 1
+    counts = body["pick_counts"]
+    assert counts["evaluated"] == 5
+    assert counts["total"] == 3
+    assert counts["value_bets"] == 1
+    assert counts["model_picks"] == 1
+    assert counts["blocked"] == 1
+    assert counts["qualified_model_picks"] == 2
+    assert counts["manager_qualified_selections"] == 3
+    assert counts["manager_qualified_selections"] == (
+        counts["model_picks"] + counts["value_bets"] + counts["blocked"]
+    )
+    assert counts["manager_qualified_selections"] == (
+        counts["qualified_model_picks"] + counts["blocked"]
+    )
+    assert counts["total_model_picks"] == (
+        counts["qualified_model_picks"] + counts["wide_spread_model_picks"]
+    )
     for pick in body["picks"]:
         assert "match_id" not in pick
         assert pick["kind"] in {VALUE_BET, MODEL_PICK, BLOCKED}

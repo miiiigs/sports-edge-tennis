@@ -8,7 +8,7 @@
 <header class="page-header">
   <h1 class="page-title">Model Picks</h1>
   <p class="page-subtitle">
-    {{ selected_date.strftime('%A, %d %B %Y') }} · {{ main_picks|length }} Manager-qualified selection{{ '' if main_picks|length == 1 else 's' }}
+    {{ selected_date.strftime('%A, %d %B %Y') }} · {{ today_picks.manager_qualified_selection_count }} Manager-qualified selection{{ '' if today_picks.manager_qualified_selection_count == 1 else 's' }}
   </p>
   <p class="page-note">Model Picks are predictions, not betting instructions. Guide odds show verified bookmaker prices when available; a quoted price does not establish betting value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
