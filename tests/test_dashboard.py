@@ -332,7 +332,7 @@ def test_today_demo_populated(client, monkeypatch):
     assert "Model Picks" in resp.text
     assert "Carlos Alcaraz" in resp.text
     # The demo slate evaluates five matches but only three are picks.
-    assert "3 picks today" in resp.text
+    assert "3 Manager-qualified selections" in resp.text
     assert resp.text.count('<article class="pick-card') == 3
     # Rejected matches exist only inside the collapsed reference disclosure.
     assert "Show no-bet matches" in resp.text

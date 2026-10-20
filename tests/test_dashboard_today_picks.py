@@ -429,7 +429,7 @@ def test_today_page_renders_only_picks(demo_client) -> None:
     body = response.text
     assert "Model Picks" in body
     # Demo slate: 5 evaluated, 3 consensus picks.
-    assert "3 picks today" in body
+    assert "3 Manager-qualified selections" in body
     assert "Carlos Alcaraz" in body
     # The main pick list still contains only the three actual picks.
     assert body.count('<article class="pick-card') == 3
@@ -463,7 +463,7 @@ def test_today_page_has_weak_pick_toggle(demo_client) -> None:
     assert "Filter lower-confidence picks:" in body
     assert 'id="weak-filter-state">Disabled<' in body
     assert "below 60% Manager win probability" in body
-    assert "below 60% A1/A2 tracking average" in body
+    assert "below 60% A1/A2 tracking average" not in body
     assert 'data-weak="' in body
 
 
@@ -511,7 +511,7 @@ def test_empty_slate_renders_a_polished_empty_state(monkeypatch) -> None:
     response = TestClient(app).get("/today")
 
     assert response.status_code == 200
-    assert "No picks yet today" in response.text
+    assert "No Manager-qualified Model Picks yet today" in response.text
     assert "nothing currently meets the required criteria" in response.text
     # An empty result must never be padded with non-picks.
     assert "pick-card" not in response.text
