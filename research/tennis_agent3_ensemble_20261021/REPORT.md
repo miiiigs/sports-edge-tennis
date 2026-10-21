@@ -1,6 +1,7 @@
 # Tennis Agent 3 Recovery and Multi-Agent Model Improvement — Lane 4 Report
 
 - **Experiment:** `tennis_agent3_ensemble_20261021`
+- **Draft PR:** https://github.com/miiiigs/sports-edge-tennis/pull/252
 - **Branch:** `research/tennis-agent3-ensemble-20261021`
 - **Base:** PR #248 head `a88dcd457cac271d1119c091d002eea4c4f49e9d`
   (verified from `git ls-remote`)

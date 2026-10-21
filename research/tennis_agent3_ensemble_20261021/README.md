@@ -2,6 +2,8 @@
 
 Experiment: `tennis_agent3_ensemble_20261021`
 
+Draft PR: https://github.com/miiiigs/sports-edge-tennis/pull/252
+
 This is isolated research. It does not activate a production model, change
 Manager thresholds or weights, change betting logic or stakes, write production
 prediction/Manager rows, or touch Lane 1/Lane 2 dashboard recovery work.
