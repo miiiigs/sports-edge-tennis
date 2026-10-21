@@ -87,6 +87,18 @@ def test_historical_bet_survives_either_veto_order(
     ):
         if idx:
             _append_match_status(db, match_id, status=current_match_status, when=t1)
+            # A second market evaluation needs its own timely sharp/offered
+            # snapshots; stale first-run quotes correctly produce NO_BET.
+            for side in (1, 2):
+                _odds(
+                    db, match_id, f"PLAYER_{side}", "2.00",
+                    "sharp-later", "SHARP", "PINNACLE", t1,
+                )
+                _odds(
+                    db, match_id, f"PLAYER_{side}",
+                    "2.05" if side == 1 else "1.75",
+                    "offer-later", "SOFT", "UNIBET", t1,
+                )
         run_id = _seed_run(
             db, as_of, [(match_id, 1, "0.620", 1, "0.600")], configs
         )
