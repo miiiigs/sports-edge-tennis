@@ -10,6 +10,7 @@
 | --- | --- |
 | Repository | `miiiigs/sports-edge-tennis` |
 | Research branch | `research/tennis-model-error-forensics-20261021` |
+| Draft PR | [#247](https://github.com/miiiigs/sports-edge-tennis/pull/247) |
 | Branch base (`origin/main` at start) | `b6b7e506687172a0b08441bb006013d131a19fcd` |
 | Cited Agent 2 PR #239 head | `eec591921367cd81736e9feba1b52011657f1512` |
 | Production database | Tennis PostgreSQL, read-only Railway session |

@@ -4,6 +4,8 @@ Read-only research into why the live Tennis Manager models issue incorrect
 high-confidence picks. No production model, Manager rule, database row, or
 prediction was changed.
 
+Draft PR: [#247](https://github.com/miiiigs/sports-edge-tennis/pull/247).
+
 ## Scope
 
 - **Primary live population:** first production Manager `CONSENSUS` evaluation
