@@ -1,0 +1,23 @@
+{
+  "counts": {
+    "a3_diagnostics": 8583,
+    "a3_evaluations": 31121,
+    "ensemble_rows": 2259
+  },
+  "cutoff": "2026-10-21T23:59:59+00:00",
+  "dataset_schema_version": "tennis_agent3_ensemble_extract_v1",
+  "experiment_id": "tennis_agent3_ensemble_20261021",
+  "extraction_utc": "2026-10-21T15:29:48.778487+00:00",
+  "files": {
+    "a3_diagnostics.jsonl": "07b1c7157166fcbd27442bd7e0efd1a76ccf2224da38f2b0207097d8a7cc74b5",
+    "a3_evaluations.jsonl": "510e7879aa6b49a818718779ce0bbfbee709076fc6f80311be8d42d4f1bae5e8",
+    "ensemble_rows.jsonl": "728392f6ab5ebbfcdc62b943ea37d78d421b6b00bb6490fa18b295d75dec1f0e"
+  },
+  "queries_sha256": {
+    "a3_diagnostics": "3b2479619cd9fef03b5ad1e33336ca952ca8bfe12950e176e6efb1f4911e56c4",
+    "a3_evaluations": "a342a3eaff9386fbad39c4de8843e9373eebb350f96900f18eb862136f104f2b",
+    "ensemble_rows": "876b57139890ba5d0c1da41eb9c52c265b2023071c796b72dff0f54fd3a3ce1d"
+  },
+  "read_only": true,
+  "source_database": "railway"
+}

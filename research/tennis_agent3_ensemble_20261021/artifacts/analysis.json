@@ -1,0 +1,356 @@
+{
+  "abstentions": {
+    "diagnostics": {
+      "direct_raw_histogram": {
+        "0": 5670,
+        "1": 1638,
+        "2": 819,
+        "3": 321,
+        "4": 104,
+        "5": 31
+      },
+      "direct_three_plus_required": {
+        "direct_raw_eq2": 819,
+        "direct_raw_ge3": 456,
+        "explanation": "The raw gate requires >=2 prior H2H matches while the effective gate requires >=2.5 decay-weighted observations. Two observations can never reach 2.5 because each temporal weight is <=1, so the raw=2 boundary is not actionable: a pair needs at least three retained observations."
+      },
+      "eligible_shared_opponents_histogram": {
+        "0": 4890,
+        "1": 1251,
+        "2": 722,
+        "3": 498,
+        "4": 331,
+        "5": 157,
+        "6": 290,
+        "7": 130,
+        "8": 28,
+        "9": 61,
+        "10": 15,
+        "11": 40,
+        "12": 22,
+        "13": 54,
+        "14": 6,
+        "15": 11,
+        "20": 8,
+        "21": 10,
+        "22": 35,
+        "23": 7,
+        "31": 17
+      },
+      "gate_decomposition": {
+        "direct_gate_pass": 48,
+        "direct_only": 0,
+        "direct_plus_network": 48,
+        "direct_raw_ge2_effective_lt_2_5": 1227,
+        "direct_raw_one": 1638,
+        "direct_raw_zero": 5670,
+        "network_eligible_1_4": 2802,
+        "network_eligible_5_7": 577,
+        "network_eligible_ge8": 314,
+        "network_eligible_zero": 4890,
+        "network_normal_support": 48,
+        "network_only_gate_pass": 170,
+        "network_only_gate_pass_but_not_predicted": 153
+      },
+      "identity": {
+        "RESOLVED": 8583
+      },
+      "insufficient_cohorts": {
+        "direct_raw=0": 5156,
+        "direct_raw=1": 1638,
+        "direct_raw>=2_effective<2.5": 1227
+      },
+      "n": 8583,
+      "status_gate": {
+        "ABSTAINED|INSUFFICIENT_MATCHUP_SUPPORT": 8021,
+        "ABSTAINED|UNKNOWN_SURFACE": 514,
+        "ABSTAINED|WEAK_SIGNAL": 12,
+        "PREDICTED|<none>": 36
+      },
+      "support_path": {
+        "DIRECT_PLUS_NETWORK": 48,
+        "NONE": 8535
+      },
+      "surface": {
+        "<missing>": 548,
+        "CLAY": 4250,
+        "HARD": 3785
+      },
+      "unique_matches": 642,
+      "unique_predicted_matches": 2
+    }
+  },
+  "contribution": {
+    "accuracy": 0.7777777777777778,
+    "accuracy_wilson": [
+      0.45258896910698887,
+      0.9367748928821533
+    ],
+    "agent_metrics_on_same_matches": {
+      "A1": {
+        "accuracy": 0.8888888888888888,
+        "brier": 0.13456524721511112,
+        "ece": 0.2283217777777778,
+        "log_loss": 0.433095449982609,
+        "n": 9
+      },
+      "A2": {
+        "accuracy": 0.8571428571428571,
+        "brier": 0.1326910052722857,
+        "ece": 0.3498105714285714,
+        "log_loss": 0.44351575357642464,
+        "n": 7
+      },
+      "A3": {
+        "accuracy": 0.7777777777777778,
+        "brier": 0.22989343144779248,
+        "ece": 0.23644073478193495,
+        "log_loss": 0.6528342447197167,
+        "n": 9
+      }
+    },
+    "agreement": {
+      "a1_a2_agree": 5,
+      "a3_agrees_a1": 9,
+      "a3_agrees_a2": 5,
+      "all_three_agree": 5
+    },
+    "brier": 0.22989343144779248,
+    "log_loss": 0.6528342447197167,
+    "scored_matches": 9,
+    "side_distribution": {
+      "1": 5,
+      "2": 5
+    },
+    "three_active": {
+      "a3_dissent_a1a2_still_won": 0,
+      "a3_dissent_rows": 0,
+      "a3_dissent_scored": 0,
+      "a3_side_equals_a1": 8,
+      "a3_side_equals_a1_rate": 1.0,
+      "a3_side_equals_a2": 5,
+      "all_no_bet": true,
+      "counterfactual_two_agent": {
+        "0.06": {
+          "accuracy": 1.0,
+          "scored_picks": 1,
+          "wins": 1
+        },
+        "0.08": {
+          "accuracy": 1.0,
+          "scored_picks": 3,
+          "wins": 3
+        }
+      },
+      "manager_rows": 8,
+      "reason_codes": {
+        "DIRECTIONAL_DISAGREEMENT": 3,
+        "THREE_AGENT_SPREAD_EXCEEDED": 5
+      },
+      "rows_spread_le_0_08": 0,
+      "spread_max": 0.39903620577626786,
+      "spread_median": 0.152600403525793,
+      "spread_min": 0.0875600482781742
+    },
+    "unique_predicted_matches": 10,
+    "wins": 7
+  },
+  "coverage": {
+    "by_season_first_evaluation": {
+      "2026": {
+        "abstained": 2249,
+        "predicted": 10
+      }
+    },
+    "by_surface_first_evaluation": {
+      "<missing>": {
+        "abstained": 586,
+        "predicted": 1
+      },
+      "CLAY": {
+        "abstained": 762,
+        "predicted": 3
+      },
+      "HARD": {
+        "abstained": 901,
+        "predicted": 6
+      }
+    },
+    "by_tier_first_evaluation": {
+      "ATP_250": {
+        "abstained": 20,
+        "predicted": 0
+      },
+      "ATP_TOUR": {
+        "abstained": 488,
+        "predicted": 5
+      },
+      "CHALLENGER": {
+        "abstained": 1741,
+        "predicted": 5
+      }
+    },
+    "evaluation_level": {
+      "ABSTAINED|<null>": 18554,
+      "ABSTAINED|INSUFFICIENT_MATCHUP_SUPPORT": 11855,
+      "ABSTAINED|UNKNOWN_SURFACE": 514,
+      "ABSTAINED|WEAK_SIGNAL": 26,
+      "PREDICTED|<null>": 172
+    },
+    "evaluation_rows": 31121,
+    "first_as_of": "2026-09-08T02:01:09.738947+00:00",
+    "last_as_of": "2026-10-21T12:04:24.970001+00:00",
+    "post_0017_vs_pre": {
+      "post_0017": 12395,
+      "pre_or_missing_0017": 18554
+    },
+    "top_tournaments": [
+      {
+        "abstained": 144,
+        "coverage": 0.006896551724137931,
+        "predicted": 1,
+        "tournament": "Shanghai 2026"
+      },
+      {
+        "abstained": 52,
+        "coverage": 0.018867924528301886,
+        "predicted": 1,
+        "tournament": "Porto 2026"
+      },
+      {
+        "abstained": 53,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "ATP Davis Cup - World Group II 2026"
+      },
+      {
+        "abstained": 52,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Curitiba 2026"
+      },
+      {
+        "abstained": 52,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "ATP Davis Cup - World Group I 2026"
+      },
+      {
+        "abstained": 50,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Villena 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.02,
+        "predicted": 1,
+        "tournament": "Szczecin 2026"
+      },
+      {
+        "abstained": 50,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Guangzhou 2 2026"
+      },
+      {
+        "abstained": 50,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Columbus 2026"
+      },
+      {
+        "abstained": 50,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Biella 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Wuning 3 (China) - Qualification 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Tiburon 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Rennes 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Jingshan 2026"
+      },
+      {
+        "abstained": 49,
+        "coverage": 0.0,
+        "predicted": 0,
+        "tournament": "Braga 2026"
+      }
+    ],
+    "unique_coverage_rate": 0.004426737494466578,
+    "unique_first_status_reason": {
+      "ABSTAINED|<null>": 1318,
+      "ABSTAINED|INSUFFICIENT_MATCHUP_SUPPORT": 899,
+      "ABSTAINED|UNKNOWN_SURFACE": 31,
+      "ABSTAINED|WEAK_SIGNAL": 1,
+      "PREDICTED|<null>": 10
+    },
+    "unique_matches": 2259,
+    "unique_predicted_matches": 10
+  },
+  "experiment_id": "tennis_agent3_ensemble_20261021",
+  "generated_utc": "2026-10-21T15:30:25.878048+00:00",
+  "manager_population": {
+    "active_agent_count": {
+      "1": 1001,
+      "2": 1250,
+      "3": 8
+    },
+    "matches": 2259,
+    "reason_codes": {
+      "AGENT3_ABSTENTION_SPREAD_EXCEEDED": 593,
+      "DIRECTIONAL_DISAGREEMENT": 350,
+      "NONE": 308,
+      "THREE_AGENT_SPREAD_EXCEEDED": 5,
+      "TWO_OR_MORE_ABSTENTIONS": 1001,
+      "UNSUPPORTED_ABSTENTION_CONFIGURATION": 2
+    },
+    "scored_matches": 1862,
+    "status": {
+      "CONSENSUS": 308,
+      "NO_BET": 1951
+    }
+  },
+  "manifest": {
+    "counts": {
+      "a3_diagnostics": 8583,
+      "a3_evaluations": 31121,
+      "ensemble_rows": 2259
+    },
+    "cutoff": "2026-10-21T23:59:59+00:00",
+    "dataset_schema_version": "tennis_agent3_ensemble_extract_v1",
+    "experiment_id": "tennis_agent3_ensemble_20261021",
+    "extraction_utc": "2026-10-21T15:29:48.778487+00:00",
+    "files": {
+      "a3_diagnostics.jsonl": "07b1c7157166fcbd27442bd7e0efd1a76ccf2224da38f2b0207097d8a7cc74b5",
+      "a3_evaluations.jsonl": "510e7879aa6b49a818718779ce0bbfbee709076fc6f80311be8d42d4f1bae5e8",
+      "ensemble_rows.jsonl": "728392f6ab5ebbfcdc62b943ea37d78d421b6b00bb6490fa18b295d75dec1f0e"
+    },
+    "queries_sha256": {
+      "a3_diagnostics": "3b2479619cd9fef03b5ad1e33336ca952ca8bfe12950e176e6efb1f4911e56c4",
+      "a3_evaluations": "a342a3eaff9386fbad39c4de8843e9373eebb350f96900f18eb862136f104f2b",
+      "ensemble_rows": "876b57139890ba5d0c1da41eb9c52c265b2023071c796b72dff0f54fd3a3ce1d"
+    },
+    "read_only": true,
+    "source_database": "railway"
+  }
+}
