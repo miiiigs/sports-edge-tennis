@@ -98,6 +98,32 @@ def classify_missing(
     return "ELIGIBLE_QUOTE_BUT_DASHBOARD_READER_MISSED"
 
 
+RESULT_SQL = """
+    SELECT outcome_status::text AS outcome_status, winner_side,
+           source_observed_at, as_of
+    FROM match_result_observations
+    WHERE match_id = %s
+      AND outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+    ORDER BY as_of DESC, source_observed_at DESC,
+             match_result_observation_id DESC
+"""
+
+
+def completion_result(observations: list[dict], side: int) -> str:
+    """Score only authoritative, unambiguous COMPLETED sporting results."""
+    if not observations:
+        return "PENDING_OR_UNVERIFIED"
+    unique = {(o["outcome_status"], o["winner_side"]) for o in observations}
+    if len(unique) != 1:
+        return "CONFLICTING_TERMINAL_OBSERVATIONS"
+    status, winner = next(iter(unique))
+    if status != "COMPLETED" or winner not in (1, 2):
+        return "NOT_COMPARABLE_OR_VOID"
+    return "WON" if winner == side else "LOST"
+
+
+
+
 def _identity(conn, match_id: int, picked_at: datetime) -> bool | None:
     row = conn.execute(
         IDENTITY_SQL, (match_id, picked_at, picked_at, match_id)
@@ -117,6 +143,7 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
         conn, decision_date=day, timezone_name=timezone
     )
     causes: Counter[str] = Counter()
+    results: Counter[str] = Counter()
     details: list[dict] = []
     for pick in picks:
         price = priced.get(pick.match_id)
@@ -130,7 +157,13 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
                 same_orientation=_identity(conn, pick.match_id, pick.picked_at),
             )
         causes[cause] += 1
+        result = completion_result(
+            conn.execute(RESULT_SQL, (pick.match_id,)).fetchall(),
+            pick.selected_side,
+        )
+        results[result] += 1
         details.append({
+            "result": result,
             "match_id": pick.match_id,
             "first_qualified_at": pick.picked_at.isoformat(),
             "scheduled_start_at": (pick.match_start_at.isoformat()
@@ -152,6 +185,14 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
         "priced": causes["PRICED"],
         "unpriced": len(picks) - causes["PRICED"],
         "reason_counts": dict(sorted(causes.items())),
+        "scored_completed": results["WON"] + results["LOST"],
+        "wins": results["WON"],
+        "losses": results["LOST"],
+        "result_states": dict(sorted(results.items())),
+        "observed_accuracy_completed_only": (
+            results["WON"] / (results["WON"] + results["LOST"])
+            if results["WON"] + results["LOST"] else None
+        ),
         "picks": details,
     }
 
@@ -178,6 +219,7 @@ def main() -> None:
                 "method": "canonical-first-qualified-Manager-only",
                 "timezone": "Asia/Manila",
                 "source": "read-only production persisted quotes; no provider calls",
+                "accuracy_scope": "first-qualified Manager matching local match date; COMPLETED only; excludes tracking/void/pending; not independently verified publication",
                 "days": results,
             }, indent=2))
             # SELECT-only by transaction contract even if caller supplied a
