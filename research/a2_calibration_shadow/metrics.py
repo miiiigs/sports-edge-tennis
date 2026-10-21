@@ -10,7 +10,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 from itertools import pairwise
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - research dependency
+    np = None  # type: ignore[assignment]
 
 from .calibrators import logit, sigmoid
 
@@ -19,10 +22,19 @@ CONFIDENCE_THRESHOLDS: tuple[float, ...] = (0.60, 0.70, 0.80, 0.90)
 _EPS = 1e-15
 
 
+def _require_numpy() -> None:
+    if np is None:  # pragma: no cover - research dependency
+        raise RuntimeError(
+            "numpy is required for calibration metrics; install "
+            "research/a2_calibration_shadow/requirements.txt"
+        )
+
+
 def _as_arrays(
     probabilities: Sequence[float],
     outcomes: Sequence[int],
 ) -> tuple[np.ndarray, np.ndarray]:
+    _require_numpy()
     p = np.asarray(probabilities, dtype=float)
     y = np.asarray(outcomes, dtype=float)
     if p.shape != y.shape:
@@ -37,6 +49,7 @@ def _as_arrays(
 
 
 def ece_numpy(probabilities: np.ndarray, outcomes: np.ndarray) -> float:
+    _require_numpy()
     indices = np.clip(((probabilities - 0.5) / 0.05).astype(int), 0, 9)
     total = float(probabilities.size)
     ece = 0.0
@@ -51,6 +64,7 @@ def ece_numpy(probabilities: np.ndarray, outcomes: np.ndarray) -> float:
 
 
 def log_loss_numpy(probabilities: np.ndarray, outcomes: np.ndarray) -> float:
+    _require_numpy()
     clipped = np.clip(probabilities, _EPS, 1.0 - _EPS)
     return float(
         -(
@@ -61,6 +75,7 @@ def log_loss_numpy(probabilities: np.ndarray, outcomes: np.ndarray) -> float:
 
 
 def brier_numpy(probabilities: np.ndarray, outcomes: np.ndarray) -> float:
+    _require_numpy()
     return float(((probabilities - outcomes) ** 2).mean())
 
 
@@ -98,6 +113,7 @@ def reliability_bins(
     *,
     edges: Sequence[float] = ECE_EDGES,
 ) -> list[dict]:
+    _require_numpy()
     bins: list[dict] = []
     for lower, upper in pairwise(edges):
         if upper == 1.0:
@@ -139,6 +155,7 @@ def confidence_band(
     outcomes: np.ndarray,
     threshold: float,
 ) -> dict:
+    _require_numpy()
     mask = probabilities >= threshold
     count = int(mask.sum())
     if count == 0:
@@ -190,6 +207,7 @@ def wilson_interval(successes: int, trials: int, z: float = 1.959963984540054) -
 
 
 def percentile_interval(values: Sequence[float]) -> list[float] | None:
+    _require_numpy()
     if not values:
         return None
     array = np.asarray(values, dtype=float)
@@ -331,6 +349,7 @@ def threshold_effects(
     *,
     thresholds: Sequence[float] = CONFIDENCE_THRESHOLDS,
 ) -> list[dict]:
+    _require_numpy()
     base = np.asarray(baseline_probabilities, dtype=float)
     cal = np.asarray(calibrated_probabilities, dtype=float)
     total = int(base.size)
@@ -363,6 +382,7 @@ def high_confidence_summary(
     *,
     thresholds: Sequence[float] = CONFIDENCE_THRESHOLDS,
 ) -> list[dict]:
+    _require_numpy()
     base = np.asarray(baseline_probabilities, dtype=float)
     cal = np.asarray(calibrated_probabilities, dtype=float)
     y = np.asarray(outcomes, dtype=float)

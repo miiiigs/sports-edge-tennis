@@ -4,8 +4,9 @@ import json
 from itertools import pairwise
 from pathlib import Path
 
-import numpy as np
 import pytest
+
+np = pytest.importorskip("numpy")
 
 from research.a2_calibration_shadow import calibrators, harness, metrics
 

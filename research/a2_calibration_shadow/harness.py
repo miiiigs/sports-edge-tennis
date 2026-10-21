@@ -33,7 +33,10 @@ from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
-import numpy as np
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover - research dependency
+    np = None  # type: ignore[assignment]
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -1340,6 +1343,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", default=DEFAULT_SEED, type=int)
     args = parser.parse_args(argv)
 
+    if np is None:
+        raise SystemExit(
+            "numpy is required for the calibration harness; install "
+            "research/a2_calibration_shadow/requirements.txt"
+        )
     started = time.time()
     records = load_records(args.records)
     predicted = _predicted(records)
