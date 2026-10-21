@@ -1,0 +1,63 @@
+{
+  "artifact_hashes": {
+    "analysis.json": "e21168ec397433ce54786fa4a32301f9d5fa34b0650148ea7a6082a619fd0cff",
+    "analyze.py": "9eb4e4851867f9d5256bc674b2b6a8c84b5371606c14d8203b580f2682247a68",
+    "case_studies.md": "1c9f69181160c2c0f88172d2cdedd4a4196473296e88e78d7e4c5648dfe63e37",
+    "extract_live_picks.py": "ce38a70f5382ef14a4bc0af574ecc5c674d1cd507a8607b923aac51444a88374",
+    "tables.md": "982d7639756007dd1016024764d5716a1dd28c6cdcfedad4d435c253f82241fa"
+  },
+  "dataset_manifest": {
+    "_manifest": true,
+    "dataset_schema_version": "tennis_model_error_forensics_v1",
+    "extract_cutoff": "2026-10-21T03:30:00+00:00",
+    "extracted_at": "2026-10-21T04:06:27.867465+00:00",
+    "git_sha": "b6b7e506687172a0b08441bb006013d131a19fcd",
+    "population_counts": {
+      "manager_consensus": 346,
+      "value_bet": 67,
+      "vetoed": 7,
+      "wide_spread_tracking": 553
+    },
+    "row_count": 973,
+    "row_sha256": "ea3809af885643a08dfc15e9eb62d0d6e9ea8a9ed7190002c3f2d552810f281e"
+  },
+  "source": {
+    "access": "SET default_transaction_read_only = on",
+    "database": "production Tennis PostgreSQL (read-only Railway session)",
+    "extract_cutoff": "2026-10-21T03:30:00+00:00",
+    "frozen_dataset_committed": false,
+    "frozen_dataset_note": "The JSONL is reproducible from extract_live_picks.py and is intentionally not committed."
+  },
+  "source_audit_counts": {
+    "a3_support_diagnostic_matches": 637,
+    "a3_support_diagnostic_rows": 8325,
+    "a3_support_insufficient": 7799,
+    "a3_support_predicted": 36,
+    "a3_support_unknown_surface": 478,
+    "a3_support_weak_signal": 12,
+    "agent3_abstained_rows": 30691,
+    "agent3_predicted_rows": 172,
+    "decision_agents_rows": 0,
+    "decision_settlements_cancelled": 7,
+    "decision_settlements_lost": 271,
+    "decision_settlements_rows": 507,
+    "decision_settlements_void": 11,
+    "decision_settlements_won": 218,
+    "decisions_rows": 23483,
+    "historical_odds_before_2026_09_09": 0,
+    "manager_consensus_results_rows": 30863,
+    "manager_consensus_rows_all": 4825,
+    "manager_consensus_rows_with_agent3_abstained": 4825,
+    "manager_consensus_rows_with_agent3_predicted": 0,
+    "manager_raw_rows_per_unique_match_average": 13.9,
+    "manager_unique_matches_all": 346,
+    "manager_unique_matches_ge60": 237,
+    "odds_snapshots_rows": 132350,
+    "prediction_runs_rows": 1418,
+    "predictions_rows": 92589,
+    "value_bets_pre_publication_boundary": 15,
+    "value_bets_published": 52,
+    "value_bets_unique": 67,
+    "vetoed_unique": 7
+  }
+}
