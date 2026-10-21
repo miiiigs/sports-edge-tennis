@@ -154,20 +154,27 @@ def test_real_vetoed_decision_reaches_dashboard_without_becoming_a_bet(
     issued_at = datetime(2026, 9, 25, 9, 0, tzinfo=UTC)
     market_at = datetime(2026, 9, 25, 9, 45, tzinfo=UTC)
 
-    m1_no_quote = _seed_match(
+    # Guide quotes before issue require a match schedule already observable and
+    # ingested at their receipt time; the default test fixture ingests "now".
+    fixture_seen = datetime(2026, 9, 25, 8, 0, tzinfo=UTC)
+
+    def _historical_match(*args, **kwargs):
+        return _seed_match(*args, match_version_seen=fixture_seen, **kwargs)
+
+    m1_no_quote = _historical_match(
         db, "NoQuote", datetime(2026, 9, 25, 13, 0, tzinfo=UTC)
     )
-    m2_value = _seed_match(db, "Value", datetime(2026, 9, 25, 14, 0, tzinfo=UTC))
-    m3_veto = _seed_match(
+    m2_value = _historical_match(db, "Value", datetime(2026, 9, 25, 14, 0, tzinfo=UTC))
+    m3_veto = _historical_match(
         db,
         "Veto",
         datetime(2026, 9, 25, 15, 0, tzinfo=UTC),
         status="WALKOVER",
     )
-    m4_tracking = _seed_match(
+    m4_tracking = _historical_match(
         db, "Tracking", datetime(2026, 9, 25, 16, 0, tzinfo=UTC)
     )
-    m5_guide = _seed_match(db, "Guide", datetime(2026, 9, 25, 17, 0, tzinfo=UTC))
+    m5_guide = _historical_match(db, "Guide", datetime(2026, 9, 25, 17, 0, tzinfo=UTC))
 
     run_id = _seed_run(
         db,
