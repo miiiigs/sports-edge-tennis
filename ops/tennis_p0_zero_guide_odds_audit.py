@@ -157,6 +157,21 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
                 same_orientation=_identity(conn, pick.match_id, pick.picked_at),
             )
         causes[cause] += 1
+        # PR244 removes production's hard 24-hour post-issue ceiling.
+        # Flag when the candidate's chosen quote itself exceeds that ceiling.
+        # It does not prove no other earlier eligible quote could exist.
+        selected_quote_exceeds_deployed_24h = (
+            cause == "PRICED"
+            and (
+                price.observed_at > pick.picked_at + timedelta(hours=24)
+                or (
+                    price.available_at is not None
+                    and price.available_at > pick.picked_at + timedelta(hours=24)
+                )
+            )
+        )
+        if selected_quote_exceeds_deployed_24h:
+            causes["CANDIDATE_SELECTED_QUOTE_EXCEEDS_DEPLOYED_24H_GATE"] += 1
         result = completion_result(
             conn.execute(RESULT_SQL, (pick.match_id,)).fetchall(),
             pick.selected_side,
@@ -164,6 +179,7 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
         results[result] += 1
         details.append({
             "result": result,
+            "candidate_selected_quote_exceeds_deployed_24h_gate": selected_quote_exceeds_deployed_24h,
             "match_id": pick.match_id,
             "first_qualified_at": pick.picked_at.isoformat(),
             "scheduled_start_at": (pick.match_start_at.isoformat()
