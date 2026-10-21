@@ -176,8 +176,8 @@ Coverage by tier (unique first evaluation per match):
 | ATP_250 | 20 | 0 | 0.00% |
 
 The largest tournament samples were Shanghai 2026 (1/145), Porto 2026 (1/53)
-and Szczecin 2026 (1/50). No tournament produced more than one A3 prediction in
-the unique-match view.
+and Szczecin 2026 (1/50). The 10 predictions were spread over 9 tournaments;
+only Tokyo 2026 produced two.
 
 ### 3.3 Abstention reason counts
 
