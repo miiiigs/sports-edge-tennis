@@ -393,20 +393,18 @@ def get_issued_day_state(
     )
 
 
-def get_issued_market_decisions(
+def _issued_decisions_for_status(
     conn: psycopg.Connection,
-    run_date: date,
-    timezone_name: str = "UTC",
+    run_ids: list[int],
+    decision_status: str,
 ) -> dict[int, MarketDecisionView]:
-    """First actually-issued BET decision per sporting match for the day.
+    """Earliest actual decision of *one* status, preserving its own chronology.
 
-    Uses the earliest published BET per match across the day's completed runs so
-    a Value Bet keeps its issued bookmaker, price, edge, and stake even after a
-    later re-evaluation or market refresh. Never recalculates old value bets.
+    In particular the BET query has the same first-issued ordering as the
+    historical Value Bet reader before VETOED presentation was introduced.
     """
-    runs = completed_day_run_rows(conn, run_date, timezone_name)
-    if not runs:
-        return {}
+    if decision_status not in ("BET", "VETOED"):
+        raise ValueError("Only the published BET and VETOED overlays are supported")
     rows = conn.execute(
         """
         SELECT DISTINCT ON (d.match_id)
@@ -423,11 +421,11 @@ def get_issued_market_decisions(
             d.published_at
         FROM decisions d
         WHERE d.prediction_run_id = ANY(%s)
-          AND d.decision_status = 'BET'
+          AND d.decision_status = %s
           AND d.manager_consensus_result_id IS NOT NULL
         ORDER BY d.match_id, COALESCE(d.published_at, d.as_of) ASC, d.decision_id ASC
         """,
-        ([run_id for run_id, _ in runs],),
+        (run_ids, decision_status),
     ).fetchall()
     return {
         int(row[0]): MarketDecisionView(
@@ -445,6 +443,42 @@ def get_issued_market_decisions(
         )
         for row in rows
     }
+
+
+def get_issued_bet_decisions(
+    conn: psycopg.Connection,
+    run_date: date,
+    timezone_name: str = "UTC",
+) -> dict[int, MarketDecisionView]:
+    """Historical immutable first-issued BET ledger; VETOED never masks BET."""
+    runs = completed_day_run_rows(conn, run_date, timezone_name)
+    if not runs:
+        return {}
+    return _issued_decisions_for_status(
+        conn, [run_id for run_id, _ in runs], "BET"
+    )
+
+
+def get_issued_market_decisions(
+    conn: psycopg.Connection,
+    run_date: date,
+    timezone_name: str = "UTC",
+) -> dict[int, MarketDecisionView]:
+    """Read-only Today/Value overlay: historical BET plus VETO-only matches.
+
+    A match with any actual issued BET retains its earliest published BET
+    regardless of an earlier/later VETOED evaluation. A VETOED decision only
+    supplies a blocked card when that match has no issued BET on that day.
+    This preserves original Value Bet price/stake/history and avoids creating
+    duplicate main cards. NO_BET is never promoted.
+    """
+    runs = completed_day_run_rows(conn, run_date, timezone_name)
+    if not runs:
+        return {}
+    run_ids = [run_id for run_id, _ in runs]
+    issued_bets = _issued_decisions_for_status(conn, run_ids, "BET")
+    blocked_only = _issued_decisions_for_status(conn, run_ids, "VETOED")
+    return {**blocked_only, **issued_bets}
 
 
 def load_run_matches(conn: psycopg.Connection, prediction_run_id: int) -> list[MatchView]:

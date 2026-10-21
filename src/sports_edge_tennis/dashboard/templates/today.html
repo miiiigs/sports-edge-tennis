@@ -73,17 +73,17 @@
         {% else %}
         <span class="prob-value">{{ pick.probability_display_text }}</span>
         {% endif %}
-        <span class="prob-label" title="{{ pick.probability_note }}">{{ pick.probability_label }} · Basis: {{ pick.probability_basis_label }}</span>
+        <span class="prob-label" title="{{ pick.probability_note }}">{{ 'A1/A2 tracking average' if pick.is_wide_spread else 'Manager win probability' }}</span>
       </div>
     </div>
 
     <div class="pick-meta" style="align-items: flex-start;">
-      <span class="badge badge-model">MODEL PICK</span>
+      <span class="badge {{ 'badge-blocked' if pick.kind == 'BLOCKED' else ('badge-value' if pick.kind == 'VALUE_BET' else 'badge-model') }}">{{ pick.kind_label }}</span>
       {% if pick.is_wide_spread %}
       <span class="badge badge-weak">A1/A2 tracking · not Manager consensus</span>
       {% endif %}
       {% if pick.kind == 'BLOCKED' %}
-      <span class="badge badge-blocked">Market veto · not betting</span>
+      <span class="badge badge-blocked">Blocked by safety check · no stake</span>
       {% endif %}
     </div>
     <div class="metric-row" aria-label="Guide odds and result">
@@ -91,7 +91,7 @@
         <span class="metric-label">Guide odds · fractional</span>
         <span class="metric-value">{{ pick.guide_odds_fractional_text }}</span>
         {% if pick.guide_odds_price is not none %}
-        <span class="stat-note">Decimal {{ pick.guide_odds_display_text }} · Market implied {{ pick.guide_market_implied_probability_text }}</span>
+        <span class="stat-note">Decimal {{ pick.guide_odds_display_text }}</span>
         {% endif %}
         {% if pick.guide_bookmaker %}
         <span class="stat-note">{{ pick.guide_bookmaker }}</span>
@@ -116,7 +116,11 @@
     </div>
     <details class="pick-details">
       <summary>Prediction details</summary>
+      <p class="stat-note">{{ pick.probability_label }} · Basis: {{ pick.probability_basis_label }}.</p>
       <p class="stat-note">Fractional odds describe potential payout, not how many people placed bets. Market-implied percentage comes from bookmaker odds, not the model.</p>
+      {% if pick.guide_market_implied_probability_text %}
+      <p class="stat-note">Bookmaker-implied probability: {{ pick.guide_market_implied_probability_text }}.</p>
+      {% endif %}
       <p class="section-note" style="margin-top: 12px;">{{ pick.kind_summary }}</p>
       <p class="stat-note">{{ pick.guide_odds_note }}</p>
       {% if pick.guide_quote_available_at %}

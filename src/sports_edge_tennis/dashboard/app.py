@@ -408,7 +408,9 @@ def _pick_payload(pick) -> dict:
         "is_actionable_bet": pick.is_actionable_bet,
         "offered_price": str(pick.offered_price) if pick.offered_price else None,
         "guide_odds": (
-            str(pick.guide_odds_price) if pick.guide_odds_price is not None else None
+            pick.guide_odds_display_text
+            if pick.guide_odds_price is not None
+            else None
         ),
         "guide_odds_fractional": pick.guide_odds_fractional_text if pick.guide_odds_price is not None else None,
         "guide_market_implied_probability": pick.guide_market_implied_probability_text,
