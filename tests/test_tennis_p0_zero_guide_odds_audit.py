@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from ops.tennis_p0_zero_guide_odds_audit import classify_missing
+from ops.tennis_p0_zero_guide_odds_audit import classify_missing, completion_result
 
 PICK = datetime(2026, 10, 21, 9, 0, tzinfo=UTC)
 START = PICK + timedelta(hours=4)
@@ -66,3 +66,14 @@ def test_older_than_issue_minus_twelve_hours_quote_is_rejected():
 def test_only_active_open_market_with_decimal_price_over_one_is_valid():
     assert reason([quote(market_status="SUSPENDED")]) == "NO_OPEN_VALID_PRICE"
     assert reason([quote(decimal_price=Decimal("1.0"))]) == "NO_OPEN_VALID_PRICE"
+
+
+def test_weekly_accuracy_excludes_pending_walkover_and_conflicting_truth():
+    assert completion_result([], 1) == "PENDING_OR_UNVERIFIED"
+    assert completion_result([{"outcome_status": "WALKOVER", "winner_side": None}], 1) == "NOT_COMPARABLE_OR_VOID"
+    assert completion_result([{"outcome_status": "COMPLETED", "winner_side": 1}], 1) == "WON"
+    assert completion_result([{"outcome_status": "COMPLETED", "winner_side": 2}], 1) == "LOST"
+    assert completion_result([
+        {"outcome_status": "COMPLETED", "winner_side": 1},
+        {"outcome_status": "COMPLETED", "winner_side": 2},
+    ], 1) == "CONFLICTING_TERMINAL_OBSERVATIONS"
