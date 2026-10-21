@@ -221,7 +221,7 @@ There are **16** settled `COMPLETED` losses at >=80% in the primary population. 
 - **Agents:** A1 83.20%, A2 84.84%, A3 **abstained**; spread 0.0164.
 - **History:** Mitsui only 5 prior matches (60.0%), 4 on the recorded surface, 1 stat match; Okonkwo 6 prior matches (50.0%) but had not played for **106 days**.
 - **Market:** pre-pick Pinnacle had Mitsui at 1.271 (74.38% normalized); model was **+9.64pp** above sharp.
-- **Data quality:** surface missing at both match and edition level; tournament label/flag mismatch; thin history.
+- **Data quality:** surface missing at the point-in-time match version; tournament label/flag mismatch; thin history.
 - **Suspected reason:** missing surface and thin data, plus a model edge over sharp. The surface-dependent agents could not be fully validated.
 - **Evidence:** verified missing surface, verified pre-pick sharp, verified result.
 - **Confidence:** data facts **VERIFIED**; causal link **UNKNOWN/PLAUSIBLE** because the surface was unavailable to the model but the exact effect cannot be isolated.
