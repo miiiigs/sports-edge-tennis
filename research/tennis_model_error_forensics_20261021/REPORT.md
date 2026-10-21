@@ -522,6 +522,7 @@ Both populations show high-confidence overconfidence; the live magnitude is larg
 | Dataset SHA-256 | `ea3809af885643a08dfc15e9eb62d0d6e9ea8a9ed7190002c3f2d552810f281e` |
 | Leakage checks | 0 results before pick; 0 picks/finalizations after start; 0 missing start; 0 disagreeing result observations |
 | Full repository test suite | Not run; this was a focused research change |
+| PR checks | GitGuardian passed; `postgres-foundation` was still pending when this report was finalized (no failure recorded) |
 
 Tests cover band boundaries, ECE, Brier/log loss, Wilson intervals, calibration p-values, history/inactivity buckets, market agreement, cause flags, case-study selection, future-information exclusion in history features, and manifest parsing.
 
