@@ -78,12 +78,12 @@
     </div>
 
     <div class="pick-meta" style="align-items: flex-start;">
-      <span class="badge badge-model">MODEL PICK</span>
+      <span class="badge {{ 'badge-blocked' if pick.kind == 'BLOCKED' else ('badge-value' if pick.kind == 'VALUE_BET' else 'badge-model') }}">{{ pick.kind_label }}</span>
       {% if pick.is_wide_spread %}
       <span class="badge badge-weak">A1/A2 tracking · not Manager consensus</span>
       {% endif %}
       {% if pick.kind == 'BLOCKED' %}
-      <span class="badge badge-blocked">Market veto · not betting</span>
+      <span class="badge badge-blocked">Blocked by safety check · no stake</span>
       {% endif %}
     </div>
     <div class="metric-row" aria-label="Guide odds and result">
