@@ -1,6 +1,7 @@
 # Agent 2 Point-in-Time Probability Calibration Shadow - Research Report
 
 - **Experiment:** `a2_calibration_shadow_20261021`
+- **Draft research PR:** https://github.com/miiiigs/sports-edge-tennis/pull/248
 - **Branch:** `research/tennis-agent2-calibration-shadow-20261021`
 - **Starting `origin/main` SHA:** `b6b7e506687172a0b08441bb006013d131a19fcd`
 - **Approved comparator:** draft research PR #239, head

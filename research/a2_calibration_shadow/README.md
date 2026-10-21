@@ -1,5 +1,7 @@
 # Agent 2 probability-calibration shadow
 
+Draft research PR: https://github.com/miiiigs/sports-edge-tennis/pull/248
+
 Research-only experiment for the Agent 2 calibration assignment. Nothing in this
 directory is imported by the production runner, dashboard, providers, Manager,
 Market, Veto, staking or database code.
