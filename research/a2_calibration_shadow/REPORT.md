@@ -139,6 +139,7 @@ This is the same limitation as the approved PR #239 comparator.
 
 | Population | Seasons | Predicted | Eligible | Coverage | First cohort | Last cohort | Use |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
+| Calibration fit | 2019-2020 | 14,560 | 15,353 | 0.948 | 2019-01-13T23:59:59Z | 2020-12-06T23:59:59Z | 2021 rolling fit |
 | Calibration fit | 2019-2021 | 23,468 | 24,985 | 0.939 | 2019-01-13T23:59:59Z | 2021-12-19T23:59:59Z | 2022 rolling fit |
 | Calibration fit | 2019-2022 | 34,433 | 37,131 | 0.927 | 2019-01-13T23:59:59Z | 2022-12-04T23:59:59Z | Final refit |
 | Validation | 2021 | 8,908 | 9,632 | 0.925 | 2021-01-17T23:59:59Z | 2021-12-19T23:59:59Z | Rolling selection |
