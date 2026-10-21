@@ -144,6 +144,7 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
     )
     causes: Counter[str] = Counter()
     results: Counter[str] = Counter()
+    candidate_late_quotes = 0
     details: list[dict] = []
     for pick in picks:
         price = priced.get(pick.match_id)
@@ -171,7 +172,7 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
             )
         )
         if selected_quote_exceeds_deployed_24h:
-            causes["CANDIDATE_SELECTED_QUOTE_EXCEEDS_DEPLOYED_24H_GATE"] += 1
+            candidate_late_quotes += 1
         result = completion_result(
             conn.execute(RESULT_SQL, (pick.match_id,)).fetchall(),
             pick.selected_side,
@@ -201,6 +202,7 @@ def day_report(conn, day: date, timezone: str = "Asia/Manila") -> dict:
         "priced": causes["PRICED"],
         "unpriced": len(picks) - causes["PRICED"],
         "reason_counts": dict(sorted(causes.items())),
+        "candidate_selected_quotes_after_live_24h_ceiling": candidate_late_quotes,
         "scored_completed": results["WON"] + results["LOST"],
         "wins": results["WON"],
         "losses": results["LOST"],
