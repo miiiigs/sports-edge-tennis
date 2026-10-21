@@ -1,0 +1,304 @@
+{
+  "baseline_matches_pr239": {
+    "checks": {
+      "accuracy": {
+        "absolute_difference": 0.0,
+        "actual": 0.6040479842243646,
+        "expected": 0.6040479842243646,
+        "pass": true,
+        "tolerance": 1e-06
+      },
+      "brier": {
+        "absolute_difference": 0.0,
+        "actual": 0.23535950080287593,
+        "expected": 0.23535950080287593,
+        "pass": true,
+        "tolerance": 1e-06
+      },
+      "ece": {
+        "absolute_difference": 2.7755575615628914e-17,
+        "actual": 0.029270838902278724,
+        "expected": 0.029270838902278697,
+        "pass": true,
+        "tolerance": 1e-06
+      },
+      "log_loss": {
+        "absolute_difference": 0.0,
+        "actual": 0.6654477796981432,
+        "expected": 0.6654477796981432,
+        "pass": true,
+        "tolerance": 1e-06
+      },
+      "predicted": {
+        "absolute_difference": 0.0,
+        "actual": 36512,
+        "expected": 36512,
+        "pass": true,
+        "tolerance": 0.0
+      }
+    },
+    "pass": true
+  },
+  "baseline_test": {
+    "accuracy": 0.6040479842243646,
+    "accuracy_wilson": [
+      0.5990209466968311,
+      0.6090531300999021
+    ],
+    "brier": 0.23535950080287593,
+    "correct": 22055,
+    "cumulative": [
+      {
+        "excess_wins": -978.5419269999984,
+        "expected_wins": 13778.541926999998,
+        "gap": -0.05027186884151025,
+        "losses": 6665,
+        "mean_probability": 0.7078624159773952,
+        "n": 19465,
+        "observed": 0.6575905471358849,
+        "threshold": 0.6,
+        "wilson": [
+          0.6508939419579037,
+          0.6642249629330924
+        ],
+        "wins": 12800
+      },
+      {
+        "excess_wins": -608.6990340000011,
+        "expected_wins": 6622.699034000001,
+        "gap": -0.07274128035372873,
+        "losses": 2354,
+        "mean_probability": 0.7914315289196943,
+        "n": 8368,
+        "observed": 0.7186902485659655,
+        "threshold": 0.7,
+        "wilson": [
+          0.7089577250211713,
+          0.7282220780129355
+        ],
+        "wins": 6014
+      },
+      {
+        "excess_wins": -327.145712,
+        "expected_wins": 2761.145712,
+        "gap": -0.10313547036569992,
+        "losses": 738,
+        "mean_probability": 0.8704746885245902,
+        "n": 3172,
+        "observed": 0.7673392181588903,
+        "threshold": 0.8,
+        "wilson": [
+          0.752317142133248,
+          0.7817145537152554
+        ],
+        "wins": 2434
+      },
+      {
+        "excess_wins": -86.45682600000009,
+        "expected_wins": 824.4568260000001,
+        "gap": -0.09892085354691094,
+        "losses": 136,
+        "mean_probability": 0.9433144462242564,
+        "n": 874,
+        "observed": 0.8443935926773455,
+        "threshold": 0.9,
+        "wilson": [
+          0.8188604691124362,
+          0.8669125642195006
+        ],
+        "wins": 738
+      }
+    ],
+    "ece": 0.029270838902278724,
+    "gap": -0.029270838902278773,
+    "log_loss": 0.6654477796981432,
+    "mean_probability": 0.6333188231266433,
+    "n": 36512,
+    "observed": 0.6040479842243646,
+    "reliability": [
+      {
+        "abs_gap": 0.006244739585653969,
+        "gap": -0.006244739585653969,
+        "lower": 0.5,
+        "mean_probability": 0.5248457643127646,
+        "n": 8978,
+        "observed": 0.5186010247271107,
+        "upper": 0.55
+      },
+      {
+        "abs_gap": 0.004229727475523526,
+        "gap": -0.004229727475523526,
+        "lower": 0.55,
+        "mean_probability": 0.5741888302144007,
+        "n": 8069,
+        "observed": 0.5699591027388772,
+        "upper": 0.6
+      },
+      {
+        "abs_gap": 0.02267233774113253,
+        "gap": -0.02267233774113253,
+        "lower": 0.6,
+        "mean_probability": 0.6239480066894835,
+        "n": 6428,
+        "observed": 0.6012756689483509,
+        "upper": 0.65
+      },
+      {
+        "abs_gap": 0.047998523452559394,
+        "gap": -0.047998523452559394,
+        "lower": 0.65,
+        "mean_probability": 0.6736142869993574,
+        "n": 4669,
+        "observed": 0.625615763546798,
+        "upper": 0.7
+      },
+      {
+        "abs_gap": 0.03767235025542792,
+        "gap": -0.03767235025542792,
+        "lower": 0.7,
+        "mean_probability": 0.7234961050447,
+        "n": 3132,
+        "observed": 0.685823754789272,
+        "upper": 0.75
+      },
+      {
+        "abs_gap": 0.07924589195736431,
+        "gap": -0.07924589195736431,
+        "lower": 0.75,
+        "mean_probability": 0.7730443415697674,
+        "n": 2064,
+        "observed": 0.6937984496124031,
+        "upper": 0.8
+      },
+      {
+        "abs_gap": 0.08973111894586905,
+        "gap": -0.08973111894586905,
+        "lower": 0.8,
+        "mean_probability": 0.8233493525641027,
+        "n": 1404,
+        "observed": 0.7336182336182336,
+        "upper": 0.8500000000000001
+      },
+      {
+        "abs_gap": 0.12830692953020117,
+        "gap": -0.12830692953020117,
+        "lower": 0.8500000000000001,
+        "mean_probability": 0.8732733724832213,
+        "n": 894,
+        "observed": 0.7449664429530202,
+        "upper": 0.9
+      },
+      {
+        "abs_gap": 0.08678806130268202,
+        "gap": -0.08678806130268202,
+        "lower": 0.9,
+        "mean_probability": 0.9239528122605364,
+        "n": 522,
+        "observed": 0.8371647509578544,
+        "upper": 0.95
+      },
+      {
+        "abs_gap": 0.11691323295454548,
+        "gap": -0.11691323295454548,
+        "lower": 0.95,
+        "mean_probability": 0.9720268693181818,
+        "n": 352,
+        "observed": 0.8551136363636364,
+        "upper": 1.0
+      }
+    ]
+  },
+  "experiment_id": "a2_calibration_shadow_20261021",
+  "frozen_dataset": {
+    "exists": true,
+    "manifest": {
+      "counts": {
+        "completed": 113152,
+        "rows": 117713,
+        "stats_present": 117713,
+        "supported_tour": 117713,
+        "surface_present": 117713
+      },
+      "cutoff": "2026-01-01T00:00:00+00:00",
+      "dataset_schema_version": "a2_form_lookback_dataset_v1",
+      "dataset_sha256": "5dceb73fdfda3ae247e72ae2a1f98ac7e63069a0a49743b07a9297b39eb6b1d5",
+      "extraction_utc": "2026-10-19T06:11:50.719381+00:00",
+      "git_sha": "e1cb79b107081c70cedc3437db3cd447a94063cf",
+      "read_only": true,
+      "season_max": 2025,
+      "season_min": 2016,
+      "source_database": "railway"
+    },
+    "path": "tmp\\a2_frozen_20261019.jsonl"
+  },
+  "populations": {
+    "fit_2019_2022": {
+      "first_cohort": "2019-01-13T23:59:59+00:00",
+      "first_match_date": "2019-01-07",
+      "last_cohort": "2022-12-04T23:59:59+00:00",
+      "last_match_date": "2022-11-28",
+      "n": 34433,
+      "population_sha256": "24e534b4e94ce02a55d54ea5972f179e77e150d9e860b5620515d817de61facd",
+      "seasons": {
+        "2019": 10329,
+        "2020": 4231,
+        "2021": 8908,
+        "2022": 10965
+      }
+    },
+    "test_2023_2025": {
+      "first_cohort": "2023-01-07T23:59:59+00:00",
+      "first_match_date": "2023-01-01",
+      "last_cohort": "2025-11-30T23:59:59+00:00",
+      "last_match_date": "2025-11-24",
+      "n": 36512,
+      "population_sha256": "af995c66c2369fd98e7393f21fe39182f2624ce84bc47ededbc468e19b228482",
+      "seasons": {
+        "2023": 11865,
+        "2024": 12414,
+        "2025": 12233
+      }
+    },
+    "test_eligible": {
+      "first_cohort": "2023-01-07T23:59:59+00:00",
+      "first_match_date": "2023-01-01",
+      "last_cohort": "2025-11-30T23:59:59+00:00",
+      "last_match_date": "2025-11-24",
+      "n": 40040,
+      "population_sha256": "8742ffe3561b7faba304ac0df01b2bd615ce192d64a5f415416d2b1f5d74f859",
+      "seasons": {
+        "2023": 12942,
+        "2024": 13682,
+        "2025": 13416
+      }
+    },
+    "test_selected": {
+      "first_cohort": "2023-01-07T23:59:59+00:00",
+      "first_match_date": "2023-01-01",
+      "last_cohort": "2025-11-30T23:59:59+00:00",
+      "last_match_date": "2025-11-24",
+      "n": 36512,
+      "population_sha256": "af995c66c2369fd98e7393f21fe39182f2624ce84bc47ededbc468e19b228482",
+      "seasons": {
+        "2023": 11865,
+        "2024": 12414,
+        "2025": 12233
+      }
+    },
+    "validation_2022": {
+      "first_cohort": "2022-01-09T23:59:59+00:00",
+      "first_match_date": "2022-01-03",
+      "last_cohort": "2022-12-04T23:59:59+00:00",
+      "last_match_date": "2022-11-28",
+      "n": 10965,
+      "population_sha256": "edf5bad250f0eb06cb5046e6bc5dab33ba2cf9ea362c0f7a2018e200ff375a26",
+      "seasons": {
+        "2022": 10965
+      }
+    }
+  },
+  "records_path": "tmp\\a2_form_lookback\\records_baseline.jsonl",
+  "records_sha256": "7fbf4575339b14bfd58c22308f0495ea32b4d8d033e7208c595c581f77365e63",
+  "reference_pr_head": "eec591921367cd81736e9feba1b52011657f1512",
+  "starting_main_sha": "b6b7e506687172a0b08441bb006013d131a19fcd"
+}

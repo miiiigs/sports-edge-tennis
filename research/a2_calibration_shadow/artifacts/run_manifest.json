@@ -1,0 +1,92 @@
+{
+  "artifacts": {
+    "analysis.json": "82ff286a60b49f2d7b8bbc4ad09ea729c8f51a0a2add68e01cd44c56eb52776a",
+    "calibration_curves.json": "c08d8609069cf96acd37c865fdf72ba40c885f2b4da4ab54b612a589b6cd966a",
+    "calibration_reliability.png": "67633c48623b6ad28fdd0cefd1637af24f19bccbf2b20595f67055dc9106e694",
+    "calibration_reliability.svg": "0a790e53c8def0a21d15d8c8320d65b15415633aa3c40e89a35b402ca4cc1daa",
+    "candidates_test.json": "ab7e8d8b838eb02c7785dd465f4d5facdd06dbfc6d220be967dc339cbee17463",
+    "candidates_validation.json": "8be1057d20d904a028ef04c4b81976f4faf850d345b74f7f6019bc3cddd21c77",
+    "frozen_manifest.json": "53eb2c8a132d091a7ea0e33b3897302fb75e90f33ee447ae200deafd49f06d09",
+    "reliability_test.csv": "d7a9f784e783179c9d96ae54cafa7591dc46bb76ceed489f28fb42a3eb530144",
+    "selection.json": "206e14a89268bf31769704305a7746d00a2e01e84ed6efc9eb8d19be0e57e38b",
+    "tables.md": "e2feec701a552a720df76990b121c172db53762f62159bc85e50d3c8472a6b43"
+  },
+  "bootstrap_reps": 1000,
+  "bootstrap_seed": 20261021,
+  "branch": "research/tennis-agent2-calibration-shadow-20261021",
+  "code_sha": "f335ca56a515f8d02203bfe78eda4b746ebce234",
+  "command": "python research/a2_calibration_shadow/harness.py --records tmp/a2_form_lookback/records_baseline.jsonl --output-dir tmp/a2_calibration_shadow --artifacts-dir research/a2_calibration_shadow/artifacts --frozen-dataset tmp/a2_frozen_20261019.jsonl --mode test --reps 1000",
+  "created_utc": "2026-10-21T04:29:57.369736+00:00",
+  "database_writes": false,
+  "experiment_id": "a2_calibration_shadow_20261021",
+  "frozen_dataset": {
+    "exists": true,
+    "manifest": {
+      "counts": {
+        "completed": 113152,
+        "rows": 117713,
+        "stats_present": 117713,
+        "supported_tour": 117713,
+        "surface_present": 117713
+      },
+      "cutoff": "2026-01-01T00:00:00+00:00",
+      "dataset_schema_version": "a2_form_lookback_dataset_v1",
+      "dataset_sha256": "5dceb73fdfda3ae247e72ae2a1f98ac7e63069a0a49743b07a9297b39eb6b1d5",
+      "extraction_utc": "2026-10-19T06:11:50.719381+00:00",
+      "git_sha": "e1cb79b107081c70cedc3437db3cd447a94063cf",
+      "read_only": true,
+      "season_max": 2025,
+      "season_min": 2016,
+      "source_database": "railway"
+    },
+    "path": "tmp\\a2_frozen_20261019.jsonl"
+  },
+  "metrics": {
+    "baseline_test": {
+      "accuracy": 0.6040479842243646,
+      "brier": 0.23535950080287593,
+      "ece": 0.029270838902278724,
+      "log_loss": 0.6654477796981432
+    },
+    "calibrated_test": {
+      "accuracy": 0.6040479842243646,
+      "brier": 0.2338384877258274,
+      "ece": 0.015327994321865051,
+      "log_loss": 0.6597381913717788
+    },
+    "paired_delta": {
+      "accuracy": 0.0,
+      "brier": -0.001521013077048522,
+      "ece": -0.013942844580413673,
+      "log_loss": -0.005709588326364368
+    },
+    "paired_delta_ci": {
+      "accuracy": [
+        0.0,
+        0.0
+      ],
+      "brier": [
+        -0.0019962835063237613,
+        -0.0010493239750957665
+      ],
+      "ece": [
+        -0.023061279285380692,
+        -0.005049433995979583
+      ],
+      "log_loss": [
+        -0.0070261494996863485,
+        -0.004436015179179026
+      ]
+    }
+  },
+  "production_changed": false,
+  "protocol_version": "a2_calibration_shadow_protocol_v1",
+  "records_path": "tmp\\a2_form_lookback\\records_baseline.jsonl",
+  "records_sha256": "7fbf4575339b14bfd58c22308f0495ea32b4d8d033e7208c595c581f77365e63",
+  "reference_pr_head": "eec591921367cd81736e9feba1b52011657f1512",
+  "selected_method": "temperature",
+  "selection_log_loss_tolerance": 0.0002,
+  "starting_main_sha": "b6b7e506687172a0b08441bb006013d131a19fcd",
+  "subgroup_bootstrap_reps": 500,
+  "test_outcomes_used_for_selection": false
+}
