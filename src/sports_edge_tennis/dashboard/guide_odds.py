@@ -67,6 +67,8 @@ def get_issued_guide_odds(
     priority. If none existed, the earliest quote observed before match start
     may be a guide; long-horizon picks must not lose a price merely because the
     bookmaker listed the match more than 24 hours after the pick was issued.
+    "Match start" is the schedule version in effect when the quote arrived, so
+    a later reschedule does not retroactively make an on-time quote late.
     Prices displayed after issue are never passed off as publication-time bets.
 
     Exact canonical match_id and PLAYER_1/PLAYER_2 orientation are mandatory;
@@ -102,6 +104,25 @@ def get_issued_guide_odds(
                 o.source_observed_at, o.odds_snapshot_id,
                 o.as_of, o.ingested_at
             FROM odds_snapshots o
+            -- A match can be rescheduled after the pick was issued. Judge
+            -- "pre-match" against the schedule known when the quote arrived,
+            -- not the stale start captured at issue time. A quote that was
+            -- already late against the then-current schedule is still rejected
+            -- even if a later correction moves the start further out.
+            JOIN LATERAL (
+                SELECT mvq.match_start_at
+                FROM match_versions mvq
+                WHERE mvq.match_id = p.match_id
+                  AND mvq.as_of <= GREATEST(
+                      o.as_of, o.ingested_at, o.source_observed_at)
+                  AND mvq.source_observed_at <= GREATEST(
+                      o.as_of, o.ingested_at, o.source_observed_at)
+                  AND mvq.ingested_at <= GREATEST(
+                      o.as_of, o.ingested_at, o.source_observed_at)
+                ORDER BY mvq.as_of DESC, mvq.source_observed_at DESC,
+                         mvq.match_version_id DESC
+                LIMIT 1
+            ) quote_mv ON TRUE
             WHERE o.match_id = p.match_id
               AND o.source_system = 'OFFERED'
               -- Only the three documented OddsPapi offered bookmakers.
@@ -123,8 +144,9 @@ def get_issued_guide_odds(
               AND o.ingested_at <= CURRENT_TIMESTAMP
               -- The quote cannot be treated as valid before the application
               -- received it, even if the provider timestamps it earlier.
+              -- Use the reschedule-aware start captured above.
               AND GREATEST(o.as_of, o.ingested_at, o.source_observed_at)
-                  <= mv.match_start_at
+                  <= quote_mv.match_start_at
               AND o.source_observed_at >= p.picked_at - INTERVAL '12 hours'
             ORDER BY
               CASE WHEN GREATEST(o.as_of, o.ingested_at, o.source_observed_at)

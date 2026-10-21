@@ -21,6 +21,62 @@ from sports_edge_tennis.dashboard.read_model import MatchView
 NOW = datetime(2026, 10, 19, 7, 10, tzinfo=UTC)
 
 
+def _insert_offer(db, *, match_id, observed, received, price, tag):
+    """Persist one complete OFFERED quote with its raw/receipt lineage."""
+    ingest_id = db.execute(
+        """
+        INSERT INTO ingest_runs (
+            source_system, source_dataset, started_at, finished_at, status
+        ) VALUES ('ODDSPAPI', %s, %s, %s, 'COMPLETED')
+        RETURNING ingest_run_id
+        """,
+        (f"test_guide_{tag}", observed, received),
+    ).fetchone()[0]
+    mapping_id = db.execute(
+        """
+        INSERT INTO provider_bookmaker_mappings (
+            provider_code, provider_bookmaker_key, mapping_version,
+            bookmaker_code, normalization_class, effective_from
+        ) VALUES ('ODDSPAPI', 'bet365', 1, 'BET365', 'OFFERED', %s)
+        RETURNING provider_bookmaker_mapping_id
+        """,
+        (observed - timedelta(days=30),),
+    ).fetchone()[0]
+    raw_id = db.execute(
+        """
+        INSERT INTO raw_odds_observations (
+            ingest_run_id, provider_code, provider_event_id,
+            provider_observation_key, received_at, observation_time,
+            observation_time_basis, payload_hash, payload_json,
+            adapter_version, normalizer_version
+        ) VALUES (%s, 'ODDSPAPI', %s, %s,
+                  %s, %s, 'RECEIVE_TIME', %s, '{}'::jsonb,
+                  'test', 'test')
+        RETURNING raw_odds_observation_id
+        """,
+        (ingest_id, f"test-event-{tag}", f"test-observation-{tag}",
+         received, received, f"test-sha-{tag}"),
+    ).fetchone()[0]
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id, source_system, bookmaker_code, market_type,
+            selection_type, decimal_price, market_status,
+            source_snapshot_id, source_observed_at, as_of, ingested_at,
+            raw_odds_observation_id, provider_bookmaker_mapping_id, odds_origin
+        ) VALUES
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_1', %s,
+             'OPEN', %s, %s, %s, %s, %s, %s, 'LIVE_PROVIDER'),
+            (%s, 'OFFERED', 'BET365', 'MATCH_WINNER', 'PLAYER_2', %s,
+             'OPEN', %s, %s, %s, %s, %s, %s, 'LIVE_PROVIDER')
+        """,
+        (match_id, price, f"test-price-{tag}-1", observed, received, received,
+         raw_id, mapping_id,
+         match_id, Decimal("2.10"), f"test-price-{tag}-2", observed, received,
+         received, raw_id, mapping_id),
+    )
+
+
 def _match(*, match_id=11, selected_side=1):
     return MatchView(
         match_id=match_id,
@@ -113,10 +169,15 @@ def test_guide_lookup_uses_same_issued_picks_and_refuses_mismatched_market_evide
         "o.bookmaker_code IN ('BET365', 'UNIBET', '1XBET')",
         "mv.player_1_id = latest_mv.player_1_id",
         "p.picked_at < mv.match_start_at",
+        "JOIN LATERAL",
+        "mvq.match_id = p.match_id",
+        "mvq.as_of <= GREATEST(",
+        "mvq.ingested_at <= GREATEST(",
+        "<= quote_mv.match_start_at",
     ):
         assert invariant in sql
     assert "p.picked_at + INTERVAL '24 hours'" not in sql
-    assert "<= mv.match_start_at" in sql
+    assert "<= mv.match_start_at" not in sql
     assert "o.source_observed_at >= p.picked_at - INTERVAL '12 hours'" in sql
     assert "o.as_of <= CURRENT_TIMESTAMP" in sql
     assert "o.ingested_at <= CURRENT_TIMESTAMP" in sql
@@ -378,6 +439,79 @@ def test_pre_match_quote_more_than_24h_after_issue_remains_available(db):
     assert quote.decimal_price == Decimal("1.80")
     assert quote.issued_before_quote is True
     assert quote.observed_at == observed
+
+
+def _reschedule(db, match_id, *, start, seen):
+    old = db.execute(
+        """
+        SELECT player_1_id, player_2_id
+        FROM match_versions WHERE match_id = %s
+        ORDER BY match_version_id LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at,
+            tour_scope, competition_tier, surface, round_code,
+            best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32',
+                3, FALSE, 'SCHEDULED', %s, %s, %s)
+        """,
+        (match_id, old[0], old[1], start, seen, seen, seen),
+    )
+
+
+def test_quote_after_original_start_but_before_rescheduled_start_is_available(db):
+    """A schedule correction already known when the quote arrived is honoured."""
+    from test_model_pick_alignment import _seed_pick_at_start
+
+    original_start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+    revised_start = original_start + timedelta(hours=12)
+    match_id = _seed_pick_at_start(
+        db, label="Rescheduled", start=original_start
+    )
+    _reschedule(
+        db, match_id, start=revised_start,
+        seen=original_start + timedelta(minutes=30),
+    )
+    observed = original_start + timedelta(hours=1)
+    _insert_offer(
+        db, match_id=match_id, observed=observed,
+        received=observed + timedelta(minutes=1),
+        price=Decimal("1.80"), tag="rescheduled-on-time",
+    )
+
+    quotes = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
+    assert set(quotes) == {match_id}
+    assert quotes[match_id].decimal_price == Decimal("1.80")
+    assert quotes[match_id].issued_before_quote is True
+
+
+def test_late_quote_is_not_rescued_by_a_later_schedule_correction(db):
+    """At quote time the old start was still in force, so the quote was late."""
+    from test_model_pick_alignment import _seed_pick_at_start
+
+    original_start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+    match_id = _seed_pick_at_start(
+        db, label="LateThenRescheduled", start=original_start
+    )
+    observed = original_start + timedelta(hours=1)
+    _insert_offer(
+        db, match_id=match_id, observed=observed,
+        received=observed + timedelta(minutes=1),
+        price=Decimal("1.80"), tag="late-then-rescheduled",
+    )
+    _reschedule(
+        db, match_id, start=original_start + timedelta(hours=12),
+        seen=original_start + timedelta(hours=2),
+    )
+
+    quotes = get_issued_guide_odds(db, decision_date=date(2026, 10, 18))
+    assert match_id not in quotes
 
 
 @pytest.mark.parametrize(
