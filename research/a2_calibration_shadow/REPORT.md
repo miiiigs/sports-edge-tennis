@@ -779,9 +779,12 @@ python -m pytest tests/test_a2_calibration_shadow.py -q
 
 ### CI / validation results
 
-- `python -m pytest tests/test_a2_calibration_shadow.py -q`: **11 passed**.
-- `python -m pytest tests/test_a2_calibration_shadow.py tests/test_agent2_hierarchical_markov.py -q`: **56 passed**.
+- `python -m pytest tests/test_a2_calibration_shadow.py -q`: **11 passed** locally
+  with the research requirements installed.
+- `python -m pytest tests/test_a2_calibration_shadow.py tests/test_agent2_hierarchical_markov.py -q`: **56 passed** locally.
 - `python -m ruff check research/a2_calibration_shadow tests/test_a2_calibration_shadow.py`: **All checks passed**.
+- The repository CI does not install the research-only `numpy` dependency, so the
+  calibration test module is skipped there rather than failing collection.
 - Baseline reproduction: all five PR #239 checks pass.
 
 ### Safety statement

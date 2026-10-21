@@ -1,22 +1,22 @@
 {
   "artifacts": {
-    "analysis.json": "82ff286a60b49f2d7b8bbc4ad09ea729c8f51a0a2add68e01cd44c56eb52776a",
+    "analysis.json": "bc272b11babb0262413e809460bb216ba40ec05304e79e4dbe6880a25a4a69ea",
     "calibration_curves.json": "c08d8609069cf96acd37c865fdf72ba40c885f2b4da4ab54b612a589b6cd966a",
     "calibration_reliability.png": "67633c48623b6ad28fdd0cefd1637af24f19bccbf2b20595f67055dc9106e694",
-    "calibration_reliability.svg": "0a790e53c8def0a21d15d8c8320d65b15415633aa3c40e89a35b402ca4cc1daa",
+    "calibration_reliability.svg": "de6cdcbf51da8176b2b898688ad0b61c0393659b90c242c9a231bdf63a266a2d",
     "candidates_test.json": "ab7e8d8b838eb02c7785dd465f4d5facdd06dbfc6d220be967dc339cbee17463",
     "candidates_validation.json": "8be1057d20d904a028ef04c4b81976f4faf850d345b74f7f6019bc3cddd21c77",
     "frozen_manifest.json": "53eb2c8a132d091a7ea0e33b3897302fb75e90f33ee447ae200deafd49f06d09",
     "reliability_test.csv": "d7a9f784e783179c9d96ae54cafa7591dc46bb76ceed489f28fb42a3eb530144",
-    "selection.json": "206e14a89268bf31769704305a7746d00a2e01e84ed6efc9eb8d19be0e57e38b",
+    "selection.json": "1ab040975cc55a43f11e02fc3cad3827e3895391749827c6b9c5fccbcc31b558",
     "tables.md": "e2feec701a552a720df76990b121c172db53762f62159bc85e50d3c8472a6b43"
   },
   "bootstrap_reps": 1000,
   "bootstrap_seed": 20261021,
   "branch": "research/tennis-agent2-calibration-shadow-20261021",
-  "code_sha": "f335ca56a515f8d02203bfe78eda4b746ebce234",
+  "code_sha": "d28300c3bdfa4198b8bd7ffecbf05365811defac",
   "command": "python research/a2_calibration_shadow/harness.py --records tmp/a2_form_lookback/records_baseline.jsonl --output-dir tmp/a2_calibration_shadow --artifacts-dir research/a2_calibration_shadow/artifacts --frozen-dataset tmp/a2_frozen_20261019.jsonl --mode test --reps 1000",
-  "created_utc": "2026-10-21T04:29:57.369736+00:00",
+  "created_utc": "2026-10-21T04:35:49.279921+00:00",
   "database_writes": false,
   "experiment_id": "a2_calibration_shadow_20261021",
   "frozen_dataset": {
