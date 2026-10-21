@@ -398,11 +398,18 @@ def get_issued_market_decisions(
     run_date: date,
     timezone_name: str = "UTC",
 ) -> dict[int, MarketDecisionView]:
-    """First actually-issued BET decision per sporting match for the day.
+    """First actually-issued actionable-or-blocked market decision per match.
 
-    Uses the earliest published BET per match across the day's completed runs so
-    a Value Bet keeps its issued bookmaker, price, edge, and stake even after a
-    later re-evaluation or market refresh. Never recalculates old value bets.
+    Uses the earliest published BET or VETOED decision per match across the
+    day's completed runs so:
+
+    * a Value Bet keeps its issued bookmaker, price, edge, and stake even after
+      a later re-evaluation or market refresh;
+    * a real VETOED row reaches the client as a blocked (never actionable) card;
+    * a later BET can never override an earlier safety veto.
+
+    NO_BET rows remain evidence only and are intentionally excluded. Never
+    recalculates old value bets or converts a blocked row into a stake.
     """
     runs = completed_day_run_rows(conn, run_date, timezone_name)
     if not runs:
@@ -423,7 +430,9 @@ def get_issued_market_decisions(
             d.published_at
         FROM decisions d
         WHERE d.prediction_run_id = ANY(%s)
-          AND d.decision_status = 'BET'
+          -- BET is actionable; VETOED is Manager/Market-qualified but blocked.
+          -- Both must be visible so the read model and presentation agree.
+          AND d.decision_status IN ('BET', 'VETOED')
           AND d.manager_consensus_result_id IS NOT NULL
         ORDER BY d.match_id, COALESCE(d.published_at, d.as_of) ASC, d.decision_id ASC
         """,

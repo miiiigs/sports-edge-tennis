@@ -39,7 +39,7 @@ def _fv(conn, sql, params=()):
     return conn.execute(sql, params).fetchone()[0]
 
 
-def _seed_match(conn, name, start):
+def _seed_match(conn, name, start, *, status="SCHEDULED"):
     p1 = _fv(conn, "INSERT INTO players (canonical_name) VALUES (%s) RETURNING player_id", (f"{name} A",))
     p2 = _fv(conn, "INSERT INTO players (canonical_name) VALUES (%s) RETURNING player_id", (f"{name} B",))
     tid = _fv(conn, "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) VALUES (%s,'ATP_MAIN','ATP_250') RETURNING tournament_id", (f"Test Open {name}",))
@@ -51,9 +51,9 @@ def _seed_match(conn, name, start):
         INSERT INTO match_versions (match_id, player_1_id, player_2_id, match_start_at, tour_scope,
             competition_tier, surface, round_code, best_of_sets, qualifying_flag, match_status,
             source_observed_at, as_of)
-        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE, 'SCHEDULED', %s, %s)
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE, %s, %s, %s)
         """,
-        (mid, p1, p2, start, observed, observed),
+        (mid, p1, p2, start, status, observed, observed),
     )
     return mid
 
