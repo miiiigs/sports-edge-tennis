@@ -1,0 +1,39 @@
+{
+  "acceptance_for_forward_shadow": {
+    "by_surface_or_tier_degradation": "no subgroup with n>=30 may show a paired Brier delta upper CI above 0.0",
+    "common_population_brier_delta_ci_upper": 0.0,
+    "common_population_log_loss_delta_ci_upper": 0.0,
+    "coverage": "net coverage change reported; no minimum coverage gain is assumed",
+    "forward_window": "at least 8 weeks and 50 scored Manager decisions",
+    "lost_consensus_winners": "reported per 100, not hidden",
+    "new_consensus_accuracy_floor": 0.55,
+    "selection_changes": 0
+  },
+  "baseline": "Issued A1/A2/A3 probabilities and issued Manager decision.",
+  "candidate": "Same A1/A3 probabilities and same Manager policy; only A2 selected-side probability is temperature-scaled with slope 0.6439254782294896.",
+  "experiment_id": "tennis_agent3_ensemble_20261021",
+  "guardrails": {
+    "a1_a2_weighting_changes": "prohibited",
+    "betting_logic_or_stake_changes": "prohibited",
+    "future_data": "Policy decisions use only predictions and policy rows with as_of <= the row's manager_as_of; outcomes are joined only for retrospective scoring.",
+    "manager_threshold_changes": "prohibited",
+    "production_model_activation": "prohibited"
+  },
+  "primary_metrics": [
+    "selected-side change count (must be 0)",
+    "Manager gate flips by direction and reason",
+    "consensus coverage retention",
+    "paired Brier and log-loss delta on the common scored population",
+    "accuracy on retained and newly qualified picks",
+    "A2 Brier/log-loss/ECE and high-confidence display coverage"
+  ],
+  "protocol_version": "tennis_agent3_ensemble_shadow_prereg_v1",
+  "question": "Does preserving the issued Manager policy while replacing only Agent 2's selected-side probability with the PR #248 temperature calibration improve decision quality without silently changing selections or coverage?",
+  "rejection_triggers": [
+    "any selected-side change without an explicit new policy",
+    "paired Brier or log-loss delta upper 95% CI above zero",
+    "materially worse accuracy in a subgroup with n>=30",
+    "new-consensus accuracy below the pre-registered floor"
+  ],
+  "status": "retrospective impact audit; forward shadow required"
+}
