@@ -109,6 +109,30 @@ class ModelPickRow:
     schedule_changed: bool = False
 
     @property
+    def pending_explanation(self) -> str | None:
+        """Explain the provider's *fixture* state, not an inferred result.
+
+        These are read-only clues. A terminal fixture without a persisted
+        official result stays PENDING, never silently wins/loses/voids.
+        """
+        if self.result_status != "PENDING":
+            return None
+        status = self.latest_fixture_status
+        if status == "WALKOVER":
+            return "Walkover reported · result verification pending"
+        if status == "RETIRED":
+            return "Retirement reported · result verification pending"
+        if status == "COMPLETED":
+            return "Match ended · final result not verified"
+        if status == "CANCELLED":
+            return "Cancellation reported · result verification pending"
+        if self.is_postponed:
+            return "Postponed by provider · not graded"
+        if self.is_rescheduled:
+            return "Awaiting rescheduled match"
+        return "Awaiting confirmed match result"
+
+    @property
     def is_rescheduled(self) -> bool:
         """Provider moved the start after the pick was issued."""
         return self.schedule_changed and self.latest_match_start_at is not None
@@ -946,6 +970,8 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     if row.consensus_probability is not None
                     else None,
                     "result": row.result_status,
+                    "pending_explanation": row.pending_explanation,
+                    "latest_fixture_status": row.latest_fixture_status,
                     "is_value_bet": row.is_value_bet,
                     # This read-only classification is essential to distinguish
                     # actionable Manager history from research-only tracking.

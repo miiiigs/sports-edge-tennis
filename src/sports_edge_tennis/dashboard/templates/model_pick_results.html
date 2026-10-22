@@ -167,10 +167,8 @@
           </td>
           <td>
             <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.result_status }}</span>
-            {% if pick.is_postponed %}
-            <br><span class="stat-note">Postponed by provider · not graded</span>
-            {% elif pick.result_status == 'PENDING' and pick.is_rescheduled %}
-            <br><span class="stat-note">Awaiting rescheduled match</span>
+            {% if pick.pending_explanation %}
+            <br><span class="stat-note">{{ pick.pending_explanation }}</span>
             {% endif %}
           </td>
           <td>
