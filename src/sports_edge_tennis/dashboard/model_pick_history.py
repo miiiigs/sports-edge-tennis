@@ -898,7 +898,27 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
             "selected_date": view.selected_date.isoformat()
             if view.selected_date
             else None,
+            # The primary day counts must describe the same aligned
+            # population as the selected-day detail records. Previously this
+            # used the Manager-only historical ledger while the details also
+            # included A1/A2 wide-spread research tracking.
             "days": [
+                {
+                    "date": row.decision_date.isoformat(),
+                    "picks": row.picks,
+                    "scored": row.scored,
+                    "pending": row.pending,
+                    "voids": row.voids,
+                    "wins": row.wins,
+                    "losses": row.losses,
+                    "hit_rate": row.hit_rate,
+                }
+                for row in aligned_summaries
+            ],
+            # Preserve the original Manager-only historical population as a
+            # separately named audit series. Never blend it into aligned
+            # pick counts or silently discard it when correcting the API.
+            "manager_only_days": [
                 {
                     "date": row.decision_date.isoformat(),
                     "picks": row.picks,
@@ -927,6 +947,11 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     else None,
                     "result": row.result_status,
                     "is_value_bet": row.is_value_bet,
+                    # This read-only classification is essential to distinguish
+                    # actionable Manager history from research-only tracking.
+                    "pick_type": row.pick_type,
+                    "is_tracking_only": row.pick_type == "A1_A2_WIDE_SPREAD",
+                    "is_manager_consensus": row.pick_type == "MANAGER_CONSENSUS",
                     "manager_policy_version": row.manager_policy_version,
                     "model_regime_key": row.model_regime_key,
                     "agent_config_versions": list(row.agent_config_versions),
