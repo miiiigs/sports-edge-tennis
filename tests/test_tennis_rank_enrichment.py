@@ -147,14 +147,14 @@ def test_agent_scores_are_separate_and_void_excluded():
         pick(),
         pick(pick_id="pick-2", canonical_match_id="sporting-match-2",
              outcome_status="WALKOVER", winner_side=None),
-    ], [rank()])
+    ], [rank(), rank("canonical-p2", 31, source_record_id="r-2")])
     assert len(rows) == 2
     manager = [r for r in group_scores(rows)
                if r["agent"] == "manager" and r["rank_axis"] == "selected"
                and r["band"] == "401-600"][0]
     a2 = [r for r in group_scores(rows)
           if r["agent"] == "a2" and r["rank_axis"] == "selected"
-          and r["band"] == "401-600"][0]
+          and r["band"] == "1-100"][0]
     assert (manager["settled_with_prediction"], manager["wins"]) == (1, 1)
     assert (a2["settled_with_prediction"], a2["losses"]) == (1, 1)
     assert manager["exploratory_only"]
