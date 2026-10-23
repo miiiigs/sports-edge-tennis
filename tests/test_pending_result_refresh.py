@@ -448,6 +448,69 @@ def test_walkover_persists_as_walkover(db: psycopg.Connection):
     ).fetchone()[0] == "WALKOVER"
 
 
+def test_winnerless_walkover_is_void_eligible_and_idempotent(db: psycopg.Connection):
+    target = _seed_target(db, api_event="at-1")
+    seed_production_model_pick(db, target["match_id"], wide_spread=True)
+    fixture = _fixture(event_status="Walkover", event_winner=None, event_final_result="-")
+    first = _refresh(db, [fixture])
+    assert first.terminal_found == 1
+    assert first.expected_void == 1
+    assert first.persisted == 1
+    row = db.execute(
+        "SELECT outcome_status::text, winner_side FROM match_result_observations "
+        "WHERE match_id = %s", (target["match_id"],)
+    ).fetchone()
+    assert row == ("WALKOVER", None)
+    second = _refresh(db, [fixture])
+    assert second.checked == 0
+    assert db.execute(
+        "SELECT count(*) FROM match_result_observations WHERE match_id = %s",
+        (target["match_id"],),
+    ).fetchone()[0] == 1
+
+
+def test_winnerless_walkover_settles_type_a_bet_once_without_changing_prices_or_picks(
+    db: psycopg.Connection,
+):
+    from sports_edge_tennis.settlement import settle_type_a_match_winner_decisions
+
+    target = _seed_target(db, api_event="at-1")
+    match_id = target["match_id"]
+    seed_production_model_pick(db, match_id, wide_spread=True)
+    decision_id = _seed_type_a_bet(db, match_id, side=2)
+    original_price = db.execute(
+        "SELECT market_decimal_price, sharp_reference_price, consensus_probability, "
+        "decision_status::text FROM decisions WHERE decision_id = %s", (decision_id,),
+    ).fetchone()
+    original_predictions = _fv(db, "SELECT count(*) FROM predictions")
+    original_matches = _fv(db, "SELECT count(*) FROM matches")
+
+    fixture = _fixture(event_status="Walkover", event_winner=None, event_final_result="-")
+    refresh = _refresh(db, [fixture])
+    assert refresh.persisted == 1
+    assert refresh.expected_void >= 1
+    assert _fv(db, "SELECT count(*) FROM decision_settlements") == 0
+
+    first = settle_type_a_match_winner_decisions(db, settled_at=NOW)
+    second = settle_type_a_match_winner_decisions(db, settled_at=NOW + timedelta(seconds=1))
+    assert first.inserted == 1 and first.void == 1
+    assert first.won == 0 and first.lost == 0
+    assert second.inserted == 0 and second.existing == 1
+    assert second.void == 1
+    assert db.execute(
+        "SELECT settlement_status::text FROM decision_settlements WHERE decision_id = %s",
+        (decision_id,),
+    ).fetchone()[0] == "VOID"
+    assert _fv(db, "SELECT count(*) FROM decision_settlements") == 1
+    assert _fv(db, "SELECT count(*) FROM match_result_observations") == 1
+    assert _fv(db, "SELECT count(*) FROM matches") == original_matches
+    assert _fv(db, "SELECT count(*) FROM predictions") == original_predictions
+    assert db.execute(
+        "SELECT market_decimal_price, sharp_reference_price, consensus_probability, "
+        "decision_status::text FROM decisions WHERE decision_id = %s", (decision_id,),
+    ).fetchone() == original_price
+
+
 def test_cancelled_persists_as_cancelled(db: psycopg.Connection):
     target = _seed_target(db, api_event="at-1")
     seed_production_model_pick(db, target["match_id"])
