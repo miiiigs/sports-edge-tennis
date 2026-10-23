@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from research.tennis_pit_rank_evidence_20261022.contract import score_completed
-from research.tennis_pit_rank_evidence_20261022.enrichment import file_sha256, read_jsonl
+from research.tennis_pit_rank_evidence_20261022.enrichment import agent_rank_view, file_sha256, read_jsonl
 
 
 def gap_band(value: int | None) -> str:
@@ -52,14 +52,15 @@ def analyze(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Group scores without pooling population or agent, with explicit missing categories."""
     collected: dict[tuple[str, str, str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for row in rows:
-        for axis, band in (
-            ("selected_rank", row["selected_rank_band"]),
-            ("opponent_rank", row["opponent_rank_band"]),
-            ("rank_gap", gap_band(row["rank_gap_opponent_minus_selected"])),
-            ("surface", row.get("surface") or "UNKNOWN"),
-            ("tournament_tier", row.get("tournament_tier") or "UNKNOWN"),
-        ):
-            for agent in ("manager", "a1", "a2"):
+        for agent in ("manager", "a1", "a2"):
+            view = agent_rank_view(row, agent)
+            for axis, band in (
+                ("selected_rank", view["selected_rank_band"]),
+                ("opponent_rank", view["opponent_rank_band"]),
+                ("rank_gap", gap_band(view["gap"])),
+                ("surface", row.get("surface") or "UNKNOWN"),
+                ("tournament_tier", row.get("tournament_tier") or "UNKNOWN"),
+            ):
                 collected[(row["population"], agent, axis, band)].append(row)
     results = []
     for (population, agent, axis, band), subrows in sorted(collected.items()):
