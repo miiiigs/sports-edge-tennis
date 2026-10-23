@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 import pytest
 
 from research.tennis_pit_rank_evidence_20261022.enrichment import (
-    asof_one, coverage, enrich, freeze_first_production, group_scores,
-    timestamp, valid_rank_evidence,
+    agent_rank_view, asof_one, coverage, enrich, freeze_first_production,
+    group_scores, timestamp, valid_rank_evidence,
 )
 
 FINGERPRINT = "c" * 64
@@ -23,6 +23,7 @@ def pick(**changes):
         "scheduled_start_at": "2026-10-20T14:00:00Z",
         "event_date": "2026-10-20", "selected_player_id": "canonical-p1",
         "opponent_player_id": "canonical-p2",
+        "side1_player_id": "canonical-p1", "side2_player_id": "canonical-p2",
         "manager_side": 1, "manager_p": .67,
         "a1_side": 1, "a1_p": .72, "a2_side": 2, "a2_p": .61,
         "outcome_status": "COMPLETED", "winner_side": 1,
@@ -166,3 +167,23 @@ def test_real_rank_cohort_is_not_produced_when_no_evidence():
     assert len(grouped) == 1
     assert grouped[0]["band"] == "MISSING_OR_UNRANKED"
     assert coverage(rows)[0]["selected_verified"] == 0
+
+
+def test_agent_chooses_opposite_side_and_gets_opponent_rank_as_selected():
+    enriched = enrich([pick()], [
+        rank(), rank("canonical-p2", 31, source_record_id="other")
+    ])[0]
+    manager = agent_rank_view(enriched, "manager")
+    a2 = agent_rank_view(enriched, "a2")
+    assert manager["selected_rank"] == 451
+    assert manager["opponent_rank"] == 31
+    assert manager["gap"] == -420
+    assert a2["selected_rank"] == 31
+    assert a2["selected_rank_band"] == "1-100"
+    assert a2["opponent_rank"] == 451
+    assert a2["gap"] == 420
+
+
+def test_manager_selected_identity_must_match_original_player_side():
+    with pytest.raises(ValueError, match="identity/side mismatch"):
+        enrich([pick(selected_player_id="canonical-p2", opponent_player_id="canonical-p1")], [])
