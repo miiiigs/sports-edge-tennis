@@ -240,6 +240,18 @@ def fetch_oddspapi_tennis_odds_for_books(
     return received_at or (clock or _utc_now)(), rows, requests_used
 
 
+def _oddspapi_identity_conflict(
+    known: Mapping[str, Any], incoming: Mapping[str, Any]
+) -> bool:
+    """Reject conflicting event/side identity, but allow omitted board fields."""
+    for field in ("sportId", "tournamentId", "participant1Id", "participant2Id"):
+        before, after = known.get(field), incoming.get(field)
+        if before not in (None, "") and after not in (None, ""):
+            if str(before).strip() != str(after).strip():
+                return True
+    return False
+
+
 def merge_oddspapi_odds_books(
     fixture_rows: Sequence[Mapping[str, Any]],
     odds_rows: Sequence[Mapping[str, Any]],
@@ -292,6 +304,12 @@ def merge_oddspapi_odds_books(
             if fixture_id not in trusted:
                 continue
             base = dict(row)
+        # A board snapshot cannot silently flip the selected player's identity
+        # or attach a quote from another sporting event with the same fixture ID.
+        # Missing identity fields are valid for price-centric board responses.
+        known = merged.get(fixture_id) or base
+        if _oddspapi_identity_conflict(known, row):
+            continue
         target = merged.setdefault(fixture_id, dict(base))
         for key, value in row.items():
             if key == "bookmakerOdds" or key in identity_keys:
@@ -452,12 +470,21 @@ def _get_json(
                 ledger.record(ledger_id, success=False, error_kind="NETWORK", retry_sequence=attempt - 1)
             raise TransportError("NETWORK", f"{label} request failed") from exc
         if response.status_code == 200:
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                if ledger_id is not None:
+                    ledger.record(
+                        ledger_id,
+                        success=False,
+                        http_status=200,
+                        error_kind="PARSE",
+                        retry_sequence=attempt - 1,
+                    )
+                raise TransportError("PARSE", f"{label} response was not valid JSON") from exc
             if ledger_id is not None:
                 ledger.record(ledger_id, success=True, http_status=200, retry_sequence=attempt - 1)
-            try:
-                return response.json()
-            except ValueError as exc:
-                raise TransportError("PARSE", f"{label} response was not valid JSON") from exc
+            return payload
         if attempt < max_attempts and (
             response.status_code == 429 or 500 <= response.status_code < 600
         ):
