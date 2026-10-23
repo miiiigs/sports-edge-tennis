@@ -13,6 +13,7 @@ def row(i, *, band=True, win=False, date="2026-09-01"):
     picked = f"{date}T08:00:00Z"
     return {
         "population": "MANAGER", "canonical_match_id": f"c-{i}",
+        "manager_side": 1,
         "picked_at": picked, "outcome_status": "COMPLETED",
         "winner_side": 1 if win else 2, "manager_side": 1, "manager_p": .70,
         "a1_side": 1, "a1_p": .65, "a2_side": 2, "a2_p": .60,
@@ -82,3 +83,12 @@ def test_first_production_split_by_pick_time_not_event_result_date():
     assert report["holdout"]["evaluated"] == 30
     assert report["holdout_statistical_gate"] is False
     assert "2026-10" in report["monthly_holdout"]
+
+
+def test_holdout_uses_each_agents_selected_side_not_managers_selected_side():
+    data = [dict(row(1, band=True, win=False), opponent_rank_status="VERIFIED",
+                 opponent_rank_band="1-100")]
+    manager = scored(data, "manager", "MANAGER")
+    a2 = scored(data, "a2", "MANAGER")
+    assert manager[0]["excluded"] is True
+    assert a2[0]["excluded"] is False
