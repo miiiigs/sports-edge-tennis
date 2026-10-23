@@ -402,3 +402,91 @@ def test_merge_drops_board_rows_outside_discovered_fixture_scope():
         [{"fixtureId": "f2", "bookmakerOdds": {}}],
     )
     assert rows == []
+
+
+def test_merge_rejects_conflicting_selected_side_and_tournament():
+    fixture = _trusted_board_row("f1")
+    safe = {"fixtureId": "f1", "bookmakerOdds": {"1xbet": {"markets": {}}}}
+    swapped = {
+        **_trusted_board_row("f1"),
+        "participant1Id": 202,
+        "participant2Id": 101,
+        "bookmakerOdds": {"bet365": {"markets": {}}},
+    }
+    wrong_tournament = {
+        "fixtureId": "f1",
+        "tournamentId": 99,
+        "bookmakerOdds": {"unibet": {"markets": {}}},
+    }
+    # An omitted identity remains safe when fixture discovery is authoritative.
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [fixture], [safe, swapped, wrong_tournament]
+    )
+    assert len(rows) == 1
+    assert set(rows[0]["bookmakerOdds"]) == {"1xbet"}
+    assert rows[0]["participant1Id"] == 101
+    assert rows[0]["participant2Id"] == 202
+
+
+def test_warm_cache_rejects_conflicting_duplicate_book_identity():
+    first = _trusted_board_row("f1")
+    flipped = {
+        **first,
+        "participant1Id": 202,
+        "participant2Id": 101,
+        "bookmakerOdds": {"1xbet": {"markets": {}}},
+    }
+    rows = oddspapi.merge_oddspapi_odds_books(
+        [], [first, flipped], trusted_fixture_ids=("f1",)
+    )
+    assert len(rows) == 1
+    assert set(rows[0]["bookmakerOdds"]) == {"pinnacle+30"}
+
+
+def test_invalid_json_200_records_failed_parse_and_keeps_secrets_private(monkeypatch):
+    class Ledger:
+        def __init__(self):
+            self.records = []
+
+        def reserve(self, **kwargs):
+            return 123
+
+        def record(self, ledger_id, **kwargs):
+            self.records.append((ledger_id, kwargs))
+
+    ledger = Ledger()
+    monkeypatch.setattr(
+        oddspapi.requests,
+        "get",
+        lambda *_args, **_kwargs: _Response(200, ValueError("secret")),
+    )
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "never-show-key",
+            from_at=datetime(2026, 10, 23, tzinfo=UTC),
+            to_at=datetime(2026, 10, 24, tzinfo=UTC),
+            ledger=ledger,
+        )
+    assert exc.value.kind == "PARSE"
+    assert "never-show-key" not in str(exc.value)
+    assert ledger.records == [(
+        123,
+        {"success": False, "http_status": 200, "error_kind": "PARSE", "retry_sequence": 0},
+    )]
+
+
+def test_http_403_does_not_retry_or_call_board_on_fixture_failure(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        oddspapi.requests, "get",
+        lambda *_args, **_kwargs: (calls.append(True) or _Response(403, {})),
+    )
+    with pytest.raises(TransportError) as exc:
+        oddspapi.fetch_oddspapi_tennis_fixtures(
+            "never-show-key",
+            from_at=datetime(2026, 10, 23, tzinfo=UTC),
+            to_at=datetime(2026, 10, 24, tzinfo=UTC),
+        )
+    assert exc.value.kind == "HTTP_403"
+    assert len(calls) == 1
+    assert "never-show-key" not in str(exc.value)
