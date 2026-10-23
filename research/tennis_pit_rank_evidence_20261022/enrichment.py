@@ -238,9 +238,10 @@ def group_scores(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Separate A1, A2, Manager. UNKNOWN never claims a 401-600 result."""
     groups: dict[tuple[str, str, str, str], list[Mapping[str, Any]]] = defaultdict(list)
     for r in rows:
-        for axis in ("selected", "opponent"):
-            for agent in ("manager", "a1", "a2"):
-                groups[(r["population"], agent, axis, r[f"{axis}_rank_band"])].append(r)
+        for agent in ("manager", "a1", "a2"):
+            view = agent_rank_view(r, agent)
+            for axis in ("selected", "opponent"):
+                groups[(r["population"], agent, axis, view[f"{axis}_rank_band"])].append(r)
     result = []
     for (population, agent, axis, band), group in sorted(groups.items()):
         metrics = score_completed(
