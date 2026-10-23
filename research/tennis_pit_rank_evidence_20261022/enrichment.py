@@ -69,7 +69,8 @@ def valid_rank_evidence(r: Mapping[str, Any]) -> bool:
 def validate_pick(p: Mapping[str, Any]) -> None:
     """Reject unfrozen or non-production picks instead of silently pooling strata."""
     for key in ("pick_id", "canonical_match_id", "prediction_run_id",
-                "model_version", "selected_player_id", "opponent_player_id"):
+                "model_version", "selected_player_id", "opponent_player_id",
+                "side1_player_id", "side2_player_id"):
         if not nonempty(p.get(key)):
             raise ValueError(f"missing canonical or model evidence: {key}")
     population = p.get("population")
@@ -83,8 +84,15 @@ def validate_pick(p: Mapping[str, Any]) -> None:
         raise ValueError("experiment membership is not a production selection")
     if p.get("tour") not in TOURS:
         raise ValueError("unknown tour")
-    if p["selected_player_id"] == p["opponent_player_id"]:
+    if p["side1_player_id"] == p["side2_player_id"]:
         raise ValueError("self-match")
+    manager_side = p.get("manager_side")
+    if manager_side not in (1, 2):
+        raise ValueError("unknown original Manager selection side")
+    expected_selected = p[f"side{manager_side}_player_id"]
+    expected_opponent = p[f"side{3 - manager_side}_player_id"]
+    if (p["selected_player_id"], p["opponent_player_id"]) != (expected_selected, expected_opponent):
+        raise ValueError("Manager selection identity/side mismatch")
     picked = timestamp(p["picked_at"])
     scheduled = timestamp(p["scheduled_start_at"])
     if picked > scheduled:
@@ -171,6 +179,35 @@ def enrich(picks: Iterable[Mapping[str, Any]],
         )
         results.append(row)
     return results
+
+
+
+def agent_rank_view(row: Mapping[str, Any], agent: str) -> dict[str, Any]:
+    """Orient official ranking ranks to EACH agent's own original selected side."""
+    if agent not in ("manager", "a1", "a2"):
+        raise ValueError("unknown agent")
+    manager_side = row.get("manager_side")
+    agent_side = row.get(f"{agent}_side")
+    if manager_side not in (1, 2) or agent_side not in (1, 2):
+        return {"selected_rank": None, "opponent_rank": None,
+                "selected_rank_band": "MISSING_OR_UNRANKED",
+                "opponent_rank_band": "MISSING_OR_UNRANKED",
+                "selected_rank_status": "UNKNOWN_AGENT_SIDE",
+                "opponent_rank_status": "UNKNOWN_AGENT_SIDE",
+                "gap": None}
+    selected = "selected" if manager_side == agent_side else "opponent"
+    opponent = "opponent" if manager_side == agent_side else "selected"
+    selected_rank = row.get(f"{selected}_rank")
+    opponent_rank = row.get(f"{opponent}_rank")
+    return {
+        "selected_rank": selected_rank, "opponent_rank": opponent_rank,
+        "selected_rank_band": row.get(f"{selected}_rank_band", rank_band(selected_rank)),
+        "opponent_rank_band": row.get(f"{opponent}_rank_band", rank_band(opponent_rank)),
+        "selected_rank_status": row.get(f"{selected}_rank_status"),
+        "opponent_rank_status": row.get(f"{opponent}_rank_status"),
+        "gap": opponent_rank - selected_rank
+               if selected_rank is not None and opponent_rank is not None else None,
+    }
 
 
 def coverage(rows: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
