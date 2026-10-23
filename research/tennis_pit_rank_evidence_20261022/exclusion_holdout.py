@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Iterable, Mapping
 
-from research.tennis_pit_rank_evidence_20261022.enrichment import timestamp
+from research.tennis_pit_rank_evidence_20261022.enrichment import agent_rank_view, timestamp
 
 
 def scored(rows: Iterable[Mapping[str, Any]], agent: str, population: str) -> list[dict[str, Any]]:
@@ -33,11 +33,12 @@ def scored(rows: Iterable[Mapping[str, Any]], agent: str, population: str) -> li
             continue
         if not 0 <= confidence <= 1:
             continue
+        agent_ranks = agent_rank_view(r, agent)
         output.append({
             "match_id": match_id, "picked_at": timestamp(r["picked_at"]),
             "won": int(side == r["winner_side"]),
-            "excluded": r.get("selected_rank_status") == "VERIFIED"
-                        and r.get("selected_rank_band") == "401-600",
+            "excluded": agent_ranks["selected_rank_status"] == "VERIFIED"
+                        and agent_ranks["selected_rank_band"] == "401-600",
             "surface": r.get("surface"), "tier": r.get("tournament_tier"),
             "confidence": float(confidence),
         })
