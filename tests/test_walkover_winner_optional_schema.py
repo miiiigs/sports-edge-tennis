@@ -82,7 +82,10 @@ def test_walkover_without_winner_is_allowed(db: psycopg.Connection):
     assert row == ("WALKOVER", None)
 
 
-def test_completed_without_winner_is_still_rejected(db: psycopg.Connection):
+@pytest.mark.parametrize("outcome_status", ["COMPLETED", "RETIRED"])
+def test_completed_or_retired_without_winner_is_still_rejected(
+    db: psycopg.Connection, outcome_status: str,
+):
     match_id = _seed_match(db)
     observed_at = datetime(2026, 10, 16, 12, 0, tzinfo=UTC)
     with pytest.raises(psycopg.errors.CheckViolation):
@@ -91,9 +94,9 @@ def test_completed_without_winner_is_still_rejected(db: psycopg.Connection):
             INSERT INTO match_result_observations (
                 match_id, outcome_status, winner_side, source_observed_at, as_of
             )
-            VALUES (%s, 'COMPLETED', NULL, %s, %s)
+            VALUES (%s, %s, NULL, %s, %s)
             """,
-            (match_id, observed_at, observed_at),
+            (match_id, outcome_status, observed_at, observed_at),
         )
 
 

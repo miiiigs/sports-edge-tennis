@@ -98,6 +98,26 @@ def test_parse_terminal_result_fails_closed_without_terminal_winner():
         parse_terminal_result(_fixture(event_winner=""))
 
 
+@pytest.mark.parametrize("event_status", ["Postponed", "Not Started", "Unknown", "Suspended"])
+def test_nonterminal_or_unknown_fixture_never_creates_a_result(event_status):
+    assert parse_terminal_result(
+        _fixture(event_status=event_status, event_winner=None, event_final_result="-")
+    ) is None
+
+
+@pytest.mark.parametrize(
+    ("winner", "score"),
+    [
+        ("First Player", "0 - 2"),
+        ("Second Player", "2 - 0"),
+        ("First Player", "0 - 0"),
+    ],
+)
+def test_completed_with_contradictory_numeric_score_fails_closed(winner, score):
+    with pytest.raises(HistoryRefreshError, match="contradictory_terminal_score_winner"):
+        parse_terminal_result(_fixture(event_winner=winner, event_final_result=score))
+
+
 def test_fetch_fixture_window_uses_one_bounded_provider_request(monkeypatch):
     calls = []
 

@@ -154,6 +154,13 @@ def parse_terminal_result(fixture: Mapping[str, Any]) -> ParsedTerminalResult | 
         retired_side = 2 if winner_side == 1 else 1
 
     sets_1, sets_2, scoreline = _set_score(fixture.get("event_final_result"))
+    # Never trust a completed-match winner field when the same provider's
+    # numeric final sets prove a different winner (or an impossible tie).
+    # WALKOVER/RETIRED can have administrative or partial scorelines and
+    # continue to use their conservative VOID policy.
+    if outcome_status == "COMPLETED" and sets_1 is not None and sets_2 is not None:
+        if sets_1 == sets_2 or (sets_1 > sets_2) != (winner_side == 1):
+            raise HistoryRefreshError("contradictory_terminal_score_winner")
     return ParsedTerminalResult(
         outcome_status=outcome_status,
         winner_side=winner_side,
