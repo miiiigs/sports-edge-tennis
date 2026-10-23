@@ -406,6 +406,7 @@ def test_merge_drops_board_rows_outside_discovered_fixture_scope():
 
 def test_merge_rejects_conflicting_selected_side_and_tournament():
     fixture = _trusted_board_row("f1")
+    fixture.pop("bookmakerOdds")
     safe = {"fixtureId": "f1", "bookmakerOdds": {"1xbet": {"markets": {}}}}
     swapped = {
         **_trusted_board_row("f1"),
