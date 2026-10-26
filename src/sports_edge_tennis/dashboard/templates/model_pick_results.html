@@ -32,6 +32,51 @@
 </section>
 
 {% else %}
+<section class="section" aria-label="Manager five-day accuracy target" style="margin-top: 0;">
+  <h2 class="section-title">Manager accuracy target · 73% on 5 consecutive days</h2>
+  <p class="section-note">
+    <strong>{{ manager_accuracy_target.observed_consecutive_days }} / 5 consecutive days meet 73%</strong>
+    {% if manager_accuracy_target.target_met %} · observed target reached{% else %} · target not yet verified{% endif %}.
+    This separate scorecard counts original first-production Manager picks only, never
+    A1/A2 research tracking or just priced Value Bets. It examines the five most
+    recent completed calendar days in {{ dashboard_timezone.display_label }}.
+    A day with any pending results, no graded picks, missing data, or an accuracy below
+    73% breaks the streak. Voids are excluded from the win-rate denominator.
+    Percentages are descriptive, not a promise of future performance.
+  </p>
+  {% if manager_accuracy_target.low_sample_warning %}
+  <p class="section-note">Some days contain fewer than five graded Manager picks. A high percentage with very few picks is not reliable evidence of a model improvement.</p>
+  {% endif %}
+  <div class="table-wrap" role="region" aria-label="Manager five-day target scorecard" tabindex="0">
+    <table class="data">
+      <thead>
+        <tr><th scope="col">Match date</th><th scope="col">Manager picks</th>
+        <th scope="col">Won</th><th scope="col">Lost</th><th scope="col">Void</th>
+        <th scope="col">Pending</th><th scope="col">Graded win rate</th><th scope="col">Target status</th></tr>
+      </thead>
+      <tbody>
+        {% for day in manager_accuracy_target.days %}
+        <tr>
+          <th scope="row">{{ day.date }}</th>
+          <td class="num">{{ day.picks }}</td><td class="num">{{ day.wins }}</td>
+          <td class="num">{{ day.losses }}</td><td class="num">{{ day.voids }}</td>
+          <td class="num">{{ day.pending }}</td>
+          <td class="num">{{ pct(day.win_rate) }}</td>
+          <td>
+            {% if day.status == 'MET' %}Met{% if day.low_sample %} · small sample{% endif %}
+            {% elif day.status == 'AWAITING_RESULTS' %}Awaiting results
+            {% elif day.status == 'BELOW_TARGET' %}Below 73%
+            {% elif day.status == 'NO_PICKS' %}No picks
+            {% elif day.status == 'NO_GRADED' %}No graded picks
+            {% else %}Data review required{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 <section class="section" aria-label="Aligned model-pick history" style="margin-top: 0;">
   <h2 class="section-title">Aligned Model Picks · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
   <p class="section-note">

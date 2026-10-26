@@ -44,6 +44,7 @@ from sports_edge_tennis.dashboard.timezone import (
     DashboardTimezone,
     dashboard_today,
 )
+from sports_edge_tennis.dashboard.manager_five_day_target import manager_five_day_target
 from sports_edge_tennis.live.pending_result_diagnostics import is_schedule_change
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
@@ -826,6 +827,9 @@ def model_pick_results(
             ),
             "cohorts": view.cohorts,
             "has_multiple_regimes": view.has_multiple_regimes,
+            "manager_accuracy_target": manager_five_day_target(
+                view.all_summaries, as_of_date=as_of_date
+            ),
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
             "page_url": lambda param, page: build_page_url(request, param, page),
@@ -860,6 +864,9 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
 
     return JSONResponse(
         {
+            "manager_accuracy_target": manager_five_day_target(
+                view.all_summaries, as_of_date=as_of_date
+            ),
             "as_of_date": as_of_date.isoformat(),
             "display_timezone": {
                 "key": tz.key,
