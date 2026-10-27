@@ -744,6 +744,25 @@ def _pending_result_diagnostics_cycle(dsn: str) -> None:
         _log(f"PENDING_RESULT_DIAGNOSTICS_FAILED error_type={type(exc).__name__}")
 
 
+def _manager_daily_evidence_cycle(dsn: str) -> None:
+    """Log the past seven completed Manila dates; never alters production picks."""
+    try:
+        from sports_edge_tennis.performance.manager_daily_evidence import (
+            load_manager_daily_evidence,
+            render_manager_daily_evidence,
+        )
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            daily_rows = load_manager_daily_evidence(
+                conn, as_of=datetime.now(UTC)
+            )
+        for row in daily_rows:
+            _log(render_manager_daily_evidence(row))
+    except Exception as exc:  # noqa: BLE001 - read-only evidence is nonblocking
+        _log(f"MANAGER_DAILY_EVIDENCE_FAILED error_type={type(exc).__name__}")
+
+
 def _a1_evidence_cycle(dsn: str) -> None:
     """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
     try:
@@ -1005,6 +1024,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             _pending_result_refresh_cycle(dsn)
             _log(f"SETTLEMENT_DB_ONLY_AFTER_LIVE_FAILURE live_batch_status={live_status}")
             _settlement_cycle(dsn, settled_at=datetime.now(timezone.utc))
+            _manager_daily_evidence_cycle(dsn)
         # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
@@ -1025,7 +1045,9 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     _pncl_concordance_cycle(dsn, captured_at=settled_at)
 
     if not _settlement_cycle(dsn, settled_at=settled_at):
+        _manager_daily_evidence_cycle(dsn)
         return 2
+    _manager_daily_evidence_cycle(dsn)
 
     _shadow_cycle(
         dsn,
