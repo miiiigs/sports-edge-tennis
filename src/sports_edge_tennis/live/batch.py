@@ -1113,6 +1113,7 @@ def _run_batch(
                                 "OFFERED_ODDS_UNAVAILABLE "
                                 f"provider=ODDSPAPI_TENNIS kind={exc.kind} "
                                 f"class={failure.label}"
+                                + (f" restriction={exc.category}" if exc.category else "")
                             )
                         except Exception as exc:  # noqa: BLE001 - fail closed, keep cycle
                             # Any other OddsPapi failure (DB integrity, parsing,
