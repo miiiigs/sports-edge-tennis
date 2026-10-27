@@ -421,6 +421,36 @@ def _rate_limit_wait(response: requests.Response) -> float:
     return 1.1
 
 
+
+def _restricted_access_category(response: requests.Response) -> str:
+    """Classify OddsPapi 403 from a fixed allowlist, without provider text."""
+    try:
+        payload = response.json()
+    except (ValueError, TypeError):
+        return "UNKNOWN_403"
+    if not isinstance(payload, Mapping):
+        return "UNKNOWN_403"
+    error = payload.get("error")
+    if not isinstance(error, Mapping) or error.get("code") != "RESTRICTED_ACCESS":
+        return "UNKNOWN_403"
+    # Response body may echo secrets. Only emit the fixed allowlisted category.
+    message = str(error.get("message") or "").lower()[:300]
+    if "subscription inactive" in message:
+        return "SUBSCRIPTION_INACTIVE"
+    if "restricted sport" in message:
+        return "SPORT_NOT_INCLUDED"
+    if "restricted tournament" in message:
+        return "TOURNAMENT_NOT_INCLUDED"
+    if "restricted bookmaker" in message or "no bookmakers available" in message:
+        return "BOOKMAKER_NOT_INCLUDED"
+    if "no bookmakers with live access" in message:
+        return "LIVE_BOOKMAKER_NOT_INCLUDED"
+    if "blocked" in message or "ip address" in message:
+        return "IP_BLOCKED"
+    return "SUBSCRIPTION_RESTRICTED"
+
+
+
 def _get_json(
     url: str,
     *,
@@ -483,7 +513,9 @@ def _get_json(
                 retry_sequence=attempt - 1,
             )
         raise TransportError(
-            f"HTTP_{response.status_code}", f"{label} returned a non-200 response"
+            f"HTTP_{response.status_code}",
+            f"{label} returned a non-200 response",
+            category=_restricted_access_category(response) if response.status_code == 403 else None,
         )
     raise TransportError("HTTP_RETRY_EXHAUSTED", f"{label} retries exhausted")
 
