@@ -26,3 +26,15 @@ The report always shows baseline, selected candidate, W/L, selection retention, 
 2. Validate calibration, uncertainty, daily sample sizes, odds ROI (only originally observed prices), model-lineage stability, and broad selection retention.
 3. Forward prospective shadow selections through five or more independent completed days and longer windows as necessary. Preserve full daily denominator, pending/void and no-pick gaps. Compare to unchanged Manager baseline on the same events.
 4. Only then propose an approval-gated live experiment if evidence is strong. Never change real bets, thresholds, or persisted original predictions based on in-sample improvements.
+
+
+## Read-only original Manager data export
+
+The existing calibration_dataset.sql contains Manager plus tracking and does not prove point-in-time regime lineage. For PR #265, run the new exporter against an authorized read-only PostgreSQL connection in an environment with TENNIS_DATABASE_URL:
+
+python -m ops.export_tennis_manager_73_ledger --output local_manager_ledger.json
+python -m research.tennis_manager_73_shadow_20261027.evaluator --ledger local_manager_ledger.json
+
+Source is exactly the first-production model picks CTE used by the customer Manager scorecard. The exporter chooses the latest fully proven Manager/A1/A2/A3 regime by default, excludes the current incomplete Asia/Manila day, preserves pending/void, uses PIT match start and original probability, and writes only a local JSON file with a provenance SHA256. Mixed, unknown or incomplete lineage blocks export or evaluation. Unsettled validation or holdout dates block threshold recommendations. No API keys, market prices, stakes, or provider calls.
+
+Even a successful retrospective holdout is NOT a guarantee of 73% for 5 future days; forward shadow and customer acceptance remain required.

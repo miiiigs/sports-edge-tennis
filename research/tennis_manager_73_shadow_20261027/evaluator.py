@@ -136,6 +136,16 @@ def evaluate(picks: list[Pick]) -> dict:
     train_stats = _stats(train, 0)
     base_val = _stats(validation, 0)
     base_test = _stats(holdout, 0)
+    # Unsettled validation/holdout labels must not silently shrink the
+    # denominator, allowing a retrospectively flattering threshold.
+    if base_val["pending"] or base_test["pending"]:
+        return {
+            "status": "BLOCKED_UNSETTLED_VALIDATION_OR_HOLDOUT",
+            "validation_pending": base_val["pending"],
+            "holdout_pending": base_test["pending"],
+            "validation_scored": base_val["scored"],
+            "holdout_scored": base_test["scored"],
+        }
     if (base_val["scored"] < MIN_VALIDATION_SCORED
             or base_test["scored"] < MIN_HOLDOUT_SCORED):
         return {
