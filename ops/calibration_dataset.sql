@@ -47,13 +47,13 @@ day AS (
     ) mv ON TRUE
 ),
 wr AS (
-    SELECT d.*, r.outcome_status, r.winner_side,
+    SELECT d.*, r.outcome_status, r.winner_side, r.result_observed_at, r.result_source_observed_at,
         a1.prediction_status::text AS a1s, a1.selection_side AS a1side, a1.win_probability AS a1p,
         a2.prediction_status::text AS a2s, a2.selection_side AS a2side, a2.win_probability AS a2p,
         a3.prediction_status::text AS a3s, a3.selection_side AS a3side, a3.win_probability AS a3p
     FROM day d
     LEFT JOIN LATERAL (
-        SELECT mro.outcome_status::text AS outcome_status, mro.winner_side FROM match_result_observations mro
+        SELECT mro.outcome_status::text AS outcome_status, mro.winner_side, mro.as_of AS result_observed_at, mro.source_observed_at AS result_source_observed_at FROM match_result_observations mro
         WHERE mro.match_id=d.match_id AND mro.outcome_status IN ('COMPLETED','RETIRED','WALKOVER','CANCELLED')
         ORDER BY mro.as_of DESC, mro.source_observed_at DESC, mro.match_result_observation_id DESC LIMIT 1
     ) r ON TRUE
@@ -68,6 +68,7 @@ SELECT w.manila_date, w.utc_date, w.london_date, w.match_id,
     w.a2p AS a2_prob, w.a2side AS a2_side, w.a2s AS a2_status,
     w.a3p AS a3_prob, w.a3side AS a3_side, w.a3s AS a3_status,
     w.picked_at, w.outcome_status, w.winner_side,
+    w.result_observed_at, w.result_source_observed_at,
     CASE WHEN w.outcome_status='COMPLETED' AND w.winner_side=w.selected_side THEN 'WON'
          WHEN w.outcome_status='COMPLETED' AND w.winner_side IN (1,2) THEN 'LOST'
          WHEN w.outcome_status IN ('RETIRED','WALKOVER','CANCELLED') THEN 'VOID'
