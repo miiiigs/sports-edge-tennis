@@ -23,6 +23,7 @@ SOURCE_SQL = REPO_ROOT / "ops" / "calibration_dataset.sql"
 COLUMNS = (
     "match_id", "manila_date", "aligned_probability", "aligned_pick_type",
     "picked_at", "surface", "tier", "result_status",
+    "selected_side", "a1_side", "a2_side", "a1_prob", "a2_prob",
 )
 
 
@@ -39,7 +40,7 @@ def sanitized_ledger(rows) -> dict:
     selected = []
     for row in rows:
         selected.append({
-            key: _serialize_value(row[key]) for key in COLUMNS
+            key: _serialize_value(row.get(key)) for key in COLUMNS
         })
     # Enforce canonical single sporting-match identity and known W/L states.
     parse_ledger({"data": selected})

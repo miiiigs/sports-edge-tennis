@@ -31,6 +31,11 @@ class Pick:
     outcome: str
     picked_at: str
     tier: str = "UNKNOWN"
+    selected_side: int | None = None
+    a1_side: int | None = None
+    a2_side: int | None = None
+    a1_prob: float | None = None
+    a2_prob: float | None = None
 
 
 @dataclass(frozen=True)
@@ -38,12 +43,24 @@ class Rule:
     key: str
     minimum_probability: float = 0.60
     require_known_surface: bool = False
+    max_agent_spread: float | None = None
 
     def permits(self, p: Pick) -> bool:
-        return (
-            p.probability >= self.minimum_probability
-            and (not self.require_known_surface or p.surface in KNOWN_SURFACES)
-        )
+        if p.probability < self.minimum_probability:
+            return False
+        if self.require_known_surface and p.surface not in KNOWN_SURFACES:
+            return False
+        if self.max_agent_spread is not None:
+            if (
+                p.selected_side not in (1, 2)
+                or p.a1_side != p.selected_side
+                or p.a2_side != p.selected_side
+                or p.a1_prob is None or p.a2_prob is None
+            ):
+                return False
+            if abs(p.a1_prob - p.a2_prob) >= self.max_agent_spread:
+                return False
+        return True
 
 
 RULES = (
@@ -53,6 +70,9 @@ RULES = (
     Rule("aligned_prob_80", 0.80),
     Rule("known_surface_only", 0.60, True),
     Rule("aligned_prob_70_known_surface", 0.70, True),
+    Rule("a1_a2_agreement_lt_5pct", max_agent_spread=0.05),
+    Rule("a1_a2_agreement_lt_10pct", max_agent_spread=0.10),
+    Rule("aligned_prob70_a1_a2_lt10pct", 0.70, max_agent_spread=0.10),
 )
 
 
@@ -82,7 +102,25 @@ def parse_ledger(payload: dict) -> list[Pick]:
             raise ValueError("missing original prediction timestamp")
         day = date.fromisoformat(str(r["manila_date"]))
         surface = str(r.get("surface") or "UNKNOWN").upper()
-        out.append(Pick(match_id, day, probability, surface, ptype, result, timestamp, str(r.get("tier") or "UNKNOWN").upper()))
+        def side_value(key):
+            value = r.get(key)
+            return int(value) if value in (1, 2, "1", "2") else None
+
+        def prob_value(key):
+            value = r.get(key)
+            if value is None:
+                return None
+            v = float(value)
+            if not math.isfinite(v) or not 0 <= v <= 1:
+                raise ValueError("invalid point-in-time agent probability")
+            return v
+
+        out.append(Pick(
+            match_id, day, probability, surface, ptype, result, timestamp,
+            str(r.get("tier") or "UNKNOWN").upper(),
+            side_value("selected_side"), side_value("a1_side"), side_value("a2_side"),
+            prob_value("a1_prob"), prob_value("a2_prob"),
+        ))
     return sorted(out, key=lambda x: (x.day, x.picked_at, x.match_id))
 
 
