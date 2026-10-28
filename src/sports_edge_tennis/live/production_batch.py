@@ -780,6 +780,25 @@ def _aligned_replay_evidence_cycle(dsn: str) -> None:
         _log(f"ALIGNED_REPLAY_AUDIT_FAILED error_type={type(exc).__name__}")
 
 
+def _aligned_five_day_evidence_cycle(dsn: str) -> None:
+    """Original aligned picks five-day acceptance telemetry; read-only."""
+    try:
+        from sports_edge_tennis.performance.aligned_five_day_evidence import (
+            load_aligned_five_day_evidence,
+            render_aligned_five_day_evidence,
+        )
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            report = load_aligned_five_day_evidence(
+                conn, as_of=datetime.now(UTC)
+            )
+        for line in render_aligned_five_day_evidence(report):
+            _log(line)
+    except Exception as exc:  # noqa: BLE001 - nonblocking independent report
+        _log(f"ALIGNED_FIVE_DAY_EVIDENCE_FAILED error_type={type(exc).__name__}")
+
+
 def _a1_evidence_cycle(dsn: str) -> None:
     """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
     try:
@@ -1043,6 +1062,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             _settlement_cycle(dsn, settled_at=datetime.now(timezone.utc))
             _manager_daily_evidence_cycle(dsn)
             _aligned_replay_evidence_cycle(dsn)
+            _aligned_five_day_evidence_cycle(dsn)
         # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
@@ -1065,9 +1085,11 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
     if not _settlement_cycle(dsn, settled_at=settled_at):
         _manager_daily_evidence_cycle(dsn)
         _aligned_replay_evidence_cycle(dsn)
+        _aligned_five_day_evidence_cycle(dsn)
         return 2
     _manager_daily_evidence_cycle(dsn)
     _aligned_replay_evidence_cycle(dsn)
+    _aligned_five_day_evidence_cycle(dsn)
 
     _shadow_cycle(
         dsn,
