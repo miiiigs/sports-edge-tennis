@@ -51,3 +51,23 @@ def test_pit_results_query_compiles_in_postgres(db):
     assert len(evidence.days)==5
     assert evidence.days[0].status=="IN_PROGRESS"
     assert evidence.days[-1].status=="IN_PROGRESS"
+
+
+def test_after_initial_five_dates_roll_without_skipping_bad_days():
+    rows=tuple(day(date(2026,10,28)+timedelta(days=i),8,2) for i in range(6))
+    report=from_dashboard_rows(rows,as_of=datetime(2026,11,3,2,tzinfo=UTC))
+    assert report.start==date(2026,10,29)
+    assert report.end==date(2026,11,2)
+    assert report.status=="MET_FIVE_COMPLETE_DAYS"
+    missing=tuple(x for x in rows if x.decision_date!=date(2026,10,30))
+    blocked=from_dashboard_rows(missing,as_of=datetime(2026,11,3,2,tzinfo=UTC))
+    assert blocked.status=="NOT_YET_MET"
+    assert any(x.status=="NO_PICKS" for x in blocked.days)
+
+
+def test_rolling_window_uses_manila_midnight_not_utc():
+    rows=tuple(day(date(2026,10,28)+timedelta(days=i),8,2) for i in range(6))
+    after=from_dashboard_rows(rows,as_of=datetime(2026,11,2,17,tzinfo=UTC))
+    assert after.start==date(2026,10,29)
+    before=from_dashboard_rows(rows,as_of=datetime(2026,11,2,15,59,tzinfo=UTC))
+    assert before.start==date(2026,10,28)
