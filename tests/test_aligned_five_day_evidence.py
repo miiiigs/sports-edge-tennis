@@ -1,5 +1,5 @@
 """Whole-aligned acceptance must never be replaced with Manager-only denominators."""
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sports_edge_tennis.dashboard.model_pick_history import DailyModelPickSummary
 from sports_edge_tennis.performance.aligned_five_day_evidence import (
@@ -15,7 +15,7 @@ def day(d, wins, losses, void=0, pending=0):
 
 
 def test_all_five_days_require_full_settlement_and_actual_73():
-    rows=tuple(day(date(2026,10,28+i),8,2) for i in range(5))
+    rows=tuple(day(WINDOW_START + timedelta(days=i),8,2) for i in range(5))
     report=from_dashboard_rows(rows,as_of=datetime(2026,11,2,2,tzinfo=UTC))
     assert report.status=="MET_FIVE_COMPLETE_DAYS"
     assert all(x.status=="MET_73" for x in report.days)
