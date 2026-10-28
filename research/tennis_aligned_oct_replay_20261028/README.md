@@ -35,3 +35,26 @@ The output includes original W/L/VOID/PENDING, retained selection W/L/VOID/PENDI
 - Before a release, require a longer chrono/forward shadow with confidence intervals, model-version stratification, original candidate coverage and reliability in all five consecutive completed calendar days.
 - Pending October 25–27 results mean this four-day audit is provisional.
 - For Type A wagering ROI claims, original-time bookmaker quotes are required. This data source cannot validate betting profitability if authentic market evidence is missing.
+
+
+## One-command authorized research export
+
+An exporter is included so an operator with an approved read-only
+PostgreSQL DSN does not have to manually assemble historic match records:
+
+`python -m research.tennis_aligned_oct_replay_20261028.export_from_db --output /secure/private/aligned.json`
+
+This executes the existing `ops/calibration_dataset.sql` and writes only
+whitelisted canonical first-production aligned fields (day, match id, original
+probability and pick type, original surface/tier, outcome and pick timestamp).
+The local file has mode 0600 and SHA-256 provenance. Duplicate sporting matches
+or malformed outcomes block export. No player names, bookmaker quotes,
+stakes or secrets are exported, and this helper does not call provider APIs.
+
+Then run the original replay CLI with that file. The new output includes
+descriptive Oct24–27 slices by probability band, surface, tournament tier and
+aligned pick type. These breakdowns are **not causal attribution** or a basis
+to tune on the observed losing days.
+
+No authenticated production DSN is available in this conversation, so this
+implementation has not produced real retrospective replay outcomes yet.

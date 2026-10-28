@@ -30,6 +30,7 @@ class Pick:
     pick_type: str
     outcome: str
     picked_at: str
+    tier: str = "UNKNOWN"
 
 
 @dataclass(frozen=True)
@@ -81,7 +82,7 @@ def parse_ledger(payload: dict) -> list[Pick]:
             raise ValueError("missing original prediction timestamp")
         day = date.fromisoformat(str(r["manila_date"]))
         surface = str(r.get("surface") or "UNKNOWN").upper()
-        out.append(Pick(match_id, day, probability, surface, ptype, result, timestamp))
+        out.append(Pick(match_id, day, probability, surface, ptype, result, timestamp, str(r.get("tier") or "UNKNOWN").upper()))
     return sorted(out, key=lambda x: (x.day, x.picked_at, x.match_id))
 
 
@@ -119,6 +120,43 @@ def stats(picks: list[Pick], rule: Rule) -> dict:
             "BELOW_73_PROVISIONAL_REPLAY"
         ),
     }
+
+
+
+def losing_pick_diagnostics(picks: list[Pick]) -> dict:
+    """Descriptive, pre-match groupings. Post-result group mining is not validation."""
+    if not picks:
+        return {}
+    confidence_groups = {
+        "60_to_69": lambda p: 0.60 <= p.probability < 0.70,
+        "70_to_79": lambda p: 0.70 <= p.probability < 0.80,
+        "80_plus": lambda p: p.probability >= 0.80,
+    }
+    dimensions = {
+        "confidence": {name: [p for p in picks if pred(p)] for name, pred in confidence_groups.items()},
+        "surface": {key: [p for p in picks if p.surface == key] for key in sorted(set(p.surface for p in picks))},
+        "tournament_tier": {key: [p for p in picks if p.tier == key] for key in sorted(set(p.tier for p in picks))},
+        "aligned_pick_type": {key: [p for p in picks if p.pick_type == key] for key in sorted(set(p.pick_type for p in picks))},
+    }
+    out = {}
+    for name, groups in dimensions.items():
+        out[name] = {
+            key: {
+                "picks": len(rows),
+                "won": sum(p.outcome == "WON" for p in rows),
+                "lost": sum(p.outcome == "LOST" for p in rows),
+                "void": sum(p.outcome == "VOID" for p in rows),
+                "pending": sum(p.outcome == "PENDING" for p in rows),
+                "win_rate": (
+                    sum(p.outcome == "WON" for p in rows) /
+                    sum(p.outcome in {"WON", "LOST"} for p in rows)
+                ) if any(p.outcome in {"WON", "LOST"} for p in rows) else None,
+            }
+            for key, rows in groups.items()
+            if rows
+        }
+    return out
+
 
 
 def replay(picks: list[Pick]) -> dict:
@@ -194,6 +232,12 @@ def replay(picks: list[Pick]) -> dict:
         "original_ledger_required": "ops/calibration_dataset.sql with original point-in-time fields",
         "target": ">=73% each fully settled day across ALL original aligned Model Picks",
         "baseline_prior_scored": orig_earlier["scored"],
+        "observed_oct24_27_loss_diagnostics": losing_pick_diagnostics(four_days),
+        "diagnostics_warning": (
+            "The slice percentages describe observed outcomes only. Do not call a "
+            "surface, confidence or tier a cause or select a rule based on these "
+            "October 24–27 outcomes."
+        ),
         "selected_from_prior_period_only": selected,
         "prior_period_selection_trials": candidates,
         "daily_counterfactuals": output,
