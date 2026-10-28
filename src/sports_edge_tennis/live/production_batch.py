@@ -740,6 +740,13 @@ def _pending_result_diagnostics_cycle(dsn: str) -> None:
         ]
         for item in actionable[:_PENDING_DIAGNOSTIC_ITEM_LOG_LIMIT]:
             _log(item.log_line())
+        # Operational assignments from persisted evidence only. No provider
+        # requests, match mutation or settlement speculation.
+        from sports_edge_tennis.live.pending_recovery_triage import (
+            render_pending_recovery_triage,
+        )
+        for line in render_pending_recovery_triage(report.items):
+            _log(line)
     except Exception as exc:  # noqa: BLE001 - diagnostics must not affect the batch
         _log(f"PENDING_RESULT_DIAGNOSTICS_FAILED error_type={type(exc).__name__}")
 
