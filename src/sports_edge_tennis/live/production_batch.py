@@ -763,6 +763,23 @@ def _manager_daily_evidence_cycle(dsn: str) -> None:
         _log(f"MANAGER_DAILY_EVIDENCE_FAILED error_type={type(exc).__name__}")
 
 
+def _aligned_replay_evidence_cycle(dsn: str) -> None:
+    """Read-only Oct 24-27 original aligned-pick filter replay; no writes."""
+    try:
+        from sports_edge_tennis.performance.aligned_historical_replay import (
+            load_aligned_replay_picks,
+            render_aligned_replay,
+        )
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            rows = load_aligned_replay_picks(conn)
+        for line in render_aligned_replay(rows):
+            _log(line)
+    except Exception as exc:  # noqa: BLE001 - research telemetry nonblocking
+        _log(f"ALIGNED_REPLAY_AUDIT_FAILED error_type={type(exc).__name__}")
+
+
 def _a1_evidence_cycle(dsn: str) -> None:
     """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
     try:
@@ -1025,6 +1042,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             _log(f"SETTLEMENT_DB_ONLY_AFTER_LIVE_FAILURE live_batch_status={live_status}")
             _settlement_cycle(dsn, settled_at=datetime.now(timezone.utc))
             _manager_daily_evidence_cycle(dsn)
+            _aligned_replay_evidence_cycle(dsn)
         # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
@@ -1046,8 +1064,10 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
 
     if not _settlement_cycle(dsn, settled_at=settled_at):
         _manager_daily_evidence_cycle(dsn)
+        _aligned_replay_evidence_cycle(dsn)
         return 2
     _manager_daily_evidence_cycle(dsn)
+    _aligned_replay_evidence_cycle(dsn)
 
     _shadow_cycle(
         dsn,
