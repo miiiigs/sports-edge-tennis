@@ -349,7 +349,7 @@ def test_real_vetoed_decision_reaches_dashboard_without_becoming_a_bet(
     html = client.get(f"/today?date={TEST_DATE.isoformat()}")
     assert html.status_code == 200
     page = html.text
-    assert "4 Manager-qualified selections" in page
+    assert "4 original aligned selections (4 Manager · 0 A1/A2 tracking)" in page
     assert page.count('<article class="pick-card') == 4
     assert page.count('<article class="no-bet-card">') == 1
     assert 'id="tracking-only-disclosure"' in page
