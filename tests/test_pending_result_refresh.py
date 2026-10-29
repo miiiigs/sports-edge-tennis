@@ -448,6 +448,27 @@ def test_walkover_persists_as_walkover(db: psycopg.Connection):
     ).fetchone()[0] == "WALKOVER"
 
 
+def test_winnerless_walkover_is_void_eligible_and_idempotent(db: psycopg.Connection):
+    target = _seed_target(db, api_event="at-1")
+    seed_production_model_pick(db, target["match_id"], wide_spread=True)
+    fixture = _fixture(event_status="Walkover", event_winner=None, event_final_result="-")
+    first = _refresh(db, [fixture])
+    assert first.terminal_found == 1
+    assert first.expected_void == 1
+    assert first.persisted == 1
+    row = db.execute(
+        "SELECT outcome_status::text, winner_side FROM match_result_observations "
+        "WHERE match_id = %s", (target["match_id"],)
+    ).fetchone()
+    assert row == ("WALKOVER", None)
+    second = _refresh(db, [fixture])
+    assert second.checked == 0
+    assert db.execute(
+        "SELECT count(*) FROM match_result_observations WHERE match_id = %s",
+        (target["match_id"],),
+    ).fetchone()[0] == 1
+
+
 def test_cancelled_persists_as_cancelled(db: psycopg.Connection):
     target = _seed_target(db, api_event="at-1")
     seed_production_model_pick(db, target["match_id"])
