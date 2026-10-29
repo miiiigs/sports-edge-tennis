@@ -30,7 +30,7 @@
     <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.hit_rate) }}</span><span class="stat-label">Actual aligned win rate</span><span class="stat-note">All original graded Model Picks</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}–{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Actual wins and losses</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.pending }}</span><span class="stat-label">Unsettled original picks</span><span class="stat-note">Never counted as a loss or hidden</span></div>
-    <div class="stat"><span class="stat-value">73%</span><span class="stat-label">Daily goal for five settled days</span><span class="stat-note">Target, not a forecast</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_accuracy_target.completed_qualifying_days }} / 5</span><span class="stat-label">Qualifying settled days at 73%+</span><span class="stat-note">All aligned picks · Manila dates</span></div>
   </div>
   <details class="no-bet-disclosure" style="margin-top: 14px;" aria-label="Quality-filter research comparison">
     <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Quality Filter Research · historical comparison</span><span class="no-bet-toggle-subtitle">What happens when weaker-confidence selections are skipped? Not live.</span></span><span class="no-bet-toggle-icon" aria-hidden="true">⌄</span></summary>
@@ -51,6 +51,55 @@
     </div>
   </details>
 </section>
+<section class="section" aria-label="All aligned five-day acceptance" style="margin-top: 0;">
+  <h2 class="section-title">Brian's 73% goal · ALL aligned Model Picks</h2>
+  <p class="section-note">
+    <strong>{{ aligned_accuracy_target.completed_qualifying_days }} / 5 qualifying completed days</strong>
+    {% if aligned_accuracy_target.target_met %} · five-day goal verified{% else %} · goal not yet achieved{% endif %}.
+    {{ aligned_accuracy_target.start }} to {{ aligned_accuracy_target.end }} · Asia/Manila.
+    Original Manager and A1/A2 tracking picks are counted together. All five
+    consecutive dates must fully settle and reach at least 73% independently.
+    Missing days, future days, and pending results cannot qualify.
+  </p>
+  {% if aligned_accuracy_target.low_sample_warning %}
+  <p class="section-note">Some qualifying days have fewer than five graded picks; a high rate with very few picks is not strong statistical proof.</p>
+  {% endif %}
+  <div class="table-wrap" role="region" aria-label="All aligned five-day acceptance scorecard" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Manila date</th><th scope="col">Original picks</th>
+        <th scope="col">Won</th><th scope="col">Lost</th><th scope="col">Void</th>
+        <th scope="col">Pending</th><th scope="col">Win rate</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for day in aligned_accuracy_target.days %}
+        <tr>
+          <th scope="row">{{ day.date }}</th>
+          <td class="num">{{ day.picks }}</td><td class="num">{{ day.wins }}</td>
+          <td class="num">{{ day.losses }}</td><td class="num">{{ day.voids }}</td>
+          <td class="num">{{ day.pending }}</td><td class="num">{{ pct(day.win_rate) }}</td>
+          <td>
+            {% if day.status == 'MET_73' %}Met{% if day.low_sample %} · small sample{% endif %}
+            {% elif day.status == 'IN_PROGRESS' %}Not a completed day
+            {% elif day.status == 'UNSETTLED' %}Awaiting verified results
+            {% elif day.status == 'BELOW_73' %}Below 73%
+            {% elif day.status == 'NO_PICKS' %}No original picks
+            {% elif day.status == 'NO_GRADED' %}No graded results
+            {% else %}Data review required{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">This is the actual, unfiltered target scorecard, not a historical what-if replay. The other tables follow your selected dashboard timezone; this acceptance calculation always uses Manila dates.</p>
+</section>
+
+<details class="no-bet-disclosure section" aria-label="Manager-only accuracy diagnostic">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Manager-only accuracy · secondary diagnostic</span>
+      <span class="no-bet-toggle-subtitle">Different population from Brian's all-aligned goal</span></span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="no-bet-panel">
 <section class="section" aria-label="Manager five-day accuracy target" style="margin-top: 0;">
   <h2 class="section-title">Manager accuracy target · 73% on 5 consecutive days</h2>
   <p class="section-note">
@@ -95,6 +144,9 @@
     </table>
   </div>
 </section>
+
+  </div>
+</details>
 
 <section class="section" aria-label="Aligned model-pick history" style="margin-top: 0;">
   <h2 class="section-title">Aligned Model Picks · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
