@@ -349,10 +349,10 @@ def test_real_vetoed_decision_reaches_dashboard_without_becoming_a_bet(
     html = client.get(f"/today?date={TEST_DATE.isoformat()}")
     assert html.status_code == 200
     page = html.text
-    assert "4 original aligned selections (4 Manager · 0 A1/A2 tracking)" in page
-    assert page.count('<article class="pick-card') == 4
-    assert page.count('<article class="no-bet-card">') == 1
-    assert 'id="tracking-only-disclosure"' in page
+    assert "5 original aligned selections (4 Manager · 1 A1/A2 tracking)" in page
+    assert page.count('<article class="pick-card') == 5
+    assert page.count('<article class="no-bet-card">') == 0
+    assert 'id="tracking-only-disclosure"' not in page
     assert "NOT BETTING" in page and "Blocked by safety check" in page
     assert "2.05" in page and "21/20" in page
     assert "UNIBET" in page
