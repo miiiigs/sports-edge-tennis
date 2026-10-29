@@ -16,18 +16,18 @@ def day(d, wins, losses, void=0, pending=0):
 
 def test_all_five_days_require_full_settlement_and_actual_73():
     rows=tuple(day(WINDOW_START + timedelta(days=i),8,2) for i in range(5))
-    report=from_dashboard_rows(rows,as_of=datetime(2026,11,2,2,tzinfo=UTC))
+    report=from_dashboard_rows(rows,as_of=datetime(2026,11,1,2,tzinfo=UTC))
     assert report.status=="MET_FIVE_COMPLETE_DAYS"
     assert all(x.status=="MET_73" for x in report.days)
     assert "scope=ALL_ORIGINAL_ALIGNED_MODEL_PICKS" in render_aligned_five_day_evidence(report)[-1]
-    partial=from_dashboard_rows(rows,as_of=datetime(2026,11,1,2,tzinfo=UTC))
+    partial=from_dashboard_rows(rows,as_of=datetime(2026,10,31,2,tzinfo=UTC))
     assert partial.status=="NOT_YET_MET"
     assert partial.days[-1].status=="IN_PROGRESS"
 
 
 def test_pending_and_missing_days_fail_closed():
     rows=(day(WINDOW_START,3,0,pending=1),
-          day(date(2026,10,29),8,3))
+          day(date(2026,10,28),8,3))
     report=from_dashboard_rows(rows,as_of=datetime(2026,11,2,2,tzinfo=UTC))
     assert report.days[0].status=="UNSETTLED"
     assert report.days[1].status=="BELOW_73"
@@ -49,7 +49,7 @@ def test_pit_results_query_compiles_in_postgres(db):
         db, as_of=datetime(2026,10,28,2,tzinfo=UTC)
     )
     assert len(evidence.days)==5
-    assert evidence.days[0].status=="IN_PROGRESS"
+    assert evidence.days[0].status=="NO_PICKS"
     assert evidence.days[-1].status=="IN_PROGRESS"
 
 
@@ -64,6 +64,24 @@ def test_after_initial_five_dates_roll_without_skipping_bad_days():
     assert blocked.status=="NOT_YET_MET"
     assert any(x.status=="NO_PICKS" for x in blocked.days)
 
+
+
+def test_requested_oct27_to_oct31_initial_window_counts_original_aligned_cohort():
+    rows = (
+        day(date(2026, 10, 27), 31, 8, void=2),
+        day(date(2026, 10, 28), 9, 3, void=1),
+        day(date(2026, 10, 29), 1, 3, void=1, pending=16),
+    )
+    report = from_dashboard_rows(rows, as_of=datetime(2026, 10, 29, 2, tzinfo=UTC))
+    assert report.start == date(2026, 10, 27)
+    assert report.end == date(2026, 10, 31)
+    assert [(x.picks, x.wins, x.losses, x.voids, x.pending) for x in report.days[:2]] == [
+        (41, 31, 8, 2, 0), (13, 9, 3, 1, 0),
+    ]
+    assert [x.status for x in report.days[:3]] == ["MET_73", "MET_73", "IN_PROGRESS"]
+    assert sum(x.status == "MET_73" for x in report.days) == 2
+    assert report.status == "NOT_YET_MET"
+    assert "start=2026-10-27 end=2026-10-31" in render_aligned_five_day_evidence(report)[-1]
 
 def test_rolling_window_uses_manila_midnight_not_utc():
     rows=tuple(day(date(2026,10,28)+timedelta(days=i),8,2) for i in range(6))
