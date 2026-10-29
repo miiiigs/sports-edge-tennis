@@ -3,12 +3,12 @@
 {% block title %}Model Picks — Sports Edge Tennis{% endblock %}
 
 {% block content %}
-{% set main_picks = today_picks.picks | rejectattr('is_wide_spread') | list %}
+{% set main_picks = today_picks.picks | list %}
 {% set tracking_picks = today_picks.picks | selectattr('is_wide_spread') | list %}
 <header class="page-header">
   <h1 class="page-title">Model Picks</h1>
   <p class="page-subtitle">
-    {{ selected_date.strftime('%A, %d %B %Y') }} · {{ today_picks.manager_qualified_selection_count }} Manager-qualified selection{{ '' if today_picks.manager_qualified_selection_count == 1 else 's' }}
+    {{ selected_date.strftime('%A, %d %B %Y') }} · {{ today_picks.total }} original aligned selection{{ '' if today_picks.total == 1 else 's' }} ({{ today_picks.manager_qualified_selection_count }} Manager · {{ today_picks.wide_spread_model_pick_count }} A1/A2 tracking)
   </p>
   <p class="page-note">Model Picks are predictions, not betting instructions. Guide odds show verified bookmaker prices when available; a quoted price does not establish betting value.</p>
   {% if operational_health and operational_health.status == 'HEALTHY' %}
@@ -17,6 +17,43 @@
   </p>
   {% endif %}
 </header>
+
+{% if dashboard_timezone.iana != 'Asia/Manila' %}
+<div class="notice notice-warning" role="note" aria-label="Manila scorecard date alignment">
+  The 73% target groups original Model Picks by <strong>Asia/Manila match date</strong>.
+  You are currently viewing {{ dashboard_timezone.display_label }} dates, which can have different totals.
+  {% if request.query_params.get('date') %}
+  <a href="/today?date={{ selected_date.isoformat() }}&amp;tz=philippines">View {{ selected_date.isoformat() }} with the same Manila date as the 73% scorecard</a>.
+  {% else %}
+  <a href="/today?tz=philippines">Switch to today's Manila Model Picks</a>.
+  {% endif %}
+</div>
+{% endif %}
+
+{% if aligned_day_summary is not none %}
+<section class="section" aria-label="Original aligned daily pick results" style="margin-top: 0">
+  <h2 class="section-title">Original aligned results · {{ selected_date.isoformat() }}</h2>
+  <p class="section-note">These are all first-qualified aligned picks for the selected {{ dashboard_timezone.display_label }} match date. Manager picks and A1/A2 tracking are both counted once. Voids and pending are not losses; only won and lost are in the graded win rate.</p>
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-value">{{ aligned_day_summary.picks }}</span><span class="stat-label">Original picks</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_day_summary.wins }}</span><span class="stat-label">Wins</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_day_summary.losses }}</span><span class="stat-label">Losses</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_day_summary.voids }}</span><span class="stat-label">Void</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_day_summary.pending }}</span><span class="stat-label">Pending</span></div>
+    <div class="stat"><span class="stat-value">{% if aligned_day_summary.hit_rate is not none %}{{ '%.1f%%'|format(aligned_day_summary.hit_rate * 100) }}{% else %}—{% endif %}</span><span class="stat-label">Graded win rate</span></div>
+  </div>
+  {% if aligned_cards_reconciled is sameas false %}
+  <div class="notice notice-warning" role="alert">
+    The full original result ledger contains {{ aligned_day_summary.picks }} picks, but only {{ today_picks.total }} cards currently have displayable match details. Totals are authoritative; missing cards require data review.
+  </div>
+  {% else %}
+  <p class="section-note">All {{ today_picks.total }} match cards below reconcile to the scored daily ledger.</p>
+  {% endif %}
+  <p class="section-note"><a href="/model-pick-results?tz=philippines">See the five-day Manila results scorecard</a> · <a href="/today?date=2026-10-27&amp;tz=philippines">View 27 October original picks</a></p>
+</section>
+{% elif today_picks.total %}
+<p class="section-note">Showing {{ today_picks.total }} original aligned cards. Daily result totals are temporarily unavailable, so accuracy is not asserted here.</p>
+{% endif %}
 
 {% if operational_health and operational_health.status in ['ERROR', 'WARNING'] %}
 <div class="notice notice-{{ 'error' if operational_health.status == 'ERROR' else 'warning' }}" role="alert">
@@ -39,7 +76,7 @@
 
 {% elif not main_picks %}
 <section class="empty-state">
-  <h2 class="empty-title">No Manager-qualified Model Picks yet today</h2>
+  <h2 class="empty-title">No original aligned Model Picks for this date</h2>
   <p class="empty-body">
     {% if state.kind == 'NO_RUN' %}
     Today's slate has not been evaluated yet.
@@ -58,7 +95,7 @@
   <span class="weak-filter-note">Weak = below 60% Manager win probability. Display only; selection criteria are unchanged.</span>
 </div>
 
-<section class="pick-list" id="today-pick-list" aria-label="Today's picks">
+<section class="pick-list" id="today-pick-list" aria-label="All original aligned Model Picks for the selected date">
   {% for pick in main_picks %}
   <article class="pick-card{% if pick.kind == 'BLOCKED' %} is-blocked{% endif %}" data-weak="{{ 'true' if pick.is_weak else 'false' }}" data-original-index="{{ loop.index0 }}">
     <div class="pick-top">
@@ -80,7 +117,7 @@
     <div class="pick-meta" style="align-items: flex-start;">
       <span class="badge {{ 'badge-blocked' if pick.kind == 'BLOCKED' else ('badge-value' if pick.kind == 'VALUE_BET' else 'badge-model') }}">{{ pick.kind_label }}</span>
       {% if pick.is_wide_spread %}
-      <span class="badge badge-weak">A1/A2 tracking · not Manager consensus</span>
+      <span class="badge badge-weak">A1/A2 aligned tracking · not a Value Bet</span>
       {% endif %}
       {% if pick.kind == 'BLOCKED' %}
       <span class="badge badge-blocked">Blocked by safety check · no stake</span>
@@ -141,38 +178,11 @@
 {% endif %}
 
 
-{% if tracking_picks %}
-<details class="no-bet-disclosure section" id="tracking-only-disclosure">
-  <summary class="no-bet-toggle">
-    <span class="no-bet-toggle-copy">
-      <span class="no-bet-toggle-title">A1/A2 research-only tracking</span>
-      <span class="no-bet-toggle-subtitle">{{ tracking_picks|length }} additional agreement{{ '' if tracking_picks|length == 1 else 's' }} did not pass Manager confidence rules · not published Manager Model Picks</span>
-    </span>
-    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
-  </summary>
-  <div class="no-bet-panel">
-    <p class="no-bet-intro">These are retained for research, not promoted to Model Picks. A1 and A2 selected the same player, but their probability spread exceeded the Manager gate. Their tracking average is not a Manager win probability or betting recommendation.</p>
-    <div class="no-bet-list">
-      {% for pick in tracking_picks %}
-      <article class="no-bet-card">
-        <div class="no-bet-card-main">
-          <h3 class="no-bet-match">{{ pick.player }} <span>vs</span> {{ pick.opponent }}</h3>
-          <p class="no-bet-context">{{ tz_datetime(pick.scheduled_start, '%d %b %Y %H:%M') }} · {{ pick.tournament }}</p>
-        </div>
-        <div class="no-bet-reason">
-          <span class="badge badge-weak">Tracking only</span>
-          <p>A1/A2 average {{ pick.primary_average_probability_display_text }} · confidence spread {{ pick.primary_probability_spread_text }}; Manager gate not passed.</p>
-        </div>
-      </article>
-      {% endfor %}
-    </div>
-  </div>
-</details>
-{% endif %}
+{# A1/A2 rows are now visible as first-class scored cards, not hidden. #}
 
-{# Only suppress NO_BET rows actually represented in the research disclosure. #}
-{% set tracking_match_ids = tracking_picks | map(attribute='match_id') | list %}
-{% set display_no_bet_matches = no_bet_matches | rejectattr('match_id', 'in', tracking_match_ids) | list %}
+{# Exclude all already-present aligned matches, including A1/A2 tracking. #}
+{% set shown_match_ids = today_picks.picks | map(attribute='match_id') | list %}
+{% set display_no_bet_matches = no_bet_matches | rejectattr('match_id', 'in', shown_match_ids) | list %}
 {% if display_no_bet_matches %}
 <details class="no-bet-disclosure section">
   <summary class="no-bet-toggle">

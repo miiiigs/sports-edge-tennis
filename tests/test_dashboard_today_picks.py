@@ -429,7 +429,7 @@ def test_today_page_renders_only_picks(demo_client) -> None:
     body = response.text
     assert "Model Picks" in body
     # Demo slate: 5 evaluated, 3 consensus picks.
-    assert "3 Manager-qualified selections" in body
+    assert "3 original aligned selections (3 Manager · 0 A1/A2 tracking)" in body
     assert "Carlos Alcaraz" in body
     # The main pick list still contains only the three actual picks.
     assert body.count('<article class="pick-card') == 3
@@ -511,7 +511,7 @@ def test_empty_slate_renders_a_polished_empty_state(monkeypatch) -> None:
     response = TestClient(app).get("/today")
 
     assert response.status_code == 200
-    assert "No Manager-qualified Model Picks yet today" in response.text
+    assert "No original aligned Model Picks for this date" in response.text
     assert "nothing currently meets the required criteria" in response.text
     # An empty result must never be padded with non-picks.
     assert "pick-card" not in response.text

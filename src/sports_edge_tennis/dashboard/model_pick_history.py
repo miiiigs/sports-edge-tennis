@@ -45,6 +45,7 @@ from sports_edge_tennis.dashboard.timezone import (
     dashboard_today,
 )
 from sports_edge_tennis.dashboard.manager_five_day_target import manager_five_day_target
+from sports_edge_tennis.dashboard.aligned_five_day_target import aligned_five_day_target
 from sports_edge_tennis.live.pending_result_diagnostics import is_schedule_change
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
@@ -70,6 +71,13 @@ class DailyModelPickSummary:
     wins: int
     losses: int
     hit_rate: float | None
+    # Classifications are display-only; raw pending remains unchanged in the
+    # append-only audit ledger and Brian's five-day acceptance calculation.
+    awaiting_result: int = 0
+    not_started: int = 0
+    rescheduled: int = 0
+    postponed: int = 0
+    needs_review: int = 0
 
 
 @dataclass(frozen=True)
@@ -81,6 +89,13 @@ class PeriodModelPickSummary:
     wins: int
     losses: int
     hit_rate: float | None
+    # Classifications are display-only; raw pending remains unchanged in the
+    # append-only audit ledger and Brian's five-day acceptance calculation.
+    awaiting_result: int = 0
+    not_started: int = 0
+    rescheduled: int = 0
+    postponed: int = 0
+    needs_review: int = 0
 
 
 @dataclass(frozen=True)
@@ -108,6 +123,23 @@ class ModelPickRow:
     # Set by the loader with the shared ``is_schedule_change`` rule evaluated
     # in the dashboard timezone, so a move across local midnight is caught.
     schedule_changed: bool = False
+
+    @property
+    def lifecycle_status(self) -> str:
+        """Customer-facing state, never a settlement or W/L modification."""
+        if self.result_status != "PENDING":
+            return self.result_status
+        if self.is_postponed:
+            return "POSTPONED"
+        if self.latest_fixture_status in ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"):
+            return "NEEDS_RESULT_REVIEW"
+        if self.is_rescheduled:
+            return "RESCHEDULED"
+        if self.latest_fixture_status in ("NOT_STARTED", "SCHEDULED"):
+            return "NOT_STARTED"
+        if self.latest_fixture_status is None:
+            return "NEEDS_RESULT_REVIEW"
+        return "AWAITING_RESULT"
 
     @property
     def pending_explanation(self) -> str | None:
@@ -172,6 +204,8 @@ class ModelPickRow:
 class ModelPickResultsView:
     all_summaries: tuple[DailyModelPickSummary, ...] = ()
     aligned_summaries: tuple[DailyModelPickSummary, ...] = ()
+    # Brian's acceptance always uses Manila dates, regardless of UI timezone.
+    aligned_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_regime: ModelRegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -214,6 +248,11 @@ def _summary_from_row(row) -> DailyModelPickSummary:
         wins=wins,
         losses=losses,
         hit_rate=(wins / scored) if scored else None,
+        awaiting_result=int(row[7]) if len(row) >= 12 else 0,
+        not_started=int(row[8]) if len(row) >= 12 else 0,
+        rescheduled=int(row[9]) if len(row) >= 12 else 0,
+        postponed=int(row[10]) if len(row) >= 12 else 0,
+        needs_review=int(row[11]) if len(row) >= 12 else 0,
     )
 
 
@@ -243,6 +282,11 @@ def aggregate_model_pick_summaries(
         wins=wins,
         losses=losses,
         hit_rate=(wins / scored) if scored else None,
+        awaiting_result=sum(row.awaiting_result for row in selected),
+        not_started=sum(row.not_started for row in selected),
+        rescheduled=sum(row.rescheduled for row in selected),
+        postponed=sum(row.postponed for row in selected),
+        needs_review=sum(row.needs_review for row in selected),
     )
 
 
@@ -289,7 +333,8 @@ def load_aligned_daily_model_pick_summaries(
                 COALESCE(
                     (mv.match_start_at AT TIME ZONE %s::text)::date,
                     (p.picked_at AT TIME ZONE %s::text)::date
-                ) AS match_date
+                ) AS match_date,
+                mv.match_start_at AS original_match_start_at
             FROM aligned_model_picks p
             LEFT JOIN LATERAL (
                 SELECT mv0.match_start_at
@@ -307,7 +352,9 @@ def load_aligned_daily_model_pick_summaries(
             SELECT
                 d.*,
                 r.outcome_status,
-                r.winner_side
+                r.winner_side,
+                lv.match_start_at AS latest_match_start_at,
+                lv.latest_status
             FROM dated d
             LEFT JOIN LATERAL (
                 SELECT
@@ -323,6 +370,42 @@ def load_aligned_daily_model_pick_summaries(
                          mro.match_result_observation_id DESC
                 LIMIT 1
             ) r ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT mv1.match_start_at,
+                       mv1.match_status::text AS latest_status
+                FROM match_versions mv1
+                WHERE mv1.match_id = d.match_id
+                ORDER BY mv1.as_of DESC, mv1.source_observed_at DESC,
+                         mv1.match_version_id DESC
+                LIMIT 1
+            ) lv ON TRUE
+        ),
+        classified AS (
+            SELECT *,
+                CASE
+                    WHEN outcome_status = 'COMPLETED'
+                         AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                         THEN 'NEEDS_REVIEW'
+                    WHEN outcome_status IS NOT NULL THEN 'SETTLED'
+                    WHEN latest_status = 'POSTPONED' THEN 'POSTPONED'
+                    WHEN latest_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+                         THEN 'NEEDS_REVIEW'
+                    WHEN original_match_start_at IS NOT NULL
+                         AND latest_match_start_at IS NOT NULL
+                         AND (
+                             abs(extract(epoch FROM (latest_match_start_at - original_match_start_at))) >= 21600
+                             OR (
+                                 abs(extract(epoch FROM (latest_match_start_at - original_match_start_at))) >= 3600
+                                 AND (latest_match_start_at AT TIME ZONE %s::text)::date
+                                   <> (original_match_start_at AT TIME ZONE %s::text)::date
+                             )
+                         ) THEN 'RESCHEDULED'
+                    WHEN latest_status IN ('NOT_STARTED', 'SCHEDULED')
+                         OR latest_match_start_at > now() THEN 'NOT_STARTED'
+                    WHEN latest_status IS NULL THEN 'NEEDS_REVIEW'
+                    ELSE 'AWAITING_RESULT'
+                END AS result_lifecycle
+            FROM with_results
         )
         SELECT
             match_date,
@@ -330,7 +413,12 @@ def load_aligned_daily_model_pick_summaries(
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
             )::int AS scored,
-            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IS NULL OR (
+                    outcome_status = 'COMPLETED'
+                    AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                )
+            )::int AS pending,
             count(*) FILTER (
                 WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
             )::int AS voids,
@@ -342,14 +430,23 @@ def load_aligned_daily_model_pick_summaries(
                 WHERE outcome_status = 'COMPLETED'
                   AND winner_side IN (1, 2)
                   AND winner_side <> selected_side
-            )::int AS losses
-        FROM with_results
+            )::int AS losses,
+            count(*) FILTER (WHERE result_lifecycle = 'AWAITING_RESULT')::int AS awaiting_result,
+            count(*) FILTER (WHERE result_lifecycle = 'NOT_STARTED')::int AS not_started,
+            count(*) FILTER (WHERE result_lifecycle = 'RESCHEDULED')::int AS rescheduled,
+            count(*) FILTER (WHERE result_lifecycle = 'POSTPONED')::int AS postponed,
+            count(*) FILTER (WHERE result_lifecycle = 'NEEDS_REVIEW')::int AS needs_review
+        FROM classified
         WHERE match_date >= %s
         GROUP BY match_date
         ORDER BY match_date DESC
         LIMIT %s
         """,
-        (timezone_name, timezone_name, ALIGNED_LIVE_HISTORY_START, limit),
+        (
+            timezone_name, timezone_name,
+            timezone_name, timezone_name,
+            ALIGNED_LIVE_HISTORY_START, limit
+        ),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -414,7 +511,12 @@ def load_daily_model_pick_summaries(
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
             )::int AS scored,
-            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IS NULL OR (
+                    outcome_status = 'COMPLETED'
+                    AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                )
+            )::int AS pending,
             count(*) FILTER (
                 WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
             )::int AS voids,
@@ -696,6 +798,12 @@ def _load_history(
         aligned_summaries = load_aligned_daily_model_pick_summaries(
             conn, timezone_name=tz.iana
         )
+        aligned_acceptance_summaries = (
+            aligned_summaries if tz.iana == "Asia/Manila" else
+            load_aligned_daily_model_pick_summaries(
+                conn, limit=100, timezone_name="Asia/Manila"
+            )
+        )
         # Original first-production Manager ledger is retained for auditing.
         summaries = load_daily_model_pick_summaries(conn, timezone_name=tz.iana)
         current_regime = resolve_current_model_regime(conn)
@@ -739,6 +847,7 @@ def _load_history(
         return ModelPickResultsView(
             all_summaries=summaries,
             aligned_summaries=aligned_summaries,
+            aligned_acceptance_summaries=aligned_acceptance_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -753,6 +862,11 @@ def _load_history(
         conn.close()
 
 
+def _aligned_acceptance_today() -> date:
+    """Independent from viewer-selected UTC/London timezone."""
+    return datetime.now(ZoneInfo("Asia/Manila")).date()
+
+
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
     return {
         "picks": summary.picks,
@@ -762,6 +876,11 @@ def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
         "wins": summary.wins,
         "losses": summary.losses,
         "hit_rate": summary.hit_rate,
+        "awaiting_result": summary.awaiting_result,
+        "not_started": summary.not_started,
+        "rescheduled": summary.rescheduled,
+        "postponed": summary.postponed,
+        "needs_review": summary.needs_review,
     }
 
 
@@ -830,6 +949,10 @@ def model_pick_results(
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
             ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
+            ),
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
             "page_url": lambda param, page: build_page_url(request, param, page),
@@ -866,6 +989,10 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
         {
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
+            ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
             ),
             "as_of_date": as_of_date.isoformat(),
             "display_timezone": {
@@ -943,6 +1070,11 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     "wins": row.wins,
                     "losses": row.losses,
                     "hit_rate": row.hit_rate,
+                    "awaiting_result": row.awaiting_result,
+                    "not_started": row.not_started,
+                    "rescheduled": row.rescheduled,
+                    "postponed": row.postponed,
+                    "needs_review": row.needs_review,
                 }
                 for row in aligned_summaries
             ],
@@ -977,6 +1109,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     if row.consensus_probability is not None
                     else None,
                     "result": row.result_status,
+                    "lifecycle_status": row.lifecycle_status,
                     "pending_explanation": row.pending_explanation,
                     "latest_fixture_status": row.latest_fixture_status,
                     "is_value_bet": row.is_value_bet,
