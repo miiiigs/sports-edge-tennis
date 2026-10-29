@@ -288,6 +288,50 @@ def _load_market_overlay(prediction_run_id: int | None):
         conn.close()
 
 
+
+def _load_aligned_day_summary(
+    requested_date: date, tz: DashboardTimezone | None = None
+):
+    """Read the SAME original-aligned daily ledger as the Results scoreboard.
+
+    No pick rules, date bucketing, or outcome values are recomputed here.
+    """
+    if DEMO_MODE:
+        return None
+    conn = _connect()
+    if conn is None:
+        return None
+    try:
+        from sports_edge_tennis.dashboard.model_pick_history import (
+            load_aligned_daily_model_pick_summaries,
+        )
+        rows = load_aligned_daily_model_pick_summaries(
+            conn, limit=100, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
+        return next(
+            (row for row in rows if row.decision_date == requested_date), None
+        )
+    except psycopg.Error:
+        logger.exception("Aligned daily scoreboard lookup unavailable")
+        return None
+    finally:
+        conn.close()
+
+
+def _aligned_cards_reconcile(summary, cards) -> bool | None:
+    """Fail visibly if any original picks/outcomes are absent from Today cards."""
+    if summary is None:
+        return None
+    results = {status: sum(p.result_status == status for p in cards)
+               for status in ("WON", "LOST", "VOID", "PENDING")}
+    return (
+        summary.picks == len(cards)
+        and summary.wins == results["WON"]
+        and summary.losses == results["LOST"]
+        and summary.voids == results["VOID"]
+        and summary.pending == results["PENDING"]
+    )
+
 def _load_history(tz: DashboardTimezone | None = None):
     if DEMO_MODE:
         state = build_demo_state()
@@ -461,6 +505,10 @@ def today(request: Request, date: str | None = Query(default=None)):
         _load_guide_odds(requested_date, tz),
         _load_issued_model_pick_results(requested_date, tz),
     )
+    aligned_day_summary = _load_aligned_day_summary(requested_date, tz)
+    aligned_cards_reconciled = _aligned_cards_reconcile(
+        aligned_day_summary, today_picks.picks
+    )
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
         request,
@@ -472,6 +520,8 @@ def today(request: Request, date: str | None = Query(default=None)):
             "latest_activity": _latest_activity(),
             "operational_health": _load_live_health(),
             "today_picks": today_picks,
+            "aligned_day_summary": aligned_day_summary,
+            "aligned_cards_reconciled": aligned_cards_reconciled,
             "no_bet_matches": no_bet_matches,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
@@ -574,8 +624,26 @@ def api_today(request: Request, date: str | None = Query(default=None)):
         _load_guide_odds(requested_date, tz),
         _load_issued_model_pick_results(requested_date, tz),
     )
+    aligned_day_summary = _load_aligned_day_summary(requested_date, tz)
+    aligned_cards_reconciled = _aligned_cards_reconcile(
+        aligned_day_summary, today_picks.picks
+    )
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
+        "original_aligned_day": (
+            {
+                "picks": aligned_day_summary.picks,
+                "wins": aligned_day_summary.wins,
+                "losses": aligned_day_summary.losses,
+                "voids": aligned_day_summary.voids,
+                "pending": aligned_day_summary.pending,
+                "graded": aligned_day_summary.scored,
+                "win_rate": aligned_day_summary.hit_rate,
+                "displayed_cards": len(today_picks.picks),
+                "cards_reconciled": aligned_cards_reconciled,
+            }
+            if aligned_day_summary is not None else None
+        ),
         # Canonical timestamps stay timezone-aware ISO-8601 UTC. This block only
         # tells a client how the calendar dates were resolved for display.
         "display_timezone": {

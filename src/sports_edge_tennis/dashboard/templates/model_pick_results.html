@@ -72,7 +72,7 @@
       <tbody>
         {% for day in aligned_accuracy_target.days %}
         <tr>
-          <th scope="row">{{ day.date }}</th>
+          <th scope="row"><a href="/today?date={{ day.date }}&amp;tz=philippines" title="View all original aligned picks for this Manila date">{{ day.date }}</a></th>
           <td class="num">{{ day.picks }}</td><td class="num">{{ day.wins }}</td>
           <td class="num">{{ day.losses }}</td><td class="num">{{ day.voids }}</td>
           <td class="num">{{ day.pending }}</td><td class="num">{{ pct(day.win_rate) }}</td>
