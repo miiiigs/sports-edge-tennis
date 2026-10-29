@@ -45,6 +45,7 @@ from sports_edge_tennis.dashboard.timezone import (
     dashboard_today,
 )
 from sports_edge_tennis.dashboard.manager_five_day_target import manager_five_day_target
+from sports_edge_tennis.dashboard.aligned_five_day_target import aligned_five_day_target
 from sports_edge_tennis.live.pending_result_diagnostics import is_schedule_change
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
@@ -203,6 +204,8 @@ class ModelPickRow:
 class ModelPickResultsView:
     all_summaries: tuple[DailyModelPickSummary, ...] = ()
     aligned_summaries: tuple[DailyModelPickSummary, ...] = ()
+    # Brian's acceptance always uses Manila dates, regardless of UI timezone.
+    aligned_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_regime: ModelRegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -795,6 +798,12 @@ def _load_history(
         aligned_summaries = load_aligned_daily_model_pick_summaries(
             conn, timezone_name=tz.iana
         )
+        aligned_acceptance_summaries = (
+            aligned_summaries if tz.iana == "Asia/Manila" else
+            load_aligned_daily_model_pick_summaries(
+                conn, limit=100, timezone_name="Asia/Manila"
+            )
+        )
         # Original first-production Manager ledger is retained for auditing.
         summaries = load_daily_model_pick_summaries(conn, timezone_name=tz.iana)
         current_regime = resolve_current_model_regime(conn)
@@ -838,6 +847,7 @@ def _load_history(
         return ModelPickResultsView(
             all_summaries=summaries,
             aligned_summaries=aligned_summaries,
+            aligned_acceptance_summaries=aligned_acceptance_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -850,6 +860,11 @@ def _load_history(
         return ModelPickResultsView(selected_date=requested_date, failed=True)
     finally:
         conn.close()
+
+
+def _aligned_acceptance_today() -> date:
+    """Independent from viewer-selected UTC/London timezone."""
+    return datetime.now(ZoneInfo("Asia/Manila")).date()
 
 
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
@@ -934,6 +949,10 @@ def model_pick_results(
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
             ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
+            ),
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
             "page_url": lambda param, page: build_page_url(request, param, page),
@@ -970,6 +989,10 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
         {
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
+            ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
             ),
             "as_of_date": as_of_date.isoformat(),
             "display_timezone": {
