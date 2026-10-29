@@ -511,7 +511,7 @@ def test_empty_slate_renders_a_polished_empty_state(monkeypatch) -> None:
     response = TestClient(app).get("/today")
 
     assert response.status_code == 200
-    assert "No Manager-qualified Model Picks yet today" in response.text
+    assert "No original aligned Model Picks for this date" in response.text
     assert "nothing currently meets the required criteria" in response.text
     # An empty result must never be padded with non-picks.
     assert "pick-card" not in response.text
