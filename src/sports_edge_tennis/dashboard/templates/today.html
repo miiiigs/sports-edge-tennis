@@ -18,6 +18,18 @@
   {% endif %}
 </header>
 
+{% if dashboard_timezone.iana != 'Asia/Manila' %}
+<div class="notice notice-warning" role="note" aria-label="Manila scorecard date alignment">
+  The 73% target groups original Model Picks by <strong>Asia/Manila match date</strong>.
+  You are currently viewing {{ dashboard_timezone.display_label }} dates, which can have different totals.
+  {% if request.query_params.get('date') %}
+  <a href="/today?date={{ selected_date.isoformat() }}&amp;tz=philippines">View {{ selected_date.isoformat() }} with the same Manila date as the 73% scorecard</a>.
+  {% else %}
+  <a href="/today?tz=philippines">Switch to today's Manila Model Picks</a>.
+  {% endif %}
+</div>
+{% endif %}
+
 {% if aligned_day_summary is not none %}
 <section class="section" aria-label="Original aligned daily pick results" style="margin-top: 0">
   <h2 class="section-title">Original aligned results · {{ selected_date.isoformat() }}</h2>
