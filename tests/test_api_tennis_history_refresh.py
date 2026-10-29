@@ -79,6 +79,20 @@ def test_parse_terminal_result_maps_completed_retired_and_cancelled():
     assert cancelled.winner_side is None
 
 
+def test_parse_terminal_result_allows_winnerless_walkover_only():
+    result = parse_terminal_result(
+        _fixture(event_status="Walkover", event_winner=None, event_final_result="-")
+    )
+    assert result is not None
+    assert result.outcome_status == "WALKOVER"
+    assert result.winner_side is None
+    assert result.retired_side is None
+
+    for event_status in ("Finished", "Retired"):
+        with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
+            parse_terminal_result(_fixture(event_status=event_status, event_winner=""))
+
+
 def test_parse_terminal_result_fails_closed_without_terminal_winner():
     with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
         parse_terminal_result(_fixture(event_winner=""))
