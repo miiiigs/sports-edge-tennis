@@ -8,6 +8,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 import sports_edge_tennis.dashboard.app as dashboard_app
@@ -122,3 +123,75 @@ def test_scorecard_manila_day_links_to_full_issued_picks():
     root = Path(production_app.__file__).resolve().parent
     template = (root / "templates" / "model_pick_results.html").read_text()
     assert 'href="/today?date={{ day.date }}&amp;tz=philippines"' in template
+
+
+@pytest.mark.parametrize(
+    "day, wins, losses, voids, pending",
+    [
+        ("2026-10-28", 9, 3, 1, 0),
+        ("2026-10-29", 10, 6, 1, 4),
+        ("2026-10-30", 1, 0, 1, 7),
+    ],
+)
+def test_each_manila_day_uses_its_own_original_cohort_and_result_counts(
+    monkeypatch, day, wins, losses, voids, pending
+):
+    count = wins + losses + voids + pending
+    expected_day = date.fromisoformat(day)
+    original_state = _synthetic_state()
+    client = _client(monkeypatch)
+    monkeypatch.setattr(
+        dashboard_app, "_load_state",
+        lambda requested_date, tz=None: replace(
+            original_state, run_date=requested_date,
+            matches=original_state.matches[:count],
+        ),
+    )
+    summary = DailyModelPickSummary(
+        decision_date=expected_day, picks=count, scored=wins + losses,
+        pending=pending, voids=voids, wins=wins, losses=losses,
+        hit_rate=wins / (wins + losses) if wins + losses else None,
+    )
+    monkeypatch.setattr(
+        dashboard_app, "_load_aligned_day_summary",
+        lambda requested_date, tz=None: summary
+        if requested_date == expected_day else None,
+    )
+    results = {
+        i: ("WON" if i <= wins else "LOST" if i <= wins + losses
+            else "VOID" if i <= wins + losses + voids else "PENDING")
+        for i in range(1, count + 1)
+    }
+    monkeypatch.setattr(
+        dashboard_app, "_load_issued_model_pick_results",
+        lambda *args: results,
+    )
+    response = client.get(f"/today?date={day}&tz=philippines")
+    assert response.status_code == 200
+    assert f"Original aligned results · {day}" in response.text
+    assert response.text.count('<article class="pick-card') == count
+    assert "All " + str(count) + " match cards below reconcile" in response.text
+    api = client.get(f"/api/dashboard/today?date={day}&tz=philippines")
+    assert api.status_code == 200
+    row = api.json()["original_aligned_day"]
+    assert (row["picks"], row["wins"], row["losses"], row["voids"], row["pending"]) == (
+        count, wins, losses, voids, pending
+    )
+    assert row["cards_reconciled"] is True
+
+
+def test_future_day_with_no_originals_does_not_invent_picks(monkeypatch):
+    client = _client(monkeypatch, summary=None)
+    monkeypatch.setattr(
+        dashboard_app, "_load_state",
+        lambda requested_date, tz=None: replace(
+            _synthetic_state(), run_date=requested_date, matches=(),
+        ),
+    )
+    response = client.get("/today?date=2026-10-31&tz=philippines")
+    assert response.status_code == 200
+    assert "No original aligned Model Picks for this date" in response.text
+    assert '<article class="pick-card' not in response.text
+    assert client.get("/api/dashboard/today?date=2026-10-31&tz=philippines").json()[
+        "original_aligned_day"
+    ] is None
