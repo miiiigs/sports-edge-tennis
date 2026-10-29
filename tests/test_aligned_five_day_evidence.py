@@ -28,7 +28,7 @@ def test_all_five_days_require_full_settlement_and_actual_73():
 def test_pending_and_missing_days_fail_closed():
     rows=(day(WINDOW_START,3,0,pending=1),
           day(date(2026,10,28),8,3))
-    report=from_dashboard_rows(rows,as_of=datetime(2026,11,2,2,tzinfo=UTC))
+    report=from_dashboard_rows(rows,as_of=datetime(2026,11,1,2,tzinfo=UTC))
     assert report.days[0].status=="UNSETTLED"
     assert report.days[1].status=="BELOW_73"
     assert report.days[2].status=="NO_PICKS"
