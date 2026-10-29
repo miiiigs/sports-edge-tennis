@@ -19,7 +19,7 @@ from sports_edge_tennis.dashboard.model_pick_history import (
 )
 
 MANILA = ZoneInfo("Asia/Manila")
-WINDOW_START = date(2026, 10, 28)
+WINDOW_START = date(2026, 10, 27)
 WINDOW_DAYS = 5
 TARGET_PERCENT = 73
 
@@ -81,7 +81,8 @@ def from_dashboard_rows(
     if as_of.tzinfo is None:
         raise ValueError("as_of must be timezone-aware")
     today_local = as_of.astimezone(MANILA).date()
-    # Start Oct28-Nov01; after five fully completed local days, report the
+    # Start Oct27-Oct31 as originally requested; after five fully completed
+    # local days, report the
     # latest consecutive five, preserving missing/pending/losing days.
     first_day = max(WINDOW_START, today_local - timedelta(days=WINDOW_DAYS))
     by_day = {}
