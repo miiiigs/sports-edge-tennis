@@ -141,7 +141,10 @@ def parse_terminal_result(fixture: Mapping[str, Any]) -> ParsedTerminalResult | 
         return None
 
     winner_side = _winner_side(fixture.get("event_winner"))
-    if outcome_status != "CANCELLED" and winner_side is None:
+    # A verified WALKOVER without a winner is terminal and settled VOID.
+    # Migration 0021 permits only WALKOVER to omit the winner. Completed
+    # and retired outcomes still fail closed until a winner is proven.
+    if outcome_status not in {"CANCELLED", "WALKOVER"} and winner_side is None:
         raise HistoryRefreshError("missing_terminal_winner")
     if outcome_status == "CANCELLED":
         winner_side = None
