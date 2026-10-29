@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Iterable, Protocol
 
-WINDOW_START = date(2026, 10, 28)
+WINDOW_START = date(2026, 10, 27)
 WINDOW_DAYS = 5
 TARGET_PERCENT = 73
 
@@ -28,7 +28,7 @@ def aligned_five_day_target(
 ) -> dict[str, object]:
     """Compare every original aligned pick across five consecutive Manila dates.
 
-    The initial window is 28 Oct–1 Nov. After 2 Nov it rolls to the
+    The initial window is 27–31 Oct. After 1 Nov it rolls to the
     five immediately preceding *completed* Manila days; gaps are not skipped.
     An in-progress or unsettled day cannot qualify, regardless of its W/L rate.
     """
