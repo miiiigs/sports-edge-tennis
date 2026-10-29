@@ -429,7 +429,7 @@ def test_today_page_renders_only_picks(demo_client) -> None:
     body = response.text
     assert "Model Picks" in body
     # Demo slate: 5 evaluated, 3 consensus picks.
-    assert "3 Manager-qualified selections" in body
+    assert "3 original aligned selections (3 Manager · 0 A1/A2 tracking)" in body
     assert "Carlos Alcaraz" in body
     # The main pick list still contains only the three actual picks.
     assert body.count('<article class="pick-card') == 3
