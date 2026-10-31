@@ -9,3 +9,12 @@ The hourly production runner now reads the same canonical current-Results aligne
 No-pick days, incomplete today, unsettled results, totals that don't reconcile, and 72.7% rounded to 73% all explicitly fail qualification. Retrospective research subset figures and skipped historical losses cannot enter this scorecard. This change does **not** alter model filters, issue predictions, modify bets, execute new provider requests or write any table. No guarantee of >=73% future accuracy.
 
 Run exact CI, verify source-only runner diff, release only after one successful natural replay audit from PR #271 and usual production safety checks.
+
+
+## Continuous rolling five-day evaluation
+
+The initial acceptance window remains Oct28-Nov01. On subsequent dates,
+the same read-only monitor checks the latest five fully completed
+consecutive Asia/Manila calendar dates without skipping losses, missing
+dates or unsettled matches. On Nov03 this is Oct29-Nov02. No model,
+settlement, wager or provider changes.

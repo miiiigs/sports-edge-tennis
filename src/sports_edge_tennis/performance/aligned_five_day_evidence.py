@@ -19,7 +19,7 @@ from sports_edge_tennis.dashboard.model_pick_history import (
 )
 
 MANILA = ZoneInfo("Asia/Manila")
-WINDOW_START = date(2026, 10, 28)
+WINDOW_START = date(2026, 10, 27)
 WINDOW_DAYS = 5
 TARGET_PERCENT = 73
 
@@ -81,6 +81,10 @@ def from_dashboard_rows(
     if as_of.tzinfo is None:
         raise ValueError("as_of must be timezone-aware")
     today_local = as_of.astimezone(MANILA).date()
+    # Start Oct27-Oct31 as originally requested; after five fully completed
+    # local days, report the
+    # latest consecutive five, preserving missing/pending/losing days.
+    first_day = max(WINDOW_START, today_local - timedelta(days=WINDOW_DAYS))
     by_day = {}
     for row in rows:
         if row.decision_date in by_day:
@@ -88,7 +92,7 @@ def from_dashboard_rows(
         by_day[row.decision_date] = row
     days = []
     for offset in range(WINDOW_DAYS):
-        day = WINDOW_START + timedelta(days=offset)
+        day = first_day + timedelta(days=offset)
         v = by_day.get(day)
         days.append(AlignedDailyEvidence(
             day=day, picks=v.picks if v else 0,
@@ -97,8 +101,8 @@ def from_dashboard_rows(
             complete_day=day < today_local,
         ))
     return AlignedFiveDayEvidence(
-        start=WINDOW_START,
-        end=WINDOW_START + timedelta(days=WINDOW_DAYS-1),
+        start=first_day,
+        end=first_day + timedelta(days=WINDOW_DAYS-1),
         observed_at=as_of, days=tuple(days),
     )
 
