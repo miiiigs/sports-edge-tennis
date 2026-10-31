@@ -806,6 +806,24 @@ def _aligned_five_day_evidence_cycle(dsn: str) -> None:
         _log(f"ALIGNED_FIVE_DAY_EVIDENCE_FAILED error_type={type(exc).__name__}")
 
 
+
+def _qualified_shadow_evidence_cycle(dsn: str) -> None:
+    """Read-only qualified-confidence reporting; never overrides Model Picks."""
+    try:
+        from sports_edge_tennis.performance.qualified_shadow_evidence import (
+            load as load_qualified_shadow,
+            render as render_qualified_shadow,
+        )
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            days = load_qualified_shadow(conn, as_of=datetime.now(UTC))
+        for line in render_qualified_shadow(days):
+            _log(line)
+    except Exception as exc:  # noqa: BLE001 - optional read-only research telemetry
+        _log(f"QUALIFIED_SHADOW_FAILED error_type={type(exc).__name__}")
+
+
 def _a1_evidence_cycle(dsn: str) -> None:
     """Emit cohort-clean A1 Challenger diagnostics without affecting production success."""
     try:
@@ -1070,6 +1088,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             _manager_daily_evidence_cycle(dsn)
             _aligned_replay_evidence_cycle(dsn)
             _aligned_five_day_evidence_cycle(dsn)
+            _qualified_shadow_evidence_cycle(dsn)
         # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
@@ -1093,10 +1112,12 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         _manager_daily_evidence_cycle(dsn)
         _aligned_replay_evidence_cycle(dsn)
         _aligned_five_day_evidence_cycle(dsn)
+        _qualified_shadow_evidence_cycle(dsn)
         return 2
     _manager_daily_evidence_cycle(dsn)
     _aligned_replay_evidence_cycle(dsn)
     _aligned_five_day_evidence_cycle(dsn)
+    _qualified_shadow_evidence_cycle(dsn)
 
     _shadow_cycle(
         dsn,
