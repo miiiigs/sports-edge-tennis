@@ -26,6 +26,7 @@
 {% else %}
 <section class="section" aria-label="Actual results and quality-filter research" style="margin-top: 0;">
   <h2 class="section-title">Results at a glance</h2>
+  <p class="section-note">The live <a href="/today?date={{ selected_date.isoformat() if selected_date else performance_as_of.isoformat() }}&amp;tz=philippines">Original vs. Qualified ≥70% parallel comparison</a> shows both groups side by side for a selected match day. Qualified research remains separate from the official original 73% scorecard below.</p>
   <div class="stat-grid">
     <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.hit_rate) }}</span><span class="stat-label">Actual aligned win rate</span><span class="stat-note">All original graded Model Picks</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}–{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Actual wins and losses</span></div>
