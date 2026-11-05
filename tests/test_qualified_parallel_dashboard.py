@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -95,6 +96,16 @@ def test_ungraded_and_unknown_states_do_not_imply_a_win() -> None:
 
 def test_dashboard_today_shows_both_groups_and_api_marks_research_only(monkeypatch) -> None:
     monkeypatch.setattr(dashboard_app, "DEMO_MODE", True)
+    # Demo picks are deliberately not in PostgreSQL. Supply an explicit
+    # read-only original-day summary to exercise the side-by-side section.
+    monkeypatch.setattr(
+        dashboard_app, "_load_aligned_day_summary",
+        lambda *_args: SimpleNamespace(
+            picks=3, wins=0, losses=0, voids=0, pending=3,
+            scored=0, hit_rate=None,
+        ),
+    )
+    monkeypatch.setattr(dashboard_app, "_aligned_cards_reconcile", lambda *_args: True)
     client = TestClient(app)
     page = client.get("/today?tz=philippines")
     assert page.status_code == 200
