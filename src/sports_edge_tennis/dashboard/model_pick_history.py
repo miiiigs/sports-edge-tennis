@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import logging
 from decimal import Decimal
 from typing import Iterable
 from zoneinfo import ZoneInfo
@@ -33,6 +34,10 @@ from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_LIVE_HISTORY_START,
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
+)
+from sports_edge_tennis.dashboard.qualified_history import (
+    daily_history_payload,
+    load_qualified_history,
 )
 from sports_edge_tennis.dashboard.pagination import (
     DEFAULT_PAGE_SIZE,
@@ -59,6 +64,7 @@ from sports_edge_tennis.performance.regimes import (
 )
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -867,6 +873,23 @@ def _aligned_acceptance_today() -> date:
     return datetime.now(ZoneInfo("Asia/Manila")).date()
 
 
+def _load_parallel_history():
+    """Independent read-only research; never break original Model Picks pages."""
+    conn = None
+    try:
+        conn = _connect()
+        if conn is None:
+            return (), True
+        days = load_qualified_history(conn, as_of_date=_aligned_acceptance_today())
+        return days, False
+    except Exception:
+        log.exception("Qualified research history unavailable; original scorecard unaffected")
+        return (), True
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
     return {
         "picks": summary.picks,
@@ -901,6 +924,9 @@ def model_pick_results(
     view = _load_history(requested_date, tz)
     as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
+    parallel_days, parallel_history_error = (
+        _load_parallel_history() if not view.failed else ((), True)
+    )
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -955,6 +981,8 @@ def model_pick_results(
             ),
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
+            "qualified_parallel_history_days": parallel_days,
+            "qualified_parallel_history_error": parallel_history_error,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
@@ -984,6 +1012,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     current_windows = build_model_pick_windows(
         view.current_summaries, as_of_date=as_of_date
     )
+    parallel_days, parallel_history_error = _load_parallel_history()
 
     return JSONResponse(
         {
@@ -995,6 +1024,9 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                 as_of_date=_aligned_acceptance_today(),
             ),
             "as_of_date": as_of_date.isoformat(),
+            "qualified_parallel_history": (
+                None if parallel_history_error else daily_history_payload(parallel_days)
+            ),
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
