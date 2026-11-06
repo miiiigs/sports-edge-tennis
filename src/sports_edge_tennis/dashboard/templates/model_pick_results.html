@@ -26,6 +26,7 @@
 {% else %}
 <section class="section" aria-label="Actual results and quality-filter research" style="margin-top: 0;">
   <h2 class="section-title">Results at a glance</h2>
+  <p class="section-note">The live <a href="/today?date={{ selected_date.isoformat() if selected_date else performance_as_of.isoformat() }}&amp;tz=philippines">Original vs. Qualified ≥70% parallel comparison</a> shows both groups side by side for a selected match day. Qualified research remains separate from the official original 73% scorecard below.</p>
   <div class="stat-grid">
     <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.hit_rate) }}</span><span class="stat-label">Actual aligned win rate</span><span class="stat-note">All original graded Model Picks</span></div>
     <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}–{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Actual wins and losses</span></div>
@@ -51,6 +52,43 @@
     </div>
   </details>
 </section>
+{% if qualified_parallel_history_days %}
+<section class="section" id="qualified-history" aria-label="Daily original versus qualified parallel history" style="margin-top: 0;">
+  <h2 class="section-title">Original vs. Qualified ≥70% · since 27 Oct 2026</h2>
+  <p class="section-note">One permanent, comparable daily ledger for all original Model Picks and the frozen 70% confidence research group. The qualified group uses the original pre-match confidence to select a subset of the <strong>same</strong> issued matches. Wins, losses, voids and pending come from verified outcomes. <strong>Research-only:</strong> no predictions, original history, or 73% acceptance rules have been altered. Dates are always Asia/Manila.</p>
+  <div class="table-wrap" role="region" aria-label="Daily model pick original and qualified win rates" tabindex="0">
+    <table class="data">
+      <thead>
+        <tr><th scope="col">Manila date</th><th scope="col">Original picks</th><th scope="col">Original W–L</th><th scope="col">Original %</th><th scope="col">Qualified picks</th><th scope="col">Qualified W–L</th><th scope="col">Qualified %</th><th scope="col">Pending O / Q</th><th scope="col">Research status</th></tr>
+      </thead>
+      <tbody>
+        {% for day in qualified_parallel_history_days %}
+        <tr>
+          <th scope="row"><a href="/today?date={{ day.day.isoformat() }}&amp;tz=philippines">{{ day.day.isoformat() }}</a></th>
+          <td class="num">{{ day.original }}</td>
+          <td class="num">{{ day.original_won }}–{{ day.original_lost }}</td>
+          <td class="num">{% if day.original_accuracy is not none %}{{ '%.1f%%'|format(day.original_accuracy * 100) }}{% else %}—{% endif %}</td>
+          <td class="num">{{ day.qualified }}</td>
+          <td class="num">{{ day.qualified_won }}–{{ day.qualified_lost }}</td>
+          <td class="num">{% if day.qualified_accuracy is not none %}{{ '%.1f%%'|format(day.qualified_accuracy * 100) }}{% else %}—{% endif %}</td>
+          <td class="num">{{ day.original_pending }} / {{ day.qualified_pending }}</td>
+          <td>{% if not day.complete %}In progress
+          {% elif day.original_pending or day.qualified_pending %}Awaiting results
+          {% elif day.qualified_won + day.qualified_lost < 5 %}Small sample / no graded
+          {% elif day.qualified_passes_daily_goal %}Qualified ≥73% (research)
+          {% else %}Qualified below 73%
+          {% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">A qualified group can produce fewer predictions and miss real winners. A higher percentage for a subset does not automatically mean a better production model. See original five-day acceptance immediately below.</p>
+</section>
+{% elif qualified_parallel_history_error %}
+<p class="section-note">Qualified historical comparison is temporarily unavailable. Original results and Brian's official 73% scorecard are unaffected.</p>
+{% endif %}
+
 <section class="section" aria-label="All aligned five-day acceptance" style="margin-top: 0;">
   <h2 class="section-title">Brian's 73% goal · ALL aligned Model Picks</h2>
   <p class="section-note">

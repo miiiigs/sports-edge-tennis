@@ -33,6 +33,7 @@ from sports_edge_tennis.dashboard.picks import (
     VALUE_BET,
     build_today_picks,
 )
+from sports_edge_tennis.dashboard.qualified_parallel import build_qualified_parallel
 from sports_edge_tennis.dashboard.read_model import (
     LiveHealthView,
     RunState,
@@ -509,6 +510,7 @@ def today(request: Request, date: str | None = Query(default=None)):
     aligned_cards_reconciled = _aligned_cards_reconcile(
         aligned_day_summary, today_picks.picks
     )
+    qualified_parallel = build_qualified_parallel(today_picks.picks)
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
         request,
@@ -522,6 +524,7 @@ def today(request: Request, date: str | None = Query(default=None)):
             "today_picks": today_picks,
             "aligned_day_summary": aligned_day_summary,
             "aligned_cards_reconciled": aligned_cards_reconciled,
+            "qualified_parallel": qualified_parallel,
             "no_bet_matches": no_bet_matches,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
@@ -651,6 +654,7 @@ def api_today(request: Request, date: str | None = Query(default=None)):
             "iana": tz.iana,
             "label": tz.display_label,
         },
+        "qualified_parallel": build_qualified_parallel(today_picks.picks).as_dict(),
         "picks": [_pick_payload(pick) for pick in today_picks.picks],
         "pick_counts": {
             "total": today_picks.total,

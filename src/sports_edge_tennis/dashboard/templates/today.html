@@ -55,6 +55,36 @@
 <p class="section-note">Showing {{ today_picks.total }} original aligned cards. Daily result totals are temporarily unavailable, so accuracy is not asserted here.</p>
 {% endif %}
 
+{% if main_picks and aligned_day_summary is not none %}
+<section class="section" aria-label="Original and qualified parallel Model Picks" style="margin-top: 0">
+  <h2 class="section-title">Original vs. Qualified ≥70% · live parallel comparison</h2>
+  <p class="section-note">The Qualified group uses the frozen 70% original pre-match confidence gate. It is <strong>research-only</strong>: both groups are read from the same issued original picks and verified outcomes. No pick is changed, deleted, issued again, or promoted to a bet. Brian's official 73% target remains based on every original aligned pick.</p>
+  <div class="table-wrap" role="region" aria-label="Parallel original and qualified results" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Group</th><th scope="col">Picks</th><th scope="col">Won</th><th scope="col">Lost</th><th scope="col">Void</th><th scope="col">Pending</th><th scope="col">Win rate on graded</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">All original Model Picks</th>
+          <td class="num">{{ aligned_day_summary.picks }}</td><td class="num">{{ aligned_day_summary.wins }}</td>
+          <td class="num">{{ aligned_day_summary.losses }}</td><td class="num">{{ aligned_day_summary.voids }}</td>
+          <td class="num">{{ aligned_day_summary.pending }}</td>
+          <td class="num">{% if aligned_day_summary.hit_rate is not none %}{{ '%.1f%%'|format(100 * aligned_day_summary.hit_rate) }}{% else %}—{% endif %}</td>
+        </tr>
+        <tr><th scope="row">Qualified ≥70% · parallel research</th>
+          <td class="num">{{ qualified_parallel.retained }}</td><td class="num">{{ qualified_parallel.won }}</td>
+          <td class="num">{{ qualified_parallel.lost }}</td><td class="num">{{ qualified_parallel.void }}</td>
+          <td class="num">{{ qualified_parallel.pending }}</td>
+          <td class="num">{% if qualified_parallel.win_rate is not none %}{{ '%.1f%%'|format(100 * qualified_parallel.win_rate) }}{% else %}—{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">{{ qualified_parallel.retained }} of {{ aligned_day_summary.picks }} original picks retained. {% if qualified_parallel.pending or aligned_day_summary.pending %}<strong>Provisional:</strong> unresolved results mean the rates can change.{% else %}Results for these displayed groups have settled.{% endif %} A high rate with few graded selections is not proof of future 73% accuracy.</p>
+  {% if aligned_cards_reconciled is sameas false %}
+  <div class="notice notice-warning" role="alert">Qualified comparison is provisional because the display cards do not fully reconcile to the authoritative original ledger. Do not treat the qualified group as a verified daily total.</div>
+  {% endif %}
+</section>
+{% endif %}
+
 {% if operational_health and operational_health.status in ['ERROR', 'WARNING'] %}
 <div class="notice notice-{{ 'error' if operational_health.status == 'ERROR' else 'warning' }}" role="alert">
   <span>
@@ -118,6 +148,9 @@
       <span class="badge {{ 'badge-blocked' if pick.kind == 'BLOCKED' else ('badge-value' if pick.kind == 'VALUE_BET' else 'badge-model') }}">{{ pick.kind_label }}</span>
       {% if pick.is_wide_spread %}
       <span class="badge badge-weak">A1/A2 aligned tracking · not a Value Bet</span>
+      {% endif %}
+      {% if pick.match_id in qualified_parallel.match_ids %}
+      <span class="badge badge-model">Qualified ≥70% · parallel research</span>
       {% endif %}
       {% if pick.kind == 'BLOCKED' %}
       <span class="badge badge-blocked">Blocked by safety check · no stake</span>
