@@ -10,8 +10,8 @@ weights, Manager, pricing, settlement, or the deployed dashboard.
   wide-spread research tracking), not rerun-generated duplicates.
 - One read-only export (`ops/calibration_dataset.sql`) that includes original
   confidence, original surface/tier and original A1/A2 sides/probabilities.
-  Critically, it also includes both result observation timestamps, so later
-  knowledge cannot leak into pre-holdout calibration training.
+  Critically, it includes result observation, source-observation and ingestion
+  timestamps, so late-added outcomes cannot leak into earlier calibration.
 - `ops/v2_quality_audit.py` computes W/L/VOID/PENDING, calibrated and raw Brier
   score/log loss, coverage and excluded winners, daily minimum-N outcomes,
   and diagnostics by confidence bucket, surface, ATP/Challenger tier,
@@ -22,7 +22,9 @@ weights, Manager, pricing, settlement, or the deployed dashboard.
   3. `v2_agreement`: original >=70%, both A1/A2 select the same picked side,
      A1/A2 confidence gap below 10 points, known original surface/tier;
   4. `v2_tier_guard`: as (3), but >=76% confidence on Challenger matches;
-  5. `v2_calibrated`: pre-holdout fitted Platt probability >=73%, together
+  5. `v2_a3_confirmed`: as (3), with a currently active A3 agent selecting
+     the same winner. It may produce few or zero picks.
+  6. `v2_calibrated`: pre-holdout fitted Platt probability >=73%, together
      with agreement and known surface/tier. Calibration **fails closed** unless
      at least 200 prior-observed graded results, 20 wins AND 20 losses, and
      finite positive calibration slope exist.
@@ -53,8 +55,8 @@ probabilities on matches whose results are already known.
    - each method's selected match IDs are a **subset** of the original IDs;
    - no duplicate match, invalid probability, unsupported result, or
      non-timezone-aware timestamp is accepted;
-   - terminal result was observed and source-observed *before* calibration
-     cutoff, never on the holdout day or after;
+   - terminal result was observed, source-observed and ingested *before or
+     at* the calibration cutoff, never learned later than the holdout began;
    - missing A1/A2 sides and unknown surface/tier cause quality abstention.
 4. Compare by individual day and coverage, **not** only pooled accuracy.
    One day with under five graded picks, any pending result, or no selections
