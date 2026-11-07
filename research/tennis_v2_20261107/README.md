@@ -62,6 +62,56 @@ probabilities on matches whose results are already known.
    One day with under five graded picks, any pending result, or no selections
    does not pass the proposed five-day research threshold.
 
+## Historical walk-forward, including previous days and weeks
+
+**Yes, previous days and weeks are explicitly used.** Run the newly added
+`--mode walk-forward` to evaluate each day independently with a *new* calibration
+fit using only earlier results that were already source-observed, platform-observed
+and ingested at that point. A result first ingested on October 31 cannot train
+a model for an October 30 prediction, even if the match finished before then.
+
+Use the larger September–October history in the authorized read-only export as
+prior training, then walk sequentially through the October 27–November 6
+reference window:
+
+```bash
+python ops/v2_quality_audit.py \
+  --mode walk-forward \
+  --ledger /secure/aligned_original_export.json \
+  --start 2026-10-27 --end 2026-11-06 \
+  --as-of 2026-11-07 \
+  --out /secure/v2_walkforward_20261107.json
+```
+
+The rolling report includes each day's available **prior graded sample size**,
+calibrator availability, original versus all fixed V2 candidates, W/L/V/P,
+coverage, discarded winners, avoided losers, raw and calibrated Brier/log loss
+and day-specific failure segments. It also enforces the evaluation as-of instant:
+results first ingested after that instant are still PENDING in that report.
+
+The old single-cutoff report remains available with `--mode fixed`.
+For an exact audit-time instant rather than the end of a Manila date,
+use `--evaluated-at 2026-11-07T09:00:00+08:00` with walk-forward.
+
+**Interpretation:** the October 27–31 history and October 30–31 especially
+help diagnose failures, but variants motivated by knowledge of those days
+**cannot** call them pristine unseen holdouts. Earlier research PR #273
+already explored some similar pre-match thresholds. Historical walk-forward
+checks chronological training correctness and performance plausibility;
+it does **not** replace a fixed, genuinely prospective V2 shadow.
+
+### Approval gate for an actual prospective V2 release
+
+1. Run all tests and reconcile exported match counts with original ledger.
+2. Freeze the chosen candidate version and selection conditions in code **before**
+   new scored fixtures. Preserve selection time, model version and selected side.
+3. Issue each V2 pick once in parallel, with original plus >=70% comparison,
+   and let outcomes settle without changing already-issued selections.
+4. Report >=73% on five consecutive **fully settled** Manila days, with a
+   meaningful graded sample and coverage; do not present zero-pick days as wins.
+5. Promote only after independent review of calibration, coverage and
+   rollback behavior; keep originals unchanged.
+
 ## Release gates
 
 The first phase is **diagnosis**, not automatic V2 deployment. Next:
