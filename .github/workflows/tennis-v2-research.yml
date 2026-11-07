@@ -1,0 +1,54 @@
+name: Tennis V2 Research (Database Free)
+
+on:
+  pull_request:
+    paths:
+      - "src/sports_edge_tennis/performance/v2_*.py"
+      - "src/sports_edge_tennis/performance/calibration.py"
+      - "tests/test_v2_*.py"
+      - "ops/v2_quality_audit.py"
+      - "ops/calibration_dataset.sql"
+      - "research/tennis_v2_20261107/**"
+      - ".github/workflows/tennis-v2-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  v2-research:
+    name: V2 historical replay unit tests (no database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact V2 PR head
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install isolated test runner
+        run: python -m pip install "pytest>=8,<10"
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile \
+            src/sports_edge_tennis/performance/v2_quality_research.py \
+            src/sports_edge_tennis/performance/v2_walkforward.py \
+            ops/v2_quality_audit.py \
+            tests/test_v2_quality_research.py \
+            tests/test_v2_walkforward.py
+
+      - name: Run isolated V2 regression tests
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/test_v2_quality_research.py tests/test_v2_walkforward.py
+
+      - name: Verify V2 CLI availability
+        env:
+          PYTHONPATH: src
+        run: python ops/v2_quality_audit.py --help
