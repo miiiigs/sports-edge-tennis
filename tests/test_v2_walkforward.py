@@ -3,11 +3,15 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+import json
+from pathlib import Path
 
 import pytest
 
 from sports_edge_tennis.performance.v2_quality_research import FrozenPick, POLICIES
-from sports_edge_tennis.performance.v2_walkforward import walk_forward
+from sports_edge_tennis.performance.v2_walkforward import (
+    walk_forward, reconcile_original_days,
+)
 
 
 def _t(day: int, hour: int = 0) -> datetime:
@@ -128,3 +132,47 @@ def test_rejects_bad_interval_timezones_duplicates():
     with pytest.raises(ValueError, match="beyond"):
         walk_forward((p,), start=date(2026, 11, 1),
                      end=date(2026, 11, 2), evaluated_at=_t(31))
+
+
+def test_original_daily_ledger_reconciliation_fails_closed_on_any_difference():
+    original = (
+        _p(1, day=29, result="WON"),
+        _p(2, day=29, result="LOST"),
+        _p(3, day=30, result="VOID"),
+    )
+    r = walk_forward(original, start=date(2026, 10, 29),
+                     end=date(2026, 10, 30), evaluated_at=_t(31))
+    expected = {
+        "2026-10-29": {"picks": 2, "won": 1, "lost": 1, "void": 0, "pending": 0},
+        "2026-10-30": {"picks": 1, "won": 0, "lost": 0, "void": 1, "pending": 0},
+    }
+    status = reconcile_original_days(r, expected)
+    assert status["status"] == "RECONCILED_AGAINST_FROZEN_ORIGINAL_LEDGER"
+    assert status["days"] == 2 and status["original_graded"] == 2
+    mismatch = {**expected, "2026-10-29": {**expected["2026-10-29"], "won": 2}}
+    with pytest.raises(ValueError, match="original cohort mismatch"):
+        reconcile_original_days(r, mismatch)
+    with pytest.raises(ValueError, match="dates mismatch"):
+        reconcile_original_days(r, {"2026-10-29": expected["2026-10-29"]})
+    bad = {**expected, "2026-10-29": {**expected["2026-10-29"], "picks": True}}
+    with pytest.raises(ValueError, match="missing/invalid"):
+        reconcile_original_days(r, bad)
+
+
+def test_frozen_original_snapshot_has_complete_accounting_for_all_eleven_days():
+    path = (Path(__file__).parents[1] / "research/tennis_v2_20261107" /
+            "original_daily_scorecard_20261027_1106.json")
+    obj = json.loads(path.read_text())
+    assert obj["scope"] == "ALL_ORIGINAL_ALIGNED_MODEL_PICKS"
+    assert obj["as_of"] == "2026-11-07T09:04:42+08:00"
+    days = obj["days"]
+    assert len(days) == 11
+    assert set(days) == {
+        (date(2026, 10, 27) + timedelta(days=i)).isoformat()
+        for i in range(11)
+    }
+    assert all(row["won"] + row["lost"] + row["void"] + row["pending"] ==
+               row["picks"] for row in days.values())
+    assert days["2026-10-30"]["won"] == 6
+    assert days["2026-10-31"]["lost"] == 7
+    assert days["2026-11-06"]["won"] == 6
