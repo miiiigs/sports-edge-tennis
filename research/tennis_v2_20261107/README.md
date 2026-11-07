@@ -134,6 +134,23 @@ it does **not** replace a fixed, genuinely prospective V2 shadow.
 5. Promote only after independent review of calibration, coverage and
    rollback behavior; keep originals unchanged.
 
+## Additional validation gates (November 7 continuation)
+
+- The new `acceptance_evidence` section reports the longest and trailing
+  consecutive run of days meeting a *proposed* >=73% shadow threshold,
+  requiring >=5 graded picks and >=45% coverage. In-progress days, pending
+  results, underpowered samples, and zero-pick days break the streak.
+- V2 must reconcile every original daily W/L/VOID/PENDING count against the
+  frozen aggregate ledger. A mismatch raises an exception rather than
+  silently improving a score.
+- The DB-free `.github/workflows/tennis-v2-research.yml` runs Python
+  compilation, focused V2 tests, and CLI smoke separately from PostgreSQL
+  Foundation. On 2026-11-07 **both** GitHub Actions jobs failed before
+  executing any steps: DB-free run 42355493008 and PostgreSQL run
+  42355492929. This demonstrates the current blocker is not specifically the
+  PostgreSQL service, but does not establish a definitive root cause.
+  See GitHub issue #287. Do not claim those tests passed.
+
 ## Release gates
 
 The first phase is **diagnosis**, not automatic V2 deployment. Next:
