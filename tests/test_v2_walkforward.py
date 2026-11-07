@@ -10,7 +10,7 @@ import pytest
 
 from sports_edge_tennis.performance.v2_quality_research import FrozenPick, POLICIES
 from sports_edge_tennis.performance.v2_walkforward import (
-    walk_forward, reconcile_original_days,
+    walk_forward, reconcile_original_days, acceptance_evidence,
 )
 
 
@@ -176,3 +176,62 @@ def test_frozen_original_snapshot_has_complete_accounting_for_all_eleven_days():
     assert days["2026-10-30"]["won"] == 6
     assert days["2026-10-31"]["lost"] == 7
     assert days["2026-11-06"]["won"] == 6
+
+
+def test_acceptance_requires_five_consecutive_fully_settled_high_coverage_days():
+    def fold(i, *, wins=4, losses=1, pending=0, total=8, qualified=5):
+        return {
+            "date": (date(2026, 10, 27) + timedelta(days=i)).isoformat(),
+            "policies": {
+                "original": {"picks": total},
+                "v2_agreement": {
+                    "picks": qualified, "won": wins, "lost": losses,
+                    "void": qualified-wins-losses-pending, "pending": pending,
+                    "graded": wins+losses,
+                },
+            },
+        }
+    five = [fold(i) for i in range(5)]
+    ev = acceptance_evidence(
+        five, "v2_agreement", current_day=date(2026, 11, 7),
+    )
+    assert ev["five_day_research_gate_met"]
+    assert ev["longest_consecutive_days"] == 5
+    assert ev["trailing_consecutive_days"] == 5
+    assert ev["not_brian_official_acceptance"]
+    # Pending is never called a successful research day.
+    cases = [
+        (fold(2, wins=3, losses=1, pending=1), "UNSETTLED"),
+        (fold(2, wins=2, losses=3), "BELOW_73"),
+        (fold(2, wins=3, losses=1, qualified=4), "INSUFFICIENT_GRADED"),
+        (fold(2, wins=4, losses=1, total=20), "LOW_COVERAGE"),
+        (fold(2, wins=0, losses=0, total=0, qualified=0), "NO_ORIGINAL_PICKS"),
+    ]
+    for bad, reason in cases:
+        alternate = five.copy()
+        alternate[2] = bad
+        check = acceptance_evidence(
+            alternate, "v2_agreement", current_day=date(2026, 11, 7),
+        )
+        assert check["daily"][2]["research_status"] == reason
+        assert not check["five_day_research_gate_met"]
+        assert check["trailing_consecutive_days"] == 2
+
+
+def test_current_day_and_future_days_never_count_as_73_acceptance():
+    fold = {
+        "date": "2026-11-07",
+        "policies": {
+            "original": {"picks": 6},
+            "v2_agreement": {"picks": 6, "won": 6, "lost": 0,
+                             "void": 0, "pending": 0, "graded": 6},
+        },
+    }
+    result = acceptance_evidence(
+        [fold], "v2_agreement", current_day=date(2026, 11, 7),
+    )
+    assert result["daily"][0]["research_status"] == "IN_PROGRESS"
+    assert result["days_passing_proposed_gate"] == 0
+    with pytest.raises(ValueError, match="coverage_floor"):
+        acceptance_evidence([fold], "v2_agreement",
+                            current_day=date(2026, 11, 7), coverage_floor=1.2)
