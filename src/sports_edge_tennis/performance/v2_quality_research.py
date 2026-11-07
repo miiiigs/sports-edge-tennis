@@ -221,10 +221,17 @@ def _confidence_label(p: FrozenPick) -> str:
     return "90_plus"
 
 
-def audit(picks: tuple[FrozenPick, ...], *, start: date, end: date) -> dict[str, Any]:
+def audit(
+    picks: tuple[FrozenPick, ...],
+    *,
+    start: date,
+    end: date,
+    as_of: date | None = None,
+) -> dict[str, Any]:
     """Freeze all calibration on outcomes visible strictly before start."""
     if start > end:
         raise ValueError("reversed holdout")
+    as_of = as_of or datetime.now(MANILA).date()
     cutoff = datetime.combine(start, time.min, tzinfo=MANILA)
     calibrator, training = _calibrator(picks, cutoff)
     holdout = tuple(p for p in picks if start <= p.day <= end)
@@ -242,7 +249,7 @@ def audit(picks: tuple[FrozenPick, ...], *, start: date, end: date) -> dict[str,
             d = _metrics(day_picks)
             # A zero-pick or underpowered day is not a 73% success.
             d["passes_73_daily"] = (
-                day < datetime.now(MANILA).date()
+                day < as_of
                 and d["pending"] == 0 and d["graded"] >= MIN_DAILY_GRADED
                 and d["won"] * 100 >= 73 * d["graded"]
             )
@@ -266,7 +273,7 @@ def audit(picks: tuple[FrozenPick, ...], *, start: date, end: date) -> dict[str,
         "policy_version": POLICY_VERSION,
         "status": "RESEARCH_ONLY_NOT_DEPLOYED",
         "source": "original_first_issued_PIT_aligned_model_picks",
-        "holdout": {"start": start.isoformat(), "end": end.isoformat(), "cutoff": cutoff.isoformat()},
+        "holdout": {"start": start.isoformat(), "end": end.isoformat(), "cutoff": cutoff.isoformat(), "as_of": as_of.isoformat()},
         "training": {
             **training_m, "earliest_results_only": True,
             "calibrator_eligible": calibrator is not None,
