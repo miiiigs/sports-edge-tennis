@@ -26,7 +26,10 @@ KNOWN_TIERS = frozenset({
 })
 PICK_TYPES = frozenset({"MANAGER_CONSENSUS", "A1_A2_WIDE_SPREAD"})
 OUTCOMES = frozenset({"WON", "LOST", "VOID", "PENDING"})
-POLICIES = ("original", "confidence70", "v2_agreement", "v2_tier_guard", "v2_calibrated")
+POLICIES = (
+    "original", "confidence70", "v2_agreement", "v2_tier_guard",
+    "v2_a3_confirmed", "v2_calibrated",
+)
 CALIBRATION_MIN_GRADED = 200
 MIN_DAILY_GRADED = 5
 
@@ -46,9 +49,11 @@ class FrozenPick:
     a1: float | None
     a2: float | None
     a3_status: str | None
+    a3_side: int | None
     result: str
     result_as_of: datetime | None
     result_source_observed_at: datetime | None
+    result_ingested_at: datetime | None
 
     def agent_spread(self) -> float | None:
         return abs(self.a1 - self.a2) if self.a1 is not None and self.a2 is not None else None
@@ -119,23 +124,27 @@ def parse_export(payload: dict[str, Any]) -> tuple[FrozenPick, ...]:
             a1_side=_side(row.get("a1_side")), a2_side=_side(row.get("a2_side")),
             a1=_probability(row.get("a1_prob")), a2=_probability(row.get("a2_prob")),
             a3_status=(str(row["a3_status"]) if row.get("a3_status") is not None else None),
+            a3_side=_side(row.get("a3_side")),
             result=result,
             result_as_of=_datetime(row.get("result_observed_at")),
             result_source_observed_at=_datetime(row.get("result_source_observed_at")),
+            result_ingested_at=_datetime(row.get("result_ingested_at")),
         ))
     return tuple(sorted(out, key=lambda p: (p.day, p.picked_at, p.match_id)))
 
 
 def _eligible_before(pick: FrozenPick, cutoff: datetime) -> bool:
-    """A terminal result can train only if BOTH timestamps precede the holdout."""
+    """Training requires source, observation AND ingestion visibility pre-cutoff."""
     return (
         pick.day < cutoff.astimezone(MANILA).date()
         and pick.picked_at < cutoff
         and pick.result in {"WON", "LOST"}
         and pick.result_as_of is not None
         and pick.result_source_observed_at is not None
+        and pick.result_ingested_at is not None
         and pick.result_as_of <= cutoff
         and pick.result_source_observed_at <= cutoff
+        and pick.result_ingested_at <= cutoff
     )
 
 
@@ -168,6 +177,9 @@ def allows(p: FrozenPick, policy: str, calibrator=None) -> bool:
         return p.raw >= 0.70
     if policy == "v2_tier_guard":
         return p.raw >= (0.76 if p.tier == "CHALLENGER" else 0.70)
+    if policy == "v2_a3_confirmed":
+        return (p.raw >= 0.70 and p.a3_status == "PREDICTED"
+                and p.a3_side == p.side)
     if calibrator is None:
         return False
     return calibrator.predict(p.raw) >= 0.73
@@ -208,6 +220,16 @@ def _spread_label(p: FrozenPick) -> str:
     if gap < .10:
         return "same_side_5_10pt"
     return "same_side_10pt_plus"
+
+
+def _a3_label(p: FrozenPick) -> str:
+    if p.a3_status != "PREDICTED":
+        return "abstained_or_missing"
+    if p.a3_side == p.side:
+        return "active_same_side"
+    if p.a3_side in (1, 2):
+        return "active_opposite_side"
+    return "active_missing_side"
 
 
 def _confidence_label(p: FrozenPick) -> str:
@@ -293,6 +315,7 @@ def audit(
             "competition_tier": _segment(holdout, lambda p: p.tier),
             "confidence_bucket": _segment(holdout, _confidence_label),
             "agent_agreement": _segment(holdout, _spread_label),
+            "a3_confirmation": _segment(holdout, _a3_label),
         },
         "policies": all_results,
         "limitations": (
