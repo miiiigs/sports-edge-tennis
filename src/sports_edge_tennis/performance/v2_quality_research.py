@@ -28,7 +28,7 @@ PICK_TYPES = frozenset({"MANAGER_CONSENSUS", "A1_A2_WIDE_SPREAD"})
 OUTCOMES = frozenset({"WON", "LOST", "VOID", "PENDING"})
 POLICIES = (
     "original", "confidence70", "v2_agreement", "v2_tier_guard",
-    "v2_a3_confirmed", "v2_calibrated",
+    "v2_a3_confirmed", "v2_a3_dissent_veto", "v2_calibrated",
 )
 CALIBRATION_MIN_GRADED = 200
 MIN_DAILY_GRADED = 5
@@ -180,6 +180,16 @@ def allows(p: FrozenPick, policy: str, calibrator=None) -> bool:
     if policy == "v2_a3_confirmed":
         return (p.raw >= 0.70 and p.a3_status == "PREDICTED"
                 and p.a3_side == p.side)
+    if policy == "v2_a3_dissent_veto":
+        # Candidate ablation only: missing/ABSTAINED A3 is neutral, so A3
+        # cannot erase an A1+A2 pick just by lacking historical support.
+        # Only a valid, active, opposite-side A3 can veto. A3's capped
+        # 0.53-0.65 probability is NOT averaged into A1/A2 confidence.
+        if p.raw < 0.70:
+            return False
+        if p.a3_status == "ABSTAINED":
+            return True
+        return p.a3_status == "PREDICTED" and p.a3_side == p.side
     if calibrator is None:
         return False
     return calibrator.predict(p.raw) >= 0.73
