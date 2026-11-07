@@ -1,0 +1,180 @@
+"""Rolling historical walk-forward evaluation for immutable Tennis Model Picks.
+
+For EACH Manila match day, fit any calibration using only results that were
+source-observed, internally observed AND ingested before that day's midnight.
+The tested policies are predeclared and NEVER optimized against these test days.
+
+This is retrospective evidence, NOT proof of prospective 73% accuracy.
+"""
+from __future__ import annotations
+
+from dataclasses import replace
+from datetime import date, datetime, time, timedelta
+from typing import Any, Iterable
+
+from sports_edge_tennis.performance.calibration import brier, log_loss
+from sports_edge_tennis.performance.v2_quality_research import (
+    FrozenPick, MANILA, MIN_DAILY_GRADED, POLICIES, POLICY_VERSION,
+    _a3_label, _calibrator, _confidence_label, _metrics, _segment,
+    _spread_label, allows,
+)
+
+COUNT_KEYS = ("picks", "won", "lost", "void", "pending", "graded")
+
+
+def _known_at(pick: FrozenPick, cutoff: datetime) -> bool:
+    """A known terminal result needs all three verified visibility timestamps."""
+    return (
+        pick.result in ("WON", "LOST", "VOID")
+        and pick.result_as_of is not None
+        and pick.result_source_observed_at is not None
+        and pick.result_ingested_at is not None
+        and pick.result_as_of <= cutoff
+        and pick.result_source_observed_at <= cutoff
+        and pick.result_ingested_at <= cutoff
+    )
+
+
+def _seen_result(pick: FrozenPick, cutoff: datetime) -> FrozenPick:
+    if _known_at(pick, cutoff):
+        return pick
+    return replace(pick, result="PENDING")
+
+
+def walk_forward(
+    picks: Iterable[FrozenPick],
+    *,
+    start: date,
+    end: date,
+    evaluated_at: datetime,
+) -> dict[str, Any]:
+    """Test fixed policies day-by-day using strictly earlier training only.
+
+    Returned metrics are aggregates and do not disclose player or match IDs.
+    A revised policy motivated by a test-day loss cannot treat that same day
+    as independent holdout. Keep this separate from a later frozen live shadow.
+    """
+    if start > end:
+        raise ValueError("reversed date interval")
+    if evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+        raise ValueError("evaluated_at must include timezone")
+
+    picks = tuple(picks)
+    if len({p.match_id for p in picks}) != len(picks):
+        raise ValueError("duplicate first-issued match ID")
+
+    today_local = evaluated_at.astimezone(MANILA).date()
+    if start > today_local:
+        raise ValueError("cannot evaluate days beyond evaluated_at")
+    if end > today_local:
+        end = today_local
+
+    # Reporting must never use results unavailable by the evaluation instant,
+    # even if future outcomes exist in an export generated much later.
+    visible = tuple(
+        _seen_result(p, evaluated_at)
+        for p in picks
+        if p.picked_at <= evaluated_at
+    )
+    totals: dict[str, dict[str, int]] = {
+        policy: {k: 0 for k in COUNT_KEYS} |
+                {"avoided_losses": 0, "missed_winners": 0, "days_met_73": 0}
+        for policy in POLICIES
+    }
+    folds = []
+    d = start
+    while d <= end:
+        cutoff = datetime.combine(d, time.min, tzinfo=MANILA)
+        # Require a fresh, day-specific prior-only fit, never a global fit
+        # trained using results later than the current tested day.
+        calibrator, training = _calibrator(visible, cutoff)
+        cohort = tuple(p for p in visible if p.day == d)
+        cohort_metrics = _metrics(cohort)
+        report: dict[str, Any] = {}
+        for policy in POLICIES:
+            selected = tuple(p for p in cohort if allows(p, policy, calibrator))
+            excluded = tuple(p for p in cohort if not allows(p, policy, calibrator))
+            m = _metrics(selected)
+            missed = sum(p.result == "WON" for p in excluded)
+            avoided = sum(p.result == "LOST" for p in excluded)
+            passes = (
+                d < today_local and m["pending"] == 0
+                and m["graded"] >= MIN_DAILY_GRADED
+                and m["won"] * 100 >= 73 * m["graded"]
+            )
+            report[policy] = {
+                **m, "coverage": len(selected) / len(cohort) if cohort else None,
+                "missed_winners": missed, "avoided_losses": avoided,
+                "passes_73_daily": passes,
+                "insufficient_sample": m["graded"] < MIN_DAILY_GRADED,
+            }
+            for key in COUNT_KEYS:
+                totals[policy][key] += m[key]
+            totals[policy]["missed_winners"] += missed
+            totals[policy]["avoided_losses"] += avoided
+            totals[policy]["days_met_73"] += int(passes)
+
+        scored = tuple(p for p in cohort if p.result in ("WON", "LOST"))
+        actual = [int(p.result == "WON") for p in scored]
+        calibrated = (
+            [(calibrator.predict(p.raw), y) for p, y in zip(scored, actual)]
+            if calibrator is not None else []
+        )
+        folds.append({
+            "date": d.isoformat(),
+            "calibration_training": {
+                "prior_visible_graded": len(training),
+                "prior_visible_won": sum(p.result == "WON" for p in training),
+                "prior_visible_lost": sum(p.result == "LOST" for p in training),
+                "calibrator_available": calibrator is not None,
+            },
+            "original_cohort": cohort_metrics,
+            "diagnostics": {
+                "pick_type": _segment(cohort, lambda p: p.kind),
+                "agent_agreement": _segment(cohort, _spread_label),
+                "a3_confirmation": _segment(cohort, _a3_label),
+                "confidence_bucket": _segment(cohort, _confidence_label),
+                "surface": _segment(cohort, lambda p: p.surface),
+                "tier": _segment(cohort, lambda p: p.tier),
+            },
+            "daily_calibration": {
+                "raw_brier": brier(list(zip((p.raw for p in scored), actual))),
+                "calibrated_brier": brier(calibrated),
+                "raw_log_loss": log_loss(list(zip((p.raw for p in scored), actual))),
+                "calibrated_log_loss": log_loss(calibrated),
+            },
+            "policies": report,
+        })
+        d += timedelta(days=1)
+
+    summaries: dict[str, Any] = {}
+    for policy, counts in totals.items():
+        n = counts["won"] + counts["lost"]
+        original = totals["original"]["picks"]
+        summaries[policy] = {
+            **counts,
+            "win_rate": counts["won"] / n if n else None,
+            "coverage": counts["picks"] / original if original else None,
+            "calendar_days_evaluated": len(folds),
+        }
+
+    return {
+        "policy_version": POLICY_VERSION,
+        "evaluation_mode": "RETROSPECTIVE_WALK_FORWARD",
+        "not_prospective_validation": True,
+        "live_selection_changed": False,
+        "start": start.isoformat(),
+        "end": end.isoformat(),
+        "evaluated_at": evaluated_at.isoformat(),
+        "timezone": "Asia/Manila",
+        "rule_selection": "PREDECLARED_FIXED_CANDIDATES_ONLY",
+        "folds": folds,
+        "summary": summaries,
+        "warning": (
+            "Retrospective policy comparisons are exploratory when candidate "
+            "rules were designed after observing these dates. Chronological "
+            "training and verified point-in-time inputs prevent mechanical "
+            "future-result leakage but do not undo research selection bias. "
+            "Freeze a policy for genuinely new consecutive settled days."
+        ),
+    }
