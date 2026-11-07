@@ -21,6 +21,46 @@ from sports_edge_tennis.performance.v2_quality_research import (
 
 COUNT_KEYS = ("picks", "won", "lost", "void", "pending", "graded")
 
+def reconcile_original_days(
+    report: dict[str, Any], expected: dict[str, dict[str, int]],
+) -> dict[str, Any]:
+    """Fail closed if a replay differs from an independently frozen original ledger.
+
+    Expected must cover every replay day and include PICKS/W/L/VOID/PENDING.
+    This validates dataset identity, not the performance of any V2 gate.
+    All inputs are daily aggregates, never player or match records.
+    """
+    observed = {
+        fold["date"]: fold["policies"]["original"] for fold in report["folds"]
+    }
+    if set(expected) != set(observed):
+        missing = sorted(set(observed) - set(expected))
+        extra = sorted(set(expected) - set(observed))
+        raise ValueError(
+            f"original daily scorecard dates mismatch: missing={missing} extra={extra}"
+        )
+    for day in sorted(observed):
+        row = expected[day]
+        if not isinstance(row, dict):
+            raise ValueError(f"invalid original scorecard row: {day}")
+        for key in ("picks", "won", "lost", "void", "pending"):
+            if key not in row or type(row[key]) is not int or row[key] < 0:
+                raise ValueError(f"missing/invalid original {key}: {day}")
+            if row[key] != observed[day][key]:
+                raise ValueError(
+                    f"original cohort mismatch: {day} {key} "
+                    f"expected={row[key]} observed={observed[day][key]}"
+                )
+        if sum(row[k] for k in ("won", "lost", "void", "pending")) != row["picks"]:
+            raise ValueError(f"inconsistent original daily accounting: {day}")
+    return {
+        "status": "RECONCILED_AGAINST_FROZEN_ORIGINAL_LEDGER",
+        "days": len(observed),
+        "original_picks": sum(v["picks"] for v in observed.values()),
+        "original_graded": sum(v["graded"] for v in observed.values()),
+    }
+
+
 
 def _known_at(pick: FrozenPick, cutoff: datetime) -> bool:
     """A known terminal result needs all three verified visibility timestamps."""
