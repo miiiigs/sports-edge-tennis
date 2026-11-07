@@ -24,12 +24,25 @@ weights, Manager, pricing, settlement, or the deployed dashboard.
   4. `v2_tier_guard`: as (3), but >=76% confidence on Challenger matches;
   5. `v2_a3_confirmed`: as (3), with a currently active A3 agent selecting
      the same winner. It may produce few or zero picks.
-  6. `v2_calibrated`: pre-holdout fitted Platt probability >=73%, together
+  6. `v2_a3_dissent_veto`: as (3), but A3 abstention is neutral. A3
+     participates ONLY as a research veto when it issues a valid opposing
+     selection. Missing or corrupt PREDICTED side fails closed. This is
+     an **ablation experiment**, not an approved risk model or accuracy lift.
+  7. `v2_calibrated`: pre-holdout fitted Platt probability >=73%, together
      with agreement and known surface/tier. Calibration **fails closed** unless
      at least 200 prior-observed graded results, 20 wins AND 20 losses, and
      finite positive calibration slope exist.
 - Exact Asia/Manila date boundaries and a fixed `--as-of` make report
   reproduction possible. No result backfills or prediction policy writes.
+
+A3 currently has a known low-coverage and probability-scale problem. An
+Oct21 audit (draft PR #252) observed only 10 unique A3 predictions among
+2,259 matches; on eight unique all-three-active rows A3 matched A1 and
+Manager issued no three-agent consensuses. Therefore requiring 3/3 agreement
+is likely to remove most selections, while the dissent-only veto may make
+no difference at all. Compare it explicitly against `v2_agreement`, including
+`avoided_losses`, `missed_winners` and `coverage`, before claiming any
+predictive contribution. This research is tracked in issue #290.
 
 The Challenger 76% and confidence spread thresholds are **hypotheses**, not
 proven improvements. DO NOT use the V2 report to retrodict new winning
