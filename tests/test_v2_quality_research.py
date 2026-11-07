@@ -42,6 +42,14 @@ def test_v2_gates_are_predeclared_not_fitted_to_oct30_losses():
     assert not allows(good, "v2_a3_confirmed")
     assert allows(replace(good, a3_status="PREDICTED", a3_side=1), "v2_a3_confirmed")
     assert not allows(replace(good, a3_status="PREDICTED", a3_side=2), "v2_a3_confirmed")
+    # A3 abstention must be neutral, not an automatic rejection. A verified
+    # dissent is counted only as a hypothetical veto, not as an accuracy lift.
+    assert allows(good, "v2_a3_dissent_veto")
+    assert allows(replace(good, a3_status="PREDICTED", a3_side=1), "v2_a3_dissent_veto")
+    assert not allows(replace(good, a3_status="PREDICTED", a3_side=2), "v2_a3_dissent_veto")
+    assert not allows(replace(good, a3_status="PREDICTED", a3_side=None), "v2_a3_dissent_veto")
+    assert not allows(replace(good, a3_status=None), "v2_a3_dissent_veto")
+    assert not allows(replace(good, a3_status="ABSTAINED", raw=.69), "v2_a3_dissent_veto")
     assert not allows(good, "v2_calibrated")  # requires prior-trained calibrator
     assert not allows(replace(good, raw=.699), "confidence70")
     assert not allows(replace(good, a2_side=2), "v2_agreement")
@@ -159,3 +167,28 @@ def test_read_only_calibration_dataset_exposes_both_observation_timestamps():
     assert "SELECT DISTINCT ON (match_id)" in sql
     assert "UPDATE match_result_observations" not in sql
     assert "DELETE FROM match_result_observations" not in sql
+
+
+def test_a3_veto_shadow_separates_agreement_from_observed_outcome():
+    p = _pick(1, result="WON")
+    dissenting_winner = replace(p, match_id=2, a3_status="PREDICTED",
+                                a3_side=2, result="WON")
+    dissenting_loser = replace(p, match_id=3, a3_status="PREDICTED",
+                               a3_side=2, result="LOST")
+    agreed_loser = replace(p, match_id=4, a3_status="PREDICTED",
+                           a3_side=1, result="LOST")
+    rows = (p, dissenting_winner, dissenting_loser, agreed_loser)
+    report = audit(rows, start=date(2026, 10, 29),
+                   end=date(2026, 10, 29), as_of=date(2026, 11, 7))
+    a1a2 = report["policies"]["v2_agreement"]
+    veto = report["policies"]["v2_a3_dissent_veto"]
+    assert a1a2["picks"] == 4
+    assert veto["picks"] == 2
+    assert veto["won"] == 1
+    assert veto["lost"] == 1
+    assert veto["missed_winners"] == 1
+    assert veto["avoided_losses"] == 1
+    # Altering observed outcomes must never change the pre-match gate.
+    for row in rows:
+        flipped = replace(row, result="LOST" if row.result == "WON" else "WON")
+        assert allows(row, "v2_a3_dissent_veto") == allows(flipped, "v2_a3_dissent_veto")
