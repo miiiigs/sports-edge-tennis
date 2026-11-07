@@ -66,6 +66,7 @@ def acceptance_evidence(
     folds: list[dict[str, Any]],
     policy: str,
     *,
+    current_day: date,
     coverage_floor: float = 0.45,
 ) -> dict[str, Any]:
     """Descriptive 73% daily evidence; never converts shadow into live acceptance.
@@ -84,7 +85,9 @@ def acceptance_evidence(
         candidate = fold["policies"][policy]
         original_picks = original["picks"]
         coverage = candidate["picks"] / original_picks if original_picks else None
-        if original_picks == 0:
+        if date.fromisoformat(day) >= current_day:
+            reason = "IN_PROGRESS"
+        elif original_picks == 0:
             reason = "NO_ORIGINAL_PICKS"
         elif candidate["pending"] > 0:
             reason = "UNSETTLED"
@@ -265,7 +268,8 @@ def walk_forward(
         "timezone": "Asia/Manila",
         "rule_selection": "PREDECLARED_FIXED_CANDIDATES_ONLY",
         "acceptance_evidence": {
-            policy: acceptance_evidence(folds, policy) for policy in POLICIES
+            policy: acceptance_evidence(folds, policy, current_day=today_local)
+            for policy in POLICIES
         },
         "folds": folds,
         "summary": summaries,
