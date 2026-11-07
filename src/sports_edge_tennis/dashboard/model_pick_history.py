@@ -863,6 +863,13 @@ def _load_history(
             picks=picks,
         )
     except Exception:
+        # A 200 authentication success must not be confused with a successful
+        # database-backed results page. Preserve a safe error page for Brian
+        # while recording a server-side stack trace for a real release diagnosis.
+        log.exception(
+            "Model Pick Results ledger lookup failed for day=%s timezone=%s",
+            requested_date, tz.iana,
+        )
         return ModelPickResultsView(selected_date=requested_date, failed=True)
     finally:
         conn.close()
