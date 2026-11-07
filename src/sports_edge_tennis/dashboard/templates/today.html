@@ -18,6 +18,17 @@
   {% endif %}
 </header>
 
+<nav class="section" aria-label="Model Picks date and history navigation" style="margin-top: 0;">
+  <p class="section-note">
+    <strong>Find the picks and results from our daily reports:</strong>
+    <a href="/model-pick-results?tz=philippines#qualified-history">Original vs. Qualified history since 27 October</a>
+    · <a href="/today?date={{ selected_date.isoformat() }}&amp;tz=philippines">This match date in Philippines time</a>
+    · <a href="/today?date={{ prev_date.isoformat() }}&amp;tz=philippines">Previous match day</a>
+    · <a href="/today?date={{ next_date.isoformat() }}&amp;tz=philippines">Next match day</a>.
+  </p>
+  <p class="section-note">Dates are the scheduled <strong>match dates</strong>, not necessarily the dates when predictions were first generated or when match results settled. The Results page keeps every original pick and the separate ≥70% research comparison.</p>
+</nav>
+
 {% if dashboard_timezone.iana != 'Asia/Manila' %}
 <div class="notice notice-warning" role="note" aria-label="Manila scorecard date alignment">
   The 73% target groups original Model Picks by <strong>Asia/Manila match date</strong>.
@@ -114,7 +125,7 @@
     The models have evaluated the current slate, but nothing currently meets the required criteria.
     {% endif %}
   </p>
-  <p class="empty-hint">Check back after the next update. Zero picks is a valid result — we never lower the criteria to fill the page.</p>
+  <p class="empty-hint">Check the <a href="/model-pick-results?tz=philippines#qualified-history">historical results and improved comparison</a> or the <a href="/today?date={{ next_date.isoformat() }}&amp;tz=philippines">next Manila match day</a>. Picks issued before their scheduled match date are listed under that match date. Zero picks is valid only when no original selections qualify.</p>
 </section>
 
 {% else %}
