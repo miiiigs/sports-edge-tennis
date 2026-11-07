@@ -1,0 +1,85 @@
+{
+  "note": "Independent frozen DAILY ORIGINAL ALIGNED Model Picks scorecard. From Railway runner ALIGNED_DAILY_EVIDENCE observations recorded Oct29–Nov7 2026. Used ONLY for replay population/accounting reconciliation, not V2 policy training or choosing outcomes. The last available Nov02–Nov06 snapshot was 2026-11-07T01:04:42Z. Historical counts may be revised as late authorized results arrive.",
+  "as_of": "2026-11-07T09:04:42+08:00",
+  "timezone": "Asia/Manila",
+  "scope": "ALL_ORIGINAL_ALIGNED_MODEL_PICKS",
+  "days": {
+    "2026-10-27": {
+      "picks": 41,
+      "won": 31,
+      "lost": 8,
+      "void": 2,
+      "pending": 0
+    },
+    "2026-10-28": {
+      "picks": 13,
+      "won": 9,
+      "lost": 3,
+      "void": 1,
+      "pending": 0
+    },
+    "2026-10-29": {
+      "picks": 21,
+      "won": 11,
+      "lost": 7,
+      "void": 3,
+      "pending": 0
+    },
+    "2026-10-30": {
+      "picks": 12,
+      "won": 6,
+      "lost": 4,
+      "void": 2,
+      "pending": 0
+    },
+    "2026-10-31": {
+      "picks": 14,
+      "won": 7,
+      "lost": 7,
+      "void": 0,
+      "pending": 0
+    },
+    "2026-11-01": {
+      "picks": 17,
+      "won": 9,
+      "lost": 4,
+      "void": 4,
+      "pending": 0
+    },
+    "2026-11-02": {
+      "picks": 55,
+      "won": 30,
+      "lost": 15,
+      "void": 9,
+      "pending": 1
+    },
+    "2026-11-03": {
+      "picks": 16,
+      "won": 11,
+      "lost": 5,
+      "void": 0,
+      "pending": 0
+    },
+    "2026-11-04": {
+      "picks": 18,
+      "won": 10,
+      "lost": 8,
+      "void": 0,
+      "pending": 0
+    },
+    "2026-11-05": {
+      "picks": 19,
+      "won": 12,
+      "lost": 7,
+      "void": 0,
+      "pending": 0
+    },
+    "2026-11-06": {
+      "picks": 8,
+      "won": 6,
+      "lost": 2,
+      "void": 0,
+      "pending": 0
+    }
+  }
+}
