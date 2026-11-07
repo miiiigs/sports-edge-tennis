@@ -83,6 +83,28 @@ python ops/v2_quality_audit.py \
   --out /secure/v2_walkforward_20261107.json
 ```
 
+For the frozen November 7 historical checkpoint, also require exact parity
+with the independently logged **original** live results:
+
+```bash
+python ops/v2_quality_audit.py \
+  --mode walk-forward \
+  --ledger /secure/aligned_original_export.json \
+  --start 2026-10-27 --end 2026-11-06 \
+  --evaluated-at 2026-11-07T09:04:42+08:00 \
+  --expected-original research/tennis_v2_20261107/original_daily_scorecard_20261027_1106.json \
+  --out /secure/v2_walkforward_reconciled_20261107.json
+```
+
+The frozen source is a dated aggregate of Railway `ALIGNED_DAILY_EVIDENCE`
+records. It records **234 original picks across 11 Manila dates**, including
+142 WON, 70 LOST, 21 VOID and 1 PENDING at the referenced observation instant.
+It contains no match names or proprietary patient/user data. Because results
+can legitimately settle later, use this exact `--evaluated-at` with this
+dated snapshot; newer evaluations require a newly independently observed
+baseline. If original counts differ, the audit aborts without claiming
+a V2 win-rate improvement.
+
 The rolling report includes each day's available **prior graded sample size**,
 calibrator availability, original versus all fixed V2 candidates, W/L/V/P,
 coverage, discarded winners, avoided losers, raw and calibrated Brier/log loss
