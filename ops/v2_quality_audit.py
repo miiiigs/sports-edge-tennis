@@ -21,7 +21,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from sports_edge_tennis.performance.v2_quality_research import (  # noqa: E402
     MANILA, audit, parse_export,
 )
-from sports_edge_tennis.performance.v2_walkforward import walk_forward  # noqa: E402
+from sports_edge_tennis.performance.v2_walkforward import (  # noqa: E402
+    walk_forward, reconcile_original_days,
+)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -39,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Offset-aware evaluation instant, e.g. 2026-11-07T09:00:00+08:00",
     )
     parser.add_argument("--out", type=Path, default=None)
+    parser.add_argument(
+        "--expected-original", type=Path, default=None,
+        help="Independent JSON daily original scorecard to hard-fail cohort drift",
+    )
     args = parser.parse_args(argv)
 
     if not args.ledger.is_file():
@@ -47,6 +53,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("start date must be before or equal to end")
     if args.out is not None and args.out.exists():
         parser.error("refusing to overwrite an existing report")
+    if args.expected_original is not None and args.mode != "walk-forward":
+        parser.error("--expected-original is supported only for walk-forward")
 
     try:
         raw = json.loads(args.ledger.read_text(encoding="utf-8-sig"))
@@ -67,6 +75,18 @@ def main(argv: list[str] | None = None) -> int:
             report = walk_forward(
                 rows, start=args.start, end=args.end, evaluated_at=evaluated_at,
             )
+            if args.expected_original is not None:
+                expected_payload = json.loads(
+                    args.expected_original.read_text(encoding="utf-8-sig")
+                )
+                if not isinstance(expected_payload, dict):
+                    raise ValueError("expected-original must be a JSON daily mapping")
+                expected = expected_payload.get("days")
+                if not isinstance(expected, dict):
+                    raise ValueError("expected-original requires a days mapping")
+                report["original_reconciliation"] = reconcile_original_days(
+                    report, expected
+                )
         else:
             if args.evaluated_at is not None:
                 parser.error("--evaluated-at is only valid in walk-forward mode")
