@@ -62,6 +62,62 @@ def reconcile_original_days(
 
 
 
+def acceptance_evidence(
+    folds: list[dict[str, Any]],
+    policy: str,
+    *,
+    coverage_floor: float = 0.45,
+) -> dict[str, Any]:
+    """Descriptive 73% daily evidence; never converts shadow into live acceptance.
+
+    At least five graded, fully resolved matches per day; sufficient selection
+    coverage versus the original population. No-pick days break consecutive
+    runs. We report both the longest and the trailing consecutive streak.
+    """
+    if not 0 <= coverage_floor <= 1:
+        raise ValueError("coverage_floor must be in [0,1]")
+    statuses: list[dict[str, Any]] = []
+    longest = running = 0
+    for fold in folds:
+        day = fold["date"]
+        original = fold["policies"]["original"]
+        candidate = fold["policies"][policy]
+        original_picks = original["picks"]
+        coverage = candidate["picks"] / original_picks if original_picks else None
+        if original_picks == 0:
+            reason = "NO_ORIGINAL_PICKS"
+        elif candidate["pending"] > 0:
+            reason = "UNSETTLED"
+        elif candidate["graded"] < MIN_DAILY_GRADED:
+            reason = "INSUFFICIENT_GRADED"
+        elif coverage is None or coverage < coverage_floor:
+            reason = "LOW_COVERAGE"
+        elif candidate["won"] * 100 < 73 * candidate["graded"]:
+            reason = "BELOW_73"
+        else:
+            reason = "MET_73_RESEARCH_ONLY"
+        passed = reason == "MET_73_RESEARCH_ONLY"
+        running = running + 1 if passed else 0
+        longest = max(longest, running)
+        statuses.append({
+            "date": day, "research_status": reason,
+            "fully_settled": candidate["pending"] == 0,
+            "coverage": coverage, "passes_proposed_gate": passed,
+        })
+    return {
+        "research_only": True,
+        "not_brian_official_acceptance": True,
+        "proposed_min_graded": MIN_DAILY_GRADED,
+        "proposed_coverage_floor": coverage_floor,
+        "days_evaluated": len(folds),
+        "days_passing_proposed_gate": sum(int(x["passes_proposed_gate"]) for x in statuses),
+        "longest_consecutive_days": longest,
+        "trailing_consecutive_days": running,
+        "five_day_research_gate_met": running >= 5,
+        "daily": statuses,
+    }
+
+
 def _known_at(pick: FrozenPick, cutoff: datetime) -> bool:
     """A known terminal result needs all three verified visibility timestamps."""
     return (
@@ -208,6 +264,9 @@ def walk_forward(
         "evaluated_at": evaluated_at.isoformat(),
         "timezone": "Asia/Manila",
         "rule_selection": "PREDECLARED_FIXED_CANDIDATES_ONLY",
+        "acceptance_evidence": {
+            policy: acceptance_evidence(folds, policy) for policy in POLICIES
+        },
         "folds": folds,
         "summary": summaries,
         "warning": (
