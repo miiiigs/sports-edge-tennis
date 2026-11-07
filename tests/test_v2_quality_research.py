@@ -26,9 +26,10 @@ def _pick(mid: int, *, day: int = 29, raw: float = .76, kind: str = "MANAGER_CON
         match_id=mid, day=date(2026, 10, day), picked_at=_dt(day - 1), kind=kind,
         side=1, raw=raw, surface=surface, tier=tier,
         a1_side=a1_side, a2_side=a2_side, a1=a1, a2=a2,
-        a3_status="ABSTAINED", result=result,
+        a3_status="ABSTAINED", a3_side=None, result=result,
         result_as_of=result_as_of or _dt(day, 10),
         result_source_observed_at=result_as_of or _dt(day, 10),
+        result_ingested_at=result_as_of or _dt(day, 10),
     )
 
 
@@ -38,6 +39,9 @@ def test_v2_gates_are_predeclared_not_fitted_to_oct30_losses():
     assert allows(good, "confidence70")
     assert allows(good, "v2_agreement")
     assert allows(good, "v2_tier_guard")
+    assert not allows(good, "v2_a3_confirmed")
+    assert allows(replace(good, a3_status="PREDICTED", a3_side=1), "v2_a3_confirmed")
+    assert not allows(replace(good, a3_status="PREDICTED", a3_side=2), "v2_a3_confirmed")
     assert not allows(good, "v2_calibrated")  # requires prior-trained calibrator
     assert not allows(replace(good, raw=.699), "confidence70")
     assert not allows(replace(good, a2_side=2), "v2_agreement")
@@ -61,6 +65,8 @@ def test_holdout_truth_does_not_choose_a_gate_or_train_calibrator():
     assert not _eligible_before(late, cutoff)
     assert not _eligible_before(replace(earlier, picked_at=_dt(29, 4)), cutoff)
     assert not _eligible_before(replace(earlier, result_source_observed_at=None), cutoff)
+    assert not _eligible_before(replace(earlier, result_ingested_at=None), cutoff)
+    assert not _eligible_before(replace(earlier, result_ingested_at=_dt(29, 5)), cutoff)
 
     winner = _pick(10, day=29, result="WON")
     loss = replace(winner, match_id=11, result="LOST", raw=.69)
@@ -128,6 +134,7 @@ def test_export_rejects_duplicate_invalid_probability_and_missing_timestamps():
         a1_side=1, a2_side=1, surface="HARD", tier="CHALLENGER",
         result_status="VOID", result_observed_at="2026-10-30T01:00:00+08:00",
         result_source_observed_at="2026-10-30T01:00:00+08:00",
+        result_ingested_at="2026-10-30T01:15:00+08:00",
     )
     parsed = parse_export({"data": [row]})
     assert len(parsed) == 1
@@ -147,6 +154,7 @@ def test_read_only_calibration_dataset_exposes_both_observation_timestamps():
     sql = (Path(__file__).parents[1] / "ops/calibration_dataset.sql").read_text()
     assert "mro.as_of AS result_observed_at" in sql
     assert "mro.source_observed_at AS result_source_observed_at" in sql
+    assert "mro.ingested_at AS result_ingested_at" in sql
     assert "source_observed_at<=p.picked_at" in sql
     assert "SELECT DISTINCT ON (match_id)" in sql
     assert "UPDATE match_result_observations" not in sql
