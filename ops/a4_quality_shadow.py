@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 from collections import Counter
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -125,12 +125,8 @@ def build_report(
             "guide_odds_available": sum(x["guide_odds_available"] for x in folds),
             "selected_sides_changed": 0,
             "a3_risks": dict(sorted(sum(
-                (Counter(x["a3_risk_counts"]) for x in ()), Counter()
-            ).items())) if not folds else dict(sorted(
-                (lambda total: total)(
-                    sum((Counter(x["a3_risk_counts"]) for x in folds), Counter())
-                ).items()
-            )),
+                (Counter(x["a3_risk_counts"]) for x in folds), Counter()
+            ).items())),
         },
         "daily": folds,
         "limitations": (
