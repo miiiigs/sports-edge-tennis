@@ -22,7 +22,7 @@ def _snapshot():
 def test_real_frozen_production_aggregates_keep_original_and_shadow_separate():
     result = analyze_snapshot(_snapshot())
     assert result["status"] == "OBSERVATIONAL_BASELINE_ONLY_NOT_A4_V3_VALIDATION"
-    assert result["source_as_of"] == "2026-11-10T10:05:32Z"
+    assert result["source_as_of"] == "2026-11-10T10:05:32.463946630Z"
     assert result["period"] == {"start": "2026-11-05", "end": "2026-11-09"}
     assert result["totals"]["original"] == {
         "picks": 124, "won": 63, "lost": 41, "void": 4,
