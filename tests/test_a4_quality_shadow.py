@@ -52,6 +52,7 @@ def _quote(p: FrozenPick, *, seen: datetime | None = None, ingested: datetime | 
         selected_decimal=selected_decimal, opposite_decimal=opposite_decimal,
         source=source, market_status=market_status,
         source_observed_at=seen, ingested_at=ingested or seen,
+        bookmaker_code="TEST_BOOK", source_snapshot_id="test-received-observation",
     )
 
 
