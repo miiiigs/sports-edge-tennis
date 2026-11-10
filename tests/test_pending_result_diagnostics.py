@@ -58,6 +58,21 @@ def _classify(evidence: PendingPickEvidence):
     return classify_pending_pick(evidence, now=NOW, recovery_window_start=WINDOW_START)
 
 
+def test_terminal_or_postponed_state_overrides_stale_future_start():
+    """A late feed can preserve a future start on an already terminal match."""
+    for fixture_state, expected in (
+        ("COMPLETED", REASON_TERMINAL_FIXTURE_WITHOUT_RESULT),
+        ("CANCELLED", REASON_TERMINAL_FIXTURE_WITHOUT_RESULT),
+        ("WALKOVER", REASON_TERMINAL_FIXTURE_WITHOUT_RESULT),
+        ("POSTPONED", "FIXTURE_POSTPONED"),
+    ):
+        item = _classify(_evidence(
+            latest_match_start_at=NOW + timedelta(hours=2),
+            latest_match_status=fixture_state,
+        ))
+        assert item.reason == expected
+
+
 def test_future_start_is_not_started():
     item = _classify(
         _evidence(
