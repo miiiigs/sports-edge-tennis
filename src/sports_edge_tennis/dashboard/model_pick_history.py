@@ -39,6 +39,9 @@ from sports_edge_tennis.dashboard.qualified_history import (
     daily_history_payload,
     load_qualified_history,
 )
+from sports_edge_tennis.dashboard.recent_quality_summary import (
+    latest_five_day_evidence,
+)
 from sports_edge_tennis.dashboard.pagination import (
     DEFAULT_PAGE_SIZE,
     build_page_url,
@@ -212,6 +215,7 @@ class ModelPickResultsView:
     aligned_summaries: tuple[DailyModelPickSummary, ...] = ()
     # Brian's acceptance always uses Manila dates, regardless of UI timezone.
     aligned_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
+    manager_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_regime: ModelRegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -812,6 +816,12 @@ def _load_history(
         )
         # Original first-production Manager ledger is retained for auditing.
         summaries = load_daily_model_pick_summaries(conn, timezone_name=tz.iana)
+        manager_acceptance_summaries = (
+            summaries if tz.iana == "Asia/Manila" else
+            load_daily_model_pick_summaries(
+                conn, timezone_name="Asia/Manila"
+            )
+        )
         current_regime = resolve_current_model_regime(conn)
         current_summaries: tuple[DailyModelPickSummary, ...] = ()
         started_at = None
@@ -854,6 +864,7 @@ def _load_history(
             all_summaries=summaries,
             aligned_summaries=aligned_summaries,
             aligned_acceptance_summaries=aligned_acceptance_summaries,
+            manager_acceptance_summaries=manager_acceptance_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -897,6 +908,28 @@ def _load_parallel_history():
             conn.close()
 
 
+def _live_five_day_evidence(
+    parallel_days, view: ModelPickResultsView,
+) -> dict[str, object] | None:
+    """Fail visibly when independent original and filtered ledgers disagree."""
+    if view.failed or not parallel_days:
+        return None
+    try:
+        manager = manager_five_day_target(
+            view.manager_acceptance_summaries,
+            as_of_date=_aligned_acceptance_today(),
+        )
+        return latest_five_day_evidence(
+            parallel_days,
+            as_of_date=_aligned_acceptance_today(),
+            manager=manager,
+            independent_original_days=view.aligned_acceptance_summaries,
+        )
+    except Exception:
+        log.exception("Five-day source-ledger comparison unavailable")
+        return None
+
+
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
     return {
         "picks": summary.picks,
@@ -934,6 +967,7 @@ def model_pick_results(
     parallel_days, parallel_history_error = (
         _load_parallel_history() if not view.failed else ((), True)
     )
+    recent_five_day = _live_five_day_evidence(parallel_days, view)
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -990,6 +1024,8 @@ def model_pick_results(
             "model_pick_history_error": view.failed,
             "qualified_parallel_history_days": parallel_days,
             "qualified_parallel_history_error": parallel_history_error,
+            "recent_five_day_evidence": recent_five_day,
+            "recent_five_day_error": recent_five_day is None,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
@@ -1020,6 +1056,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
         view.current_summaries, as_of_date=as_of_date
     )
     parallel_days, parallel_history_error = _load_parallel_history()
+    recent_five_day = _live_five_day_evidence(parallel_days, view)
 
     return JSONResponse(
         {
@@ -1034,6 +1071,8 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
             "qualified_parallel_history": (
                 None if parallel_history_error else daily_history_payload(parallel_days)
             ),
+            "recent_five_day_evidence": recent_five_day,
+            "recent_five_day_error": recent_five_day is None,
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
