@@ -2,7 +2,8 @@
 
 This module is offline and has NO production imports/writes. It operates on
 first-issued, pre-match values from the existing V2 original-pick ledger.
-Every A4 fit uses only results visible before the scored day. Market quotes
+Every A4 fit uses only results visible before EACH PICK ISSUANCE, including
+early-issued picks for a later match day. Market quotes
 are used for display-prioritization diagnostics, never to alter the selected
 winner, official pick population, stake, or canonical result.
 """
@@ -246,12 +247,25 @@ def report_day(
     for p in picks:
         if p.day != target_day or p.picked_at > evaluated_at:
             raise ValueError("wrong day or future-issued original pick")
-    model = fit_a4(history, cutoff)
+    history = tuple(history)
     quotes = tuple(quotes)
     scored = []
     lines = []
+    fitted_rows: list[int] = []
+    models: dict[datetime, A4Model | None] = {}
+
     for p in picks:
-        reliability = model.predict(p) if model else None
+        # An original pick may have been issued hours or days BEFORE its
+        # scheduled Manila match day. Training at that day's midnight would
+        # silently allow results learned AFTER the original selection.
+        # Freeze A4 no later than the FIRST-ISSUED original pick timestamp.
+        training_cutoff = min(cutoff, p.picked_at)
+        if training_cutoff not in models:
+            models[training_cutoff] = fit_a4(history, training_cutoff)
+        model = models[training_cutoff]
+        reliability = model.predict(p) if model is not None else None
+        if model is not None:
+            fitted_rows.append(model.trained_rows)
         priority = prioritize(p, reliability=reliability, quotes=quotes)
         lines.append(priority)
         if (model is not None and p.result in ("WON", "LOST")
@@ -291,15 +305,19 @@ def report_day(
             "missed_winners": original["WON"] - counted["WON"],
             "avoided_losses": original["LOST"] - counted["LOST"],
         }
-        if model is not None else None
+        if len(fitted_rows) == len(picks) and picks else None
     )
     return {
         "status": "RESEARCH_ONLY_NOT_LIVE",
         "model_version": MODEL_VERSION,
         "cutoff": cutoff.isoformat(),
         "evaluated_at": evaluated_at.isoformat(),
-        "a4_train_rows": model.trained_rows if model else 0,
-        "a4_fit_available": model is not None,
+        "a4_train_rows": min(fitted_rows) if fitted_rows else 0,
+        "a4_fit_available": bool(picks) and len(fitted_rows) == len(picks),
+        "a4_fitted_picks": len(fitted_rows),
+        "a4_unfitted_picks": len(picks) - len(fitted_rows),
+        "a4_max_train_rows": max(fitted_rows) if fitted_rows else 0,
+        "a4_training_cutoff_rule": "MIN(MANILA_MATCH_MIDNIGHT,FIRST_ISSUED_AT)",
         "original_picks": len(picks),
         "original_won": original["WON"],
         "original_lost": original["LOST"],
