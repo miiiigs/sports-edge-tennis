@@ -1,6 +1,7 @@
 """Regression tests for strictly prior A4 and non-selective Guide Odds."""
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -8,7 +9,7 @@ from sports_edge_tennis.performance.a4_quality_shadow import (
     FEATURES, MIN_TRAIN, MODEL_VERSION, GuideQuote, a3_risk, features, fit_a4,
     prioritize, report_day, usable_quote,
 )
-from sports_edge_tennis.performance.v2_quality_research import FrozenPick
+from sports_edge_tennis.performance.v2_quality_research import FrozenPick, parse_export
 from ops.a4_quality_shadow import build_report
 
 
@@ -187,3 +188,44 @@ def test_report_reconciles_original_ledger_without_exposing_match_ids():
     with pytest.raises(ValueError, match="cohort mismatch"):
         build_report((pick,), start=date(2026, 10, 27), end=date(2026, 10, 27),
                      evaluated_at=_utc(11, 1), expected=bad)
+
+
+def test_a3_abstention_reason_from_original_point_in_time_export():
+    row = {
+        "match_id": 9001, "manila_date": "2026-10-27",
+        "picked_at": "2026-10-26T08:00:00+00:00",
+        "aligned_pick_type": "MANAGER_CONSENSUS",
+        "selected_side": 1, "aligned_probability": "0.78",
+        "a1_side": 1, "a2_side": 1,
+        "a1_prob": "0.78", "a2_prob": "0.76",
+        "a3_status": "ABSTAINED", "a3_side": None,
+        "a3_abstain_reason_code": "INSUFFICIENT_MATCHUP_SUPPORT",
+        "surface": "HARD", "tier": "ATP_TOUR",
+        "result_status": "WON",
+        "result_observed_at": "2026-10-28T10:00:00+00:00",
+        "result_source_observed_at": "2026-10-28T10:00:00+00:00",
+        "result_ingested_at": "2026-10-28T10:00:00+00:00",
+    }
+    parsed, = parse_export({"data": [row]})
+    assert parsed.a3_reason == "INSUFFICIENT_MATCHUP_SUPPORT"
+    assert features(parsed)[-2] == 1.0
+    assert a3_risk(parsed) == "NO_EVIDENCE"
+    contradictory = replace(parsed, a3_side=2)
+    assert a3_risk(contradictory) == "UNKNOWN"
+
+
+def test_read_only_guide_sql_pins_both_odds_to_same_market_snapshot():
+    src = (Path(__file__).parents[1] / "ops/a4_guide_quotes.sql").read_text()
+    assert "raw.provider_code='ODDSPAPI'" in src
+    assert "o.source_snapshot_id=s.source_snapshot_id" in src
+    assert "o.raw_odds_observation_id=s.raw_odds_observation_id" in src
+    assert "s.as_of <= p.picked_at" in src
+    assert "o.as_of <= p.picked_at" in src
+    assert "s.ingested_at <= p.picked_at" in src
+    assert "o.ingested_at <= p.picked_at" in src
+    assert "s.source_observed_at <= p.picked_at" in src
+    assert "o.source_observed_at <= p.picked_at" in src
+    assert "o.bookmaker_code=s.bookmaker_code" in src
+    assert "SELECT DISTINCT ON (match_id)" in src
+    assert "UPDATE odds_snapshots" not in src
+    assert "DELETE FROM odds_snapshots" not in src
