@@ -45,10 +45,10 @@ def test_daily_training_cutoff_only_includes_results_visible_before_midnight():
         evaluated_at=_t(31),
     )
     folds = {fold["date"]: fold for fold in r["folds"]}
-    assert folds["2026-10-27"]["calibration_training"]["prior_visible_graded"] == 0
-    assert folds["2026-10-28"]["calibration_training"]["prior_visible_graded"] == 0
-    assert folds["2026-10-29"]["calibration_training"]["prior_visible_graded"] == 1
-    assert folds["2026-10-30"]["calibration_training"]["prior_visible_graded"] == 1
+    assert folds["2026-10-27"]["calibration_training"]["prior_visible_graded_min"] == 0
+    assert folds["2026-10-28"]["calibration_training"]["prior_visible_graded_min"] == 0
+    assert folds["2026-10-29"]["calibration_training"]["prior_visible_graded_min"] == 1
+    assert folds["2026-10-30"]["calibration_training"]["prior_visible_graded_min"] == 0
     assert (folds["2026-10-29"]["policies"]["original"]["won"],
             folds["2026-10-29"]["policies"]["original"]["lost"]) == (1, 1)
     assert (folds["2026-10-29"]["policies"]["confidence70"]["won"],
@@ -71,7 +71,7 @@ def test_result_ingested_after_folds_cutoff_is_excluded_from_training():
         start=date(2026, 10, 29), end=date(2026, 10, 29),
         evaluated_at=_t(31),
     )
-    assert r["folds"][0]["calibration_training"]["prior_visible_graded"] == 1
+    assert r["folds"][0]["calibration_training"]["prior_visible_graded_min"] == 1
     assert r["folds"][0]["policies"]["original"]["lost"] == 1
 
 
@@ -235,3 +235,25 @@ def test_current_day_and_future_days_never_count_as_73_acceptance():
     with pytest.raises(ValueError, match="coverage_floor"):
         acceptance_evidence([fold], "v2_agreement",
                             current_day=date(2026, 11, 7), coverage_floor=1.2)
+
+
+def test_early_issue_freezes_calibration_before_original_prediction_time():
+    """Result known before match-day midnight but AFTER issuance is forbidden."""
+    previous = _p(1, day=27, result="WON", observed=_t(28, 10))
+    # Manila Oct29 midnight = Oct28 16:00 UTC; this result was
+    # source-observed at 10:00, AFTER the Oct28 06:00 issued pick.
+    early_issued = _p(2, day=29, observed=_t(30, 10))
+    r = walk_forward(
+        (previous, early_issued),
+        start=date(2026, 10, 29), end=date(2026, 10, 29),
+        evaluated_at=_t(31),
+    )
+    fold = r["folds"][0]
+    assert fold["calibration_training"]["fit_cutoff_rule"] == (
+        "MIN(MATCH_DAY_MIDNIGHT,FIRST_ISSUED_AT)"
+    )
+    assert fold["calibration_training"]["prior_visible_graded_min"] == 0
+    assert fold["calibration_training"]["fitted_picks"] == 0
+    assert fold["daily_calibration"]["calibrated_graded"] == 0
+    assert fold["policies"]["original"]["won"] == 1
+    assert fold["policies"]["v2_calibrated"]["picks"] == 0
