@@ -129,11 +129,15 @@ class GuideQuote:
     source: str
     source_observed_at: datetime
     ingested_at: datetime
+    bookmaker_code: str
+    source_snapshot_id: str
     market_status: str = "OPEN"
 
     def __post_init__(self) -> None:
         if self.match_id < 1 or self.selected_side not in (1, 2):
             raise ValueError("invalid quote match / selected side")
+        if not self.bookmaker_code.strip() or not self.source_snapshot_id.strip():
+            raise ValueError("quote provenance requires bookmaker and snapshot ID")
         if (not isfinite(self.selected_decimal)
                 or not isfinite(self.opposite_decimal)
                 or min(self.selected_decimal, self.opposite_decimal) <= 1.0):
