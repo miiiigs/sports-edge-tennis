@@ -93,3 +93,37 @@ def test_rejects_changed_original_math_missing_day_or_shadow_outcome_inflation()
     flawed["daily"]["2026-11-09"]["confidence70"]["graded"] = 30
     with pytest.raises(ValueError):
         analyze_snapshot(flawed)
+
+
+def test_nov10_2205_updated_ledger_preserves_all_populations_and_pending_truth():
+    """A new later as-of is a new frozen snapshot, not silent old-score rewriting."""
+    file = (Path(__file__).parents[1] /
+            "research/tennis_a3_a4_guide_20261110" /
+            "production_snapshot_20261110_2205PHT.json")
+    data = analyze_snapshot(json.loads(file.read_text("utf-8")))
+    assert data["source_as_of"] == "2026-11-10T14:05:38.057828108Z"
+    assert data["totals"]["original"] == {
+        "picks": 124, "won": 64, "lost": 41, "void": 4,
+        "pending": 15, "graded": 105,
+    }
+    assert data["totals"]["confidence70"] == {
+        "picks": 56, "won": 34, "lost": 14, "void": 2,
+        "pending": 6, "graded": 48,
+    }
+    assert data["totals"]["manager_only"] == {
+        "picks": 69, "won": 35, "lost": 27, "void": 2,
+        "pending": 5, "graded": 62,
+    }
+    assert data["original_win_rate"] == pytest.approx(64/105)
+    assert data["confidence70_win_rate"] == pytest.approx(34/48)
+    assert data["manager_only_win_rate"] == pytest.approx(35/62)
+    assert data["missed_winners"] == 30
+    assert data["avoided_losses"] == 27
+    assert data["fully_settled_days_met_73"] == {
+        "original": 1, "confidence70": 1, "manager_only": 0,
+    }
+    last = data["daily"][-1]
+    assert last["confidence70"]["pending"] == 5
+    assert last["confidence70"]["worst_if_all_pending_lose"] == pytest.approx(16/26)
+    assert last["confidence70"]["best_if_all_pending_win"] == pytest.approx(21/26)
+    assert last["confidence70"]["research_day_status"] == "UNSETTLED_OUTCOME_DEPENDENT"
