@@ -12,10 +12,11 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from math import exp, isfinite, log
-from typing import Iterable, Mapping, Sequence
+from typing import Iterable, Sequence
 
 from sports_edge_tennis.performance.calibration import brier, log_loss
-from sports_edge_tennis.performance.v2_quality_research import FrozenPick, _eligible_before
+from sports_edge_tennis.performance.v2_quality_research import FrozenPick, MANILA, _eligible_before
+from sports_edge_tennis.performance.v2_walkforward import _known_at
 
 MODEL_VERSION = "A4_RELIABILITY_SHADOW_20261110_V1"
 MIN_TRAIN = 250
@@ -222,28 +223,35 @@ def prioritize(
 def report_day(
     picks: Sequence[FrozenPick], *,
     history: Iterable[FrozenPick], cutoff: datetime,
+    evaluated_at: datetime,
     quotes: Iterable[GuideQuote] = (),
 ) -> dict[str, object]:
-    """One historical day, no training on scored future/holdout outcomes."""
+    """One historical day, strictly prior training and as-of visible scores."""
+    if evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+        raise ValueError("evaluated_at must be timezone-aware")
+    if cutoff.tzinfo is None or cutoff.utcoffset() is None or cutoff > evaluated_at:
+        raise ValueError("invalid day cutoff")
+    target_day = cutoff.astimezone(MANILA).date()
+    for p in picks:
+        if p.day != target_day or p.picked_at > evaluated_at:
+            raise ValueError("wrong day or future-issued original pick")
     model = fit_a4(history, cutoff)
     quotes = tuple(quotes)
     scored = []
     lines = []
     for p in picks:
-        if p.picked_at >= cutoff:
-            # A day-specific cutoff is midnight BEFORE issuance. Require
-            # candidate to have been issued on/after that cutoff.
-            pass
         reliability = model.predict(p) if model else None
         priority = prioritize(p, reliability=reliability, quotes=quotes)
         lines.append(priority)
-        if model is not None and p.result in ("WON", "LOST"):
+        if (model is not None and p.result in ("WON", "LOST")
+                and _known_at(p, evaluated_at)):
             scored.append((p.raw, reliability, int(p.result == "WON")))
     priority_counts = dict(sorted(Counter(x["priority"] for x in lines).items()))
     return {
         "status": "RESEARCH_ONLY_NOT_LIVE",
         "model_version": MODEL_VERSION,
         "cutoff": cutoff.isoformat(),
+        "evaluated_at": evaluated_at.isoformat(),
         "a4_train_rows": model.trained_rows if model else 0,
         "a4_fit_available": model is not None,
         "original_picks": len(picks),
