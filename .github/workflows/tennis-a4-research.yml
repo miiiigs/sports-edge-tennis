@@ -1,0 +1,48 @@
+name: Tennis A3 A4 Guide Research (DB Free)
+
+on:
+  pull_request:
+    paths:
+      - "src/sports_edge_tennis/performance/a4_quality_shadow.py"
+      - "src/sports_edge_tennis/performance/v2_quality_research.py"
+      - "src/sports_edge_tennis/performance/v2_walkforward.py"
+      - "ops/a4_quality_shadow.py"
+      - "ops/a4_guide_quotes.sql"
+      - "tests/test_a4_quality_shadow.py"
+      - "research/tennis_a3_a4_guide_20261110/**"
+      - ".github/workflows/tennis-a4-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  a4-research:
+    name: A3 A4 Guide historical tests (no external API or database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install isolated test runner
+        run: python -m pip install "pytest>=8,<10"
+      - name: Compile A3 A4 source and tests
+        run: |
+          python -m py_compile \
+            src/sports_edge_tennis/performance/a4_quality_shadow.py \
+            src/sports_edge_tennis/performance/v2_quality_research.py \
+            src/sports_edge_tennis/performance/v2_walkforward.py \
+            ops/a4_quality_shadow.py \
+            tests/test_a4_quality_shadow.py
+      - name: Run focused A3 A4 Guide regressions
+        env:
+          PYTHONPATH: src
+        run: python -m pytest -q tests/test_a4_quality_shadow.py
+      - name: Verify CLI arguments
+        env:
+          PYTHONPATH: src
+        run: python ops/a4_quality_shadow.py --help
