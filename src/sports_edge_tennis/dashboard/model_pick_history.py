@@ -930,6 +930,71 @@ def _live_five_day_evidence(
         return None
 
 
+def _live_pending_audit() -> dict[str, object] | None:
+    """Separate read-only pending ledger; a failed audit cannot mask results."""
+    conn = None
+    try:
+        from sports_edge_tennis.live.pending_result_diagnostics import (
+            load_pending_result_diagnostics,
+        )
+        conn = _connect()
+        if conn is None:
+            return None
+        report = load_pending_result_diagnostics(
+            conn, lookback_days=90, limit=500,
+        )
+        investigate = frozenset({
+            "NO_API_TENNIS_LINK", "PROVIDER_FIXTURE_NOT_REOBSERVED",
+            "TERMINAL_FIXTURE_WITHOUT_RESULT", "RESULT_DELAYED",
+        })
+        details = [
+            {
+                "match_id": row.match_id,
+                "reason": row.reason,
+                "age_bucket": row.age_bucket,
+                "hours_since_start": (
+                    round(row.hours_since_start, 1)
+                    if row.hours_since_start is not None else None
+                ),
+                "provider_fixture_status": row.evidence.latest_match_status,
+                "latest_start": (
+                    row.evidence.latest_match_start_at.isoformat()
+                    if row.evidence.latest_match_start_at else None
+                ),
+                "last_observed": (
+                    row.evidence.last_fixture_observed_at.isoformat()
+                    if row.evidence.last_fixture_observed_at else None
+                ),
+                "rescheduled": "RESCHEDULED" in row.flags,
+                "requires_investigation": row.reason in investigate,
+            } for row in report.items
+        ]
+        details.sort(
+            key=lambda row: (
+                not row["requires_investigation"],
+                row["reason"], row["match_id"]
+            )
+        )
+        return {
+            "generated_at": report.generated_at.isoformat(),
+            "total": report.total,
+            "by_reason": report.by_reason,
+            "by_age": report.by_age,
+            "by_flag": report.by_flag,
+            "requires_investigation": sum(
+                row["requires_investigation"] for row in details
+            ),
+            "items": details,
+            "status": "PENDING_PROVIDER_STATUS_UNCONFIRMED",
+        }
+    except Exception:
+        log.exception("Read-only per-match pending diagnostics unavailable")
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
     return {
         "picks": summary.picks,
@@ -968,6 +1033,7 @@ def model_pick_results(
         _load_parallel_history() if not view.failed else ((), True)
     )
     recent_five_day = _live_five_day_evidence(parallel_days, view)
+    pending_case_audit = _live_pending_audit()
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -1026,6 +1092,7 @@ def model_pick_results(
             "qualified_parallel_history_error": parallel_history_error,
             "recent_five_day_evidence": recent_five_day,
             "recent_five_day_error": recent_five_day is None,
+            "pending_case_audit": pending_case_audit,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
@@ -1057,6 +1124,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     )
     parallel_days, parallel_history_error = _load_parallel_history()
     recent_five_day = _live_five_day_evidence(parallel_days, view)
+    pending_case_audit = _live_pending_audit()
 
     return JSONResponse(
         {
@@ -1073,6 +1141,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
             ),
             "recent_five_day_evidence": recent_five_day,
             "recent_five_day_error": recent_five_day is None,
+            "pending_case_audit": pending_case_audit,
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
