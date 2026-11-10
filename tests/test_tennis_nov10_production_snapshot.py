@@ -37,6 +37,12 @@ def test_real_frozen_production_aggregates_keep_original_and_shadow_separate():
     assert result["confidence70_selection_coverage"] == pytest.approx(56/124)
     assert result["original_win_rate"] == pytest.approx(63/104)
     assert result["confidence70_win_rate"] == pytest.approx(33/47)
+    assert result["original_win_rate_wilson95"][0] == pytest.approx(.51, abs=.01)
+    assert result["original_win_rate_wilson95"][1] == pytest.approx(.694, abs=.01)
+    assert result["confidence70_win_rate_wilson95"][0] == pytest.approx(.56, abs=.01)
+    assert result["confidence70_win_rate_wilson95"][1] == pytest.approx(.813, abs=.01)
+    assert (result["confidence70_win_rate_wilson95"][0]
+            < result["original_win_rate_wilson95"][1])
     assert result["graded_accuracy_gap_percentage_points"] == pytest.approx(
         100*(33/47-63/104)
     )
