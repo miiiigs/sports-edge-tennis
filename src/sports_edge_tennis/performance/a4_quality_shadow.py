@@ -38,7 +38,7 @@ FEATURES = (
 def a3_risk(pick: FrozenPick) -> str:
     """Do not interpret missing A3 evidence as an upset prediction."""
     if pick.a3_status == "ABSTAINED":
-        return "NO_EVIDENCE"
+        return "NO_EVIDENCE" if pick.a3_side is None else "UNKNOWN"
     if pick.a3_status != "PREDICTED" or pick.a3_side not in (1, 2):
         return "UNKNOWN"
     return "OPPOSES_PICK" if pick.a3_side != pick.side else "CONFIRMS_PICK"
@@ -145,6 +145,8 @@ class GuideQuote:
         for stamp in (self.source_observed_at, self.ingested_at):
             if stamp.tzinfo is None or stamp.utcoffset() is None:
                 raise ValueError("quote timestamps must be timezone-aware")
+        if self.ingested_at < self.source_observed_at:
+            raise ValueError("quote ingested before it was source-observed")
 
     def no_vig_selected(self) -> float:
         implied_a = 1.0 / self.selected_decimal
