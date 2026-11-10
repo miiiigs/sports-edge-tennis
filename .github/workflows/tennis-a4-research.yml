@@ -9,6 +9,7 @@ on:
       - "ops/a4_quality_shadow.py"
       - "ops/a4_guide_quotes.sql"
       - "tests/test_a4_quality_shadow.py"
+      - "tests/test_tennis_nov10_production_snapshot.py"
       - "research/tennis_a3_a4_guide_20261110/**"
       - ".github/workflows/tennis-a4-research.yml"
   workflow_dispatch:
@@ -37,11 +38,13 @@ jobs:
             src/sports_edge_tennis/performance/v2_quality_research.py \
             src/sports_edge_tennis/performance/v2_walkforward.py \
             ops/a4_quality_shadow.py \
-            tests/test_a4_quality_shadow.py
+            tests/test_a4_quality_shadow.py \
+            tests/test_tennis_nov10_production_snapshot.py \
+            research/tennis_a3_a4_guide_20261110/analyze_production_snapshot.py
       - name: Run focused A3 A4 Guide regressions
         env:
           PYTHONPATH: src
-        run: python -m pytest -q tests/test_a4_quality_shadow.py
+        run: python -m pytest -q tests/test_a4_quality_shadow.py tests/test_tennis_nov10_production_snapshot.py
       - name: Verify CLI arguments
         env:
           PYTHONPATH: src
