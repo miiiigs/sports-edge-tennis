@@ -32,6 +32,12 @@ def test_real_frozen_production_aggregates_keep_original_and_shadow_separate():
         "picks": 56, "won": 33, "lost": 14, "void": 2,
         "pending": 7, "graded": 47,
     }
+    assert result["totals"]["manager_only"] == {
+        "picks": 69, "won": 35, "lost": 25, "void": 2,
+        "pending": 7, "graded": 60,
+    }
+    assert result["manager_only_win_rate"] == pytest.approx(35/60)
+    assert result["manager_only_cohort_independent"] is True
     assert result["avoided_losses"] == 27
     assert result["missed_winners"] == 30
     assert result["confidence70_selection_coverage"] == pytest.approx(56/124)
@@ -47,7 +53,7 @@ def test_real_frozen_production_aggregates_keep_original_and_shadow_separate():
         100*(33/47-63/104)
     )
     assert result["fully_settled_days_met_73"] == {
-        "original": 1, "confidence70": 1,
+        "original": 1, "confidence70": 1, "manager_only": 0,
     }
 
 
