@@ -31,6 +31,7 @@ FEATURES = (
     "confidence_centered", "a1a2_gap", "a1a2_misaligned",
     "challenger", "hard", "clay", "wide_spread",
     "a3_confirmed", "a3_opposes", "a3_missing",
+    "a3_insufficient_support", "a3_surface_unknown",
 )
 
 
@@ -57,6 +58,8 @@ def features(pick: FrozenPick) -> tuple[float, ...]:
         float(risk == "CONFIRMS_PICK"),
         float(risk == "OPPOSES_PICK"),
         float(risk in ("UNKNOWN", "NO_EVIDENCE")),
+        float(pick.a3_reason == "INSUFFICIENT_MATCHUP_SUPPORT"),
+        float(pick.a3_reason == "UNKNOWN_SURFACE"),
     )
 
 
@@ -247,6 +250,10 @@ def report_day(
                 and _known_at(p, evaluated_at)):
             scored.append((p.raw, reliability, int(p.result == "WON")))
     priority_counts = dict(sorted(Counter(x["priority"] for x in lines).items()))
+    observed = [
+        p.result if _known_at(p, evaluated_at) else "PENDING" for p in picks
+    ]
+    original = Counter(observed)
     return {
         "status": "RESEARCH_ONLY_NOT_LIVE",
         "model_version": MODEL_VERSION,
@@ -255,10 +262,18 @@ def report_day(
         "a4_train_rows": model.trained_rows if model else 0,
         "a4_fit_available": model is not None,
         "original_picks": len(picks),
+        "original_won": original["WON"],
+        "original_lost": original["LOST"],
+        "original_void": original["VOID"],
+        "original_pending": original["PENDING"],
         "selected_sides_changed": 0,
         "guide_odds_available": sum(x["guide_odds_status"] == "AVAILABLE" for x in lines),
         "priority_counts": priority_counts,
         "a3_risk_counts": dict(sorted(Counter(x["a3_risk"] for x in lines).items())),
+        "a3_abstain_reason_counts": dict(sorted(Counter(
+            p.a3_reason or "NOT_RECORDED" for p in picks
+            if p.a3_status == "ABSTAINED"
+        ).items())),
         "graded": len(scored),
         "raw_brier": brier([(raw, y) for raw, _, y in scored]),
         "a4_brier": brier([(rel, y) for _, rel, y in scored]),
