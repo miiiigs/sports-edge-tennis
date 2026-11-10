@@ -211,7 +211,7 @@
       <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
         <table class="data">
           <thead><tr><th scope="col">Match ID</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Provider status</th><th scope="col">Latest scheduled (UTC offset included)</th><th scope="col">Last provider observation</th><th scope="col">Flags</th></tr></thead>
-          <tbody>{% for item in pending_case_audit.items %}
+          <tbody>{% for item in pending_case_audit['items'] %}
             <tr>
               <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
               <td>{{ item.reason | replace('_',' ') }}</td>
