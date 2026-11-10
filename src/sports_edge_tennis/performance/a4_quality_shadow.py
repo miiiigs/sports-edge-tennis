@@ -198,6 +198,8 @@ def prioritize(
         "priority": "UNRANKED",
         "changes_pick": False,
     }
+    if quote is not None:
+        base["no_vig_market_probability"] = quote.no_vig_selected()
     if reliability is None:
         return base
     if not 0 <= reliability <= 1 or not isfinite(reliability):
