@@ -229,3 +229,57 @@ def test_read_only_guide_sql_pins_both_odds_to_same_market_snapshot():
     assert "SELECT DISTINCT ON (match_id)" in src
     assert "UPDATE odds_snapshots" not in src
     assert "DELETE FROM odds_snapshots" not in src
+
+
+def test_a4_never_trains_on_results_arriving_after_early_issued_pick():
+    # Nov 02 Manila match day starts Nov 01 16:00 UTC. Original picks may
+    # have been issued at Nov 01 08:00 UTC. A result ingested at 12:00 UTC
+    # is known by MATCH DAY but was NOT known when the early pick was made.
+    history = list(_training())
+    late = _utc(11, 1, 12)
+    history[0] = replace(
+        history[0], result_as_of=late,
+        result_source_observed_at=late, result_ingested_at=late,
+    )
+    a = _pick(
+        90001, day=date(2026, 11, 2), picked_at=_utc(11, 1, 8),
+        observed=_utc(11, 3), result="WON",
+    )
+    b = replace(a, match_id=90002, picked_at=_utc(11, 1, 14))
+    cutoff = datetime(
+        2026, 11, 2, tzinfo=__import__("zoneinfo").ZoneInfo("Asia/Manila")
+    )
+    result = report_day(
+        (a, b), history=history + [a, b], cutoff=cutoff,
+        evaluated_at=_utc(11, 4),
+    )
+    assert result["a4_fit_available"]
+    assert result["a4_fitted_picks"] == 2
+    assert result["a4_train_rows"] == len(history) - 1
+    assert result["a4_max_train_rows"] == len(history)
+    assert result["a4_training_cutoff_rule"].endswith("FIRST_ISSUED_AT)")
+    assert result["selected_sides_changed"] == 0
+
+
+def test_a4_daily_output_exposes_pending_and_avoided_loss_without_claiming_lift():
+    history = _training()
+    start = date(2026, 11, 2)
+    first = _pick(90011, day=start, picked_at=_utc(11, 1, 8),
+                  observed=_utc(11, 3), result="WON")
+    second = replace(first, match_id=90012, result="LOST")
+    third = replace(first, match_id=90013,
+                    result_ingested_at=_utc(11, 6), result="WON")
+    cutoff = datetime(
+        2026, 11, 2, tzinfo=__import__("zoneinfo").ZoneInfo("Asia/Manila")
+    )
+    out = report_day(
+        (first, second, third), history=history + (first, second, third),
+        cutoff=cutoff, evaluated_at=_utc(11, 4),
+    )
+    assert out["original_won"] == 1
+    assert out["original_lost"] == 1
+    assert out["original_pending"] == 1
+    assert out["original_picks"] == 3
+    assert out["graded"] == 2
+    assert out["hypothetical_priority_filter"]["research_only_not_actual_filter"]
+    assert out["selected_sides_changed"] == 0
