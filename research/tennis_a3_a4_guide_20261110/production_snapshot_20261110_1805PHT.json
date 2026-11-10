@@ -1,0 +1,156 @@
+{
+  "kind": "FROZEN_PRODUCTION_AGGREGATE_RESEARCH_EVIDENCE",
+  "scope": "ALL_ORIGINAL_ALIGNED_MODEL_PICKS vs PIT_CONFIDENCE_GE70_V1",
+  "as_of": "2026-11-10T10:05:32Z",
+  "timezone": "Asia/Manila",
+  "period": {
+    "start": "2026-11-05",
+    "end": "2026-11-09"
+  },
+  "provider": "Railway tennis-live-runner production deploy logs",
+  "caveats": [
+    "Latest available snapshot of past five Manila match dates, not a trained A4/V3 result.",
+    "Pending can settle later; avoid interpreting provisional W/L as fully settled.",
+    "Prior research has examined these dates: not independent validation of new A4.",
+    "Research ≥70% threshold is separate from live original picks."
+  ],
+  "daily": {
+    "2026-11-05": {
+      "original": {
+        "picks": 19,
+        "won": 12,
+        "lost": 7,
+        "void": 0,
+        "pending": 0,
+        "graded": 19,
+        "reported_win_rate_pct": "63.2",
+        "source_timestamp": "2026-11-10T10:05:32.295049603Z",
+        "status": "BELOW_73"
+      },
+      "confidence70": {
+        "picks": 6,
+        "won": 4,
+        "lost": 2,
+        "void": 0,
+        "pending": 0,
+        "graded": 6,
+        "reported_win_rate_pct": "66.7",
+        "source_timestamp": "2026-11-10T10:05:32.463926030Z",
+        "status": "RESEARCH_BELOW73",
+        "coverage_pct": 31.6,
+        "avoided_losses": 5,
+        "missed_winners": 8
+      }
+    },
+    "2026-11-06": {
+      "original": {
+        "picks": 8,
+        "won": 6,
+        "lost": 2,
+        "void": 0,
+        "pending": 0,
+        "graded": 8,
+        "reported_win_rate_pct": "75.0",
+        "source_timestamp": "2026-11-10T10:05:32.295061673Z",
+        "status": "MET_73"
+      },
+      "confidence70": {
+        "picks": 2,
+        "won": 1,
+        "lost": 1,
+        "void": 0,
+        "pending": 0,
+        "graded": 2,
+        "reported_win_rate_pct": "50.0",
+        "source_timestamp": "2026-11-10T10:05:32.463932510Z",
+        "status": "TOO_FEW_GRADED",
+        "coverage_pct": 25,
+        "avoided_losses": 1,
+        "missed_winners": 5
+      }
+    },
+    "2026-11-07": {
+      "original": {
+        "picks": 10,
+        "won": 5,
+        "lost": 4,
+        "void": 1,
+        "pending": 0,
+        "graded": 9,
+        "reported_win_rate_pct": "55.6",
+        "source_timestamp": "2026-11-10T10:05:32.295067953Z",
+        "status": "BELOW_73"
+      },
+      "confidence70": {
+        "picks": 5,
+        "won": 4,
+        "lost": 1,
+        "void": 0,
+        "pending": 0,
+        "graded": 5,
+        "reported_win_rate_pct": "80.0",
+        "source_timestamp": "2026-11-10T10:05:32.463936830Z",
+        "status": "RESEARCH_MET73",
+        "coverage_pct": 50,
+        "avoided_losses": 3,
+        "missed_winners": 1
+      }
+    },
+    "2026-11-08": {
+      "original": {
+        "picks": 26,
+        "won": 14,
+        "lost": 11,
+        "void": 0,
+        "pending": 1,
+        "graded": 25,
+        "reported_win_rate_pct": "56.0",
+        "source_timestamp": "2026-11-10T10:05:32.295073153Z",
+        "status": "UNSETTLED"
+      },
+      "confidence70": {
+        "picks": 15,
+        "won": 9,
+        "lost": 5,
+        "void": 0,
+        "pending": 1,
+        "graded": 14,
+        "reported_win_rate_pct": "64.3",
+        "source_timestamp": "2026-11-10T10:05:32.463943080Z",
+        "status": "UNSETTLED",
+        "coverage_pct": 57.7,
+        "avoided_losses": 6,
+        "missed_winners": 5
+      }
+    },
+    "2026-11-09": {
+      "original": {
+        "picks": 61,
+        "won": 26,
+        "lost": 17,
+        "void": 3,
+        "pending": 15,
+        "graded": 43,
+        "reported_win_rate_pct": "60.5",
+        "source_timestamp": "2026-11-10T10:05:32.295077373Z",
+        "status": "UNSETTLED"
+      },
+      "confidence70": {
+        "picks": 28,
+        "won": 15,
+        "lost": 5,
+        "void": 2,
+        "pending": 6,
+        "graded": 20,
+        "reported_win_rate_pct": "75.0",
+        "source_timestamp": "2026-11-10T10:05:32.463946630Z",
+        "status": "UNSETTLED",
+        "coverage_pct": 45.9,
+        "avoided_losses": 12,
+        "missed_winners": 11
+      }
+    }
+  },
+  "pending_triage_latest": "PENDING_RECOVERY_TRIAGE total=53 actionable=6 actions=BACKUP_GATED_WINNERLESS_WALKOVER:2,REVIEW_CANONICAL_API_TENNIS_ID:1,VERIFY_HISTORICAL_PROVIDER_EVENT:1,VERIFY_RECENT_PROVIDER_EVENT:2,WAIT_FOR_AUTHORITATIVE_TERMINAL:1,WAIT_NOT_STARTED_OR_POSTPONED:46 mode=READ_ONLY NO_INFERRED_RESULTS",
+  "odds_latest": "OFFERED_ODDS_UNAVAILABLE provider=ODDSPAPI_TENNIS kind=HTTP_403 class=FORBIDDEN restriction=SUBSCRIPTION_RESTRICTED"
+}
