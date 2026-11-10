@@ -260,6 +260,37 @@ def report_day(
         p.result if _known_at(p, evaluated_at) else "PENDING" for p in picks
     ]
     original = Counter(observed)
+    outcomes_by_priority: dict[str, Counter[str]] = {}
+    for signal, outcome in zip(lines, observed):
+        key = str(signal["priority"])
+        outcomes_by_priority.setdefault(key, Counter())[outcome] += 1
+    priority_evidence = {}
+    for name, values in sorted(outcomes_by_priority.items()):
+        won, lost = values["WON"], values["LOST"]
+        count = sum(values.values())
+        priority_evidence[name] = {
+            "picks": count, "won": won, "lost": lost,
+            "void": values["VOID"], "pending": values["PENDING"],
+            "graded": won + lost,
+            "win_rate": won / (won + lost) if won + lost else None,
+            "coverage": count / len(picks) if picks else None,
+        }
+    prioritized = {
+        "MODEL_PRIORITY_ONLY", "GUIDE_SUPPORTS_HIGH_PRIORITY"
+    }
+    counted = Counter()
+    for name in prioritized:
+        counted.update(outcomes_by_priority.get(name, Counter()))
+    hypothetical_priority_filter = (
+        {
+            "research_only_not_actual_filter": True,
+            "retained": sum(counted.values()),
+            "won": counted["WON"], "lost": counted["LOST"],
+            "missed_winners": original["WON"] - counted["WON"],
+            "avoided_losses": original["LOST"] - counted["LOST"],
+        }
+        if model is not None else None
+    )
     return {
         "status": "RESEARCH_ONLY_NOT_LIVE",
         "model_version": MODEL_VERSION,
@@ -275,6 +306,8 @@ def report_day(
         "selected_sides_changed": 0,
         "guide_odds_available": sum(x["guide_odds_status"] == "AVAILABLE" for x in lines),
         "priority_counts": priority_counts,
+        "shadow_priority_outcomes": priority_evidence,
+        "hypothetical_priority_filter": hypothetical_priority_filter,
         "a3_risk_counts": dict(sorted(Counter(x["a3_risk"] for x in lines).items())),
         "a3_abstain_reason_counts": dict(sorted(Counter(
             p.a3_reason or "NOT_RECORDED" for p in picks
