@@ -56,6 +56,8 @@ def _load_guide_quotes(path: Path | None) -> tuple[GuideQuote, ...]:
                 item["source_observed_at"], required=True,
             ),
             ingested_at=_datetime(item["ingested_at"], required=True),
+            bookmaker_code=str(item["bookmaker_code"]),
+            source_snapshot_id=str(item["source_snapshot_id"]),
             market_status=str(item.get("market_status", "OPEN")),
         ))
     return tuple(quotes)
