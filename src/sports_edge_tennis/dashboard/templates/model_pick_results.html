@@ -7,16 +7,8 @@
 {% block content %}
 <header class="page-header">
   <h1 class="page-title">Model Picks Results</h1>
-  <p class="page-subtitle">How often the model's selected player actually won.</p>
-  <p class="page-note">
-    Model Picks includes qualifying Manager picks and strong A1+A2 tracking picks
-    that meet the current 60% rule. A Manager pick uses the Manager consensus
-    probability. A wide-spread tracking pick is one where the Manager did not bet,
-    A1 and A2 agreed on the same player, and their average confidence was still at
-    least 60% — it is shown with its own label and is never counted as a Value Bet.
-    One model pick is counted per sporting match, using the first qualifying
-    evaluation. This ignores betting price and value.
-  </p>
+  <p class="page-subtitle">Actual model performance, pending results, and clearly separated research on higher-quality picks.</p>
+  <p class="page-note">Every original qualifying Model Pick remains counted: Manager consensus and A1/A2 wide-spread tracking (both at least 60% confidence). Only the first qualifying pick per match counts. Actual win rate excludes pending and void results from the graded denominator; it does not depend on betting odds.</p>
 </header>
 
 {% if model_pick_history_error %}
@@ -32,6 +24,264 @@
 </section>
 
 {% else %}
+<section class="section" aria-label="Actual results and quality-filter research" style="margin-top: 0;">
+  <h2 class="section-title">Results at a glance</h2>
+  <p class="section-note">The live <a href="/today?date={{ selected_date.isoformat() if selected_date else performance_as_of.isoformat() }}&amp;tz=philippines">Original vs. Qualified ≥70% parallel comparison</a> shows both groups side by side for a selected match day. Qualified research remains separate from the official original 73% scorecard below.</p>
+  <div class="stat-grid">
+    <div class="stat"><span class="stat-value">{{ pct(aligned_live_windows.all_time.hit_rate) }}</span><span class="stat-label">Actual aligned win rate</span><span class="stat-note">All original graded Model Picks</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.wins }}–{{ aligned_live_windows.all_time.losses }}</span><span class="stat-label">Actual wins and losses</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_live_windows.all_time.pending }}</span><span class="stat-label">Unsettled original picks</span><span class="stat-note">Never counted as a loss or hidden</span></div>
+    <div class="stat"><span class="stat-value">{{ aligned_accuracy_target.completed_qualifying_days }} / 5</span><span class="stat-label">Qualifying settled days at 73%+</span><span class="stat-note">All aligned picks · Manila dates</span></div>
+  </div>
+  <details class="no-bet-disclosure" style="margin-top: 14px;" aria-label="Quality-filter research comparison">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Quality Filter Research · historical comparison</span><span class="no-bet-toggle-subtitle">What happens when weaker-confidence selections are skipped? Not live.</span></span><span class="no-bet-toggle-icon" aria-hidden="true">⌄</span></summary>
+    <div class="no-bet-panel">
+      <p class="section-note"><strong>Frozen research snapshot for matches 24–27 Oct, captured 28 Oct 2026 at 03:05 UTC.</strong> Match outcomes have continued settling since this snapshot, so its counts must not be mistaken for current actual results. These are retrospective comparisons, not live-filter performance or Brian's five-day acceptance metric. The proposed multi-factor approach also considers A1/A2 agreement, known surface and competition tier, but its improved win rate has <strong>not yet been validated</strong>.</p>
+      <div class="table-wrap" role="region" aria-label="Historical confidence filter comparison" tabindex="0">
+        <table class="data">
+          <thead><tr><th scope="col">Historical approach</th><th scope="col">Graded W–L</th><th scope="col">Win rate</th><th scope="col">Picks retained</th><th scope="col">Winners skipped</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Original aligned picks</th><td>53–33</td><td>61.6%</td><td>98 / 98 (100%)</td><td>0</td><td>Original at snapshot</td></tr>
+            <tr><th scope="row">Confidence at least 70%</th><td>29–14</td><td>67.4%</td><td>51 / 98 (52.0%)</td><td>24</td><td>Retrospective only</td></tr>
+            <tr><th scope="row">Confidence at least 80%</th><td>12–5</td><td>70.6%</td><td>20 / 98 (20.4%)</td><td>41</td><td>Retrospective only</td></tr>
+            <tr><th scope="row">Multi-factor quality filter</th><td>Not validated</td><td>—</td><td>Unknown</td><td>Unknown</td><td>Research / shadow test required</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note">At this frozen snapshot, the 98 original picks included six voids and six pending results. Current actual picks and results are shown above and in the live tables below. A higher filtered percentage does not prove better performance: the filters missed real winners, and neither threshold achieved 73% on every completed day. No live prediction rules or original results are changed by this page.</p>
+    </div>
+  </details>
+</section>
+{% if qualified_parallel_history_days %}
+<section class="section" id="qualified-history" aria-label="Daily original versus qualified parallel history" style="margin-top: 0;">
+  <h2 class="section-title">Original vs. Qualified ≥70% · since 27 Oct 2026</h2>
+  <p class="section-note">One permanent, comparable daily ledger for all original Model Picks and the frozen 70% confidence research group. The qualified group uses the original pre-match confidence to select a subset of the <strong>same</strong> issued matches. Wins, losses, voids and pending come from verified outcomes. <strong>Research-only:</strong> no predictions, original history, or 73% acceptance rules have been altered. Dates are always Asia/Manila.</p>
+  <div class="table-wrap" role="region" aria-label="Daily model pick original and qualified win rates" tabindex="0">
+    <table class="data">
+      <thead>
+        <tr><th scope="col">Manila date</th><th scope="col">Original picks</th><th scope="col">Original W–L</th><th scope="col">Original %</th><th scope="col">Qualified picks</th><th scope="col">Qualified W–L</th><th scope="col">Qualified %</th><th scope="col">Pending O / Q</th><th scope="col">Research status</th></tr>
+      </thead>
+      <tbody>
+        {% for day in qualified_parallel_history_days %}
+        <tr>
+          <th scope="row"><a href="/today?date={{ day.day.isoformat() }}&amp;tz=philippines">{{ day.day.isoformat() }}</a></th>
+          <td class="num">{{ day.original }}</td>
+          <td class="num">{{ day.original_won }}–{{ day.original_lost }}</td>
+          <td class="num">{% if day.original_accuracy is not none %}{{ '%.1f%%'|format(day.original_accuracy * 100) }}{% else %}—{% endif %}</td>
+          <td class="num">{{ day.qualified }}</td>
+          <td class="num">{{ day.qualified_won }}–{{ day.qualified_lost }}</td>
+          <td class="num">{% if day.qualified_accuracy is not none %}{{ '%.1f%%'|format(day.qualified_accuracy * 100) }}{% else %}—{% endif %}</td>
+          <td class="num">{{ day.original_pending }} / {{ day.qualified_pending }}</td>
+          <td>{% if not day.complete %}In progress
+          {% elif day.original_pending or day.qualified_pending %}Awaiting results
+          {% elif day.qualified_won + day.qualified_lost < 5 %}Small sample / no graded
+          {% elif day.qualified_passes_daily_goal %}Qualified ≥73% (research)
+          {% else %}Qualified below 73%
+          {% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">A qualified group can produce fewer predictions and miss real winners. A higher percentage for a subset does not automatically mean a better production model. See original five-day acceptance immediately below.</p>
+</section>
+{% elif qualified_parallel_history_error %}
+<p class="section-note">Qualified historical comparison is temporarily unavailable. Original results and Brian's official 73% scorecard are unaffected.</p>
+{% endif %}
+
+{% if recent_five_day_evidence %}
+{% set evidence = recent_five_day_evidence %}
+<section class="section" id="verified-five-day" aria-label="Live database five-day Original, filtered and Manager results" style="margin-top: 0;">
+  <h2 class="section-title">Latest five completed calendar dates · {{ evidence.period_start }} to {{ evidence.period_end }} (Manila)</h2>
+  <p class="section-note">
+    <strong>{% if not evidence.ledger_reconciled %}DATA RECONCILIATION REQUIRED{% elif evidence.is_final %}All listed results settled{% else %}PROVISIONAL: outstanding results remain{% endif %}</strong>.
+    Calculated from the live first-issued database at page request, not a frozen report screenshot.
+    Pooled accuracy = total wins ÷ (wins + losses); voids and pending are excluded. Original vs ≥70% is an identical-match subset comparison.
+    Manager-only is a separate cohort, not a fourth vote. The unvalidated A3/A4 proposal is not live.
+  </p>
+  {% if not evidence.ledger_reconciled %}
+  <p class="notice notice-warning" role="alert">The independent original and research ledgers disagree for {{ evidence.reconciliation_mismatch_dates | join(', ') }}. Treat the figures below as <strong>unverified</strong> until reconciled.</p>
+  {% endif %}
+  <div class="table-wrap" role="region" aria-label="Five-day live results with wins losses void pending coverage" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Approach</th><th scope="col">Picks</th><th scope="col">W–L</th><th scope="col">Void</th><th scope="col">Pending</th><th scope="col">Graded accuracy</th><th scope="col">Coverage</th><th scope="col">Evidence</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Original aligned</th>
+          <td class="num">{{ evidence.original.picks }}</td>
+          <td class="num">{{ evidence.original.won }}–{{ evidence.original.lost }}</td>
+          <td class="num">{{ evidence.original.void }}</td>
+          <td class="num">{{ evidence.original.pending }}</td>
+          <td class="num">{% if evidence.original.win_rate is not none %}{{ '%.1f%%'|format(evidence.original.win_rate*100) }}{% else %}—{% endif %}</td>
+          <td class="num">100%</td><td>Issued live</td>
+        </tr>
+        <tr><th scope="row">Existing ≥70% research filter</th>
+          <td class="num">{{ evidence.qualified.picks }}</td>
+          <td class="num">{{ evidence.qualified.won }}–{{ evidence.qualified.lost }}</td>
+          <td class="num">{{ evidence.qualified.void }}</td>
+          <td class="num">{{ evidence.qualified.pending }}</td>
+          <td class="num">{% if evidence.qualified.win_rate is not none %}{{ '%.1f%%'|format(evidence.qualified.win_rate*100) }}{% else %}—{% endif %}</td>
+          <td class="num">{% if evidence.qualified.selection_coverage is not none %}{{ '%.1f%%'|format(evidence.qualified.selection_coverage*100) }}{% else %}—{% endif %}</td><td>Retrospective subset, not A4</td>
+        </tr>
+        {% if evidence.manager_only %}
+        <tr><th scope="row">Manager-only</th>
+          <td class="num">{{ evidence.manager_only.picks }}</td>
+          <td class="num">{{ evidence.manager_only.won }}–{{ evidence.manager_only.lost }}</td>
+          <td class="num">{{ evidence.manager_only.void }}</td>
+          <td class="num">{{ evidence.manager_only.pending }}</td>
+          <td class="num">{% if evidence.manager_only.win_rate is not none %}{{ '%.1f%%'|format(evidence.manager_only.win_rate*100) }}{% else %}—{% endif %}</td>
+          <td class="num">Separate cohort</td><td>Issued live</td>
+        </tr>
+        {% endif %}
+        <tr><th scope="row">A3 / A4 challenger</th>
+          <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">Not verified</td><td class="num">Not verified</td><td>Draft research; no approved live series</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">
+    Among excluded original picks: <strong>{{ evidence.rejected.won }} winners</strong> and
+    <strong>{{ evidence.rejected.lost }} losses</strong>
+    ({% if evidence.rejected.win_rate is not none %}{{ '%.1f%%'|format(evidence.rejected.win_rate*100) }}{% else %}no graded records{% endif %} graded accuracy).
+    Filter coverage and provisional totals can change as authoritative results are collected.
+    <a href="/today?tz=philippines">View current Manila Model Picks</a>.
+  </p>
+  <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">View five-day source counts and provisional bounds</span><span class="no-bet-toggle-subtitle">No averaging daily percentages or counting unfinished matches as losses</span></span></summary>
+    <div class="no-bet-panel">
+      <div class="table-wrap" role="region" aria-label="Five-day original and research daily totals" tabindex="0">
+        <table class="data">
+          <thead><tr><th scope="col">Manila date</th><th scope="col">Original W–L / pending</th><th scope="col">Qualified W–L / pending</th><th scope="col">Qualified accuracy</th><th scope="col">If all pending grade: best / worst</th><th scope="col">Status</th></tr></thead>
+          <tbody>{% for day in evidence.daily %}
+            <tr>
+              <th scope="row"><a href="/today?date={{ day.date }}&amp;tz=philippines">{{ day.date }}</a></th>
+              <td>{{ day.original_won }}–{{ day.original_lost }} / {{ day.original_pending }}</td>
+              <td>{{ day.qualified_won }}–{{ day.qualified_lost }} / {{ day.qualified_pending }}</td>
+              <td>{% if day.qualified_win_rate is not none %}{{ '%.1f%%'|format(day.qualified_win_rate*100) }}{% else %}—{% endif %}</td>
+              <td>{% if day.qualified_pending and day.qualified_best_if_pending_win is not none %}{{ '%.1f%%'|format(day.qualified_best_if_pending_win*100) }} / {{ '%.1f%%'|format(day.qualified_worst_if_pending_lose*100) }}{% else %}—{% endif %}</td>
+              <td>{{ day.status | replace('_', ' ') }}</td>
+            </tr>
+          {% endfor %}</tbody>
+        </table>
+      </div>
+      <p class="section-note">Pending bounds assume every currently pending pick becomes a graded win or loss. Some may instead be void. Daily results are provisional until the provider confirms settlement.</p>
+    </div>
+  </details>
+</section>
+{% elif recent_five_day_error %}
+<section class="section" role="alert" aria-label="Live five-day report temporarily unavailable">
+  <h2 class="section-title">Live five-day verification unavailable</h2>
+  <p class="section-note">The database comparison could not be reconciled. No cached statistics or assumed A3/A4 results are substituted. Use the underlying daily ledgers, or request the full settlement audit.</p>
+</section>
+{% endif %}
+
+{% if pending_case_audit %}
+<section class="section" id="pending-result-audit" aria-label="Live pending outcome audit" style="margin-top: 0;">
+  <h2 class="section-title">Pending results · provider audit</h2>
+  <p class="section-note">Generated {{ pending_case_audit.generated_at }} from live stored results and fixture observations across the last 90 days.
+    <strong>{{ pending_case_audit.total }} pending matches</strong>;
+    <strong>{{ pending_case_audit.requires_investigation }} require result/provider investigation.</strong>
+    Match state is observed, not inferred: a future scheduled start does not independently prove that a match has not finished.
+    "Rescheduled" is an overlapping flag, not a separate group. Pending is never counted as lost.
+  </p>
+  <div class="table-wrap" role="region" aria-label="Pending cases by reason" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Current classification</th><th scope="col">Matches</th><th scope="col">Interpretation</th></tr></thead>
+      <tbody>
+        {% for reason, count in pending_case_audit.by_reason.items() %}
+        <tr><th scope="row">{{ reason | replace('_',' ') }}</th><td class="num">{{ count }}</td>
+          <td>
+            {% if reason == 'NOT_STARTED' %}Scheduled for the future according to latest stored fixture, not independently reconfirmed
+            {% elif reason == 'AWAITING_RESULT' %}Recently started, waiting for authoritative outcome
+            {% elif reason == 'TERMINAL_FIXTURE_WITHOUT_RESULT' %}Terminal fixture, winner or void determination missing
+            {% elif reason == 'NO_API_TENNIS_LINK' %}Event identity not mapped to result provider
+            {% elif reason == 'PROVIDER_FIXTURE_NOT_REOBSERVED' %}Event not seen again by fixture provider
+            {% elif reason == 'FIXTURE_POSTPONED' %}Provider-reported postponement
+            {% else %}Requires provider status check{% endif %}
+          </td>
+        </tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">Elapsed age bands:
+    {% for bucket, count in pending_case_audit.by_age.items() %}{{ bucket | replace('_',' ') }}: {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}.
+    Rescheduled flags: {{ pending_case_audit.by_flag.get('RESCHEDULED', 0) }}.
+  </p>
+  <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Inspect every pending match and its age</span><span class="no-bet-toggle-subtitle">Includes actionable cases, fixture statuses and original match IDs</span></span></summary>
+    <div class="no-bet-panel">
+      <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
+        <table class="data">
+          <thead><tr><th scope="col">Match ID</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Provider status</th><th scope="col">Latest scheduled (UTC offset included)</th><th scope="col">Last provider observation</th><th scope="col">Flags</th></tr></thead>
+          <tbody>{% for item in pending_case_audit['items'] %}
+            <tr>
+              <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
+              <td>{{ item.reason | replace('_',' ') }}</td>
+              <td>{% if item.hours_since_start is not none %}{{ item.hours_since_start }} h{% else %}Not started{% endif %} ({{ item.age_bucket | replace('_',' ') }})</td>
+              <td>{{ item.provider_fixture_status or 'Unknown' }}</td>
+              <td>{{ item.latest_start or 'Unobserved' }}</td>
+              <td>{{ item.last_observed or 'Unobserved' }}</td>
+              <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}</td>
+            </tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note">A classification shows the most recently stored provider observation, not an independently verified final result. Missing or winnerless terminal records must be reconciled against an authoritative event identity before changing any grade.</p>
+    </div>
+  </details>
+</section>
+{% else %}
+<p class="section-note" role="alert">The detailed pending-result audit is temporarily unavailable. The original results remain visible, but pending-case completeness has not been verified.</p>
+{% endif %}
+
+<section class="section" aria-label="All aligned five-day acceptance" style="margin-top: 0;">
+  <h2 class="section-title">Brian's 73% goal · ALL aligned Model Picks</h2>
+  <p class="section-note">
+    <strong>{{ aligned_accuracy_target.completed_qualifying_days }} / 5 qualifying completed days</strong>
+    {% if aligned_accuracy_target.target_met %} · five-day goal verified{% else %} · goal not yet achieved{% endif %}.
+    {{ aligned_accuracy_target.start }} to {{ aligned_accuracy_target.end }} · Asia/Manila.
+    Original Manager and A1/A2 tracking picks are counted together. All five
+    consecutive dates must fully settle and reach at least 73% independently.
+    Missing days, future days, and pending results cannot qualify.
+  </p>
+  {% if aligned_accuracy_target.low_sample_warning %}
+  <p class="section-note">Some qualifying days have fewer than five graded picks; a high rate with very few picks is not strong statistical proof.</p>
+  {% endif %}
+  <div class="table-wrap" role="region" aria-label="All aligned five-day acceptance scorecard" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Manila date</th><th scope="col">Original picks</th>
+        <th scope="col">Won</th><th scope="col">Lost</th><th scope="col">Void</th>
+        <th scope="col">Pending</th><th scope="col">Win rate</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for day in aligned_accuracy_target.days %}
+        <tr>
+          <th scope="row"><a href="/today?date={{ day.date }}&amp;tz=philippines" title="View all original aligned picks for this Manila date">{{ day.date }}</a></th>
+          <td class="num">{{ day.picks }}</td><td class="num">{{ day.wins }}</td>
+          <td class="num">{{ day.losses }}</td><td class="num">{{ day.voids }}</td>
+          <td class="num">{{ day.pending }}</td><td class="num">{{ pct(day.win_rate) }}</td>
+          <td>
+            {% if day.status == 'MET_73' %}Met{% if day.low_sample %} · small sample{% endif %}
+            {% elif day.status == 'IN_PROGRESS' %}Not a completed day
+            {% elif day.status == 'UNSETTLED' %}Awaiting verified results
+            {% elif day.status == 'BELOW_73' %}Below 73%
+            {% elif day.status == 'NO_PICKS' %}No original picks
+            {% elif day.status == 'NO_GRADED' %}No graded results
+            {% else %}Data review required{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">This is the actual, unfiltered target scorecard, not a historical what-if replay. The other tables follow your selected dashboard timezone; this acceptance calculation always uses Manila dates.</p>
+</section>
+
+<details class="no-bet-disclosure section" aria-label="Manager-only accuracy diagnostic">
+  <summary class="no-bet-toggle">
+    <span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Manager-only accuracy · secondary diagnostic</span>
+      <span class="no-bet-toggle-subtitle">Different population from Brian's all-aligned goal</span></span>
+    <span class="no-bet-toggle-icon" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="no-bet-panel">
 <section class="section" aria-label="Manager five-day accuracy target" style="margin-top: 0;">
   <h2 class="section-title">Manager accuracy target · 73% on 5 consecutive days</h2>
   <p class="section-note">
@@ -77,6 +327,9 @@
   </div>
 </section>
 
+  </div>
+</details>
+
 <section class="section" aria-label="Aligned model-pick history" style="margin-top: 0;">
   <h2 class="section-title">Aligned Model Picks · since {{ aligned_live_start.strftime('%d %b %Y') }}</h2>
   <p class="section-note">
@@ -107,7 +360,12 @@
           <th scope="col">Scored</th>
           <th scope="col">Won</th>
           <th scope="col">Lost</th>
-          <th scope="col">Pending</th>
+          <th scope="col">Awaiting result</th>
+          <th scope="col">Not started</th>
+          <th scope="col">Rescheduled</th>
+          <th scope="col">Postponed</th>
+          <th scope="col">Needs review</th>
+          <th scope="col">Unsettled total</th>
           <th scope="col">Void</th>
           <th scope="col">Win rate</th>
         </tr>
@@ -125,6 +383,11 @@
           <td class="num">{{ period.scored }}</td>
           <td class="num">{{ period.wins }}</td>
           <td class="num">{{ period.losses }}</td>
+          <td class="num">{{ period.awaiting_result }}</td>
+          <td class="num">{{ period.not_started }}</td>
+          <td class="num">{{ period.rescheduled }}</td>
+          <td class="num">{{ period.postponed }}</td>
+          <td class="num">{{ period.needs_review }}</td>
           <td class="num">{{ period.pending }}</td>
           <td class="num">{{ period.voids }}</td>
           <td class="num">{{ pct(period.hit_rate) }}</td>
@@ -135,6 +398,7 @@
   </div>
 
   <h3 class="section-title" style="margin-top: 24px; font-size: 1.05rem;">Daily aligned model-pick results</h3>
+  <p class="section-note">Not started, rescheduled and postponed are <strong>not active result waits</strong>. They are displayed separately, not deleted from the original pick record. "Unsettled total" is retained for audit and five-day target completeness: no day is certified until every original pick has a verified final disposition. A provider report that a match never started is not by itself evidence to VOID a bet.</p>
   <p class="section-note">Select a match day to inspect the aligned Model Pick rows behind the W/L record.</p>
   <p class="mobile-table-hint" id="daily-results-scroll-hint">Swipe sideways for all columns. Dates stay visible.</p>
   <div class="table-wrap model-picks-daily-scroll" role="region" aria-label="Daily aligned Model Picks results" aria-describedby="daily-results-scroll-hint" tabindex="0">
@@ -146,7 +410,12 @@
           <th scope="col">Won</th>
           <th scope="col">Lost</th>
           <th scope="col">Void</th>
-          <th scope="col">Pending</th>
+          <th scope="col">Awaiting result</th>
+          <th scope="col">Not started</th>
+          <th scope="col">Rescheduled</th>
+          <th scope="col">Postponed</th>
+          <th scope="col">Needs review</th>
+          <th scope="col">Unsettled total</th>
           <th scope="col">Win rate</th>
         </tr>
       </thead>
@@ -158,6 +427,11 @@
           <td class="num">{{ day.wins }}</td>
           <td class="num">{{ day.losses }}</td>
           <td class="num">{{ day.voids }}</td>
+          <td class="num">{{ day.awaiting_result }}</td>
+          <td class="num">{{ day.not_started }}</td>
+          <td class="num">{{ day.rescheduled }}</td>
+          <td class="num">{{ day.postponed }}</td>
+          <td class="num">{{ day.needs_review }}</td>
           <td class="num">{{ day.pending }}</td>
           <td class="num">{{ pct(day.hit_rate) }}</td>
         </tr>
@@ -171,7 +445,7 @@
 {% if selected_summary %}
 <section class="section" aria-label="Selected aligned model-pick day">
   <h2 class="section-title">{{ selected_date.strftime('%a %d %b %Y') }}</h2>
-  <p class="section-note">Every aligned Model Pick whose match day is this date in {{ dashboard_timezone.display_label }}. A pick stays on the day of the start time it was issued against; <span class="badge badge-blocked">RESCHEDULED</span> marks a later provider schedule change.</p>
+  <p class="section-note">Every original aligned Model Pick whose first-issued match day is this date in {{ dashboard_timezone.display_label }}. Read-only lifecycle labels separate unfinished and deferred fixtures from matches awaiting verification. A pick stays on the day of the start time it was issued against; <span class="badge badge-blocked">RESCHEDULED</span> marks a later provider schedule change.</p>
 
   <div class="stat-grid" style="margin-bottom: 14px;">
     <div class="stat"><span class="stat-value">{{ selected_summary.picks }}</span><span class="stat-label">Picks</span></div>
@@ -211,7 +485,7 @@
             <span class="stat-note">{{ pick.probability_source_label }}</span>
           </td>
           <td>
-            <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.result_status }}</span>
+            <span class="badge badge-{{ 'won' if pick.result_status == 'WON' else ('lost' if pick.result_status == 'LOST' else 'neutral') }}">{{ pick.lifecycle_status.replace('_', ' ') }}</span>
             {% if pick.pending_explanation %}
             <br><span class="stat-note">{{ pick.pending_explanation }}</span>
             {% endif %}

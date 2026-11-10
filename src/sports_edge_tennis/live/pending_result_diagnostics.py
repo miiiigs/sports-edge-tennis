@@ -233,16 +233,14 @@ def classify_pending_pick(
     if evidence.has_type_a_bet:
         flags.append(FLAG_TYPE_A_BET)
 
-    if start is not None and start > now:
-        reason = REASON_NOT_STARTED
-    elif evidence.latest_match_status == _POSTPONED:
-        # Provider marked the fixture postponed and has not yet published a new
-        # future start. Not a result-ingestion failure, and never graded.
-        reason = REASON_FIXTURE_POSTPONED
-    elif (evidence.latest_match_status or "") in _TERMINAL:
-        # Fixture feed says the match ended but no parseable terminal result was
-        # persisted (e.g. no winner reported). Never inferred into a result here.
+    # A stale future schedule must not conceal an explicitly observed
+    # terminal or postponed fixture. Never infer a missing winner/void.
+    if (evidence.latest_match_status or "") in _TERMINAL:
         reason = REASON_TERMINAL_FIXTURE_WITHOUT_RESULT
+    elif evidence.latest_match_status == _POSTPONED:
+        reason = REASON_FIXTURE_POSTPONED
+    elif start is not None and start > now:
+        reason = REASON_NOT_STARTED
     elif evidence.api_tennis_event_key is None:
         reason = REASON_NO_API_TENNIS_LINK
     elif since_observed is not None and since_observed >= not_reobserved_hours and (

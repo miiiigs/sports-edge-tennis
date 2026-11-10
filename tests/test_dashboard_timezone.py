@@ -215,3 +215,33 @@ def test_dashboard_json_exposes_display_timezone_metadata(client) -> None:
     # Canonical timestamps remain machine-readable ISO-8601.
     if body["as_of"] is not None:
         assert "T" in body["as_of"]
+
+
+def test_today_direct_date_can_match_fixed_manila_73_percent_cohort(client) -> None:
+    # A selected UTC or London calendar date is not automatically the same
+    # membership as the 73% scorecard's fixed Asia/Manila calendar date.
+    utc = client.get("/today?date=2026-10-27")
+    assert utc.status_code == 200
+    assert 'aria-label="Manila scorecard date alignment"' in utc.text
+    assert "You are currently viewing UTC dates" in utc.text
+    assert 'href="/today?date=2026-10-27&amp;tz=philippines"' in utc.text
+    assert "same Manila date as the 73% scorecard" in utc.text
+
+    ph = client.get("/today?date=2026-10-27&tz=philippines")
+    assert ph.status_code == 200
+    assert 'aria-label="Manila scorecard date alignment"' not in ph.text
+    assert "Original aligned results" not in ph.text  # demo has no scored ledger
+    assert "Philippines" in ph.text
+
+
+def test_today_without_date_offers_current_manila_day_not_yesterday_utc(client) -> None:
+    page = client.get("/today")
+    assert page.status_code == 200
+    assert 'href="/today?tz=philippines"' in page.text
+    assert "Switch to today's Manila Model Picks" in page.text
+
+    client.cookies.set(TIMEZONE_COOKIE_NAME, "london")
+    london = client.get("/today?date=2026-10-28")
+    assert london.status_code == 200
+    assert "You are currently viewing London / UK dates" in london.text
+    assert 'href="/today?date=2026-10-28&amp;tz=philippines"' in london.text
