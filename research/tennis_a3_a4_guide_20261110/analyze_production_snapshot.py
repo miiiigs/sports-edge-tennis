@@ -104,15 +104,18 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
 
     totals = {
         kind: {key: 0 for key in COUNTS}
-        for kind in ("original", "confidence70")
+        for kind in ("original", "confidence70", "manager_only")
     }
     days = []
     avoided_losses = missed_winners = 0
     for day in sorted(dates):
         pair = dates[day]
-        old, new = pair["original"], pair["confidence70"]
+        old, new, manager = (
+            pair["original"], pair["confidence70"], pair["manager_only"]
+        )
         _check_row(old, f"{day}.original")
         _check_row(new, f"{day}.confidence70")
+        _check_row(manager, f"{day}.manager_only")
         for key in ("picks", "won", "lost", "void", "pending"):
             if new[key] > old[key]:
                 raise ValueError(f"{day}: filtered population is not a subset for {key}")
@@ -122,18 +125,27 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"{day}: discarded winner/loss accounting mismatch")
         avoided_losses += avoided
         missed_winners += missed
-        for kind, src in (("original", old), ("confidence70", new)):
+        for kind, src in (("original", old), ("confidence70", new),
+                          ("manager_only", manager)):
             for key in COUNTS:
                 totals[kind][key] += src[key]
+        manager_day = _candidate(day, manager, manager["picks"])
+        # Unlike >=70%, Manager-only is NOT guaranteed to be the precise
+        # same original-aligned cohort, so never claim subset coverage.
+        manager_day["coverage"] = None
+        manager_day["independent_cohort"] = True
         days.append({
             "date": day,
             "original": _candidate(day, old, old["picks"]),
             "confidence70": _candidate(day, new, old["picks"]),
+            "manager_only": manager_day,
             "avoided_losses": avoided,
             "missed_winners": missed,
         })
 
-    orig, qual = totals["original"], totals["confidence70"]
+    orig, qual, manager_total = (
+        totals["original"], totals["confidence70"], totals["manager_only"]
+    )
     original_rate = _grade(orig["won"], orig["lost"])
     qualified_rate = _grade(qual["won"], qual["lost"])
     coverage = qual["picks"] / orig["picks"] if orig["picks"] else None
@@ -149,6 +161,13 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "period": payload["period"],
         "totals": totals,
         "original_win_rate": original_rate,
+        "manager_only_win_rate": _grade(
+            manager_total["won"], manager_total["lost"]
+        ),
+        "manager_only_win_rate_wilson95": _wilson95(
+            manager_total["won"], manager_total["lost"]
+        ),
+        "manager_only_cohort_independent": True,
         "original_win_rate_wilson95": _wilson95(orig["won"], orig["lost"]),
         "confidence70_win_rate": qualified_rate,
         "confidence70_win_rate_wilson95": _wilson95(qual["won"], qual["lost"]),
@@ -169,6 +188,7 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
             "Results on unsettled dates may change as matches finish.",
             "Best/worst bounds assume all currently pending picks become graded; actual voids may alter denominators.",
             "Research >=70% excludes 30 currently known original winners and 27 currently known original losses.",
+            "Manager-only is an independent first-issued Manager cohort and must not be treated as a proven original subset.",
             "Guide Odds are market context, not a vote or an estimated tennis win probability.",
         ],
     }
