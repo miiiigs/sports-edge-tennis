@@ -173,6 +173,65 @@
 </section>
 {% endif %}
 
+{% if pending_case_audit %}
+<section class="section" id="pending-result-audit" aria-label="Live pending outcome audit" style="margin-top: 0;">
+  <h2 class="section-title">Pending results · provider audit</h2>
+  <p class="section-note">Generated {{ pending_case_audit.generated_at }} from live stored results and fixture observations across the last 90 days.
+    <strong>{{ pending_case_audit.total }} pending matches</strong>;
+    <strong>{{ pending_case_audit.requires_investigation }} require result/provider investigation.</strong>
+    Match state is observed, not inferred: a future scheduled start does not independently prove that a match has not finished.
+    "Rescheduled" is an overlapping flag, not a separate group. Pending is never counted as lost.
+  </p>
+  <div class="table-wrap" role="region" aria-label="Pending cases by reason" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Current classification</th><th scope="col">Matches</th><th scope="col">Interpretation</th></tr></thead>
+      <tbody>
+        {% for reason, count in pending_case_audit.by_reason.items() %}
+        <tr><th scope="row">{{ reason | replace('_',' ') }}</th><td class="num">{{ count }}</td>
+          <td>
+            {% if reason == 'NOT_STARTED' %}Scheduled for the future according to latest stored fixture, not independently reconfirmed
+            {% elif reason == 'AWAITING_RESULT' %}Recently started, waiting for authoritative outcome
+            {% elif reason == 'TERMINAL_FIXTURE_WITHOUT_RESULT' %}Terminal fixture, winner or void determination missing
+            {% elif reason == 'NO_API_TENNIS_LINK' %}Event identity not mapped to result provider
+            {% elif reason == 'PROVIDER_FIXTURE_NOT_REOBSERVED' %}Event not seen again by fixture provider
+            {% elif reason == 'FIXTURE_POSTPONED' %}Provider-reported postponement
+            {% else %}Requires provider status check{% endif %}
+          </td>
+        </tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">Elapsed age bands:
+    {% for bucket, count in pending_case_audit.by_age.items() %}{{ bucket | replace('_',' ') }}: {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}.
+    Rescheduled flags: {{ pending_case_audit.by_flag.get('RESCHEDULED', 0) }}.
+  </p>
+  <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Inspect every pending match and its age</span><span class="no-bet-toggle-subtitle">Includes actionable cases, fixture statuses and original match IDs</span></span></summary>
+    <div class="no-bet-panel">
+      <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
+        <table class="data">
+          <thead><tr><th scope="col">Match ID</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Provider status</th><th scope="col">Latest scheduled (UTC offset included)</th><th scope="col">Last provider observation</th><th scope="col">Flags</th></tr></thead>
+          <tbody>{% for item in pending_case_audit.items %}
+            <tr>
+              <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
+              <td>{{ item.reason | replace('_',' ') }}</td>
+              <td>{% if item.hours_since_start is not none %}{{ item.hours_since_start }} h{% else %}Not started{% endif %} ({{ item.age_bucket | replace('_',' ') }})</td>
+              <td>{{ item.provider_fixture_status or 'Unknown' }}</td>
+              <td>{{ item.latest_start or 'Unobserved' }}</td>
+              <td>{{ item.last_observed or 'Unobserved' }}</td>
+              <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}</td>
+            </tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="section-note">A classification shows the most recently stored provider observation, not an independently verified final result. Missing or winnerless terminal records must be reconciled against an authoritative event identity before changing any grade.</p>
+    </div>
+  </details>
+</section>
+{% else %}
+<p class="section-note" role="alert">The detailed pending-result audit is temporarily unavailable. The original results remain visible, but pending-case completeness has not been verified.</p>
+{% endif %}
+
 <section class="section" aria-label="All aligned five-day acceptance" style="margin-top: 0;">
   <h2 class="section-title">Brian's 73% goal · ALL aligned Model Picks</h2>
   <p class="section-note">
