@@ -8,7 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 from datetime import date, timedelta
-from math import ceil, isclose
+from math import ceil, isclose, sqrt
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,19 @@ def _check_row(row: dict[str, Any], label: str) -> None:
 
 def _grade(won: int, lost: int) -> float | None:
     return won / (won + lost) if won + lost else None
+
+
+def _wilson95(won: int, lost: int) -> list[float] | None:
+    """Descriptive binomial interval, NOT paired causal lift uncertainty."""
+    n = won + lost
+    if n == 0:
+        return None
+    z = 1.959963984540054
+    p = won / n
+    denom = 1 + z*z/n
+    center = (p + z*z/(2*n)) / denom
+    half = z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / denom
+    return [max(0.0, center - half), min(1.0, center + half)]
 
 
 def _candidate(day: str, row: dict[str, Any], original_picks: int) -> dict[str, Any]:
@@ -62,7 +75,9 @@ def _candidate(day: str, row: dict[str, Any], original_picks: int) -> dict[str, 
         "date": day,
         "picks": row["picks"],
         "won": w, "lost": lost, "void": row["void"], "pending": pending,
-        "graded": n, "observed_win_rate": observed, "coverage": coverage,
+        "graded": n, "observed_win_rate": observed,
+        "descriptive_win_rate_wilson95": _wilson95(w, lost),
+        "coverage": coverage,
         "worst_if_all_pending_lose": worst,
         "best_if_all_pending_win": best,
         "wins_needed_if_all_pending_grade": wins_needed_if_all_pending_grade,
@@ -134,7 +149,9 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "period": payload["period"],
         "totals": totals,
         "original_win_rate": original_rate,
+        "original_win_rate_wilson95": _wilson95(orig["won"], orig["lost"]),
         "confidence70_win_rate": qualified_rate,
+        "confidence70_win_rate_wilson95": _wilson95(qual["won"], qual["lost"]),
         "graded_accuracy_gap_percentage_points": (
             100 * (qualified_rate - original_rate)
             if original_rate is not None and qualified_rate is not None else None
@@ -148,6 +165,7 @@ def analyze_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         "guide_odds_latest": payload.get("odds_latest"),
         "warnings": [
             "Observed conditional win rates are not out-of-sample A4 performance.",
+            "Individual Wilson intervals overlap and do not establish a causal lift; filtered picks are a selected subset.",
             "Results on unsettled dates may change as matches finish.",
             "Best/worst bounds assume all currently pending picks become graded; actual voids may alter denominators.",
             "Research >=70% excludes 30 currently known original winners and 27 currently known original losses.",
