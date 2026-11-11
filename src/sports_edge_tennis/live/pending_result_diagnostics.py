@@ -17,8 +17,10 @@ informational flags. It uses the same pick population as
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
+from pathlib import Path
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
@@ -233,16 +235,16 @@ def classify_pending_pick(
     if evidence.has_type_a_bet:
         flags.append(FLAG_TYPE_A_BET)
 
-    if start is not None and start > now:
-        reason = REASON_NOT_STARTED
-    elif evidence.latest_match_status == _POSTPONED:
-        # Provider marked the fixture postponed and has not yet published a new
-        # future start. Not a result-ingestion failure, and never graded.
-        reason = REASON_FIXTURE_POSTPONED
-    elif (evidence.latest_match_status or "") in _TERMINAL:
-        # Fixture feed says the match ended but no parseable terminal result was
-        # persisted (e.g. no winner reported). Never inferred into a result here.
+    # Provider-confirmed final/postponed state must outrank a stale future
+    # schedule timestamp. Otherwise completed/cancelled matches can be
+    # incorrectly counted as "upcoming" and their missing results hidden.
+    if (evidence.latest_match_status or "") in _TERMINAL:
+        # Never invent a winner for WALKOVER or other terminal fixtures.
         reason = REASON_TERMINAL_FIXTURE_WITHOUT_RESULT
+    elif evidence.latest_match_status == _POSTPONED:
+        reason = REASON_FIXTURE_POSTPONED
+    elif start is not None and start > now:
+        reason = REASON_NOT_STARTED
     elif evidence.api_tennis_event_key is None:
         reason = REASON_NO_API_TENNIS_LINK
     elif since_observed is not None and since_observed >= not_reobserved_hours and (
@@ -471,7 +473,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--lookback-days", type=int, default=60)
     parser.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    parser.add_argument(
+        "--json-out", type=Path, default=None,
+        help="Write complete private match-level audit to a new 0600 JSON file; "
+             "never print credentials or overwrite existing evidence.",
+    )
     args = parser.parse_args(argv)
+    if args.json_out is not None and args.json_out.exists():
+        parser.error("refusing to overwrite existing pending audit")
     if not args.dsn:
         print("PENDING_RESULT_DIAGNOSTICS_BLOCKED reason=NO_DATABASE", flush=True)
         return 2
@@ -482,8 +491,19 @@ def main(argv: list[str] | None = None) -> int:
             conn, lookback_days=args.lookback_days, limit=args.limit
         )
     print(report.summary_line(), flush=True)
-    for item in report.items:
-        print(item.log_line(), flush=True)
+    if args.json_out is not None:
+        # Exclusive creation and owner-only mode protect player/match-level
+        # evidence; no files are written to the canonical production database.
+        fd = os.open(
+            args.json_out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+        )
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            json.dump(report_json(report), stream, indent=2, sort_keys=True)
+            stream.write("\\n")
+        print(f"PENDING_AUDIT_JSON={args.json_out}", flush=True)
+    else:
+        for item in report.items:
+            print(item.log_line(), flush=True)
     return 0
 
 

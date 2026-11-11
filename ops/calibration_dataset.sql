@@ -53,7 +53,8 @@ wr AS (
     SELECT d.*, r.outcome_status, r.winner_side, r.result_observed_at, r.result_source_observed_at, r.result_ingested_at,
         a1.prediction_status::text AS a1s, a1.selection_side AS a1side, a1.win_probability AS a1p,
         a2.prediction_status::text AS a2s, a2.selection_side AS a2side, a2.win_probability AS a2p,
-        a3.prediction_status::text AS a3s, a3.selection_side AS a3side, a3.win_probability AS a3p
+        a3.prediction_status::text AS a3s, a3.selection_side AS a3side, a3.win_probability AS a3p,
+        a3.abstain_reason_code AS a3_reason
     FROM day d
     LEFT JOIN LATERAL (
         SELECT mro.outcome_status::text AS outcome_status, mro.winner_side,
@@ -74,6 +75,7 @@ SELECT w.manila_date, w.utc_date, w.london_date, w.match_id,
     w.a1p AS a1_prob, w.a1side AS a1_side, w.a1s AS a1_status,
     w.a2p AS a2_prob, w.a2side AS a2_side, w.a2s AS a2_status,
     w.a3p AS a3_prob, w.a3side AS a3_side, w.a3s AS a3_status,
+    w.a3_reason AS a3_abstain_reason_code,
     w.picked_at, w.outcome_status, w.winner_side,
     w.result_observed_at, w.result_source_observed_at, w.result_ingested_at,
     CASE WHEN w.outcome_status='COMPLETED' AND w.winner_side=w.selected_side THEN 'WON'
