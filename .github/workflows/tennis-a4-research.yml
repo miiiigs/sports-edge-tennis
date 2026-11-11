@@ -10,6 +10,7 @@ on:
       - "ops/a4_guide_quotes.sql"
       - "tests/test_a4_quality_shadow.py"
       - "tests/test_tennis_nov10_production_snapshot.py"
+      - "tests/test_tennis_nov11_production_snapshot.py"
       - "tests/test_brian_pending_transition.py"
       - "tests/test_brian_manager_matched.py"
       - "ops/brian_pending_transition.py"
@@ -44,6 +45,7 @@ jobs:
             ops/a4_quality_shadow.py \
             tests/test_a4_quality_shadow.py \
             tests/test_tennis_nov10_production_snapshot.py \
+            tests/test_tennis_nov11_production_snapshot.py \
             tests/test_brian_pending_transition.py \
             tests/test_brian_manager_matched.py \
             ops/brian_pending_transition.py \
@@ -52,7 +54,7 @@ jobs:
       - name: Run focused A3 A4 Guide regressions
         env:
           PYTHONPATH: src
-        run: python -m pytest -q tests/test_a4_quality_shadow.py tests/test_tennis_nov10_production_snapshot.py tests/test_brian_pending_transition.py tests/test_brian_manager_matched.py
+        run: python -m pytest -q tests/test_a4_quality_shadow.py tests/test_tennis_nov10_production_snapshot.py tests/test_tennis_nov11_production_snapshot.py tests/test_brian_pending_transition.py tests/test_brian_manager_matched.py
       - name: Verify CLI arguments
         env:
           PYTHONPATH: src
