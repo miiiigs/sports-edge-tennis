@@ -89,6 +89,58 @@
 <p class="section-note">Qualified historical comparison is temporarily unavailable. Original results and Brian's official 73% scorecard are unaffected.</p>
 {% endif %}
 
+{% if three_window_evidence %}
+{% set report = three_window_evidence %}
+<section class="section" id="three-periods" aria-label="Three separate first-issued reporting windows" style="margin-top: 0;">
+  <h2 class="section-title">Fixed, rolling and cumulative Model Picks</h2>
+  <p class="section-note">
+    Database snapshot: {{ report.data_refreshed_at }}.
+    Original and existing research filter are scored from the same first-issued
+    ledger in one read-only database transaction. Manager is a separate cohort.
+    Accuracy is total wins / (wins + losses), never an average of daily rates.
+    Missing external results are still pending; a reconciled sum does not certify provider completeness.
+  </p>
+  <div class="table-wrap" role="region" aria-label="Fixed November 5 to 9, latest rolling five days and October 27 cumulative results" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Reporting period</th><th scope="col">Original: picks / W-L / void / pending</th><th scope="col">Original accuracy</th><th scope="col">Existing ≥70%: picks / W-L / void / pending</th><th scope="col">Filter accuracy</th><th scope="col">Coverage</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {% for key, window in report.periods.items() %}
+        <tr>
+          <th scope="row">{% if key == 'fixed_nov05_nov09' %}Nov 5-9 (fixed){% elif key == 'rolling_five_complete_dates' %}Rolling five days{% else %}Cumulative from Oct 27{% endif %}
+            <span class="text-muted">{{ window.start }} to {{ window.end }}</span>
+          </th>
+          <td>{{ window.original.picks }} / {{ window.original.won }}-{{ window.original.lost }} / {{ window.original.void }} / {{ window.original.pending }}</td>
+          <td>{% if window.original.settled_accuracy is not none %}{{ '%.1f%%'|format(window.original.settled_accuracy*100) }}{% else %}—{% endif %}</td>
+          <td>{{ window.existing_qualified_ge70.picks }} / {{ window.existing_qualified_ge70.won }}-{{ window.existing_qualified_ge70.lost }} / {{ window.existing_qualified_ge70.void }} / {{ window.existing_qualified_ge70.pending }}</td>
+          <td>{% if window.existing_qualified_ge70.settled_accuracy is not none %}{{ '%.1f%%'|format(window.existing_qualified_ge70.settled_accuracy*100) }}{% else %}—{% endif %}</td>
+          <td>{% if window.existing_qualified_ge70.coverage is not none %}{{ '%.1f%%'|format(window.existing_qualified_ge70.coverage*100) }}{% else %}—{% endif %}</td>
+          <td>{% if window.status == 'PROVISIONAL' %}<strong>PROVISIONAL</strong>{% else %}{{ window.status | replace('_',' ') }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Separate Manager-only cohort</span><span class="no-bet-toggle-subtitle">This is not a matched causal comparison or an A4 result</span></span></summary>
+    <div class="no-bet-panel">
+      {% for key, window in report.periods.items() %}
+        <p class="section-note">
+          {{ window.start }} to {{ window.end }}:
+          {% if window.manager_only_separate_population %}
+            {{ window.manager_only_separate_population.picks }} picks;
+            {{ window.manager_only_separate_population.won }}W-{{ window.manager_only_separate_population.lost }}L;
+            {{ window.manager_only_separate_population.void }} void;
+            {{ window.manager_only_separate_population.pending }} pending
+          {% else %}Manager comparison unavailable for this exact period{% endif %}
+        </p>
+      {% endfor %}
+    </div>
+  </details>
+</section>
+{% else %}
+<p class="section-note" role="alert">Fixed, rolling and cumulative report unavailable. Do not substitute an older screenshot as verified current performance.</p>
+{% endif %}
+
 {% if recent_five_day_evidence %}
 {% set evidence = recent_five_day_evidence %}
 <section class="section" id="verified-five-day" aria-label="Live database five-day Original, filtered and Manager results" style="margin-top: 0;">
