@@ -121,6 +121,25 @@
     </table>
   </div>
   <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Daily totals for each period</span><span class="no-bet-toggle-subtitle">Every calendar date, including pending and zero-pick days</span></span></summary>
+    <div class="no-bet-panel">
+      {% for key, window in report.periods.items() %}
+      <p class="section-note"><strong>{{ window.start }} to {{ window.end }}</strong></p>
+      <div class="table-wrap" role="region" aria-label="Daily original and qualified results" tabindex="0">
+        <table class="data"><thead><tr><th scope="col">Date</th><th scope="col">Original W-L / void / pending</th><th scope="col">≥70% W-L / void / pending</th></tr></thead>
+        <tbody>
+          {% for day in window.days %}
+          <tr><th scope="row">{{ day.day }}</th>
+            <td>{{ day.original.won }}-{{ day.original.lost }} / {{ day.original.void }} / {{ day.original.pending }} ({{ day.original.picks }} picks)</td>
+            <td>{{ day.qualified.won }}-{{ day.qualified.lost }} / {{ day.qualified.void }} / {{ day.qualified.pending }} ({{ day.qualified.picks }} picks)</td>
+          </tr>
+          {% endfor %}
+        </tbody></table>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  <details class="no-bet-disclosure">
     <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Separate Manager-only cohort</span><span class="no-bet-toggle-subtitle">This is not a matched causal comparison or an A4 result</span></span></summary>
     <div class="no-bet-panel">
       {% for key, window in report.periods.items() %}
@@ -141,7 +160,7 @@
 <p class="section-note" role="alert">Fixed, rolling and cumulative report unavailable. Do not substitute an older screenshot as verified current performance.</p>
 {% endif %}
 
-{% if recent_five_day_evidence %}
+{% if recent_five_day_evidence and not three_window_evidence %}
 {% set evidence = recent_five_day_evidence %}
 <section class="section" id="verified-five-day" aria-label="Live database five-day Original, filtered and Manager results" style="margin-top: 0;">
   <h2 class="section-title">Latest five completed calendar dates · {{ evidence.period_start }} to {{ evidence.period_end }} (Manila)</h2>
@@ -219,7 +238,7 @@
     </div>
   </details>
 </section>
-{% elif recent_five_day_error %}
+{% elif recent_five_day_error and not three_window_evidence %}
 <section class="section" role="alert" aria-label="Live five-day report temporarily unavailable">
   <h2 class="section-title">Live five-day verification unavailable</h2>
   <p class="section-note">The database comparison could not be reconciled. No cached statistics or assumed A3/A4 results are substituted. Use the underlying daily ledgers, or request the full settlement audit.</p>
