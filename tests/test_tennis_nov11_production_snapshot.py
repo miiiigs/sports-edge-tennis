@@ -15,7 +15,7 @@ from research.tennis_a3_a4_guide_20261110.analyze_production_snapshot import (
 def test_nov11_1304_complete_five_day_source_baseline_and_uncertainty():
     path = Path(__file__).parents[1] / (
         "research/tennis_a3_a4_guide_20261110/"
-        "production_snapshot_20261111_1205PHT.json"
+        "production_snapshot_20261111_1304PHT.json"
     )
     report = analyze_snapshot(json.loads(path.read_text(encoding="utf-8")))
     assert report["period"] == {"start": "2026-11-06", "end": "2026-11-10"}
@@ -45,7 +45,7 @@ def test_nov11_1304_complete_five_day_source_baseline_and_uncertainty():
 def test_nov9_below_73_even_if_last_pending_wins_and_nov10_is_not_a4():
     path = Path(__file__).parents[1] / (
         "research/tennis_a3_a4_guide_20261110/"
-        "production_snapshot_20261111_1205PHT.json"
+        "production_snapshot_20261111_1304PHT.json"
     )
     data = analyze_snapshot(json.loads(path.read_text(encoding="utf-8")))
     days = {day["date"]: day for day in data["daily"]}
