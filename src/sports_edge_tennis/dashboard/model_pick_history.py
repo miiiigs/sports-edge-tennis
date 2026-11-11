@@ -42,6 +42,9 @@ from sports_edge_tennis.dashboard.qualified_history import (
 from sports_edge_tennis.dashboard.recent_quality_summary import (
     latest_five_day_evidence,
 )
+from sports_edge_tennis.dashboard.three_window_evidence import (
+    report_windows,
+)
 from sports_edge_tennis.dashboard.pagination import (
     DEFAULT_PAGE_SIZE,
     build_page_url,
@@ -930,6 +933,37 @@ def _live_five_day_evidence(
         return None
 
 
+def _live_three_window_evidence() -> dict[str, object] | None:
+    """One stable DB snapshot for fixed, rolling and cumulative periods.
+
+    This is distinct from the historical report's provider verification
+    status. A consistent W/L/V/P calculation does NOT certify that every
+    external fixture has been settled.
+    """
+    conn = None
+    try:
+        conn = _connect()
+        if conn is None:
+            return None
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        stamp = conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        as_of_date = stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        aligned = load_qualified_history(conn, as_of_date=as_of_date)
+        manager = load_daily_model_pick_summaries(
+            conn, timezone_name="Asia/Manila"
+        )
+        return report_windows(
+            list(aligned), list(manager),
+            as_of_date=as_of_date, source_refresh_at=stamp,
+        )
+    except Exception:
+        log.exception("Three-window database snapshot unavailable")
+        return None
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def _live_pending_audit() -> dict[str, object] | None:
     """Separate read-only pending ledger; a failed audit cannot mask results."""
     conn = None
@@ -1034,6 +1068,7 @@ def model_pick_results(
     )
     recent_five_day = _live_five_day_evidence(parallel_days, view)
     pending_case_audit = _live_pending_audit()
+    three_window_evidence = _live_three_window_evidence()
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -1093,6 +1128,8 @@ def model_pick_results(
             "recent_five_day_evidence": recent_five_day,
             "recent_five_day_error": recent_five_day is None,
             "pending_case_audit": pending_case_audit,
+            "three_window_evidence": three_window_evidence,
+            "three_window_error": three_window_evidence is None,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
@@ -1125,6 +1162,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     parallel_days, parallel_history_error = _load_parallel_history()
     recent_five_day = _live_five_day_evidence(parallel_days, view)
     pending_case_audit = _live_pending_audit()
+    three_window_evidence = _live_three_window_evidence()
 
     return JSONResponse(
         {
@@ -1142,6 +1180,8 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
             "recent_five_day_evidence": recent_five_day,
             "recent_five_day_error": recent_five_day is None,
             "pending_case_audit": pending_case_audit,
+            "three_window_evidence": three_window_evidence,
+            "three_window_error": three_window_evidence is None,
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
