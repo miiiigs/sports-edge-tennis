@@ -81,8 +81,9 @@ def report_windows(
         output[name] = {
             "start": start.isoformat(), "end": last.isoformat(),
             "status": (
-                "PROVISIONAL" if original["pending"] or selected["pending"]
-                or (separate_manager or {}).get("pending") else "SETTLED"
+                "MANAGER_COHORT_NOT_RECONCILED" if separate_manager is None
+                else "PROVISIONAL" if original["pending"] or selected["pending"]
+                or separate_manager["pending"] else "SETTLED"
             ),
             "original": original, "existing_qualified_ge70": selected,
             "manager_only_separate_population": separate_manager,
