@@ -94,7 +94,9 @@
 <section class="section" id="three-periods" aria-label="Three separate first-issued reporting windows" style="margin-top: 0;">
   <h2 class="section-title">Fixed, rolling and cumulative Model Picks</h2>
   <p class="section-note">
-    Database snapshot: {{ report.data_refreshed_at }}.
+    Queried at: {{ report.data_refreshed_at }} (UTC offset included).
+    Source facts are not all provider-verified; an unchanged pending fixture
+    is not evidence that it is definitely unfinished.
     Original and existing research filter are scored from the same first-issued
     ledger in one read-only database transaction. Manager is a separate cohort.
     Accuracy is total wins / (wins + losses), never an average of daily rates.
@@ -160,148 +162,13 @@
 <p class="section-note" role="alert">Fixed, rolling and cumulative report unavailable. Do not substitute an older screenshot as verified current performance.</p>
 {% endif %}
 
-{% if recent_five_day_evidence and not three_window_evidence %}
-{% set evidence = recent_five_day_evidence %}
-<section class="section" id="verified-five-day" aria-label="Live database five-day Original, filtered and Manager results" style="margin-top: 0;">
-  <h2 class="section-title">Latest five completed calendar dates · {{ evidence.period_start }} to {{ evidence.period_end }} (Manila)</h2>
-  <p class="section-note">
-    <strong>{% if not evidence.ledger_reconciled %}DATA RECONCILIATION REQUIRED{% elif evidence.is_final %}All listed results settled{% else %}PROVISIONAL: outstanding results remain{% endif %}</strong>.
-    Calculated from the live first-issued database at page request, not a frozen report screenshot.
-    Pooled accuracy = total wins ÷ (wins + losses); voids and pending are excluded. Original vs ≥70% is an identical-match subset comparison.
-    Manager-only is a separate cohort, not a fourth vote. The unvalidated A3/A4 proposal is not live.
-  </p>
-  {% if not evidence.ledger_reconciled %}
-  <p class="notice notice-warning" role="alert">The independent original and research ledgers disagree for {{ evidence.reconciliation_mismatch_dates | join(', ') }}. Treat the figures below as <strong>unverified</strong> until reconciled.</p>
-  {% endif %}
-  <div class="table-wrap" role="region" aria-label="Five-day live results with wins losses void pending coverage" tabindex="0">
-    <table class="data">
-      <thead><tr><th scope="col">Approach</th><th scope="col">Picks</th><th scope="col">W–L</th><th scope="col">Void</th><th scope="col">Pending</th><th scope="col">Graded accuracy</th><th scope="col">Coverage</th><th scope="col">Evidence</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">Original aligned</th>
-          <td class="num">{{ evidence.original.picks }}</td>
-          <td class="num">{{ evidence.original.won }}–{{ evidence.original.lost }}</td>
-          <td class="num">{{ evidence.original.void }}</td>
-          <td class="num">{{ evidence.original.pending }}</td>
-          <td class="num">{% if evidence.original.win_rate is not none %}{{ '%.1f%%'|format(evidence.original.win_rate*100) }}{% else %}—{% endif %}</td>
-          <td class="num">100%</td><td>Issued live</td>
-        </tr>
-        <tr><th scope="row">Existing ≥70% research filter</th>
-          <td class="num">{{ evidence.qualified.picks }}</td>
-          <td class="num">{{ evidence.qualified.won }}–{{ evidence.qualified.lost }}</td>
-          <td class="num">{{ evidence.qualified.void }}</td>
-          <td class="num">{{ evidence.qualified.pending }}</td>
-          <td class="num">{% if evidence.qualified.win_rate is not none %}{{ '%.1f%%'|format(evidence.qualified.win_rate*100) }}{% else %}—{% endif %}</td>
-          <td class="num">{% if evidence.qualified.selection_coverage is not none %}{{ '%.1f%%'|format(evidence.qualified.selection_coverage*100) }}{% else %}—{% endif %}</td><td>Retrospective subset, not A4</td>
-        </tr>
-        {% if evidence.manager_only %}
-        <tr><th scope="row">Manager-only</th>
-          <td class="num">{{ evidence.manager_only.picks }}</td>
-          <td class="num">{{ evidence.manager_only.won }}–{{ evidence.manager_only.lost }}</td>
-          <td class="num">{{ evidence.manager_only.void }}</td>
-          <td class="num">{{ evidence.manager_only.pending }}</td>
-          <td class="num">{% if evidence.manager_only.win_rate is not none %}{{ '%.1f%%'|format(evidence.manager_only.win_rate*100) }}{% else %}—{% endif %}</td>
-          <td class="num">Separate cohort</td><td>Issued live</td>
-        </tr>
-        {% endif %}
-        <tr><th scope="row">A3 / A4 challenger</th>
-          <td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">Not verified</td><td class="num">Not verified</td><td>Draft research; no approved live series</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="section-note">
-    Among excluded original picks: <strong>{{ evidence.rejected.won }} winners</strong> and
-    <strong>{{ evidence.rejected.lost }} losses</strong>
-    ({% if evidence.rejected.win_rate is not none %}{{ '%.1f%%'|format(evidence.rejected.win_rate*100) }}{% else %}no graded records{% endif %} graded accuracy).
-    Filter coverage and provisional totals can change as authoritative results are collected.
-    <a href="/today?tz=philippines">View current Manila Model Picks</a>.
-  </p>
-  <details class="no-bet-disclosure">
-    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">View five-day source counts and provisional bounds</span><span class="no-bet-toggle-subtitle">No averaging daily percentages or counting unfinished matches as losses</span></span></summary>
-    <div class="no-bet-panel">
-      <div class="table-wrap" role="region" aria-label="Five-day original and research daily totals" tabindex="0">
-        <table class="data">
-          <thead><tr><th scope="col">Manila date</th><th scope="col">Original W–L / pending</th><th scope="col">Qualified W–L / pending</th><th scope="col">Qualified accuracy</th><th scope="col">If all pending grade: best / worst</th><th scope="col">Status</th></tr></thead>
-          <tbody>{% for day in evidence.daily %}
-            <tr>
-              <th scope="row"><a href="/today?date={{ day.date }}&amp;tz=philippines">{{ day.date }}</a></th>
-              <td>{{ day.original_won }}–{{ day.original_lost }} / {{ day.original_pending }}</td>
-              <td>{{ day.qualified_won }}–{{ day.qualified_lost }} / {{ day.qualified_pending }}</td>
-              <td>{% if day.qualified_win_rate is not none %}{{ '%.1f%%'|format(day.qualified_win_rate*100) }}{% else %}—{% endif %}</td>
-              <td>{% if day.qualified_pending and day.qualified_best_if_pending_win is not none %}{{ '%.1f%%'|format(day.qualified_best_if_pending_win*100) }} / {{ '%.1f%%'|format(day.qualified_worst_if_pending_lose*100) }}{% else %}—{% endif %}</td>
-              <td>{{ day.status | replace('_', ' ') }}</td>
-            </tr>
-          {% endfor %}</tbody>
-        </table>
-      </div>
-      <p class="section-note">Pending bounds assume every currently pending pick becomes a graded win or loss. Some may instead be void. Daily results are provisional until the provider confirms settlement.</p>
-    </div>
-  </details>
+{% if not three_window_evidence %}
+<section class="section" role="alert" aria-label="Baseline verification blocked">
+  <h2 class="section-title">Standardized results report unavailable</h2>
+  <p class="section-note">The database could not supply one consistent snapshot
+  for the fixed, rolling, cumulative and pending ledgers. No cached
+  figures or unverified A3/A4 performance are substituted.</p>
 </section>
-{% elif recent_five_day_error and not three_window_evidence %}
-<section class="section" role="alert" aria-label="Live five-day report temporarily unavailable">
-  <h2 class="section-title">Live five-day verification unavailable</h2>
-  <p class="section-note">The database comparison could not be reconciled. No cached statistics or assumed A3/A4 results are substituted. Use the underlying daily ledgers, or request the full settlement audit.</p>
-</section>
-{% endif %}
-
-{% if pending_case_audit %}
-<section class="section" id="pending-result-audit" aria-label="Live pending outcome audit" style="margin-top: 0;">
-  <h2 class="section-title">Pending results · provider audit</h2>
-  <p class="section-note">Generated {{ pending_case_audit.generated_at }} from live stored results and fixture observations across the last 90 days.
-    <strong>{{ pending_case_audit.total }} pending matches</strong>;
-    <strong>{{ pending_case_audit.requires_investigation }} require result/provider investigation.</strong>
-    Match state is observed, not inferred: a future scheduled start does not independently prove that a match has not finished.
-    "Rescheduled" is an overlapping flag, not a separate group. Pending is never counted as lost.
-  </p>
-  <div class="table-wrap" role="region" aria-label="Pending cases by reason" tabindex="0">
-    <table class="data">
-      <thead><tr><th scope="col">Current classification</th><th scope="col">Matches</th><th scope="col">Interpretation</th></tr></thead>
-      <tbody>
-        {% for reason, count in pending_case_audit.by_reason.items() %}
-        <tr><th scope="row">{{ reason | replace('_',' ') }}</th><td class="num">{{ count }}</td>
-          <td>
-            {% if reason == 'NOT_STARTED' %}Scheduled for the future according to latest stored fixture, not independently reconfirmed
-            {% elif reason == 'AWAITING_RESULT' %}Recently started, waiting for authoritative outcome
-            {% elif reason == 'TERMINAL_FIXTURE_WITHOUT_RESULT' %}Terminal fixture, winner or void determination missing
-            {% elif reason == 'NO_API_TENNIS_LINK' %}Event identity not mapped to result provider
-            {% elif reason == 'PROVIDER_FIXTURE_NOT_REOBSERVED' %}Event not seen again by fixture provider
-            {% elif reason == 'FIXTURE_POSTPONED' %}Provider-reported postponement
-            {% else %}Requires provider status check{% endif %}
-          </td>
-        </tr>{% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <p class="section-note">Elapsed age bands:
-    {% for bucket, count in pending_case_audit.by_age.items() %}{{ bucket | replace('_',' ') }}: {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}.
-    Rescheduled flags: {{ pending_case_audit.by_flag.get('RESCHEDULED', 0) }}.
-  </p>
-  <details class="no-bet-disclosure">
-    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Inspect every pending match and its age</span><span class="no-bet-toggle-subtitle">Includes actionable cases, fixture statuses and original match IDs</span></span></summary>
-    <div class="no-bet-panel">
-      <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
-        <table class="data">
-          <thead><tr><th scope="col">Match ID</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Provider status</th><th scope="col">Latest scheduled (UTC offset included)</th><th scope="col">Last provider observation</th><th scope="col">Flags</th></tr></thead>
-          <tbody>{% for item in pending_case_audit['items'] %}
-            <tr>
-              <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
-              <td>{{ item.reason | replace('_',' ') }}</td>
-              <td>{% if item.hours_since_start is not none %}{{ item.hours_since_start }} h{% else %}Not started{% endif %} ({{ item.age_bucket | replace('_',' ') }})</td>
-              <td>{{ item.provider_fixture_status or 'Unknown' }}</td>
-              <td>{{ item.latest_start or 'Unobserved' }}</td>
-              <td>{{ item.last_observed or 'Unobserved' }}</td>
-              <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}</td>
-            </tr>{% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <p class="section-note">A classification shows the most recently stored provider observation, not an independently verified final result. Missing or winnerless terminal records must be reconciled against an authoritative event identity before changing any grade.</p>
-    </div>
-  </details>
-</section>
-{% else %}
-<p class="section-note" role="alert">The detailed pending-result audit is temporarily unavailable. The original results remain visible, but pending-case completeness has not been verified.</p>
 {% endif %}
 
 <section class="section" aria-label="All aligned five-day acceptance" style="margin-top: 0;">
