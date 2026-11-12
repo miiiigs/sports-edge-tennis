@@ -222,6 +222,7 @@ def parse(rows, *, as_of):
 
 
 def _summary(items):
+    items=list(items)
     status=Counter(x["status"] for x in items)
     scored=status["WON"]+status["LOST"]
     return {
@@ -246,7 +247,10 @@ def summarize(items, *, as_of):
     if items:
         from datetime import date
         first=date.fromisoformat(min(per_day))
-        last=as_of.astimezone(__import__("zoneinfo").ZoneInfo("Asia/Manila")).date()
+        last=max(
+            as_of.astimezone(__import__("zoneinfo").ZoneInfo("Asia/Manila")).date(),
+            date.fromisoformat(max(per_day)),
+        )
         for i in range((last-first).days+1):
             day=(first+timedelta(days=i)).isoformat()
             all_day=per_day[day]
@@ -277,7 +281,7 @@ def summarize(items, *, as_of):
     if sum(day["original"]["selections"] for day in days)!=totals["selections"]:
         raise ValueError("all-day picks are not complete")
     return {
-        "status":"REQUIRES_PROVIDER_RECONCILIATION" if pending else "PROVISIONALLY_ALL_GRADED",
+        "status":"REQUIRES_PROVIDER_RECONCILIATION" if pending else "ALL_RECORDED_GRADED_NOT_EXTERNALLY_RECHECKED",
         "source":"RAILWAY_POSTGRES_FIRST_ISSUED_ALIGNED_MODEL_PICKS",
         "as_of":as_of.isoformat(),
         "scope":LOOKBACK,
