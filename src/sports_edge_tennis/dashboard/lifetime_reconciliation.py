@@ -116,6 +116,8 @@ def _pending_reason(*, now, start, latest_status, mapped, observation):
     if start is None:
         return "SCHEDULE_UNVERIFIED"
     if start > now:
+        if observation is None or (now-observation).total_seconds() >= 86400:
+            return "STALE_FUTURE_SCHEDULE_RECHECK"
         return "FUTURE_STORED_START_UNVERIFIED"
     if not mapped:
         return "MISSING_RESULT_PROVIDER_EVENT_MAPPING"
@@ -135,6 +137,7 @@ def _action(reason):
         "POSTPONED_AWAITING_OFFICIAL_UPDATE":"RECHECK_OFFICIAL_SCHEDULE",
         "SCHEDULE_UNVERIFIED":"VERIFY_PROVIDER_IDENTITY_AND_SCHEDULE",
         "FUTURE_STORED_START_UNVERIFIED":"RECONFIRM_UPCOMING_PROVIDER_STATUS",
+        "STALE_FUTURE_SCHEDULE_RECHECK":"REVALIDATE_STALE_FUTURE_START",
         "MISSING_RESULT_PROVIDER_EVENT_MAPPING":"REPAIR_EVENT_ID_MAPPING",
         "OVERDUE_PROVIDER_REVIEW":"RETRY_HISTORY_AND_ESCALATE",
         "RESULT_24H_OVERDUE":"RETRY_RESULT_COLLECTION",
@@ -186,6 +189,19 @@ def parse(rows, *, as_of):
         day=start_for_bucket.astimezone(manila).date().isoformat()
         pending_reason=None
         age_hours=None
+        quality_flags=[]
+        if not mapped:
+            quality_flags.append("NO_API_TENNIS_EVENT_ID")
+        if original_start is None or not pit_ok:
+            quality_flags.append("PIT_START_OR_ISSUE_UNVERIFIED")
+        if fixture_observed is None or (
+            (as_of-fixture_observed).total_seconds()>=72*3600
+        ):
+            quality_flags.append("STALE_PROVIDER_FIXTURE_OBSERVATION")
+        if state=="PENDING" and latest_start is not None and (
+            (as_of-latest_start).total_seconds() >= 30*86400
+        ):
+            quality_flags.append("LONG_STANDING_UNRESOLVED_OVER_30D")
         if state=="PENDING":
             pending_reason=_pending_reason(
                 now=as_of,start=latest_start,latest_status=latest_status,
@@ -217,6 +233,15 @@ def parse(rows, *, as_of):
             "pending_age_hours":age_hours,
             "next_action":_action(pending_reason) if pending_reason else None,
             "external_provider_rechecked_during_audit":False,
+            "data_quality_flags":quality_flags,
+            "requires_operator_attention":(
+                state=="PENDING" and (
+                    pending_reason not in (
+                        "AWAITING_OFFICIAL_RESULT",
+                        "FUTURE_STORED_START_UNVERIFIED",
+                    ) or bool(quality_flags)
+                )
+            ),
         })
     return items
 
@@ -269,11 +294,7 @@ def summarize(items, *, as_of):
     qual=_summary(x for x in items if x["qualified_ge70"])
     qual["coverage"]=qual["selections"]/totals["selections"] if totals["selections"] else None
     pending=[x for x in items if x["status"]=="PENDING"]
-    aged=[x for x in pending if x["pending_reason"] in {
-        "TERMINAL_NO_USABLE_RESULT","OVERDUE_PROVIDER_REVIEW",
-        "RESULT_24H_OVERDUE","MISSING_RESULT_PROVIDER_EVENT_MAPPING",
-        "POSTPONED_AWAITING_OFFICIAL_UPDATE","SCHEDULE_UNVERIFIED",
-    }]
+    aged=[x for x in pending if x["requires_operator_attention"]]
     if totals["selections"]!=sum(totals[k] for k in ("won","lost","void","pending")):
         raise ValueError("all-history Original total does not reconcile")
     if qual["selections"]!=sum(qual[k] for k in ("won","lost","void","pending")):
@@ -290,7 +311,8 @@ def summarize(items, *, as_of):
         "original":totals,"existing_ge70_research":qual,
         "all_days":days,
         "total_historical_pending":len(pending),
-        "older_pending_needing_action":len(aged),
+        "pending_needing_operator_attention":len(aged),
+        "legacy_older_pending_needing_action":len(aged),
         "pending_reason_counts":dict(sorted(Counter(
             x["pending_reason"] for x in pending
         ).items())),
@@ -306,6 +328,51 @@ def summarize(items, *, as_of):
             "Provider records were NOT independently rechecked in this read."
         ),
     }
+
+
+def compare_all_history_with_existing_daily(report, legacy_days, *, as_of):
+    """Expose ALL disagreements; never silently replace older daily totals.
+
+    Both are loaded in the same PostgreSQL transaction. Original and
+    >=70% cohorts must match for every day covered by the legacy
+    comparison, including VOID and PENDING. Future-dated selections
+    remain accounted for in all-history but are not part of a past-day
+    comparison. If the old dashboard differs, state is NOT VERIFIED.
+    """
+    by_day={d["day"]:d for d in report["all_days"]}
+    differences=[]
+    for previous in legacy_days:
+        day=previous.day.isoformat()
+        fresh=by_day.get(day)
+        if fresh is None:
+            differences.append({"day":day,"error":"MISSING_ALL_HISTORY_DAY"})
+            continue
+        for group, metrics in (
+            ("original", (
+                previous.original,previous.original_won,previous.original_lost,
+                previous.original_void,previous.original_pending,
+            )),
+            ("research_ge70", (
+                previous.qualified,previous.qualified_won,previous.qualified_lost,
+                previous.qualified_void,previous.qualified_pending,
+            )),
+        ):
+            current=fresh[group]
+            names=("selections","won","lost","void","pending")
+            diff={name:{"old":old,"new":current[name]}
+                  for name,old in zip(names,metrics)
+                  if old != current[name]}
+            if diff:
+                differences.append({"day":day,"cohort":group,"difference":diff})
+    report["legacy_daily_reconciliation"]={
+        "status":"PASS" if not differences else "MISMATCH_REQUIRES_SOURCE_AUDIT",
+        "compared_calendar_days":len(legacy_days),
+        "discrepancies":differences,
+        "as_of":as_of.isoformat(),
+    }
+    if differences:
+        report["status"]="BLOCKED_LEGACY_DAILY_MISMATCH"
+    return report
 
 
 def load_lifetime_reconciliation(conn, *, as_of):
