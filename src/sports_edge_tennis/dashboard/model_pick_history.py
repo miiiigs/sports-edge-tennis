@@ -1122,6 +1122,50 @@ def model_pick_results(
     )
 
 
+@router.get("/api/dashboard/nov9-audit")
+def api_nov9_audit(request: Request):
+    """Protected source-backed per-match Nov9 record, never a cached total.
+
+    If this database query cannot match the canonical daily ledger, expose a
+    503 rather than a misleading 200 with missing selections.
+    """
+    conn = None
+    try:
+        from sports_edge_tennis.dashboard.nov09_source_proof import (
+            DAY, load_nov9_proof,
+        )
+        conn = _connect()
+        if conn is None:
+            return JSONResponse(
+                {"error":"database unavailable","status":"BLOCKED"},
+                status_code=503,
+            )
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        as_of = conn.execute(
+            "SELECT transaction_timestamp()"
+        ).fetchone()[0]
+        days = load_qualified_history(
+            conn,
+            as_of_date=as_of.astimezone(ZoneInfo("Asia/Manila")).date(),
+        )
+        nov9 = next((day for day in days if day.day == DAY), None)
+        if nov9 is None:
+            raise ValueError("Nov9 missing from immutable qualified history")
+        evidence = load_nov9_proof(
+            conn, as_of=as_of, daily=nov9,
+        )
+        return JSONResponse(evidence)
+    except Exception:
+        log.exception("Nov9 match-level source audit unavailable")
+        return JSONResponse(
+            {"error":"match-level audit not verifiable","status":"BLOCKED"},
+            status_code=503,
+        )
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @router.get("/api/dashboard/model-pick-results")
 def api_model_pick_results(request: Request, date: str | None = Query(default=None)):
     try:
