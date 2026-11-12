@@ -375,6 +375,36 @@ def compare_all_history_with_existing_daily(report, legacy_days, *, as_of):
     return report
 
 
+def classify_resolution_priority(record):
+    """Assign an operator queue priority; never alter match outcomes.
+
+    A stored 'future' time with an old provider observation is a
+    monitoring fault. A stored terminal without a canonical result is
+    an immediate manual-source issue. The priority is based on
+    available evidence, not guesses about whether a match finished.
+    """
+    if record["status"]!="PENDING":
+        return None
+    reason=record["pending_reason"]
+    age=record["pending_age_hours"]
+    flags=set(record["data_quality_flags"])
+    if reason in (
+        "TERMINAL_NO_USABLE_RESULT",
+        "MISSING_RESULT_PROVIDER_EVENT_MAPPING",
+        "OVERDUE_PROVIDER_REVIEW",
+    ) or "LONG_STANDING_UNRESOLVED_OVER_30D" in flags:
+        return "P0_MANUAL_PROVIDER_REVIEW"
+    if reason in (
+        "STALE_FUTURE_SCHEDULE_RECHECK",
+        "POSTPONED_AWAITING_OFFICIAL_UPDATE",
+        "RESULT_24H_OVERDUE",
+        "SCHEDULE_UNVERIFIED",
+        "PROVIDER_NOT_OBSERVED",
+    ) or "STALE_PROVIDER_FIXTURE_OBSERVATION" in flags:
+        return "P1_VERIFY_AND_RETRY"
+    return "P2_EXPECTED_PENDING"
+
+
 def pending_dashboard_audit(report):
     """Every historical pending item, including those outside 60/90-day limits."""
     from datetime import datetime
@@ -430,6 +460,8 @@ def pending_dashboard_audit(report):
             "next_action":item["next_action"],
             "provider_independently_verified":False,
             "data_quality_flags":item["data_quality_flags"],
+            "resolution_priority":classify_resolution_priority(item),
+            "needs_authoritative_terminal_evidence":True,
         })
     details.sort(key=lambda x:(
         not x["requires_investigation"],x["reason"],x["match_id"]
@@ -446,6 +478,9 @@ def pending_dashboard_audit(report):
         "requires_investigation":sum(
             x["requires_investigation"] for x in details
         ),
+        "by_resolution_priority":dict(sorted(Counter(
+            x["resolution_priority"] for x in details
+        ).items())),
         "items":details,
         "status":"STORED_PROVIDER_STATUS_UNVERIFIED_ALL_HISTORY",
     }
