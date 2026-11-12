@@ -128,3 +128,21 @@ def test_historical_query_is_not_rolling_60_or_90_day_cutoff():
     assert "INSERT INTO" not in sql and "UPDATE " not in sql
     assert _state("CANCELLED",None,1)=="VOID"
     assert _state(None,None,1)=="PENDING"
+
+
+def test_rescheduled_match_remains_in_original_issued_day_and_never_vanishes():
+    issued=datetime(2026,11,8,7,tzinfo=UTC)
+    original=datetime(2026,11,9,1,tzinfo=UTC)
+    moved=datetime(2026,11,12,15,tzinfo=UTC)
+    case=parse([_row(41,issued=issued,original=original,latest=moved,
+                     fixture="POSTPONED",fixture_seen=ASOF-timedelta(hours=8))],
+               as_of=ASOF)
+    assert case[0]["day"]=="2026-11-09"
+    assert case[0]["status"]=="PENDING"
+    assert case[0]["pending_reason"]=="POSTPONED_AWAITING_OFFICIAL_UPDATE"
+    data=summarize(case,as_of=ASOF)
+    pending=pending_dashboard_audit(data)
+    assert pending["total"]==1
+    assert pending["by_flag"]["RESCHEDULED"]==1
+    assert data["all_days"][0]["original"]["selections"]==1
+    assert data["all_days"][3]["original"]["selections"]==0
