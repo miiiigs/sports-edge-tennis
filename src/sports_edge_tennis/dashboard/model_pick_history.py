@@ -933,39 +933,13 @@ def _live_five_day_evidence(
         return None
 
 
-def _live_three_window_evidence() -> dict[str, object] | None:
-    """One stable DB snapshot for fixed, rolling and cumulative periods.
+def _live_baseline_snapshot() -> tuple[dict[str, object] | None, dict[str, object] | None]:
+    """One protected W/L/V/P + pending view from ONE repeatable-read DB txn.
 
-    This is distinct from the historical report's provider verification
-    status. A consistent W/L/V/P calculation does NOT certify that every
-    external fixture has been settled.
+    The dashboard must not silently show different data-as-of times for
+    pending and score totals. A query failure explicitly blocks the
+    standardized baseline, while preserving old historical navigation.
     """
-    conn = None
-    try:
-        conn = _connect()
-        if conn is None:
-            return None
-        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-        stamp = conn.execute("SELECT transaction_timestamp()").fetchone()[0]
-        as_of_date = stamp.astimezone(ZoneInfo("Asia/Manila")).date()
-        aligned = load_qualified_history(conn, as_of_date=as_of_date)
-        manager = load_daily_model_pick_summaries(
-            conn, timezone_name="Asia/Manila"
-        )
-        return report_windows(
-            list(aligned), list(manager),
-            as_of_date=as_of_date, source_refresh_at=stamp,
-        )
-    except Exception:
-        log.exception("Three-window database snapshot unavailable")
-        return None
-    finally:
-        if conn is not None:
-            conn.close()
-
-
-def _live_pending_audit() -> dict[str, object] | None:
-    """Separate read-only pending ledger; a failed audit cannot mask results."""
     conn = None
     try:
         from sports_edge_tennis.live.pending_result_diagnostics import (
@@ -973,57 +947,70 @@ def _live_pending_audit() -> dict[str, object] | None:
         )
         conn = _connect()
         if conn is None:
-            return None
-        report = load_pending_result_diagnostics(
-            conn, lookback_days=90, limit=500,
+            return None, None
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        stamp = conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        today = stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        aligned = load_qualified_history(conn, as_of_date=today)
+        manager = load_daily_model_pick_summaries(
+            conn, timezone_name="Asia/Manila"
         )
+        three_window = report_windows(
+            list(aligned), list(manager),
+            as_of_date=today, source_refresh_at=stamp,
+        )
+        pending = load_pending_result_diagnostics(
+            conn, now=stamp, lookback_days=90, limit=500,
+        )
+        # The full internal ledger is query-time consistent, but matches
+        # with only a stored FUTURE schedule are NOT provider-confirmed.
         investigate = frozenset({
             "NO_API_TENNIS_LINK", "PROVIDER_FIXTURE_NOT_REOBSERVED",
             "TERMINAL_FIXTURE_WITHOUT_RESULT", "RESULT_DELAYED",
         })
-        details = [
-            {
-                "match_id": row.match_id,
-                "reason": row.reason,
-                "age_bucket": row.age_bucket,
-                "hours_since_start": (
-                    round(row.hours_since_start, 1)
-                    if row.hours_since_start is not None else None
-                ),
-                "provider_fixture_status": row.evidence.latest_match_status,
-                "latest_start": (
-                    row.evidence.latest_match_start_at.isoformat()
-                    if row.evidence.latest_match_start_at else None
-                ),
-                "last_observed": (
-                    row.evidence.last_fixture_observed_at.isoformat()
-                    if row.evidence.last_fixture_observed_at else None
-                ),
-                "rescheduled": "RESCHEDULED" in row.flags,
-                "requires_investigation": row.reason in investigate,
-            } for row in report.items
-        ]
-        details.sort(
-            key=lambda row: (
-                not row["requires_investigation"],
-                row["reason"], row["match_id"]
-            )
-        )
-        return {
-            "generated_at": report.generated_at.isoformat(),
-            "total": report.total,
-            "by_reason": report.by_reason,
-            "by_age": report.by_age,
-            "by_flag": report.by_flag,
+        details = [{
+            "match_id": row.match_id,
+            "reason": row.reason,
+            "age_bucket": row.age_bucket,
+            "hours_since_start": (
+                round(row.hours_since_start, 1)
+                if row.hours_since_start is not None else None
+            ),
+            "provider_fixture_status": row.evidence.latest_match_status,
+            "latest_start": (
+                row.evidence.latest_match_start_at.isoformat()
+                if row.evidence.latest_match_start_at else None
+            ),
+            "last_observed": (
+                row.evidence.last_fixture_observed_at.isoformat()
+                if row.evidence.last_fixture_observed_at else None
+            ),
+            "rescheduled": "RESCHEDULED" in row.flags,
+            "requires_investigation": row.reason in investigate,
+            "provider_independently_verified": False,
+        } for row in pending.items]
+        details.sort(key=lambda row: (
+            not row["requires_investigation"],
+            row["reason"], row["match_id"],
+        ))
+        pending_audit = {
+            "generated_at": stamp.isoformat(),
+            "total": pending.total,
+            "by_reason": pending.by_reason,
+            "by_age": pending.by_age,
+            "by_flag": pending.by_flag,
             "requires_investigation": sum(
                 row["requires_investigation"] for row in details
             ),
             "items": details,
-            "status": "PENDING_PROVIDER_STATUS_UNCONFIRMED",
+            "status": "STORED_PROVIDER_STATUS_UNVERIFIED",
         }
+        if pending.total != len(details):
+            raise ValueError("pending summary/match details mismatch")
+        return three_window, pending_audit
     except Exception:
-        log.exception("Read-only per-match pending diagnostics unavailable")
-        return None
+        log.exception("Single-snapshot Tennis baseline unavailable")
+        return None, None
     finally:
         if conn is not None:
             conn.close()
@@ -1067,8 +1054,7 @@ def model_pick_results(
         _load_parallel_history() if not view.failed else ((), True)
     )
     recent_five_day = _live_five_day_evidence(parallel_days, view)
-    pending_case_audit = _live_pending_audit()
-    three_window_evidence = _live_three_window_evidence()
+    three_window_evidence, pending_case_audit = _live_baseline_snapshot()
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -1161,8 +1147,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     )
     parallel_days, parallel_history_error = _load_parallel_history()
     recent_five_day = _live_five_day_evidence(parallel_days, view)
-    pending_case_audit = _live_pending_audit()
-    three_window_evidence = _live_three_window_evidence()
+    three_window_evidence, pending_case_audit = _live_baseline_snapshot()
 
     return JSONResponse(
         {
