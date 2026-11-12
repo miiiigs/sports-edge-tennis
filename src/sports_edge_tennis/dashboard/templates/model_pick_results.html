@@ -236,10 +236,11 @@
 
 {% if pending_case_audit %}
 <section class="section" id="pending-result-audit" aria-label="Live pending outcome audit" style="margin-top: 0;">
-  <h2 class="section-title">Pending results · provider audit</h2>
-  <p class="section-note">From the same transaction as the three-window results, queried {{ pending_case_audit.generated_at }}; showing stored fixture observations and fixture observations across the last 90 days.
-    <strong>{{ pending_case_audit.total }} pending matches</strong>;
-    <strong>{{ pending_case_audit.requires_investigation }} require result/provider investigation.</strong>
+  <h2 class="section-title">All-history unresolved Original Model Picks</h2>
+  <p class="section-note">From the same database snapshot as all historical Original Model Picks, queried {{ pending_case_audit.generated_at }}. Includes unresolved matches of ANY age, not only the runner's rolling 60-day diagnostic population.
+    <strong>{{ pending_case_audit.total }} unresolved Original Model Picks</strong>;
+    <strong>{{ pending_case_audit.requires_investigation }} require operator investigation.</strong>
+    This Original-only lifetime cohort is distinct from the runner's multi-source short-window pending diagnostic count.
     Match state is observed, not inferred: a future scheduled start does not independently prove that a match has not finished.
     "Rescheduled" is an overlapping flag, not a separate group. Pending is never counted as lost.
   </p>
@@ -265,13 +266,14 @@
   <p class="section-note">Elapsed age bands:
     {% for bucket, count in pending_case_audit.by_age.items() %}{{ bucket | replace('_',' ') }}: {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}.
     Rescheduled flags: {{ pending_case_audit.by_flag.get('RESCHEDULED', 0) }}.
+    Queue: {% for priority, count in pending_case_audit.by_resolution_priority.items() %}{{ priority | replace('_',' ') }}: {{ count }}{% if not loop.last %} · {% endif %}{% endfor %}.
   </p>
   <details class="no-bet-disclosure">
     <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Inspect every pending match and its age</span><span class="no-bet-toggle-subtitle">Includes actionable cases, fixture statuses and original match IDs</span></span></summary>
     <div class="no-bet-panel">
       <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
         <table class="data">
-          <thead><tr><th scope="col">Match ID</th><th scope="col">Players</th><th scope="col">Original scheduled</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Stored provider status</th><th scope="col">Latest scheduled</th><th scope="col">Last provider observation</th><th scope="col">Action</th><th scope="col">Flags</th></tr></thead>
+          <thead><tr><th scope="col">Match ID</th><th scope="col">Players</th><th scope="col">Original scheduled</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Stored provider status</th><th scope="col">Latest scheduled</th><th scope="col">Last provider observation</th><th scope="col">Action</th><th scope="col">Priority</th><th scope="col">Flags</th></tr></thead>
           <tbody>{% for item in pending_case_audit['items'] %}
             <tr>
               <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
@@ -283,6 +285,7 @@
               <td>{{ item.latest_start or 'Unobserved' }}</td>
               <td>{{ item.last_observed or 'Unobserved' }}</td>
               <td>{{ item.next_action | replace('_',' ') }}</td>
+              <td>{{ item.resolution_priority | replace('_',' ') }}</td>
               <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}; provider not independently rechecked</td>
             </tr>{% endfor %}
           </tbody>
