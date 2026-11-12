@@ -146,3 +146,27 @@ def test_rescheduled_match_remains_in_original_issued_day_and_never_vanishes():
     assert pending["by_flag"]["RESCHEDULED"]==1
     assert data["all_days"][0]["original"]["selections"]==1
     assert data["all_days"][3]["original"]["selections"]==0
+
+
+def test_all_historical_pending_gets_prioritized_operator_queue_not_void():
+    rows=[
+        _row(71,fixture="WALKOVER",terminal=None),
+        _row(72,latest=FUTURE,fixture_seen=ASOF-timedelta(days=7)),
+        _row(73,latest=ASOF+timedelta(hours=2),fixture_seen=ASOF-timedelta(minutes=5)),
+    ]
+    records=parse(rows,as_of=ASOF)
+    report=summarize(records,as_of=ASOF)
+    data=pending_dashboard_audit(report)
+    assert data["total"]==3
+    assert data["by_resolution_priority"]=={
+        "P0_MANUAL_PROVIDER_REVIEW":1,
+        "P1_VERIFY_AND_RETRY":1,
+        "P2_EXPECTED_PENDING":1,
+    }
+    by_id={r["match_id"]:r for r in data["items"]}
+    assert by_id[71]["resolution_priority"]=="P0_MANUAL_PROVIDER_REVIEW"
+    assert by_id[72]["resolution_priority"]=="P1_VERIFY_AND_RETRY"
+    assert by_id[73]["resolution_priority"]=="P2_EXPECTED_PENDING"
+    assert all(r["needs_authoritative_terminal_evidence"] for r in data["items"])
+    assert report["original"]["void"]==0
+    assert report["original"]["pending"]==3
