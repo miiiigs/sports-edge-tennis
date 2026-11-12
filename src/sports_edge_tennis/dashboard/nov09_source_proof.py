@@ -43,10 +43,11 @@ def _query_details(conn, picks: list, *, as_of: datetime):
                r.ingested_at AS result_ingested_at,
                f.match_status::text AS current_fixture_status,
                f.match_start_at AS latest_match_start_at,
-               f.source_observed_at AS last_fixture_source_observed_at
+               f.source_observed_at AS last_fixture_source_observed_at,
+               names.match_start_at AS proven_pre_issuance_start
         FROM unnest(%s::bigint[],%s::timestamptz[]) AS a(match_id,issued_at)
         LEFT JOIN LATERAL (
-            SELECT mv.player_1_id, mv.player_2_id
+            SELECT mv.player_1_id, mv.player_2_id, mv.match_start_at
             FROM match_versions mv
             WHERE mv.match_id = a.match_id
               AND mv.as_of <= a.issued_at
@@ -108,7 +109,7 @@ def verify_nov9_rows(picks, result_rows: dict, daily: ComparisonDay,
         if row is None or int(row[0]) != p.match_id:
             raise ValueError("missing match result/provenance row")
         (mid,player1,player2,terminal,winner,result_at,observed,ingested,
-         fixture_status,latest_start,fixture_observed) = row
+         fixture_status,latest_start,fixture_observed,proven_start) = row
         prob = Decimal(p.aligned_probability)
         if not prob.is_finite() or not Decimal(0) <= prob <= Decimal(1):
             raise ValueError("invalid original first-issued confidence")
@@ -123,11 +124,18 @@ def verify_nov9_rows(picks, result_rows: dict, daily: ComparisonDay,
             "player_1":player1,"player_2":player2,
             "original_issued_at":p.picked_at.isoformat(),
             "pit_scheduled_start": (
+                proven_start.isoformat() if proven_start else None
+            ),
+            "legacy_bucket_start": (
                 p.match_start_at.isoformat() if p.match_start_at else None
             ),
+            "pit_start_matches_legacy_bucket": (
+                proven_start == p.match_start_at
+                if proven_start and p.match_start_at else None
+            ),
             "issued_before_pit_start": (
-                p.picked_at < p.match_start_at
-                if p.match_start_at else None
+                p.picked_at < proven_start and proven_start == p.match_start_at
+                if proven_start and p.match_start_at else None
             ),
             "selected_side":p.selected_side,
             "original_probability":str(prob),
