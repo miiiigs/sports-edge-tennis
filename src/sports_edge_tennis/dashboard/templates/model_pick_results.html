@@ -89,6 +89,69 @@
 <p class="section-note">Qualified historical comparison is temporarily unavailable. Original results and Brian's official 73% scorecard are unaffected.</p>
 {% endif %}
 
+{% if all_history_evidence %}
+{% set h = all_history_evidence %}
+<section class="section" id="all-history-accountability" aria-label="Every historical Model Pick and unresolved result" style="margin-top:0;">
+  <h2 class="section-title">All historical Model Picks - complete daily reconciliation</h2>
+  <p class="section-note">
+    Covers all first-issued original aligned selections from {{ h.starts_at or 'first recorded date' }}
+    to {{ h.ends_at or 'present' }}. Queried {{ h.as_of }}.
+    Every win, loss, void and pending selection remains counted.
+    Provider-unverified or overdue fixtures are NEVER voided merely because they are old.
+    {% if h.legacy_daily_reconciliation.status != 'PASS' %}
+      <strong>RECONCILIATION BLOCKED: {{ h.legacy_daily_reconciliation.discrepancies | length }}
+      historical day/cohort disagreements need source investigation.</strong>
+    {% else %}
+      Historical period arithmetic matches the existing daily read model.
+    {% endif %}
+  </p>
+  <div class="table-wrap" role="region" aria-label="Lifetime total outcomes and follow-up cases" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Cohort</th><th scope="col">Total selections</th><th scope="col">Wins</th><th scope="col">Losses</th><th scope="col">Voids</th><th scope="col">Pending</th><th scope="col">Settled accuracy</th><th scope="col">Coverage</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Original first-issued picks</th><td>{{ h.original.selections }}</td>
+          <td>{{ h.original.won }}</td><td>{{ h.original.lost }}</td>
+          <td>{{ h.original.void }}</td><td>{{ h.original.pending }}</td>
+          <td>{% if h.original.settled_accuracy is not none %}{{ '%.1f%%'|format(h.original.settled_accuracy*100) }}{% else %}Unscored{% endif %}</td><td>100%</td></tr>
+        <tr><th scope="row">≥70% retrospective research subset</th><td>{{ h.existing_ge70_research.selections }}</td>
+          <td>{{ h.existing_ge70_research.won }}</td><td>{{ h.existing_ge70_research.lost }}</td>
+          <td>{{ h.existing_ge70_research.void }}</td><td>{{ h.existing_ge70_research.pending }}</td>
+          <td>{% if h.existing_ge70_research.settled_accuracy is not none %}{{ '%.1f%%'|format(h.existing_ge70_research.settled_accuracy*100) }}{% else %}Unscored{% endif %}</td>
+          <td>{% if h.existing_ge70_research.coverage is not none %}{{ '%.1f%%'|format(h.existing_ge70_research.coverage*100) }}{% else %}Unknown{% endif %}</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="section-note">
+    {{ h.total_historical_pending }} unresolved Original matches across all recorded dates,
+    including {{ h.pending_needing_operator_attention }} requiring operator follow-up.
+    No 60- or 90-day audit cutoff. A result remains provisional until independently sourced.
+    <a href="/api/dashboard/all-history-reconciliation">Inspect every issued match ID, source timestamp and pending reason (JSON)</a>.
+  </p>
+  <details class="no-bet-disclosure">
+    <summary class="no-bet-toggle"><span class="no-bet-toggle-copy"><span class="no-bet-toggle-title">Show every historical calendar day</span><span class="no-bet-toggle-subtitle">Includes dates with zero selections, voids and unresolved results</span></span></summary>
+    <div class="no-bet-panel">
+      <div class="table-wrap" role="region" aria-label="Complete historical daily scorecard" tabindex="0">
+        <table class="data"><thead><tr><th scope="col">Date (Manila)</th><th scope="col">Original issued</th><th scope="col">Original W-L / VOID / Pending</th><th scope="col">Research ≥70% picks</th><th scope="col">Research W-L / VOID / Pending</th><th scope="col">Verification status</th></tr></thead>
+          <tbody>
+          {% for day in h.all_days | reverse %}
+          <tr><th scope="row">{{ day.day }}</th>
+          <td>{{ day.original.selections }}</td>
+          <td>{{ day.original.won }}-{{ day.original.lost }} / {{ day.original.void }} / {{ day.original.pending }}</td>
+          <td>{{ day.research_ge70.selections }}</td>
+          <td>{{ day.research_ge70.won }}-{{ day.research_ge70.lost }} / {{ day.research_ge70.void }} / {{ day.research_ge70.pending }}</td>
+          <td>{% if day.provisional %}PROVISIONAL{% else %}All recorded selections graded; provider replay not certified{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+</section>
+{% else %}
+<p class="section-note" role="alert">All-history selection reconciliation unavailable. The displayed older period reports are not certified as a complete historical audit.</p>
+{% endif %}
+
 {% if three_window_evidence %}
 {% set report = three_window_evidence %}
 <section class="section" id="three-periods" aria-label="Three separate first-issued reporting windows" style="margin-top: 0;">
