@@ -116,7 +116,14 @@ def plan_aged_recovery(
     if by_date:
         days = sorted(by_date)
         day = days[today.toordinal() % len(days)]
-        chosen = tuple(sorted(by_date[day])[:MAX_TARGETS_PER_REQUEST])
+        candidates = sorted(by_date[day])
+        # One older calendar date may contain far more than ten fixtures.
+        # Rotate *within* the date as well; otherwise the lowest IDs
+        # receive every probe and later unresolved cases are starved.
+        rotation = today.toordinal() // len(days)
+        offset = (rotation * MAX_TARGETS_PER_REQUEST) % len(candidates)
+        circular = candidates[offset:] + candidates[:offset]
+        chosen = tuple(circular[:MAX_TARGETS_PER_REQUEST])
     return AgedRecoveryPlan(
         at=as_of,
         provider_request_budget=MAX_REQUESTS_PER_DAY if chosen else 0,
