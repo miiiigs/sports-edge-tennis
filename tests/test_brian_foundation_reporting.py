@@ -150,3 +150,21 @@ def test_production_equivalent_noncompletions_remain_void_or_pending():
     assert classify("RETIRED",2,1) == "VOID"
     assert classify("CANCELLED",None,1) == "VOID"
     assert classify(None,None,1) == "PENDING"
+
+
+def test_no_manager_row_on_calendar_day_counts_as_zero_manager_picks():
+    # SQL GROUP BY emits no row for a zero-pick day, unlike the qualified
+    # day-by-day loader. The standardized baseline must not manufacture
+    # missing-data status when no Manager selection was issued.
+    manager=[m for m in _manager()
+             if m.decision_date != date(2026,11,5)]
+    report=report_windows(
+        _days(), manager, as_of_date=date(2026,11,11),
+        source_refresh_at=datetime(2026,11,11,9,tzinfo=UTC),
+    )
+    fixed=report["periods"]["fixed_nov05_nov09"]
+    assert fixed["manager_only_separate_population"]["picks"] == (
+        sum(x.picks for x in manager
+            if date(2026,11,5)<=x.decision_date<=date(2026,11,9))
+    )
+    assert fixed["status"] == "PROVISIONAL"
