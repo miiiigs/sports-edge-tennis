@@ -70,19 +70,20 @@ def report_windows(
             selected["picks"] / original["picks"]
             if original["picks"] else None
         )
-        manager_rows = [man[d] for d in wanted if d in man]
-        separate_manager = (
-            _aggregate([
-                (x.picks, x.wins, x.losses, x.voids, x.pending)
-                for x in manager_rows
-            ])
-            if len(manager_rows) == len(wanted) else None
-        )
+        # The Manager summary SQL groups by match date and therefore
+        # emits NO row on a genuinely zero-Manager-pick day. That is
+        # a zero-count day, not a missing or corrupted ledger day.
+        separate_manager = _aggregate([
+            (
+                man[d].picks, man[d].wins, man[d].losses,
+                man[d].voids, man[d].pending,
+            ) if d in man else (0, 0, 0, 0, 0)
+            for d in wanted
+        ])
         output[name] = {
             "start": start.isoformat(), "end": last.isoformat(),
             "status": (
-                "MANAGER_COHORT_NOT_RECONCILED" if separate_manager is None
-                else "PROVISIONAL" if original["pending"] or selected["pending"]
+                "PROVISIONAL" if original["pending"] or selected["pending"]
                 or separate_manager["pending"] else "SETTLED"
             ),
             "original": original, "existing_qualified_ge70": selected,
