@@ -1095,6 +1095,54 @@ def model_pick_results(
     )
 
 
+@router.get("/api/dashboard/all-history-reconciliation")
+def api_all_history_reconciliation(request: Request):
+    """Authenticated ALL-DAYS source-of-truth pick ledger, zero date cutoffs.
+
+    Full IDs, terminal evidence, stale/unverified pending status and source
+    timestamps are returned. Disagreement with the legacy daily report
+    generates HTTP 409 with discrepancies, rather than lying with 200.
+    """
+    conn=None
+    try:
+        from sports_edge_tennis.dashboard.lifetime_reconciliation import (
+            compare_all_history_with_existing_daily,
+            load_lifetime_reconciliation,
+        )
+        conn=_connect()
+        if conn is None:
+            return JSONResponse(
+                {"error":"Railway PostgreSQL unavailable",
+                 "status":"BLOCKED_DATABASE_ACCESS"},
+                status_code=503,
+            )
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        stamp=conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        today=stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        lifetime=load_lifetime_reconciliation(conn,as_of=stamp)
+        historical=load_qualified_history(conn,as_of_date=today)
+        report=compare_all_history_with_existing_daily(
+            lifetime,historical,as_of=stamp,
+        )
+        return JSONResponse(
+            report,
+            status_code=(
+                409 if report["legacy_daily_reconciliation"]["discrepancies"]
+                else 200
+            ),
+        )
+    except Exception:
+        log.exception("All-history match-ID evidence cannot be verified")
+        return JSONResponse(
+            {"error":"All-history audit failed",
+             "status":"BLOCKED_SOURCE_AUDIT"},
+            status_code=503,
+        )
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 @router.get("/api/dashboard/nov9-audit")
 def api_nov9_audit(request: Request):
     """Protected source-backed per-match Nov9 record, never a cached total.
