@@ -13,6 +13,7 @@ from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_hist
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.model_pick_history import (
     api_model_pick_results,
+    api_nov9_audit,
     model_pick_results,
 )
 from sports_edge_tennis.dashboard.observability_routes import (
@@ -55,6 +56,10 @@ app.get(
     "/api/dashboard/model-pick-results",
     name="api_model_pick_results",
 )(api_model_pick_results)
+app.get(
+    "/api/dashboard/nov9-audit",
+    name="api_nov9_audit",
+)(api_nov9_audit)
 app.get(
     "/api/dashboard/pick-lifecycle",
     name="api_pick_lifecycle",
@@ -108,6 +113,7 @@ _required_paths = {
     "/api/dashboard/bet-history",
     "/api/dashboard/value-bet-results",
     "/api/dashboard/model-pick-results",
+    "/api/dashboard/nov9-audit",
     "/api/dashboard/pick-lifecycle",
     "/api/dashboard/paper-bankroll",
     "/api/dashboard/model-evidence",
