@@ -968,8 +968,27 @@ def _live_baseline_snapshot() -> tuple[dict[str, object] | None, dict[str, objec
             "NO_API_TENNIS_LINK", "PROVIDER_FIXTURE_NOT_REOBSERVED",
             "TERMINAL_FIXTURE_WITHOUT_RESULT", "RESULT_DELAYED",
         })
+        next_actions = {
+            "NOT_STARTED": "RECHECK_PROVIDER_NEAR_LATEST_START",
+            "AWAITING_RESULT": "RETRY_TERMINAL_RESULT_AND_ESCALATE_IF_OVERDUE",
+            "TERMINAL_FIXTURE_WITHOUT_RESULT": "VERIFY_OFFICIAL_WALKOVER_OR_RETIREMENT",
+            "NO_API_TENNIS_LINK": "REPAIR_CANONICAL_MATCH_ID_MAPPING",
+            "PROVIDER_FIXTURE_NOT_REOBSERVED": "VERIFY_PROVIDER_SOURCE_AND_HISTORICAL_EVENT",
+            "FIXTURE_POSTPONED": "VERIFY_NEW_SCHEDULE_WITH_PROVIDER",
+            "RESULT_DELAYED": "CHECK_RESULT_INGESTION_AND_RETRY",
+        }
         details = [{
             "match_id": row.match_id,
+            "players": [row.evidence.player_1, row.evidence.player_2],
+            "original_start": (
+                row.evidence.pit_match_start_at.isoformat()
+                if row.evidence.pit_match_start_at else None
+            ),
+            "original_issued_at": row.evidence.picked_at.isoformat(),
+            "last_provider_looked_up_now": False,
+            "next_action": next_actions.get(
+                row.reason, "MANUAL_PROVIDER_REVIEW_REQUIRED"
+            ),
             "reason": row.reason,
             "age_bucket": row.age_bucket,
             "hours_since_start": (
