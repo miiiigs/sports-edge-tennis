@@ -29,7 +29,7 @@ def _result(mid,status=None,winner=None,*,observed=None):
     seen=observed if observed is not None else NOW-timedelta(hours=1)
     return (mid,"Player A","Player B",status,winner,
             seen if status else None,seen if status else None,
-            seen if status else None,"SCHEDULED",KICKOFF,seen)
+            seen if status else None,"SCHEDULED",KICKOFF,seen,KICKOFF)
 
 
 def _day():
@@ -95,3 +95,16 @@ def test_non_completed_terminal_never_inferred_winner():
     assert _state("WALKOVER",2,1)=="VOID"
     assert _state("CANCELLED",None,1)=="VOID"
     assert _state("COMPLETED",None,1)=="PENDING"
+
+
+def test_late_arriving_kickoff_change_does_not_pass_point_in_time_proof():
+    picks=[_pick(1),_pick(2,"0.61"),_pick(3),_pick(4,"0.60")]
+    picks[0].match_start_at=KICKOFF+timedelta(hours=2)
+    result={1:_result(1,"COMPLETED",1),
+            2:_result(2,"COMPLETED",2),
+            3:_result(3,"WALKOVER",None),
+            4:_result(4)}
+    proof=verify_nov9_rows(picks,result,_day(),as_of=NOW)
+    assert proof["status"]=="PIT_REVIEW_REQUIRED"
+    assert proof["pit_unverified_match_ids"]==[1]
+    assert proof["records"][0]["pit_start_matches_legacy_bucket"] is False
