@@ -29,9 +29,11 @@ def _state(result_status: str | None, winner_side: int | None,
     return "PENDING"
 
 
-def _query_details(conn, ids: list[int], *, as_of: datetime):
-    if not ids:
+def _query_details(conn, picks: list, *, as_of: datetime):
+    if not picks:
         return {}
+    ids = [p.match_id for p in picks]
+    issued_at = [p.picked_at for p in picks]
     rows = conn.execute(
         """
         SELECT a.match_id, p1.canonical_name AS player_1,
@@ -42,13 +44,14 @@ def _query_details(conn, ids: list[int], *, as_of: datetime):
                f.match_status::text AS current_fixture_status,
                f.match_start_at AS latest_match_start_at,
                f.source_observed_at AS last_fixture_source_observed_at
-        FROM unnest(%s::bigint[]) AS a(match_id)
+        FROM unnest(%s::bigint[],%s::timestamptz[]) AS a(match_id,issued_at)
         LEFT JOIN LATERAL (
             SELECT mv.player_1_id, mv.player_2_id
             FROM match_versions mv
             WHERE mv.match_id = a.match_id
-              AND mv.as_of <= %s AND mv.ingested_at <= %s
-              AND mv.source_observed_at <= %s
+              AND mv.as_of <= a.issued_at
+              AND mv.ingested_at <= a.issued_at
+              AND mv.source_observed_at <= a.issued_at
             ORDER BY mv.as_of DESC, mv.source_observed_at DESC,
                      mv.match_version_id DESC LIMIT 1
         ) names ON TRUE
@@ -81,7 +84,7 @@ def _query_details(conn, ids: list[int], *, as_of: datetime):
         ) f ON TRUE
         ORDER BY a.match_id
         """,
-        (ids,as_of,as_of,as_of,
+        (ids,issued_at,
          as_of,as_of,as_of,
          as_of,as_of,as_of),
     ).fetchall()
@@ -187,6 +190,6 @@ def load_nov9_proof(conn, *, as_of: datetime, daily: ComparisonDay) -> dict:
         conn, decision_date=DAY, timezone_name="Asia/Manila",
     )
     details=_query_details(
-        conn, [p.match_id for p in picks], as_of=as_of,
+        conn, list(picks), as_of=as_of,
     )
     return verify_nov9_rows(picks,details,daily,as_of=as_of)
