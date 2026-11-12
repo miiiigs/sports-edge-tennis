@@ -208,16 +208,19 @@
     <div class="no-bet-panel">
       <div class="table-wrap" role="region" aria-label="Detailed pending result match IDs and ages" tabindex="0">
         <table class="data">
-          <thead><tr><th scope="col">Match ID</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Provider status</th><th scope="col">Latest scheduled (UTC offset included)</th><th scope="col">Last provider observation</th><th scope="col">Flags</th></tr></thead>
+          <thead><tr><th scope="col">Match ID</th><th scope="col">Players</th><th scope="col">Original scheduled</th><th scope="col">Reason</th><th scope="col">Age since latest start</th><th scope="col">Stored provider status</th><th scope="col">Latest scheduled</th><th scope="col">Last provider observation</th><th scope="col">Action</th><th scope="col">Flags</th></tr></thead>
           <tbody>{% for item in pending_case_audit['items'] %}
             <tr>
               <th scope="row">{{ item.match_id }}{% if item.requires_investigation %} · review{% endif %}</th>
+              <td>{{ item.players[0] or 'Unverified player' }} vs {{ item.players[1] or 'Unverified player' }}</td>
+              <td>{{ item.original_start or 'Unknown' }}</td>
               <td>{{ item.reason | replace('_',' ') }}</td>
               <td>{% if item.hours_since_start is not none %}{{ item.hours_since_start }} h{% else %}Not started{% endif %} ({{ item.age_bucket | replace('_',' ') }})</td>
               <td>{{ item.provider_fixture_status or 'Unknown' }}</td>
               <td>{{ item.latest_start or 'Unobserved' }}</td>
               <td>{{ item.last_observed or 'Unobserved' }}</td>
-              <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}</td>
+              <td>{{ item.next_action | replace('_',' ') }}</td>
+              <td>{% if item.rescheduled %}Rescheduled{% else %}—{% endif %}; provider not independently rechecked</td>
             </tr>{% endfor %}
           </tbody>
         </table>
