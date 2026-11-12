@@ -933,103 +933,55 @@ def _live_five_day_evidence(
         return None
 
 
-def _live_baseline_snapshot() -> tuple[dict[str, object] | None, dict[str, object] | None]:
-    """One protected W/L/V/P + pending view from ONE repeatable-read DB txn.
+def _live_baseline_snapshot() -> tuple[
+    dict[str, object] | None,
+    dict[str, object] | None,
+    dict[str, object] | None,
+]:
+    """All days, all unresolved cases, and three periods in ONE DB snapshot.
 
-    The dashboard must not silently show different data-as-of times for
-    pending and score totals. A query failure explicitly blocks the
-    standardized baseline, while preserving old historical navigation.
+    No historical truncation, inferred void, silent pick removal or cached
+    fallback. Any unresolved mismatch is displayed as unverified rather than
+    a clean settled/verified claim.
     """
-    conn = None
+    conn=None
     try:
-        from sports_edge_tennis.live.pending_result_diagnostics import (
-            load_pending_result_diagnostics,
+        from sports_edge_tennis.dashboard.lifetime_reconciliation import (
+            compare_all_history_with_existing_daily,
+            load_lifetime_reconciliation,
+            pending_dashboard_audit,
         )
-        conn = _connect()
+        conn=_connect()
         if conn is None:
-            return None, None
+            return None,None,None
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-        stamp = conn.execute("SELECT transaction_timestamp()").fetchone()[0]
-        today = stamp.astimezone(ZoneInfo("Asia/Manila")).date()
-        aligned = load_qualified_history(conn, as_of_date=today)
-        manager = load_daily_model_pick_summaries(
-            conn, timezone_name="Asia/Manila"
+        stamp=conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        today=stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        aligned=load_qualified_history(conn,as_of_date=today)
+        manager=load_daily_model_pick_summaries(
+            conn,timezone_name="Asia/Manila"
         )
-        three_window = report_windows(
-            list(aligned), list(manager),
-            as_of_date=today, source_refresh_at=stamp,
+        three_window=report_windows(
+            list(aligned),list(manager),
+            as_of_date=today,source_refresh_at=stamp,
         )
-        pending = load_pending_result_diagnostics(
-            conn, now=stamp, lookback_days=90, limit=500,
+        lifetime=load_lifetime_reconciliation(conn,as_of=stamp)
+        lifetime=compare_all_history_with_existing_daily(
+            lifetime,aligned,as_of=stamp,
         )
-        # The full internal ledger is query-time consistent, but matches
-        # with only a stored FUTURE schedule are NOT provider-confirmed.
-        investigate = frozenset({
-            "NO_API_TENNIS_LINK", "PROVIDER_FIXTURE_NOT_REOBSERVED",
-            "TERMINAL_FIXTURE_WITHOUT_RESULT", "RESULT_DELAYED",
-        })
-        next_actions = {
-            "NOT_STARTED": "RECHECK_PROVIDER_NEAR_LATEST_START",
-            "AWAITING_RESULT": "RETRY_TERMINAL_RESULT_AND_ESCALATE_IF_OVERDUE",
-            "TERMINAL_FIXTURE_WITHOUT_RESULT": "VERIFY_OFFICIAL_WALKOVER_OR_RETIREMENT",
-            "NO_API_TENNIS_LINK": "REPAIR_CANONICAL_MATCH_ID_MAPPING",
-            "PROVIDER_FIXTURE_NOT_REOBSERVED": "VERIFY_PROVIDER_SOURCE_AND_HISTORICAL_EVENT",
-            "FIXTURE_POSTPONED": "VERIFY_NEW_SCHEDULE_WITH_PROVIDER",
-            "RESULT_DELAYED": "CHECK_RESULT_INGESTION_AND_RETRY",
-        }
-        details = [{
-            "match_id": row.match_id,
-            "players": [row.evidence.player_1, row.evidence.player_2],
-            "original_start": (
-                row.evidence.pit_match_start_at.isoformat()
-                if row.evidence.pit_match_start_at else None
-            ),
-            "original_issued_at": row.evidence.picked_at.isoformat(),
-            "last_provider_looked_up_now": False,
-            "next_action": next_actions.get(
-                row.reason, "MANUAL_PROVIDER_REVIEW_REQUIRED"
-            ),
-            "reason": row.reason,
-            "age_bucket": row.age_bucket,
-            "hours_since_start": (
-                round(row.hours_since_start, 1)
-                if row.hours_since_start is not None else None
-            ),
-            "provider_fixture_status": row.evidence.latest_match_status,
-            "latest_start": (
-                row.evidence.latest_match_start_at.isoformat()
-                if row.evidence.latest_match_start_at else None
-            ),
-            "last_observed": (
-                row.evidence.last_fixture_observed_at.isoformat()
-                if row.evidence.last_fixture_observed_at else None
-            ),
-            "rescheduled": "RESCHEDULED" in row.flags,
-            "requires_investigation": row.reason in investigate,
-            "provider_independently_verified": False,
-        } for row in pending.items]
-        details.sort(key=lambda row: (
-            not row["requires_investigation"],
-            row["reason"], row["match_id"],
-        ))
-        pending_audit = {
-            "generated_at": stamp.isoformat(),
-            "total": pending.total,
-            "by_reason": pending.by_reason,
-            "by_age": pending.by_age,
-            "by_flag": pending.by_flag,
-            "requires_investigation": sum(
-                row["requires_investigation"] for row in details
-            ),
-            "items": details,
-            "status": "STORED_PROVIDER_STATUS_UNVERIFIED",
-        }
-        if pending.total != len(details):
-            raise ValueError("pending summary/match details mismatch")
-        return three_window, pending_audit
+        pending_audit=pending_dashboard_audit(lifetime)
+        if lifetime["original"]["pending"] != pending_audit["total"]:
+            raise ValueError("lifetime pending does not match the pending case table")
+        # The raw full row-level ledger is provided through a separately
+        # authenticated endpoint, not embedded into the main HTML context.
+        summary={key:value for key,value in lifetime.items()
+                 if key not in ("all_match_records","unresolved_matches")}
+        summary["all_match_records_count"]=len(lifetime["all_match_records"])
+        summary["unresolved_match_records_count"]=len(lifetime["unresolved_matches"])
+        return three_window,pending_audit,summary
     except Exception:
-        log.exception("Single-snapshot Tennis baseline unavailable")
-        return None, None
+        log.exception("All-history Sports Edge audit unavailable")
+        return None,None,None
     finally:
         if conn is not None:
             conn.close()
@@ -1073,7 +1025,7 @@ def model_pick_results(
         _load_parallel_history() if not view.failed else ((), True)
     )
     recent_five_day = _live_five_day_evidence(parallel_days, view)
-    three_window_evidence, pending_case_audit = _live_baseline_snapshot()
+    three_window_evidence, pending_case_audit, all_history_evidence = _live_baseline_snapshot()
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -1135,6 +1087,8 @@ def model_pick_results(
             "pending_case_audit": pending_case_audit,
             "three_window_evidence": three_window_evidence,
             "three_window_error": three_window_evidence is None,
+            "all_history_evidence": all_history_evidence,
+            "all_history_error": all_history_evidence is None,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
@@ -1210,7 +1164,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     )
     parallel_days, parallel_history_error = _load_parallel_history()
     recent_five_day = _live_five_day_evidence(parallel_days, view)
-    three_window_evidence, pending_case_audit = _live_baseline_snapshot()
+    three_window_evidence, pending_case_audit, all_history_evidence = _live_baseline_snapshot()
 
     return JSONResponse(
         {
@@ -1230,6 +1184,8 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
             "pending_case_audit": pending_case_audit,
             "three_window_evidence": three_window_evidence,
             "three_window_error": three_window_evidence is None,
+            "all_history_evidence": all_history_evidence,
+            "all_history_error": all_history_evidence is None,
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
