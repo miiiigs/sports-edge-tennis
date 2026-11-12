@@ -374,13 +374,31 @@ def refresh_pending_results(
     max_targets: int = DEFAULT_MAX_TARGETS,
     fetch_window: FetchWindow = fetch_api_tennis_fixture_window,
     dry_run: bool = False,
+    explicit_window: tuple[date, date] | None = None,
 ) -> PendingResultRefreshSummary:
-    """Resolve same-day terminal results for bounded pending production picks.
+    """Resolve recent, or explicitly bounded older, pending production picks.
 
     ``dry_run=True`` performs the same bounded provider lookup and shared-resolver
     prediction but writes nothing, for a read-only production probe.
     """
-    window_start, window_end = window_bounds(as_of, window_days)
+    if explicit_window is None:
+        window_start, window_end = window_bounds(as_of, window_days)
+    else:
+        window_start, window_end = explicit_window
+        # The normal 3-day production call is deliberately unchanged. An
+        # older window needs an explicit date and strict separate limits.
+        if as_of.tzinfo is None or as_of.utcoffset() is None:
+            raise ValueError("as_of must be timezone-aware")
+        age_days = (as_of.astimezone(UTC).date() - window_end).days
+        span_days = (window_end - window_start).days + 1
+        if not 1 <= span_days <= MAX_WINDOW_DAYS:
+            raise ValueError("explicit result window must be 1-3 days")
+        if not 0 <= age_days <= 90:
+            raise ValueError("explicit result window outside 90-day bounded recovery")
+        if max_targets > 10:
+            raise ValueError("older result recovery is limited to 10 targets")
+        if not dry_run:
+            raise ValueError("older result recovery must remain dry-run until approved")
     targets = load_pending_model_pick_targets(
         conn,
         as_of=as_of,
