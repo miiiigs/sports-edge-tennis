@@ -110,3 +110,16 @@ def test_older_result_probe_requires_explicit_dry_run_and_strict_limits(monkeypa
     assert summary.checked==0
     assert called and called[-1]["window_start"]==start
     assert called[-1]["window_end"]==start
+
+
+def test_busy_historical_day_rotates_unresolved_ids_instead_of_starving():
+    report=_report(*[_case(i,4) for i in range(100,121)])
+    first=set(plan_aged_recovery(report,as_of=NOW).selected_match_ids)
+    second=set(plan_aged_recovery(
+        report,as_of=NOW+timedelta(days=1)
+    ).selected_match_ids)
+    third=set(plan_aged_recovery(
+        report,as_of=NOW+timedelta(days=2)
+    ).selected_match_ids)
+    assert len(first)==len(second)==len(third)==10
+    assert len(first | second | third)==21
