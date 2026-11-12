@@ -21,7 +21,7 @@ import json
 import os
 import sys
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable
 
@@ -206,15 +206,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--before", type=datetime.fromisoformat, required=True)
     parser.add_argument("--after", type=datetime.fromisoformat, required=True)
-    parser.add_argument("--since", type=datetime.fromisoformat,
-                        default=datetime.fromisoformat("2026-09-01T00:00:00+00:00"))
+    parser.add_argument("--lookback-days", type=int, default=60,
+                        help="Same rolling lookback used by live pending diagnostics")
     parser.add_argument("--expected-before", type=int)
     parser.add_argument("--expected-after", type=int)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
     if any(x.tzinfo is None or x.utcoffset() is None for x in (
-        args.before, args.after, args.since
-    )) or args.before >= args.after:
+        args.before, args.after
+    )) or args.before >= args.after or not 1 <= args.lookback_days <= 400:
         parser.error("timezone-aware before < after required")
     if args.out.exists():
         parser.error("refusing to overwrite a previous audit")
@@ -228,10 +228,16 @@ def main(argv: list[str] | None = None) -> int:
             conn.execute("SET TRANSACTION READ ONLY")
             query = query_as_of()
             before_rows = conn.execute(
-                query, {"cutoff": args.before, "since": args.since},
+                query, {
+                    "cutoff": args.before,
+                    "since": args.before - timedelta(days=args.lookback_days),
+                },
             ).fetchall()
             after_rows = conn.execute(
-                query, {"cutoff": args.after, "since": args.since},
+                query, {
+                    "cutoff": args.after,
+                    "since": args.after - timedelta(days=args.lookback_days),
+                },
             ).fetchall()
         evidence = reconcile(
             _snapshot(before_rows, args.before),
@@ -241,6 +247,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         evidence["before_as_of"] = args.before.isoformat()
         evidence["after_as_of"] = args.after.isoformat()
+        evidence["lookback_days_at_each_snapshot"] = args.lookback_days
+        evidence["diagnostic_source"] = "PENDING_RESULT_DIAGNOSTICS"
     except (ValueError, OSError, ImportError) as exc:
         print(f"PENDING_TRANSITION_BLOCKED: {exc}", file=sys.stderr)
         return 2
