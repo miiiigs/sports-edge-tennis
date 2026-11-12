@@ -375,6 +375,82 @@ def compare_all_history_with_existing_daily(report, legacy_days, *, as_of):
     return report
 
 
+def pending_dashboard_audit(report):
+    """Every historical pending item, including those outside 60/90-day limits."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from sports_edge_tennis.live.pending_result_diagnostics import (
+        is_schedule_change,
+    )
+    as_of=datetime.fromisoformat(report["as_of"])
+    manila=ZoneInfo("Asia/Manila")
+    recs=report["unresolved_matches"]
+    details=[]
+    flags=Counter()
+    ages=Counter()
+    for item in recs:
+        original=(datetime.fromisoformat(item["original_start_at"])
+                  if item["original_start_at"] else None)
+        latest=(datetime.fromisoformat(item["latest_stored_start_at"])
+                if item["latest_stored_start_at"] else None)
+        moved=is_schedule_change(original,latest,local_timezone=manila)
+        if moved:
+            flags["RESCHEDULED"]+=1
+        age=item["pending_age_hours"]
+        age_bucket=(
+            "NOT_STARTED" if age is not None and age < 0
+            else "UNKNOWN_START" if age is None
+            else "LT_6H" if age < 6
+            else "6H_24H" if age < 24
+            else "24H_72H" if age < 72
+            else "GT_72H"
+        )
+        ages[age_bucket]+=1
+        outside=(
+            latest is not None and latest.astimezone(UTC).date()
+            < as_of.astimezone(UTC).date()-timedelta(days=2)
+        )
+        if outside:
+            flags["OUTSIDE_RECOVERY_WINDOW"]+=1
+        details.append({
+            "match_id":item["match_id"],"players":[
+                item["player_1"],item["player_2"]
+            ],
+            "original_start":item["original_start_at"],
+            "latest_start":item["latest_stored_start_at"],
+            "original_issued_at":item["first_issued_at"],
+            "reason":item["pending_reason"],
+            "age_bucket":age_bucket,
+            "hours_since_start":age if age is not None and age>=0 else None,
+            "provider_fixture_status":item["latest_stored_fixture_status"],
+            "last_observed":item["latest_fixture_observed_at"],
+            "rescheduled":moved,
+            "outside_recovery_window":outside,
+            "requires_investigation":item["requires_operator_attention"],
+            "next_action":item["next_action"],
+            "provider_independently_verified":False,
+            "data_quality_flags":item["data_quality_flags"],
+        })
+    details.sort(key=lambda x:(
+        not x["requires_investigation"],x["reason"],x["match_id"]
+    ))
+    if len(details)!=report["original"]["pending"]:
+        raise ValueError("all-history pending items missing from dashboard")
+    return {
+        "generated_at":report["as_of"],
+        "source":"ALL_ORIGINAL_ALIGNED_FIRST_ISSUED_MATCHES_NO_LOOKBACK",
+        "total":len(details),
+        "by_reason":report["pending_reason_counts"],
+        "by_age":dict(sorted(ages.items())),
+        "by_flag":dict(sorted(flags.items())),
+        "requires_investigation":sum(
+            x["requires_investigation"] for x in details
+        ),
+        "items":details,
+        "status":"STORED_PROVIDER_STATUS_UNVERIFIED_ALL_HISTORY",
+    }
+
+
 def load_lifetime_reconciliation(conn, *, as_of):
     rows=conn.execute(query(), {"as_of":as_of}).fetchall()
     return summarize(parse(rows, as_of=as_of),as_of=as_of)
