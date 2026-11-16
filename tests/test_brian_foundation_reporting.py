@@ -130,8 +130,20 @@ def test_nov9_28_never_26_or_25_and_all_status_transitions_accounted():
             "issued_before_kickoff": True,
         }
         before[mid]={**base,"status":outcome1}
-        after[mid]={**base,"status":outcome2}
+        after[mid]={**base,"status":outcome2,
+            "result_source_observed_at": (
+                "2026-11-11T08:00:00+00:00" if outcome2 != "PENDING" else None
+            ),
+            "result_ingested_at": (
+                "2026-11-11T08:30:00+00:00" if outcome2 != "PENDING" else None
+            ),
+            "terminal_type": (
+                "COMPLETED" if outcome2 in ("WON", "LOST")
+                else "WALKOVER" if outcome2 == "VOID" else None
+            ),
+        }
     data=audit(before,after,before_time=t1,after_time=t2)
+    assert all(t["source_observed_at"] and t["result_ingested_at"] for t in data["changed_results"])
     assert data["qualified_before"]["selections"] == 28
     assert data["qualified_after"]["selections"] == 28
     assert data["qualified_before"]["void"] == 2
