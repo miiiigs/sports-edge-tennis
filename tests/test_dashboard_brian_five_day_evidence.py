@@ -153,14 +153,17 @@ def test_terminal_provider_status_beats_stale_future_schedule():
         assert classified.reason == reason
 
 
-def test_live_dashboard_html_compiles_and_keeps_unaudited_a4_blank():
+def test_live_dashboard_html_compiles_with_three_windows_and_pending_provenance():
     template = (
         Path(__file__).parents[1] /
         "src/sports_edge_tennis/dashboard/templates/model_pick_results.html"
     ).read_text(encoding="utf-8")
     Environment().parse(template)
-    assert "recent_five_day_evidence" in template
+    assert "three_window_evidence" in template
+    assert "fixed_nov05_nov09" in template
     assert "pending_case_audit" in template
-    assert "Not verified" in template
-    assert "A3 / A4 challenger" in template
-    assert "PENDING" not in template or "PROVISIONAL" in template
+    assert "PROVISIONAL" in template
+    # A second five-day scorecard would duplicate the immutable period report.
+    assert "recent_five_day_evidence" not in template
+    # Unaudited A3/A4 is not represented as a live challenger panel.
+    assert "A3 / A4 challenger" not in template

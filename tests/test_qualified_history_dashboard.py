@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import re
 
 import pytest
 from jinja2 import Environment
@@ -69,7 +70,12 @@ def test_qualified_daily_sql_is_read_only_and_uses_original_pre_match_confidence
     assert "source_observed_at <= p.picked_at" in sql
     assert "match_result_observations" in sql
     assert "INSERT" not in sql and "UPDATE" not in sql and "DELETE" not in sql
-    assert "BET" not in sql
+    # NO_BET is a valid Manager decision state; exclude wager-ledger joins,
+    # not legitimate Original point-in-time decision states.
+    assert not re.search(
+        r"\b(?:FROM|JOIN)\s+(?:\w+\.)?(?:bets|type_a_bets)\b",
+        sql, flags=re.IGNORECASE,
+    )
 
 
 def test_template_exposes_daily_comparison_without_replacing_original_scorecard():
