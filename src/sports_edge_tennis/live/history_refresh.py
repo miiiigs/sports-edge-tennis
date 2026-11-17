@@ -59,6 +59,7 @@ _TERMINAL_STATUS = {
     "completed": "COMPLETED",
     "retired": "RETIRED",
     "walkover": "WALKOVER",
+    "walk over": "WALKOVER",  # verified two-word provider status
     "cancelled": "CANCELLED",
     "canceled": "CANCELLED",
 }

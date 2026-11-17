@@ -93,6 +93,16 @@ def test_parse_terminal_result_allows_winnerless_walkover_only():
             parse_terminal_result(_fixture(event_status=event_status, event_winner=""))
 
 
+def test_two_word_api_tennis_walk_over_is_terminal_and_void_eligible():
+    for status in ("Walkover", "Walk Over", "walk over"):
+        row = parse_terminal_result(
+            _fixture(event_status=status, event_winner="Second Player")
+        )
+        assert row is not None
+        assert row.outcome_status == "WALKOVER"
+        assert row.winner_side == 2
+
+
 def test_parse_terminal_result_fails_closed_without_terminal_winner():
     with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
         parse_terminal_result(_fixture(event_winner=""))
