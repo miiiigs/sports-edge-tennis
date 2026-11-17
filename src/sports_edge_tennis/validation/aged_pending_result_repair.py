@@ -18,12 +18,7 @@ from typing import Any
 import psycopg
 
 from sports_edge_tennis.data.sources.api_tennis_live import (
-    _accepted_api_tennis_tournament_ids,
-    ingest_api_tennis_source_a_fixtures,
-)
-from sports_edge_tennis.live.api_tennis_fixture_compat import (
-    enrich_api_tennis_fixture_surfaces, normalize_api_tennis_fixture_rounds,
-    normalize_api_tennis_upcoming_status,
+    ApiTennisIngestedMatch, _accepted_api_tennis_tournament_ids,
 )
 from sports_edge_tennis.validation.aged_pending_provider_audit import _windows, MAX_CALLS
 from sports_edge_tennis.live.credentials import require_api_tennis_key
@@ -207,36 +202,67 @@ def _collect(conn: psycopg.Connection, *, key: str, now: datetime) -> tuple[list
     return candidates,reasons,len(windows)
 
 
-def _apply(conn:psycopg.Connection,candidates:list[Recoverable]) -> int:
-    if len(candidates)!=EXPECTED_RECOVERABLE:
+def _apply(conn: psycopg.Connection, candidates: list[Recoverable]) -> int:
+    """Append only result observations for existing canonical matches.
+
+    An older fixture's own provenance is already stored and validated in the
+    read-only preview. Re-ingesting all fixture versions would unnecessarily
+    touch aliases and canonical match metadata and can break an atomic repair
+    when archived tournament editions conflict with current normalization.
+    No fixture, player, tournament or model record is created here.
+    """
+    if len(candidates) != EXPECTED_RECOVERABLE:
         raise ValueError("candidate count changed")
-    event_keys={c.event_key for c in candidates}
-    match_ids={c.match_id for c in candidates}
-    if len(event_keys)!=len(candidates) or len(match_ids)!=len(candidates):
+    event_keys = {c.event_key for c in candidates}
+    match_ids = {c.match_id for c in candidates}
+    if len(event_keys) != len(candidates) or len(match_ids) != len(candidates):
         raise ValueError("nonunique canonical candidates")
     with conn.transaction():
-        now=datetime.now(UTC)
-        prepared=normalize_api_tennis_upcoming_status(
-            [c.raw for c in candidates],received_at=now
+        now = datetime.now(UTC)
+        existing: list[ApiTennisIngestedMatch] = []
+        for c in candidates:
+            # Recheck the matching source, both provider players and tournament
+            # under the production lock and *inside* the write transaction.
+            proof = _validate_identity(conn, c.match_id, c.event_key, c.raw)
+            expected = (
+                c.canonical_player_1_id, c.canonical_player_2_id,
+                c.canonical_tournament_id,
+            )
+            if proof != expected:
+                raise ValueError("canonical identity changed before apply")
+            if _latest_result_semantic_key(conn, c.match_id) is not None:
+                raise ValueError("terminal result appeared since preview")
+            row = conn.execute(
+                """SELECT match_version_id, match_status::text
+                   FROM match_versions
+                   WHERE match_id=%s
+                   ORDER BY as_of DESC, source_observed_at DESC,
+                            match_version_id DESC LIMIT 1""",
+                (c.match_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("missing canonical match version")
+            existing.append(ApiTennisIngestedMatch(
+                source_match_id=c.event_key,
+                match_id=c.match_id,
+                match_version_id=int(row[0]),
+                player_1_id=c.canonical_player_1_id,
+                player_2_id=c.canonical_player_2_id,
+                match_status=str(row[1]),
+            ))
+        # Existing canonical observations are append-only. This helper inserts
+        # one source-proven, current-receive-time observation per target and
+        # uses no match/fixture/player creation paths.
+        seen, inserted, unchanged, rejected = _persist_terminal_results(
+            conn,
+            fixtures=[c.raw for c in candidates],
+            ingested_matches=tuple(existing),
+            received_at=now,
         )
-        prepared=normalize_api_tennis_fixture_rounds(prepared)
-        prepared=enrich_api_tennis_fixture_surfaces(conn,prepared,api_key=None)
-        # All IDs were verified while read-only. Never allow a writer to invent
-        # a canonical match if source identity or provider metadata differs.
-        outcome=ingest_api_tennis_source_a_fixtures(
-            conn,prepared,received_at=now
-        )
-        if outcome.rows_rejected or len(outcome.matches)!=len(candidates):
-            raise ValueError("fixture ingest did not preserve all candidates")
-        got={x.source_match_id:x.match_id for x in outcome.matches}
-        if got!={c.event_key:c.match_id for c in candidates}:
-            raise ValueError("canonical identity drift on ingestion")
-        seen,inserted,unchanged,rejected=_persist_terminal_results(
-            conn,fixtures=prepared,ingested_matches=outcome.matches,received_at=now,
-        )
-        if seen!=EXPECTED_RECOVERABLE or inserted!=EXPECTED_RECOVERABLE or unchanged or rejected:
-            raise ValueError("result insertion was incomplete; transaction rolled back")
-        _invalidate_model_checkpoint(conn,"AGENT_3_INTRANSITIVITY")
+        if (seen != EXPECTED_RECOVERABLE
+            or inserted != EXPECTED_RECOVERABLE or unchanged or rejected):
+            raise ValueError("result insertion incomplete; transaction rolled back")
+        _invalidate_model_checkpoint(conn, "AGENT_3_INTRANSITIVITY")
     return len(candidates)
 
 
