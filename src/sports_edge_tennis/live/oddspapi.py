@@ -13,7 +13,9 @@ from sports_edge_tennis.live.transport import DEFAULT_TIMEOUT, TransportError
 
 ODDSPAPI_BASE_URL = "https://api.oddspapi.io/v4"
 ODDSPAPI_TENNIS_SPORT_ID = 12
-ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "unibet", "bet365")
+# Renewed Tennis Normal plan (Nov 2026): only these three licensed books.
+# Do not query unlicensed bookmakers; the monthly ledger remains capped at 5,000.
+ODDSPAPI_PLAN_BOOKMAKERS = ("pinnacle+30", "1xbet", "bet365")
 ODDSPAPI_SHARP_BOOKMAKER = "pinnacle+30"
 # /v4/odds-by-tournaments accepts exactly one `bookmaker` and at most five
 # `tournamentIds` per request.
