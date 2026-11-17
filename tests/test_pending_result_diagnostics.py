@@ -247,7 +247,9 @@ def test_pending_results_endpoint_is_read_only(
     monkeypatch.setattr(routes, "_connect", spy_connect)
     monkeypatch.setattr(routes, "load_pending_result_diagnostics", probe_write)
 
-    response = TestClient(app).get("/api/dashboard/pending-results")
+    # Fixture is dated September 2026; request its historical window to avoid
+    # dependence on the date when CI happens to run.
+    response = TestClient(app).get("/api/dashboard/pending-results?lookback_days=400")
 
     assert response.status_code == 200
     body = response.json()
