@@ -289,7 +289,8 @@ def test_probe_full_run_within_cap_writes_only_ledger_rows(db: psycopg.Connectio
         return received, [_payload("id-probe", p1_id=1, p2_id=2)]
 
     def odds(key, *, tournament_ids, bookmakers, ledger, fallback_budget, **kw):
-        assert fallback_budget == 1 and tuple(tournament_ids) == (303,)
+        # The bounded diagnostic probe disables 404 fallbacks by design.
+        assert fallback_budget == 0 and tuple(tournament_ids) == (303,)
         for book in bookmakers:
             ledger.reserve(endpoint="odds-by-tournaments", bookmaker=book)
         return received, [], len(bookmakers)
