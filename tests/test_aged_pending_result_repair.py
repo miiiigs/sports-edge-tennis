@@ -40,3 +40,15 @@ def test_unrecognized_provider_status_is_not_guessed_into_a_winner():
                                    conn=Stub(),match_id=12,event_key="x")
     assert candidate is None
     assert reason=="NOT_TERMINAL"
+
+
+def test_repair_uses_only_existing_match_ids_and_append_only_result_path():
+    import inspect
+    source = inspect.getsource(r._apply)
+    assert "ingest_api_tennis_source_a_fixtures" not in source
+    assert "normalize_api_tennis_fixture_rounds" not in source
+    assert "ApiTennisIngestedMatch" in source
+    assert "_validate_identity" in source
+    assert "_latest_result_semantic_key" in source
+    assert "_persist_terminal_results" in source
+    assert "conn.transaction()" in source
