@@ -79,6 +79,16 @@ def test_parse_terminal_result_maps_completed_retired_and_cancelled():
     assert cancelled.winner_side is None
 
 
+def test_api_tennis_two_word_walk_over_is_terminal_and_preserves_winner():
+    for raw_status in ("Walkover", "Walk Over", "walk over"):
+        parsed = parse_terminal_result(
+            _fixture(event_status=raw_status, event_winner="First Player")
+        )
+        assert parsed is not None
+        assert parsed.outcome_status == "WALKOVER"
+        assert parsed.winner_side == 1
+
+
 def test_parse_terminal_result_fails_closed_without_terminal_winner():
     with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
         parse_terminal_result(_fixture(event_winner=""))
