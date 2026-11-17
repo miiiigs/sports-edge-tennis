@@ -25,7 +25,7 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
     enrich_api_tennis_fixture_surfaces, normalize_api_tennis_fixture_rounds,
     normalize_api_tennis_upcoming_status,
 )
-from sports_edge_tennis.live.aged_pending_provider_audit import _windows, MAX_CALLS
+from sports_edge_tennis.validation.aged_pending_provider_audit import _windows, MAX_CALLS
 from sports_edge_tennis.live.credentials import require_api_tennis_key
 from sports_edge_tennis.live.history_refresh import (
     HistoryRefreshError, _invalidate_model_checkpoint,
