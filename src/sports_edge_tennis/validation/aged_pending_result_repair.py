@@ -114,7 +114,14 @@ def _digest(candidates: list[Recoverable]) -> str:
     data = [
         (c.match_id,c.event_key,c.status,c.winner_side,
          c.canonical_player_1_id,c.canonical_player_2_id,
-         c.canonical_tournament_id)
+         c.canonical_tournament_id,
+         # Freeze the sporting result and raw identity evidence, not merely
+         # winner/status. Any provider change between preview and apply must
+         # invalidate the operator-reviewed digest.
+         *(_text(c.raw.get(field)) for field in (
+             "event_date", "event_time", "event_status", "event_final_result",
+             "first_player_key", "second_player_key", "tournament_key",
+         )))
         for c in sorted(candidates,key=lambda x:x.match_id)
     ]
     return hashlib.sha256(
