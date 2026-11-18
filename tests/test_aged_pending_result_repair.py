@@ -66,3 +66,22 @@ def test_completed_match_is_rejected_by_walkover_only_repair():
     )
     assert candidate is None
     assert reason == "NOT_A_VERIFIED_WALKOVER"
+
+
+def test_pg_source_timestamp_is_before_its_insert_transaction(migrated_postgres):
+    """Regression: CURRENT_TIMESTAMP freezes at BEGIN; Python now() after BEGIN can violate ingested_at>=source_observed_at."""
+    import psycopg
+    from datetime import timedelta
+    with psycopg.connect(migrated_postgres, autocommit=True) as conn:
+        source_observed_at = conn.execute("SELECT clock_timestamp()").fetchone()[0]
+        with conn.transaction():
+            ingested_default_clock = conn.execute("SELECT CURRENT_TIMESTAMP").fetchone()[0]
+            assert ingested_default_clock >= source_observed_at
+            assert ingested_default_clock - source_observed_at < timedelta(seconds=5)
+
+
+def test_writer_gets_database_source_clock_before_begin():
+    import inspect
+    text=inspect.getsource(r._apply)
+    assert 'now = conn.execute("SELECT clock_timestamp()").fetchone()[0]' in text
+    assert text.index('now = conn.execute("SELECT clock_timestamp()")') < text.index('with conn.transaction():')
