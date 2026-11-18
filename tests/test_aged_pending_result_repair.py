@@ -22,10 +22,12 @@ def test_candidate_guard_never_writes_during_proof(monkeypatch):
     assert r._validate_identity(FakeConn(),22,"123",{"first_player_key":"1"}) is None
 
 
-def test_closing_rules_explicitly_forbid_hypothetical_17_losses():
+def test_repair_requires_four_allowlisted_source_verified_walkovers():
     import inspect
     src=inspect.getsource(r)
-    assert "EXPECTED_RECOVERABLE = 17" in src
+    assert r.EXPECTED_RECOVERABLE == 4
+    assert r.WALKOVER_MATCH_IDS == {133119, 133505, 133377, 133672}
+    assert "WALKOVER_MATCH_IDS" in src
     assert "RESULT_ALREADY_PRESENT" in src
     assert "PRODUCTION_BATCH_ACTIVE" in src
     assert "PREVIEW_SHA_DRIFT" in src
@@ -52,3 +54,15 @@ def test_repair_uses_only_existing_match_ids_and_append_only_result_path():
     assert "_latest_result_semantic_key" in source
     assert "_persist_terminal_results" in source
     assert "conn.transaction()" in source
+
+
+def test_completed_match_is_rejected_by_walkover_only_repair():
+    class NoDatabaseLookupsAllowed:
+        def execute(self,*args,**kwargs):
+            raise AssertionError("no DB reads should occur for a wrong result class")
+    candidate, reason = r._candidate(
+        {"event_status":"Finished","event_winner":"First Player"},
+        conn=NoDatabaseLookupsAllowed(),match_id=133119,event_key="test"
+    )
+    assert candidate is None
+    assert reason == "NOT_A_VERIFIED_WALKOVER"

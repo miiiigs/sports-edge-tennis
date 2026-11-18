@@ -1,7 +1,7 @@
-"""Two-phase, source-verified, append-only repair for the 17 aged Tennis results.
+"""Two-phase, source-verified, append-only repair for four still-pending walkovers.
 
 Default mode is a strict dry-run preview with zero writes.  Apply requires
-the exact preview digest, all 17 canonical identities verified, a production
+the exact preview digest, all four exact canonical identities verified, a production
 batch lock and one atomic transaction.  No predictions or policy are changed.
 Nothing here guesses an outcome for unknown provider status or missing mapping.
 """
@@ -35,7 +35,10 @@ from sports_edge_tennis.live.production_lock import (
 )
 from sports_edge_tennis.live.transport import TransportError
 
-EXPECTED_RECOVERABLE = 17
+# Only the four cases still pending after the 13 previous terminal results
+# were recovered. This allowlist prevents accidentally reapplying old records.
+WALKOVER_MATCH_IDS = frozenset({133119, 133505, 133377, 133672})
+EXPECTED_RECOVERABLE = len(WALKOVER_MATCH_IDS)
 
 
 @dataclass(frozen=True)
@@ -132,8 +135,8 @@ def _candidate(raw: dict[str,Any], *, conn: psycopg.Connection,
         return None,"INVALID_TERMINAL_WINNER"
     if terminal is None:
         return None,"NOT_TERMINAL"
-    if terminal.outcome_status not in {"COMPLETED","RETIRED","WALKOVER"}:
-        return None,"VOID_OR_CANCELLED_POLICY_REVIEW"
+    if terminal.outcome_status != "WALKOVER":
+        return None,"NOT_A_VERIFIED_WALKOVER"
     if terminal.outcome_status == "WALKOVER" and terminal.winner_side is None:
         return None,"WINNERLESS_WALKOVER_REVIEW"
     if _latest_result_semantic_key(conn,match_id) is not None:
@@ -158,6 +161,7 @@ def _collect(conn: psycopg.Connection, *, key: str, now: datetime) -> tuple[list
     old=[
         item for item in report.items
         if FLAG_OUTSIDE_RECOVERY_WINDOW in item.flags
+        and item.evidence.match_id in WALKOVER_MATCH_IDS
         and item.evidence.latest_match_start_at is not None
     ]
     days={
@@ -211,8 +215,8 @@ def _apply(conn: psycopg.Connection, candidates: list[Recoverable]) -> int:
     when archived tournament editions conflict with current normalization.
     No fixture, player, tournament or model record is created here.
     """
-    if len(candidates) != EXPECTED_RECOVERABLE:
-        raise ValueError("candidate count changed")
+    if len(candidates) != EXPECTED_RECOVERABLE or {c.match_id for c in candidates} != WALKOVER_MATCH_IDS:
+        raise ValueError("candidate count or exact allowlisted IDs changed")
     event_keys = {c.event_key for c in candidates}
     match_ids = {c.match_id for c in candidates}
     if len(event_keys) != len(candidates) or len(match_ids) != len(candidates):
@@ -303,7 +307,7 @@ def main(argv:list[str]|None=None)->int:
             if preview!=args.expected_sha:
                 _emit("AGED_REPAIR_BLOCKED",reason="PREVIEW_SHA_DRIFT",writes=0)
                 return 2
-            if len(candidates)!=EXPECTED_RECOVERABLE:
+            if len(candidates)!=EXPECTED_RECOVERABLE or {c.match_id for c in candidates} != WALKOVER_MATCH_IDS:
                 _emit("AGED_REPAIR_BLOCKED",reason="INCOMPLETE_CANONICAL_PROOF",writes=0)
                 return 2
             # Connection was read-only for preview. Only after all gates, the
