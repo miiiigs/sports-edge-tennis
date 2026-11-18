@@ -38,7 +38,7 @@ def test_nov11_1304_complete_five_day_source_baseline_and_uncertainty():
     assert report["avoided_losses"] == 27
     assert report["missed_winners"] == 36
     assert report["fully_settled_days_met_73"] == {
-        "original": 2, "confidence70": 2, "manager_only": 1,
+        "original": 2, "confidence70": 1, "manager_only": 1,
     }
 
 
@@ -60,5 +60,5 @@ def test_nov9_below_73_even_if_last_pending_wins_and_nov10_is_not_a4():
     assert nov10["original"]["lost"] == 4
     assert nov10["confidence70"]["won"] == 7
     assert nov10["confidence70"]["lost"] == 1
-    assert nov10["confidence70"]["research_day_status"] == "MET_73"
+    assert nov10["confidence70"]["research_day_status"] == "INSUFFICIENT_COVERAGE"\n    assert nov10["confidence70"]["coverage"] == pytest.approx(8/22)
     assert data["status"] == "OBSERVATIONAL_BASELINE_ONLY_NOT_A4_V3_VALIDATION"
