@@ -65,6 +65,7 @@ def source_sql() -> str:
         WHERE mro.match_id=p.match_id
           AND mro.as_of <= %(as_of)s
           AND mro.source_observed_at <= %(as_of)s
+          AND mro.ingested_at <= %(as_of)s
         ORDER BY mro.as_of DESC,mro.source_observed_at DESC,
                  mro.match_result_observation_id DESC LIMIT 1
     ) result ON TRUE
@@ -195,6 +196,8 @@ def main(argv:list[str]|None=None)->int:
         output=run(conn,as_of=utc(args.as_of_utc),
                    start_at=utc(args.start_utc),
                    end_at=utc(args.end_utc_exclusive))
+    # Force private local CSV permissions even if the runtime umask is permissive.
+    os.umask(0o077)
     for path,fields,records in [
         (files[0],FIXTURE_FIELDS,output["fixtures"]),
         (files[1],FORECAST_FIELDS,output["forecasts"]),
