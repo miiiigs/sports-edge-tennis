@@ -65,3 +65,19 @@ def test_future_prediction_excluded_without_backdating():
     late["published_at_utc"]="2026-11-20T10:00:00Z"
     with pytest.raises(ValueError,match="future"):
         report([fixture(1)],[late])
+
+
+def test_70pct_predeclared_shadow_conserves_winners_losses_and_volume():
+    inputs=[fixture(1),fixture(2,winner="2"),fixture(3,status="WALKOVER",winner=""),
+            fixture(4,status="PENDING",winner="")]
+    preds=[forecast(1,p="0.80"),forecast(2,p="0.60"),
+           forecast(3,p="0.73"),forecast(4,p="0.56")]
+    result=report(inputs,preds)
+    c=next(x for x in result["confidence70_shadow"]["by_tour"] if x["tour"]=="CHALLENGER")
+    assert c["kept"]["picks"]==2 and c["skipped"]["picks"]==2
+    assert c["kept"]["won"]==1 and c["kept"]["void"]==1
+    assert c["skipped"]["lost"]==1 and c["skipped"]["pending"]==1
+    assert c["issuance_coverage"]==0.5
+    assert c["avoided_losses"]==1
+    assert c["missed_winners"]==0
+    assert c["kept"]["picks"]+c["skipped"]["picks"]==result["total"]["picks"]
