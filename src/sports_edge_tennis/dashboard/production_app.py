@@ -10,6 +10,7 @@ from sports_edge_tennis.dashboard.basic_access import install_production_basic_a
 install_production_basic_auth(app)
 templates.env.globals["tennis_auth_enabled"] = False
 from sports_edge_tennis.dashboard.calendar_coverage_routes import api_calendar_coverage
+from sports_edge_tennis.dashboard.tour_daily_model_picks_routes import api_tour_daily_model_picks
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.model_pick_history import (
@@ -79,6 +80,10 @@ app.get(
     name="api_calendar_coverage",
 )(api_calendar_coverage)
 app.get(
+    "/api/dashboard/tour-daily-model-picks",
+    name="api_tour_daily_model_picks",
+)(api_tour_daily_model_picks)
+app.get(
     "/api/dashboard/model-evidence",
     name="api_model_evidence",
 )(api_model_evidence)
@@ -134,6 +139,7 @@ _required_paths = {
     "/api/dashboard/result-coverage",
     "/api/dashboard/pending-results",
     "/api/dashboard/calendar-coverage",
+    "/api/dashboard/tour-daily-model-picks",
     "/api/dashboard/monitoring-summary",
     "/api/dashboard/calibration-health",
     "/diagnostics/calibration",
