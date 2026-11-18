@@ -68,6 +68,10 @@ def daily_report(
     by_mode=defaultdict(_zero)
     by_day=defaultdict(_zero)
     by_day_group=defaultdict(_zero)
+    # Pre-existing 70% research threshold, evaluated as a shadow only.
+    # Keep BOTH accepted and rejected original selections, including voids.
+    kept_ge70=defaultdict(_zero)
+    skipped_lt70=defaultdict(_zero)
     for mid,fx in fxs.items():
         selected=pcs[mid]
         match_start=utc(fx.get("frozen_start_utc",""))
@@ -84,12 +88,12 @@ def daily_report(
         tour=fx["tour"]
         draw=fx.get("draw") or "UNKNOWN_DRAW"
         status=fx.get("result_status","PENDING").upper()
+        p=float(selected.get("p_player1","nan"))
+        if not 0<p<1:
+            raise ValueError("invalid original calibrated probability")
         if status=="COMPLETED":
             if fx.get("winner_side") not in ("1","2"):
                 raise ValueError("completed match missing verified winner")
-            p=float(selected.get("p_player1","nan"))
-            if not 0<p<1:
-                raise ValueError("invalid original calibrated probability")
             chosen_first=p>=0.5
             outcome="won" if chosen_first==(fx["winner_side"]=="1") else "lost"
         elif status in VOID_STATES:
@@ -102,6 +106,9 @@ def daily_report(
                       by_day[day],by_day_group[(day,tour,draw,mode)]):
             count["picks"]+=1
             count[outcome]+=1
+        shadow=kept_ge70[tour] if max(p,1-p)>=0.70 else skipped_lt70[tour]
+        shadow["picks"]+=1
+        shadow[outcome]+=1
     result_days=[]
     today=as_of.astimezone(PHT).date()
     d=start_day
@@ -115,6 +122,19 @@ def daily_report(
             "groups":entries
         })
         d+=timedelta(days=1)
+    shadow_rows=[]
+    for tier in ("ATP_TOUR","CHALLENGER"):
+        kept=_finished(kept_ge70[tier])
+        skipped=_finished(skipped_lt70[tier])
+        if kept["picks"]+skipped["picks"]!=by_tour[tier]["picks"]:
+            raise ValueError("70% shadow coverage conservation failed")
+        shadow_rows.append({
+            "tour":tier,"threshold":0.70,"kept":kept,"skipped":skipped,
+            "issuance_coverage":round(kept["picks"]/by_tour[tier]["picks"],6)
+                if by_tour[tier]["picks"] else None,
+            "missed_winners":skipped["won"],"avoided_losses":skipped["lost"],
+            "research_only":True,
+        })
     return {
         "report":"FIRST_ISSUED_ATP_CH_DAILY_RESULTS_V1",
         "as_of":as_of_utc,"timezone":"Asia/Manila",
@@ -124,6 +144,10 @@ def daily_report(
         "tour_and_mode":[{"tour":tier,"mode":mode,**_finished(vals)}
                          for (tier,mode),vals in sorted(by_mode.items())],
         "days":result_days,
+        "confidence70_shadow":{
+            "by_tour":shadow_rows,
+            "warning":"Retrospective fixed threshold on original first-issued probability; fewer losses may also mean fewer winners. No deployment eligibility or prospective claim.",
+        },
         "notes":"First-issued 30-minute-cutoff originals only; completed results graded, retired/walkover/cancelled void, unknown pending. No external competitor evaluated.",
     }
 
