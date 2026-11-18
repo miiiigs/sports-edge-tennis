@@ -184,15 +184,24 @@ def walk_forward(
     d = start
     while d <= end:
         cutoff = datetime.combine(d, time.min, tzinfo=MANILA)
-        # Require a fresh, day-specific prior-only fit, never a global fit
-        # trained using results later than the current tested day.
-        calibrator, training = _calibrator(visible, cutoff)
+        # Match-date midnight can be LATER than the issuance of an early
+        # original prediction. For every original pick, freeze calibration
+        # before the earliest of its ISSUE TIME and its Manila match-day
+        # midnight; never score with a future-informed fitted model.
         cohort = tuple(p for p in visible if p.day == d)
         cohort_metrics = _metrics(cohort)
+        calibrators: dict[datetime, tuple[Any, tuple[FrozenPick, ...]]] = {}
+        for original in cohort:
+            fit_cutoff = min(cutoff, original.picked_at)
+            if fit_cutoff not in calibrators:
+                calibrators[fit_cutoff] = _calibrator(visible, fit_cutoff)
+        def candidate_calibrator(p: FrozenPick):
+            return calibrators[min(cutoff, p.picked_at)][0]
+
         report: dict[str, Any] = {}
         for policy in POLICIES:
-            selected = tuple(p for p in cohort if allows(p, policy, calibrator))
-            excluded = tuple(p for p in cohort if not allows(p, policy, calibrator))
+            selected = tuple(p for p in cohort if allows(p, policy, candidate_calibrator(p)))
+            excluded = tuple(p for p in cohort if not allows(p, policy, candidate_calibrator(p)))
             m = _metrics(selected)
             missed = sum(p.result == "WON" for p in excluded)
             avoided = sum(p.result == "LOST" for p in excluded)
@@ -215,17 +224,30 @@ def walk_forward(
 
         scored = tuple(p for p in cohort if p.result in ("WON", "LOST"))
         actual = [int(p.result == "WON") for p in scored]
-        calibrated = (
-            [(calibrator.predict(p.raw), y) for p, y in zip(scored, actual)]
-            if calibrator is not None else []
-        )
+        calibrated = [
+            (candidate_calibrator(p).predict(p.raw), int(p.result == "WON"))
+            for p in scored if candidate_calibrator(p) is not None
+        ]
+        trained_sizes = [
+            len(calibrators[min(cutoff, p.picked_at)][1]) for p in cohort
+        ]
         folds.append({
             "date": d.isoformat(),
             "calibration_training": {
-                "prior_visible_graded": len(training),
-                "prior_visible_won": sum(p.result == "WON" for p in training),
-                "prior_visible_lost": sum(p.result == "LOST" for p in training),
-                "calibrator_available": calibrator is not None,
+                "fit_cutoff_rule": "MIN(MATCH_DAY_MIDNIGHT,FIRST_ISSUED_AT)",
+                "prior_visible_graded_min": min(trained_sizes) if trained_sizes else 0,
+                "prior_visible_graded_max": max(trained_sizes) if trained_sizes else 0,
+                "fitted_picks": sum(
+                    candidate_calibrator(p) is not None for p in cohort
+                ),
+                "unfitted_picks": sum(
+                    candidate_calibrator(p) is None for p in cohort
+                ),
+                "calibrator_available": (
+                    bool(cohort) and all(
+                        candidate_calibrator(p) is not None for p in cohort
+                    )
+                ),
             },
             "original_cohort": cohort_metrics,
             "diagnostics": {
@@ -241,6 +263,7 @@ def walk_forward(
                 "calibrated_brier": brier(calibrated),
                 "raw_log_loss": log_loss(list(zip((p.raw for p in scored), actual))),
                 "calibrated_log_loss": log_loss(calibrated),
+                "calibrated_graded": len(calibrated),
             },
             "policies": report,
         })
