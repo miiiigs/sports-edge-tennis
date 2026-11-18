@@ -19,7 +19,7 @@ from typing import Any
 
 TIERS = frozenset({"ATP_TOUR", "CHALLENGER"})
 DRAWS = frozenset({"MAIN_DRAW", "QUALIFYING"})
-SCORED = frozenset({"COMPLETED", "RETIRED"})
+SCORED = frozenset({"COMPLETED"})
 PERMISSIONS = frozenset({"internal", "licensed", "authorized_public_export"})
 CUTOFF_MINUTES = 30
 VERSION = "ATP_CH_COMPETITOR_OFFLINE_V1"
@@ -92,7 +92,7 @@ def compare(fixtures: list[dict[str, str]],
         status = row["result_status"].strip().upper()
         if status in SCORED and row["winner_side"] not in ("1","2"):
             raise ValueError("terminal match missing winner")
-        if status not in SCORED | {"PENDING","SCHEDULED","WALKOVER","VOID","CANCELLED","POSTPONED"}:
+        if status not in SCORED | {"PENDING","SCHEDULED","RETIRED","WALKOVER","VOID","CANCELLED","POSTPONED"}:
             raise ValueError("unknown result status")
         tournament = row["tournament_id"].strip()
         if not tournament:

@@ -90,3 +90,9 @@ def test_comparison_has_no_external_calls_or_live_change_path():
     assert "psycopg" not in text
     assert "urllib" not in text
     assert "stake" not in text.lower().split("def main")[0].split("return {")[0]
+
+
+def test_retired_match_void_is_not_scored_as_a_model_win():
+    report=compare([fx(91,status="RETIRED",winner="1")],[fc(91)])
+    assert report["settled_unique_matches"]==0
+    assert report["pending_or_void_matches"]==1
