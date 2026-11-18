@@ -59,6 +59,8 @@ _TERMINAL_STATUS = {
     "completed": "COMPLETED",
     "retired": "RETIRED",
     "walkover": "WALKOVER",
+    # API-Tennis also returns the two-word status for verified walkovers.
+    "walk over": "WALKOVER",
     "cancelled": "CANCELLED",
     "canceled": "CANCELLED",
 }
