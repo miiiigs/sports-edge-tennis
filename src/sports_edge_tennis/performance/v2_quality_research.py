@@ -54,6 +54,7 @@ class FrozenPick:
     result_as_of: datetime | None
     result_source_observed_at: datetime | None
     result_ingested_at: datetime | None
+    a3_reason: str | None = None
 
     def agent_spread(self) -> float | None:
         return abs(self.a1 - self.a2) if self.a1 is not None and self.a2 is not None else None
@@ -129,6 +130,10 @@ def parse_export(payload: dict[str, Any]) -> tuple[FrozenPick, ...]:
             result_as_of=_datetime(row.get("result_observed_at")),
             result_source_observed_at=_datetime(row.get("result_source_observed_at")),
             result_ingested_at=_datetime(row.get("result_ingested_at")),
+            a3_reason=(
+                str(row["a3_abstain_reason_code"])
+                if row.get("a3_abstain_reason_code") is not None else None
+            ),
         ))
     return tuple(sorted(out, key=lambda p: (p.day, p.picked_at, p.match_id)))
 
