@@ -235,6 +235,9 @@ def walk_forward(
             "date": d.isoformat(),
             "calibration_training": {
                 "fit_cutoff_rule": "MIN(MATCH_DAY_MIDNIGHT,FIRST_ISSUED_AT)",
+                # Historical midnight visibility is descriptive only: actual
+                # model calibrators retain stricter per-pick issuance cutoffs.
+                "prior_visible_graded": len(_calibrator(visible, cutoff)[1]),
                 "prior_visible_graded_min": min(trained_sizes) if trained_sizes else 0,
                 "prior_visible_graded_max": max(trained_sizes) if trained_sizes else 0,
                 "fitted_picks": sum(
