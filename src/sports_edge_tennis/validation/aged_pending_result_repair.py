@@ -221,8 +221,12 @@ def _apply(conn: psycopg.Connection, candidates: list[Recoverable]) -> int:
     match_ids = {c.match_id for c in candidates}
     if len(event_keys) != len(candidates) or len(match_ids) != len(candidates):
         raise ValueError("nonunique canonical candidates")
+    # PostgreSQL CURRENT_TIMESTAMP/ingested_at are fixed at BEGIN, but a
+    # Python datetime created *after* BEGIN can be later than ingested_at.
+    # The schema requires ingested_at >= source_observed_at. Sample the same
+    # database clock in autocommit BEFORE starting the write transaction.
+    now = conn.execute("SELECT clock_timestamp()").fetchone()[0]
     with conn.transaction():
-        now = datetime.now(UTC)
         existing: list[ApiTennisIngestedMatch] = []
         for c in candidates:
             # Recheck the matching source, both provider players and tournament
@@ -318,8 +322,12 @@ def main(argv:list[str]|None=None)->int:
                   point_in_time_receive_not_backdated=True)
             return 0
     except (psycopg.Error,TransportError,ValueError) as exc:
+        # Constraint names are schema metadata, not data or credentials.
+        # Avoid logging raw exception text, SQL arguments or provider payloads.
+        constraint = (exc.diag.constraint_name if isinstance(exc, psycopg.Error)
+                      and exc.diag is not None else None)
         _emit("AGED_REPAIR_FAILED",type=type(exc).__name__,
-              no_inferred_results=True)
+              violated_constraint=constraint, no_inferred_results=True)
         return 2
     finally:
         if lock is not None:
