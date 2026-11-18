@@ -67,3 +67,17 @@ def test_auth_route_registered_and_rejects_huge_windows():
         "/api/dashboard/tour-daily-model-picks?start_date=2026-08-01&end_date=2026-12-31"
     )
     assert resp.status_code==422
+
+
+def test_model_picks_page_exposes_tour_split_without_claiming_research_live():
+    from pathlib import Path
+    template=Path("src/sports_edge_tennis/dashboard/templates/model_pick_results.html").read_text()
+    assert 'id="tour-daily-results"' in template
+    assert '/api/dashboard/tour-daily-model-picks' in template
+    assert "MANAGER_CONSENSUS" in template
+    assert "A1_A2_WIDE_SPREAD" in template
+    assert "accuracy_ex_void_pending" in template
+    assert "PROVISIONAL" in template
+    assert "credentials:\"same-origin\"" in template
+    assert "textContent" in template
+    assert "Historically qualified" not in template

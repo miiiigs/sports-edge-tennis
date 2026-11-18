@@ -24,6 +24,77 @@
 </section>
 
 {% else %}
+<section class="section" id="tour-daily-results" aria-label="Live ATP versus Challenger daily Model Picks" style="margin-top: 0;">
+  <h2 class="section-title">ATP vs Challenger · daily Model Picks</h2>
+  <p class="section-note">Source: first-issued production Model Picks and verified results. Manager consensus and A1/A2 tracking are never pooled into a Manager-only win rate. Main draw and qualifying are separate; voids and pending picks do not enter the settled denominator. Empty days are shown.</p>
+  <p id="tour-daily-status" class="section-note" role="status" aria-live="polite">Loading the latest fourteen Manila match dates from the authenticated results API.</p>
+  <div class="table-wrap" role="region" aria-label="ATP Challenger daily selection and settlement comparison" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Date · PHT</th><th scope="col">Tour</th><th scope="col">Draw</th><th scope="col">Selection</th><th scope="col">Picks</th><th scope="col">W-L</th><th scope="col">Void</th><th scope="col">Pending</th><th scope="col">Accuracy</th><th scope="col">Status</th></tr></thead>
+      <tbody id="tour-daily-rows"><tr><td colspan="10">Waiting for current results</td></tr></tbody>
+    </table>
+  </div>
+  <noscript><p class="section-note">JavaScript is required for the live split table. <a href="/api/dashboard/tour-daily-model-picks">Open its read-only data source</a>.</p></noscript>
+</section>
+<script>
+(() => {
+  const endpoint = "/api/dashboard/tour-daily-model-picks";
+  const rows = document.getElementById("tour-daily-rows");
+  const status = document.getElementById("tour-daily-status");
+  if (!rows || !status) return;
+  const label = {ATP_TOUR:"ATP Tour",CHALLENGER:"Challenger",UNCLASSIFIED_TOUR:"Unclassified",
+    MAIN_DRAW:"Main draw",QUALIFYING:"Qualifying",UNKNOWN_DRAW:"Draw unknown",
+    MANAGER_CONSENSUS:"Manager",A1_A2_WIDE_SPREAD:"A1/A2 tracking"};
+  const cell = (tr, value) => {
+    const td = document.createElement("td");
+    td.textContent = String(value);
+    tr.appendChild(td);
+  };
+  fetch(endpoint, {credentials:"same-origin", cache:"no-store", headers:{"Accept":"application/json"}})
+    .then(async r => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      const data = await r.json();
+      if (!data.initialized || !Array.isArray(data.daily)) throw new Error("report unavailable");
+      return data;
+    })
+    .then(data => {
+      rows.replaceChildren();
+      for (const day of data.daily) {
+        const groups = day.groups && day.groups.length ? day.groups : [{
+          tour:"—",draw:"—",pick_type:"—",picks:0,won:0,lost:0,void:0,pending:0,
+          accuracy_ex_void_pending:null
+        }];
+        for (const item of groups) {
+          const tr = document.createElement("tr");
+          cell(tr, day.date);
+          cell(tr, label[item.tour] || item.tour);
+          cell(tr, label[item.draw] || item.draw);
+          cell(tr, label[item.pick_type] || item.pick_type);
+          cell(tr, item.picks);
+          cell(tr, item.won + "-" + item.lost);
+          cell(tr, item.void);
+          cell(tr, item.pending);
+          cell(tr, item.accuracy_ex_void_pending == null
+            ? "—" : (100 * item.accuracy_ex_void_pending).toFixed(1) + "%");
+          cell(tr, day.provisional ? "PROVISIONAL" : "Settled");
+          rows.appendChild(tr);
+        }
+      }
+      status.textContent = "As of " + data.generated_at + " · " + data.all_dates.picks
+        + " original picks in the displayed window; "
+        + (data.all_dates_provisional ? "some dates are provisional." : "all displayed dates settled.")
+        + " Historical changes are source-observed, not retrospectively re-predicted.";
+    })
+    .catch(() => {
+      rows.replaceChildren();
+      const tr=document.createElement("tr");
+      cell(tr,"Live tour split unavailable. Existing historical scorecards below remain available.");
+      tr.firstChild.colSpan = 10;
+      rows.appendChild(tr);
+      status.textContent = "ATP/Challenger split could not be verified from the live API.";
+    });
+})();
+</script>
 <section class="section" aria-label="Actual results and quality-filter research" style="margin-top: 0;">
   <h2 class="section-title">Results at a glance</h2>
   <p class="section-note">The live <a href="/today?date={{ selected_date.isoformat() if selected_date else performance_as_of.isoformat() }}&amp;tz=philippines">Original vs. Qualified ≥70% parallel comparison</a> shows both groups side by side for a selected match day. Qualified research remains separate from the official original 73% scorecard below.</p>
