@@ -127,7 +127,7 @@ def test_postponed_fixture_without_new_start_is_its_own_reason():
     assert FLAG_RESCHEDULED not in item.flags
 
 
-def test_postponed_fixture_moved_to_future_is_not_started_and_rescheduled():
+def test_postponed_fixture_moved_to_future_preserves_source_status():
     item = classify_pending_pick(
         _evidence(
             latest_match_status="POSTPONED",
@@ -136,7 +136,7 @@ def test_postponed_fixture_moved_to_future_is_not_started_and_rescheduled():
         now=NOW,
         recovery_window_start=date(2026, 9, 8),
     )
-    assert item.reason == REASON_NOT_STARTED
+    assert item.reason == REASON_FIXTURE_POSTPONED
     assert FLAG_RESCHEDULED in item.flags
 
 
