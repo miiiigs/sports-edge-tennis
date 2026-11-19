@@ -1,0 +1,29 @@
+{
+  "capture_version": "PUBLIC_WEB_CAPTURE_V1",
+  "captured_at_utc": "2026-11-19T06:18:43Z",
+  "source": "tennisdataapp_public_web",
+  "rights": "authorized_public_export",
+  "publication_timestamp_semantics": "published_at_utc is conservatively set to first observed public capture time, not claimed vendor model-generation time",
+  "evidence": [
+    {
+      "source_url": "https://tennisdata.app/predictions/ben-shelton-vs-rafael-jodar/",
+      "player_1_name": "Ben Shelton",
+      "player_2_name": "Rafael Jodar",
+      "scheduled_start_utc": "2026-11-19T13:00:00Z",
+      "picked_name": "Ben Shelton",
+      "picked_probability": 0.64,
+      "tour": "ATP_TOUR",
+      "model_version": "tennisdataapp_public_web_unknown_version_20261119"
+    },
+    {
+      "source_url": "https://tennisdata.app/predictions/alexander-zverev-vs-arthur-fils/",
+      "player_1_name": "Alexander Zverev",
+      "player_2_name": "Arthur Fils",
+      "scheduled_start_utc": "2026-11-19T19:30:00Z",
+      "picked_name": "Alexander Zverev",
+      "picked_probability": 0.73,
+      "tour": "ATP_TOUR",
+      "model_version": "tennisdataapp_public_web_unknown_version_20261119"
+    }
+  ]
+}
