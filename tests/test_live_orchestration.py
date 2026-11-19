@@ -11,6 +11,7 @@ from sports_edge_tennis.live.orchestrator import (
     BlockedPinnapiBookmakerMapping,
     LivePilotApiTennisFailed,
     LivePilotPinnapiFailed,
+    LivePilotPredictionRunFailed,
     LivePilotSportradarFailed,
     _client_state,
     _final_status,
@@ -37,8 +38,15 @@ def _ingest_outcome(match_ids, *, rejected_rows=()):
     )
 
 
-def _run_outcome(prediction_run_id=777):
-    return NS(prediction_run_id=prediction_run_id)
+def _run_outcome(prediction_run_id=777, **overrides):
+    values = {
+        "prediction_run_id": prediction_run_id,
+        "runner_status": "COMPLETED",
+        "failure_stage": None,
+        "failure_reason": None,
+    }
+    values.update(overrides)
+    return NS(**values)
 
 
 class Recorder:
@@ -109,6 +117,52 @@ def _run(*, consensus_ids, board_payload=None, recorder=None, pinnapi_key="K", b
     )
     return result, fetch_calls, recorder
 
+
+
+
+@pytest.mark.parametrize(
+    ("runner_status", "stage"),
+    [("PREDICTION_FAILED", "AGENT_EXECUTION"), ("MANAGER_FAILED", "MANAGER")],
+)
+def test_failed_full_slate_never_reaches_consensus_or_odds(runner_status, stage):
+    calls = {"consensus": 0, "board": 0, "summary": 0}
+
+    def forbidden_consensus(*args):
+        calls["consensus"] += 1
+        raise AssertionError("failed run must never reach Manager consensus read")
+
+    def forbidden_board(*args):
+        calls["board"] += 1
+        raise AssertionError("failed run must never request odds")
+
+    def forbidden_summary(*args, **kwargs):
+        calls["summary"] += 1
+        raise AssertionError("failed run must not publish a healthy summary")
+
+    with pytest.raises(LivePilotPredictionRunFailed) as exc:
+        run_live_mvp(
+            None,
+            slate_date=SLATE,
+            api_tennis_key="APIKEY",
+            pinnapi_key="K",
+            preflight=lambda conn: None,
+            fetch_fixtures=lambda key, slate: (FIXED, [{"event_key": "e1"}]),
+            ingest_fixtures=lambda conn, fixtures, received_at: _ingest_outcome([1001]),
+            run_slate=lambda conn, ids, as_of: _run_outcome(
+                runner_status=runner_status,
+                failure_stage=stage,
+                failure_reason="synthetic agent failure",
+            ),
+            load_consensus=forbidden_consensus,
+            fetch_board=forbidden_board,
+            write_summary=forbidden_summary,
+            clock=lambda: FIXED,
+        )
+
+    assert f"runner_status={runner_status}" in str(exc.value)
+    assert f"failure_stage={stage}" in str(exc.value)
+    assert "prediction_run_id=777" in str(exc.value)
+    assert calls == {"consensus": 0, "board": 0, "summary": 0}
 
 def test_fixture_fetched_once():
     calls = []
