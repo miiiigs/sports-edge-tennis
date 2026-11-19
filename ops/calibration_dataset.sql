@@ -62,7 +62,7 @@ wr AS (
                mro.source_observed_at AS result_source_observed_at,
                mro.ingested_at AS result_ingested_at
         FROM match_result_observations mro
-        WHERE mro.match_id=d.match_id AND mro.outcome_status IN ('COMPLETED','RETIRED','WALKOVER','CANCELLED')
+        WHERE mro.match_id=d.match_id AND mro.outcome_status IN ('COMPLETED','RETIRED','WALKOVER','DEFAULTED','CANCELLED')
         ORDER BY mro.as_of DESC, mro.source_observed_at DESC, mro.match_result_observation_id DESC LIMIT 1
     ) r ON TRUE
     LEFT JOIN predictions a1 ON a1.prediction_run_id=d.prediction_run_id AND a1.match_id=d.match_id AND a1.agent_code='AGENT_1_SURFACE_ELO'
@@ -80,7 +80,7 @@ SELECT w.manila_date, w.utc_date, w.london_date, w.match_id,
     w.result_observed_at, w.result_source_observed_at, w.result_ingested_at,
     CASE WHEN w.outcome_status='COMPLETED' AND w.winner_side=w.selected_side THEN 'WON'
          WHEN w.outcome_status='COMPLETED' AND w.winner_side IN (1,2) THEN 'LOST'
-         WHEN w.outcome_status IN ('RETIRED','WALKOVER','CANCELLED') THEN 'VOID'
+         WHEN w.outcome_status IN ('RETIRED','WALKOVER','DEFAULTED','CANCELLED') THEN 'VOID'
          ELSE 'PENDING' END AS result_status,
     dec.decision_id, dec.decision_status, dec.selection_side AS dec_selection_side,
     dec.market_decimal_price, dec.sharp_reference_price, dec.edge_pct, dec.price_source_system,
