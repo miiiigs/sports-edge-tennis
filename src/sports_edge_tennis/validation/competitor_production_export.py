@@ -83,8 +83,11 @@ def _iso(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00","Z")
 
 
-def normalize(rows:list[tuple],*,cutoff_minutes:int=CUTOFF_MINUTES
+def normalize(rows:list[tuple],*,cutoff_minutes:int=CUTOFF_MINUTES,
+              as_of:datetime|None=None
               ) -> tuple[list[dict[str,str]],list[dict[str,str]],dict[str,int]]:
+    if as_of is not None and as_of.tzinfo is None:
+        raise ValueError("as_of must be aware UTC")
     fixtures:list[dict[str,str]]=[]
     forecasts:list[dict[str,str]]=[]
     rejects:dict[str,int]={}
@@ -125,6 +128,13 @@ def normalize(rows:list[tuple],*,cutoff_minutes:int=CUTOFF_MINUTES
         if result=="COMPLETED" and winner not in (1,2):
             reject("COMPLETED_RESULT_WITHOUT_VERIFIED_WINNER")
             continue
+        # A completed result dated before the original frozen scheduled start
+        # cannot be scored at this as-of snapshot. Schedule revisions and
+        # provider metadata conflicts must be investigated by exact match ID.
+        # Never count such a record as W/L or silently backdate start time.
+        if as_of is not None and result=="COMPLETED" and start > as_of:
+            reject("COMPLETED_BEFORE_FROZEN_START_QUARANTINE")
+            continue
         p1id,p2id=str(p1),str(p2)
         fixtures.append({
             "match_id":match_id,
@@ -160,7 +170,7 @@ def run(conn:psycopg.Connection, *,as_of:datetime,start_at:datetime,
     rows=conn.execute(source_sql(),{
         "as_of":as_of,"start_at":start_at,"end_at":end_at,
     }).fetchall()
-    fixtures,forecasts,rejects=normalize(rows,cutoff_minutes=cutoff_minutes)
+    fixtures,forecasts,rejects=normalize(rows,cutoff_minutes=cutoff_minutes,as_of=as_of)
     report=compare(fixtures,forecasts,cutoff_minutes=cutoff_minutes)
     report["export_stats"]={
         "query_original_rows":len(rows),"exported_first_issued":len(fixtures),
