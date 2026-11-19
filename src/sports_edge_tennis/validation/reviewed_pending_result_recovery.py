@@ -22,9 +22,8 @@ from typing import Any
 import psycopg
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_PACKET = (
-    REPO_ROOT
+    Path.cwd()
     / "research"
     / "pending_result_reconciliation"
     / "reviewed_public_recovery_20261119.json"
