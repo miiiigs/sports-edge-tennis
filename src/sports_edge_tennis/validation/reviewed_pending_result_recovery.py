@@ -272,11 +272,11 @@ def apply(
                 INSERT INTO match_result_observations (
                     match_id, outcome_status, winner_side, retired_side,
                     sets_won_player_1, sets_won_player_2,
-                    scoreline_text, source_observed_at, as_of, ingest_run_id
+                    scoreline_text, source_observed_at, as_of, ingested_at, ingest_run_id
                 ) VALUES (
                     %s, %s::result_status, %s, NULL,
                     %s, %s,
-                    %s, %s, %s, %s
+                    %s, %s, %s, %s, %s
                 )
                 """,
                 (
@@ -286,6 +286,7 @@ def apply(
                     result.get("sets_won_player_1"),
                     result.get("sets_won_player_2"),
                     note,
+                    applied_at,
                     applied_at,
                     applied_at,
                     ingest_run_id,
