@@ -94,7 +94,7 @@ wr AS (
     LEFT JOIN LATERAL (
         SELECT mro.outcome_status::text AS outcome_status, mro.winner_side
         FROM match_result_observations mro
-        WHERE mro.match_id=d.match_id AND mro.outcome_status IN ('COMPLETED','RETIRED','WALKOVER','CANCELLED')
+        WHERE mro.match_id=d.match_id AND mro.outcome_status IN ('COMPLETED','RETIRED','WALKOVER','DEFAULTED','CANCELLED')
         ORDER BY mro.as_of DESC, mro.source_observed_at DESC, mro.match_result_observation_id DESC LIMIT 1
     ) r ON TRUE
     LEFT JOIN predictions a1 ON a1.prediction_run_id=d.prediction_run_id AND a1.match_id=d.match_id AND a1.agent_code='AGENT_1_SURFACE_ELO'
@@ -107,7 +107,7 @@ SELECT w.picked_at::date, w.manila_date, w.match_id,
     w.a1p, w.a1side, w.a2p, w.a2side, w.a3s, w.outcome_status, w.winner_side,
     CASE WHEN w.outcome_status='COMPLETED' AND w.winner_side=w.selected_side THEN 'WON'
          WHEN w.outcome_status='COMPLETED' AND w.winner_side IN (1,2) THEN 'LOST'
-         WHEN w.outcome_status IN ('RETIRED','WALKOVER','CANCELLED') THEN 'VOID'
+         WHEN w.outcome_status IN ('RETIRED','WALKOVER','DEFAULTED','CANCELLED') THEN 'VOID'
          ELSE 'PENDING' END AS result_status,
     (fb.decision_id IS NOT NULL AND fb.selection_side=w.selected_side) AS is_value_bet,
     fb.market_decimal_price, clv.clv_pct
