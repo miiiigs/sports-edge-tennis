@@ -42,6 +42,7 @@ _STATUS_MAP = {
     "walkover": "WALKOVER",
     "walk over": "WALKOVER",
     "retired": "RETIRED",
+    "awarded": "DEFAULTED",
     "finished": "COMPLETED",
     "completed": "COMPLETED",
 }
