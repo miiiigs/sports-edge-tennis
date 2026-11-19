@@ -107,6 +107,12 @@ class LivePilotPinnapiFailed(LiveMvpError):
     result_code = "LIVE_PILOT_PINNAPI_FAILED"
 
 
+class LivePilotPredictionRunFailed(LiveMvpError):
+    """The full-slate runner returned a failed/unfinished run, not a publishable slate."""
+
+    result_code = "LIVE_PILOT_PREDICTION_RUN_FAILED"
+
+
 # Injectable step signatures.
 FetchFixtures = Callable[[str, date], tuple[datetime, list[dict[str, Any]]]]
 FetchBoard = Callable[[str], tuple[datetime, dict[str, Any]]]
@@ -438,6 +444,17 @@ def run_live_mvp(
     # 2. run the frozen full-slate runner + Manager.
     if target_match_ids:
         outcome = run_slate(conn, target_match_ids, prediction_as_of)
+        # The runner returns an outcome (including a run ID) even when an agent
+        # or Manager failed. Only a completed outcome is safe to send to
+        # consensus, odds qualification, or the downstream Market evaluator.
+        # Do not turn a failed prediction into a healthy zero-consensus slate.
+        if outcome.runner_status != "COMPLETED":
+            raise LivePilotPredictionRunFailed(
+                f"prediction_run_id={outcome.prediction_run_id} "
+                f"runner_status={outcome.runner_status} "
+                f"failure_stage={outcome.failure_stage or '-'} "
+                f"failure_reason={outcome.failure_reason or '-'}"
+            )
         prediction_run_id = outcome.prediction_run_id
     else:
         outcome = None
