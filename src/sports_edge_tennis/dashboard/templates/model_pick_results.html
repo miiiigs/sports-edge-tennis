@@ -95,6 +95,67 @@
     });
 })();
 </script>
+<section class="section" id="source-attendance" aria-label="Historical fixture and prediction pipeline attendance">
+  <h2 class="section-title">No-pick dates · source and runner audit</h2>
+  <p class="section-note">A zero-pick date can mean no source fixtures, unavailable pre-match data, a missing prediction run or genuine model abstention. This separate audit distinguishes those conditions using the earliest stored fixture observation, 30-minute pre-match cutoff and recorded runner jobs. Later historical results are never represented as earlier predictions.</p>
+  <p id="source-attendance-status" class="section-note" role="status" aria-live="polite">Checking source attendance for the last fourteen Manila match dates.</p>
+  <div class="table-wrap" role="region" aria-label="Daily source and prediction process diagnostics" tabindex="0">
+    <table class="data">
+      <thead><tr><th scope="col">Day · PHT</th><th scope="col">Canonical fixtures now</th><th scope="col">ATP / Ch</th><th scope="col">Known by 30m pre-start</th><th scope="col">Ingest jobs</th><th scope="col">Prediction runs</th><th scope="col">Coverage finding</th></tr></thead>
+      <tbody id="source-attendance-rows"><tr><td colspan="7">Checking historical source availability</td></tr></tbody>
+    </table>
+  </div>
+</section>
+<script>
+(() => {
+  const rows=document.getElementById("source-attendance-rows");
+  const status=document.getElementById("source-attendance-status");
+  if (!rows || !status) return;
+  const findings={
+    HISTORICAL_SOURCE_AND_RUN_GAP:"Missing source + pipeline attendance",
+    NO_VERIFIED_PREMATCH_SOURCE:"No verified pre-match source",
+    NO_PREDICTION_RUN_RECORDED:"No prediction run",
+    NO_CANONICAL_FIXTURES_NOT_PROOF_OF_EMPTY_TENNIS:"No canonical fixture evidence",
+    SOURCE_AND_RUN_ATTENDANCE_PRESENT_NOT_PICK_ELIGIBILITY:"Source and runner recorded",
+    DATE_IN_PROGRESS:"Day in progress"
+  };
+  const td=(tr,value)=>{
+    const el=document.createElement("td");
+    el.textContent=String(value);
+    tr.appendChild(el);
+  };
+  fetch("/api/dashboard/source-attendance", {
+    credentials:"same-origin",cache:"no-store",headers:{"Accept":"application/json"}
+  }).then(async response=>{
+    if (!response.ok) throw new Error("HTTP "+response.status);
+    const result=await response.json();
+    if (!result.initialized || !Array.isArray(result.days)) throw new Error("missing source");
+    return result;
+  }).then(result=>{
+    rows.replaceChildren();
+    for(const d of result.days){
+      const tr=document.createElement("tr");
+      td(tr,d.date);
+      td(tr,d.canonical_fixtures_now);
+      td(tr,d.atp_fixtures+" / "+d.challenger_fixtures);
+      td(tr,d.source_observed_before_30min);
+      td(tr,d.ingestion_jobs);
+      td(tr,d.prediction_runs);
+      td(tr,findings[d.source_attendance] || "Unclassified evidence");
+      rows.appendChild(tr);
+    }
+    status.textContent="Source evidence as of "+result.generated_at
+      +". Historical backfill does not establish original pre-match eligibility or create missing predictions.";
+  }).catch(()=>{
+    rows.replaceChildren();
+    const tr=document.createElement("tr");
+    td(tr,"Read-only source attendance unavailable; existing Model Pick records remain unchanged.");
+    tr.firstChild.colSpan=7;
+    rows.appendChild(tr);
+    status.textContent="Source attendance has not been verified from the live database.";
+  });
+})();
+</script>
 <section class="section" aria-label="Actual results and quality-filter research" style="margin-top: 0;">
   <h2 class="section-title">Results at a glance</h2>
   <p class="section-note">The live <a href="/today?date={{ selected_date.isoformat() if selected_date else performance_as_of.isoformat() }}&amp;tz=philippines">Original vs. Qualified ≥70% parallel comparison</a> shows both groups side by side for a selected match day. Qualified research remains separate from the official original 73% scorecard below.</p>
