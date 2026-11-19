@@ -47,3 +47,13 @@ def test_registered_read_only_route_and_bound():
     out=TestClient(app).get(
       "/api/dashboard/source-attendance?start_date=2026-08-01&end_date=2026-12-01")
     assert out.status_code==422
+
+
+def test_visible_model_picks_discloses_missing_source_evidence():
+    from pathlib import Path
+    text=Path("src/sports_edge_tennis/dashboard/templates/model_pick_results.html").read_text()
+    assert 'id="source-attendance"' in text
+    assert '/api/dashboard/source-attendance' in text
+    assert "HISTORICAL_SOURCE_AND_RUN_GAP" in text
+    assert "Historical backfill does not establish original pre-match eligibility" in text
+    assert "textContent" in text
