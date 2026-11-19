@@ -294,7 +294,7 @@ def test_settlement_waits_for_result_then_is_idempotent(db):
     ).fetchone()
     assert int(persisted[0]) == result_id
     assert persisted[1] == "WON"
-    assert "tennis_match_winner_settlement_v1" in persisted[2]
+    assert "tennis_match_winner_settlement_v2" in persisted[2]
 
     second = settle_type_a_match_winner_decisions(db, settled_at=_dt(15))
     assert second.inserted == 0
