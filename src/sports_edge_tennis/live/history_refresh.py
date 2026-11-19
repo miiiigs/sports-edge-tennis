@@ -58,6 +58,7 @@ _TERMINAL_STATUS = {
     "finished": "COMPLETED",
     "completed": "COMPLETED",
     "retired": "RETIRED",
+    "awarded": "DEFAULTED",
     "walkover": "WALKOVER",
     "walk over": "WALKOVER",  # verified two-word provider status
     "cancelled": "CANCELLED",
@@ -143,8 +144,9 @@ def parse_terminal_result(fixture: Mapping[str, Any]) -> ParsedTerminalResult | 
 
     winner_side = _winner_side(fixture.get("event_winner"))
     # A verified WALKOVER without a winner is terminal and settled VOID.
-    # Migration 0021 permits only WALKOVER to omit the winner. Completed
-    # and retired outcomes still fail closed until a winner is proven.
+    # DEFAULTED/Awarded is distinct from retirement and walkover and must
+    # carry the declared sporting winner for audit. Settlement policy still
+    # excludes the abnormal finish from Model Picks W/L accuracy.
     if outcome_status not in {"CANCELLED", "WALKOVER"} and winner_side is None:
         raise HistoryRefreshError("missing_terminal_winner")
     if outcome_status == "CANCELLED":
