@@ -60,7 +60,7 @@ DAY_CHANGE_MIN_MINUTES = 60
 DEFAULT_LIMIT = 500
 MAX_LIMIT = 2000
 
-_TERMINAL = frozenset({"COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"})
+_TERMINAL = frozenset({"COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED"})
 _POSTPONED = "POSTPONED"
 API_TENNIS_SOURCE = "API_TENNIS"
 
@@ -345,7 +345,7 @@ def _evidence_sql() -> str:
             SELECT 1
             FROM match_result_observations mro
             WHERE mro.match_id = pm.match_id
-              AND mro.outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+              AND mro.outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
         )
           AND pm.picked_at >= %(since)s
         ORDER BY lv.match_start_at NULLS LAST, pm.match_id
