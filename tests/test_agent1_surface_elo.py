@@ -304,6 +304,31 @@ def test_non_completed_statuses_do_not_change_state_and_are_counted_in_diagnosti
     assert result.diagnostics.skipped_postponed_match_count == 1
 
 
+
+@pytest.mark.parametrize("winner_side", [None, 1])
+def test_defaulted_result_is_accepted_as_history_without_changing_surface_elo(winner_side):
+    # A default may have an attributed sporting winner, but it is VOID for
+    # settlement and cannot be counted as a completed competitive match in A1.
+    completed = _observation(
+        match_id=1, outcome_status="COMPLETED", winner_side=1,
+        source_observed_at=_utc(9),
+    )
+    defaulted = _observation(
+        match_id=2, outcome_status="DEFAULTED", winner_side=winner_side,
+        source_observed_at=_utc(10),
+    )
+
+    before = replay_history([completed], prediction_as_of=_utc(12))
+    after = replay_history([completed, defaulted], prediction_as_of=_utc(12))
+
+    assert after.player_states == before.player_states
+    assert after.eligible_history_match_count == before.eligible_history_match_count == 1
+    before_pick = predict(_request(), history=[completed])
+    after_pick = predict(_request(), history=[completed, defaulted])
+    assert after_pick.selection_side == before_pick.selection_side
+    assert after_pick.win_probability == before_pick.win_probability
+
+
 def test_future_observations_are_skipped_by_source_observed_at_and_as_of():
     history = [
         _observation(match_id=1, source_observed_at=_utc(9, 0), as_of=_utc(9, 0)),
