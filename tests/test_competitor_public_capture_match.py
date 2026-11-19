@@ -61,5 +61,34 @@ def test_ambiguous_identity_match_fails_closed():
         9001, 11, 12, "Ben Shelton", "Rafael Jodar",
         datetime(2026,11,19,13,0,tzinfo=UTC), "ATP_MAIN", False, 77
     )
-    with pytest.raises(PublicCaptureMatchError,match="not_unique"):
+    with pytest.raises(PublicCaptureMatchError,match="ambiguous_at_capture"):
         _match_one(FakeConn([row,row]),base_capture(),datetime(2026,11,19,6,18,43,tzinfo=UTC))
+
+
+class TimeAwareConn(FakeConn):
+    def __init__(self, row, capture_cutoff):
+        self.row = row
+        self.capture_cutoff = capture_cutoff
+
+    def execute(self, _sql, params):
+        rows = [] if params["captured_at"] <= self.capture_cutoff else [self.row]
+        return self.Result(rows)
+
+
+def test_post_capture_identity_link_preserves_frozen_prediction_timestamp():
+    captured=datetime(2026,11,19,6,18,43,tzinfo=UTC)
+    evaluated=datetime(2026,11,19,6,30,0,tzinfo=UTC)
+    row=(
+        9003, 11, 12, "Ben Shelton", "Rafael Jodar",
+        datetime(2026,11,19,13,0,tzinfo=UTC), "ATP_MAIN", False, 77
+    )
+    out=_match_one(
+        TimeAwareConn(row,captured),
+        base_capture(),
+        captured,
+        evaluation_as_of=evaluated,
+    )
+    assert out["match_id"]=="9003"
+    assert out["captured_at_utc"]=="2026-11-19T06:18:43Z"
+    assert out["identity_match_mode"]=="POST_CAPTURE_IDENTITY_LINK"
+    assert out["sports_edge_fixture_visible_at_competitor_capture"] is False
