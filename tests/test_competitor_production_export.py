@@ -57,3 +57,29 @@ def test_read_only_query_compiles_on_migrated_database(migrated_postgres):
     assert output["report"]["export_stats"]["external_vendor_matches"]==0
     assert "pr.prediction_finalized_at <= %(as_of)s" in x.source_sql()
     assert "mv0.as_of <= p.picked_at" in x.source_sql()
+
+
+def test_quarantine_completed_before_original_start_at_frozen_as_of():
+    future=datetime(2026,11,19,14,tzinfo=UTC)
+    cutoff=datetime(2026,11,19,1,tzinfo=UTC)
+    fx,fc,rejected=x.normalize([row(mid=101,start=future,
+                                  finalized=cutoff-timedelta(hours=1))],
+                                as_of=cutoff)
+    assert fx==[] and fc==[]
+    assert rejected["COMPLETED_BEFORE_FROZEN_START_QUARANTINE"]==1
+
+
+def test_prestart_scheduled_unsettled_remains_in_original_denominator():
+    future=datetime(2026,11,19,14,tzinfo=UTC)
+    cutoff=datetime(2026,11,19,1,tzinfo=UTC)
+    fx,fc,rejected=x.normalize([row(mid=102,start=future,
+                                  finalized=cutoff-timedelta(hours=1),
+                                  status=None,winner=None)],as_of=cutoff)
+    assert len(fx)==len(fc)==1 and rejected=={}
+    assert fx[0]["result_status"]=="PENDING"
+
+
+def test_invalid_naive_evaluation_cutoff_never_accepted():
+    import pytest
+    with pytest.raises(ValueError,match="as_of"):
+        x.normalize([row()],as_of=datetime(2026,11,19,1))
