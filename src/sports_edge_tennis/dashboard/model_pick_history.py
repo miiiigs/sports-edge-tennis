@@ -375,7 +375,7 @@ def load_aligned_daily_model_pick_summaries(
                     mro.winner_side
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
-                  AND mro.outcome_status IN (
+                  AND mro.outcome_status::text IN (
                       'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
@@ -509,7 +509,7 @@ def load_daily_model_pick_summaries(
                     mro.winner_side
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
-                  AND mro.outcome_status IN (
+                  AND mro.outcome_status::text IN (
                       'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
@@ -622,7 +622,7 @@ def load_daily_model_picks(
                 mro.winner_side
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
-              AND mro.outcome_status IN (
+              AND mro.outcome_status::text IN (
                   'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
@@ -740,7 +740,7 @@ def load_aligned_daily_model_picks(
                 mro.winner_side
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
-              AND mro.outcome_status IN (
+              AND mro.outcome_status::text IN (
                   'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
