@@ -92,3 +92,20 @@ def test_post_capture_identity_link_preserves_frozen_prediction_timestamp():
     assert out["captured_at_utc"]=="2026-11-19T06:18:43Z"
     assert out["identity_match_mode"]=="POST_CAPTURE_IDENTITY_LINK"
     assert out["sports_edge_fixture_visible_at_competitor_capture"] is False
+
+def test_missing_canonical_fixture_retains_public_capture_ungraded():
+    from sports_edge_tennis.validation.competitor_public_capture_match import match_capture
+
+    payload={
+        "capture_version":"PUBLIC_WEB_CAPTURE_V1",
+        "captured_at_utc":"2026-11-19T06:18:43Z",
+        "rights":"authorized_public_export",
+        "evidence":[base_capture()],
+    }
+    report=match_capture(FakeConn([]),payload)
+    assert report["matched_competitor_count"]==0
+    assert report["unmatched_competitor_count"]==1
+    assert report["sports_edge_same_fixture_count"]==0
+    assert report["ready_for_future_settlement_scoring"] is False
+    assert report["unmatched_competitor_captures"][0]["reason"]=="NO_CANONICAL_MATCH_AS_OF_EVALUATION"
+    assert report["no_database_writes"] is True

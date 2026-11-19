@@ -167,35 +167,54 @@ def match_capture(
     evidence = payload.get("evidence")
     if not isinstance(evidence, list) or not evidence:
         raise PublicCaptureMatchError("capture_has_no_evidence")
-    matched = [
-        _match_one(conn, row, captured_at, evaluation_as_of=evaluation_as_of)
-        for row in evidence
-    ]
+    matched: list[dict[str, Any]] = []
+    unmatched: list[dict[str, str]] = []
+    for row in evidence:
+        try:
+            matched.append(
+                _match_one(conn, row, captured_at, evaluation_as_of=evaluation_as_of)
+            )
+        except PublicCaptureMatchError as exc:
+            reason = str(exc)
+            # No canonical identity may exist yet; retain the frozen public
+            # evidence ungraded. Ambiguity and other integrity errors remain fatal.
+            if not reason.startswith("capture_match_not_unique") or "count=0" not in reason:
+                raise
+            unmatched.append({
+                "source_url": str(row["source_url"]),
+                "player_1_name": str(row["player_1_name"]),
+                "player_2_name": str(row["player_2_name"]),
+                "reason": "NO_CANONICAL_MATCH_AS_OF_EVALUATION",
+            })
     if len({row["match_id"] for row in matched}) != len(matched):
         raise PublicCaptureMatchError("duplicate_canonical_match")
 
-    starts = [utc(row["frozen_start_utc"]) for row in matched]
-    baseline = export_original(
-        conn,
-        as_of=evaluation_as_of,
-        start_at=min(starts) - timedelta(hours=1),
-        end_at=max(starts) + timedelta(hours=1),
-    )
-    ids = {row["match_id"] for row in matched}
-    original = [row for row in baseline["forecasts"] if row["match_id"] in ids]
+    original: list[dict[str, Any]] = []
+    if matched:
+        starts = [utc(row["frozen_start_utc"]) for row in matched]
+        baseline = export_original(
+            conn,
+            as_of=evaluation_as_of,
+            start_at=min(starts) - timedelta(hours=1),
+            end_at=max(starts) + timedelta(hours=1),
+        )
+        ids = {row["match_id"] for row in matched}
+        original = [row for row in baseline["forecasts"] if row["match_id"] in ids]
     return {
         "capture_version": payload["capture_version"],
         "captured_at_utc": _iso(captured_at),
         "evaluation_as_of_utc": _iso(evaluation_as_of),
         "rights": payload["rights"],
         "matched_competitor_forecasts": matched,
+        "unmatched_competitor_captures": unmatched,
+        "unmatched_competitor_count": len(unmatched),
         "sports_edge_original_pre_match_forecasts": original,
         "matched_competitor_count": len(matched),
         "sports_edge_same_fixture_count": len(original),
         "post_capture_identity_link_count": sum(
             row["identity_match_mode"] == "POST_CAPTURE_IDENTITY_LINK" for row in matched
         ),
-        "ready_for_future_settlement_scoring": True,
+        "ready_for_future_settlement_scoring": bool(matched),
         "no_database_writes": True,
         "interpretation": (
             "Competitor probabilities stay frozen at first public capture. "
