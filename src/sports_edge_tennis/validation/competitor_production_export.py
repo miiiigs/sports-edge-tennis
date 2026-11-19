@@ -122,7 +122,7 @@ def normalize(rows:list[tuple],*,cutoff_minutes:int=CUTOFF_MINUTES,
         if finalized > deadline or finalized.tzinfo is None or start.tzinfo is None:
             reject("NO_AUTHENTIC_30MIN_PREMATCH_ISSUANCE")
             continue
-        if result not in ("COMPLETED","RETIRED","WALKOVER","CANCELLED",None):
+        if result not in ("COMPLETED","RETIRED","WALKOVER","DEFAULTED","CANCELLED",None):
             reject("UNRECOGNIZED_AUTHORITATIVE_RESULT")
             continue
         if result=="COMPLETED" and winner not in (1,2):
