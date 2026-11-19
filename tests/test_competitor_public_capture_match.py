@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from sports_edge_tennis.validation.competitor_public_capture_match import (
     PublicCaptureMatchError,
     _match_one,
+    match_capture,
 )
 
 
@@ -92,3 +93,45 @@ def test_post_capture_identity_link_preserves_frozen_prediction_timestamp():
     assert out["captured_at_utc"]=="2026-11-19T06:18:43Z"
     assert out["identity_match_mode"]=="POST_CAPTURE_IDENTITY_LINK"
     assert out["sports_edge_fixture_visible_at_competitor_capture"] is False
+
+
+
+class AlwaysEmptyConn(FakeConn):
+    def __init__(self):
+        super().__init__([])
+
+
+def test_zero_candidate_capture_is_retained_pending_and_never_scored():
+    captured=datetime(2026,11,19,6,18,43,tzinfo=UTC)
+    payload={
+        "capture_version":"PUBLIC_WEB_CAPTURE_V1",
+        "captured_at_utc":"2026-11-19T06:18:43Z",
+        "rights":"authorized_public_export",
+        "evidence":[base_capture()],
+    }
+    report=match_capture(
+        AlwaysEmptyConn(),
+        payload,
+        evaluation_as_of=datetime(2026,11,19,6,33,27,tzinfo=UTC),
+    )
+    assert report["captured_competitor_count"]==1
+    assert report["matched_competitor_count"]==0
+    assert report["canonical_fixture_pending_count"]==1
+    assert report["sports_edge_same_fixture_count"]==0
+    assert report["ready_for_future_settlement_scoring"] is False
+    pending=report["canonical_fixture_pending_forecasts"][0]
+    assert pending["capture_status"]=="CANONICAL_FIXTURE_PENDING"
+    assert pending["published_at_utc"]=="2026-11-19T06:18:43Z"
+    assert pending["scoring_eligible"] is False
+
+
+def test_unmatched_capture_after_scheduled_start_fails_closed():
+    import pytest
+    payload={
+        "capture_version":"PUBLIC_WEB_CAPTURE_V1",
+        "captured_at_utc":"2026-11-19T14:00:00Z",
+        "rights":"authorized_public_export",
+        "evidence":[base_capture()],
+    }
+    with pytest.raises(PublicCaptureMatchError,match="not_pre_match"):
+        match_capture(AlwaysEmptyConn(),payload)
