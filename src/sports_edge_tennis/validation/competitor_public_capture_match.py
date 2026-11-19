@@ -167,40 +167,82 @@ def match_capture(
     evidence = payload.get("evidence")
     if not isinstance(evidence, list) or not evidence:
         raise PublicCaptureMatchError("capture_has_no_evidence")
-    matched = [
-        _match_one(conn, row, captured_at, evaluation_as_of=evaluation_as_of)
-        for row in evidence
-    ]
+    matched: list[dict[str, Any]] = []
+    pending_identity: list[dict[str, Any]] = []
+    for row in evidence:
+        try:
+            matched.append(
+                _match_one(conn, row, captured_at, evaluation_as_of=evaluation_as_of)
+            )
+        except PublicCaptureMatchError as exc:
+            message = str(exc)
+            if message.startswith("capture_match_not_unique") and message.endswith("count=0"):
+                probability = float(row["picked_probability"])
+                if not 0 < probability < 1:
+                    raise PublicCaptureMatchError("invalid_probability") from exc
+                scheduled_start = utc(str(row["scheduled_start_utc"]))
+                if scheduled_start <= captured_at:
+                    raise PublicCaptureMatchError(
+                        "unmatched_capture_not_pre_match"
+                    ) from exc
+                pending_identity.append(
+                    {
+                        "source": "tennisdataapp_public_web",
+                        "capture_status": "CANONICAL_FIXTURE_PENDING",
+                        "player_1_name": str(row["player_1_name"]),
+                        "player_2_name": str(row["player_2_name"]),
+                        "scheduled_start_utc": _iso(scheduled_start),
+                        "picked_name": str(row["picked_name"]),
+                        "picked_probability": f"{probability:.6f}",
+                        "published_at_utc": _iso(captured_at),
+                        "captured_at_utc": _iso(captured_at),
+                        "rights": "authorized_public_export",
+                        "model_version": str(row["model_version"]),
+                        "source_url": str(row["source_url"]),
+                        "last_identity_check_as_of_utc": _iso(evaluation_as_of),
+                        "scoring_eligible": False,
+                    }
+                )
+                continue
+            raise
+
     if len({row["match_id"] for row in matched}) != len(matched):
         raise PublicCaptureMatchError("duplicate_canonical_match")
 
-    starts = [utc(row["frozen_start_utc"]) for row in matched]
-    baseline = export_original(
-        conn,
-        as_of=evaluation_as_of,
-        start_at=min(starts) - timedelta(hours=1),
-        end_at=max(starts) + timedelta(hours=1),
-    )
-    ids = {row["match_id"] for row in matched}
-    original = [row for row in baseline["forecasts"] if row["match_id"] in ids]
+    original: list[dict[str, Any]] = []
+    if matched:
+        starts = [utc(row["frozen_start_utc"]) for row in matched]
+        baseline = export_original(
+            conn,
+            as_of=evaluation_as_of,
+            start_at=min(starts) - timedelta(hours=1),
+            end_at=max(starts) + timedelta(hours=1),
+        )
+        ids = {row["match_id"] for row in matched}
+        original = [row for row in baseline["forecasts"] if row["match_id"] in ids]
+
     return {
         "capture_version": payload["capture_version"],
         "captured_at_utc": _iso(captured_at),
         "evaluation_as_of_utc": _iso(evaluation_as_of),
         "rights": payload["rights"],
         "matched_competitor_forecasts": matched,
+        "canonical_fixture_pending_forecasts": pending_identity,
         "sports_edge_original_pre_match_forecasts": original,
+        "captured_competitor_count": len(matched) + len(pending_identity),
         "matched_competitor_count": len(matched),
+        "canonical_fixture_pending_count": len(pending_identity),
         "sports_edge_same_fixture_count": len(original),
         "post_capture_identity_link_count": sum(
             row["identity_match_mode"] == "POST_CAPTURE_IDENTITY_LINK" for row in matched
         ),
-        "ready_for_future_settlement_scoring": True,
+        "capture_registry_ready": True,
+        "ready_for_future_settlement_scoring": bool(matched),
         "no_database_writes": True,
         "interpretation": (
             "Competitor probabilities stay frozen at first public capture. "
-            "A later canonical identity link does not change publication time or probability. "
-            "Comparative performance remains pending until authoritative results are observed."
+            "Unmatched captures remain registered as CANONICAL_FIXTURE_PENDING and are never scored. "
+            "A later canonical identity link does not change publication time or probability."
         ),
     }
 
