@@ -61,12 +61,17 @@ def _candidate_rows(conn: psycopg.Connection, *, start: datetime, captured_at: d
     ).fetchall()
 
 
-def _match_one(conn: psycopg.Connection, row: dict[str, Any], captured_at: datetime) -> dict[str, Any]:
+def _identity_candidates(
+    conn: psycopg.Connection,
+    *,
+    row: dict[str, Any],
+    as_of: datetime,
+) -> list[tuple[tuple[Any, ...], int]]:
     start = utc(str(row["scheduled_start_utc"]))
     n1 = normalize_person_lookup(str(row["player_1_name"]))
     n2 = normalize_person_lookup(str(row["player_2_name"]))
-    candidates = []
-    for c in _candidate_rows(conn, start=start, captured_at=captured_at):
+    candidates: list[tuple[tuple[Any, ...], int]] = []
+    for c in _candidate_rows(conn, start=start, captured_at=as_of):
         cp1 = normalize_person_lookup(str(c[3]))
         cp2 = normalize_person_lookup(str(c[4]))
         orientation = None
@@ -76,10 +81,37 @@ def _match_one(conn: psycopg.Connection, row: dict[str, Any], captured_at: datet
             orientation = -1
         if orientation is not None:
             candidates.append((c, orientation))
+    return candidates
+
+
+def _match_one(
+    conn: psycopg.Connection,
+    row: dict[str, Any],
+    captured_at: datetime,
+    evaluation_as_of: datetime | None = None,
+) -> dict[str, Any]:
+    start = utc(str(row["scheduled_start_utc"]))
+    evaluation_as_of = evaluation_as_of or captured_at
+    if evaluation_as_of < captured_at:
+        raise PublicCaptureMatchError("evaluation_as_of_precedes_capture")
+
+    candidates = _identity_candidates(conn, row=row, as_of=captured_at)
+    visible_at_capture = len(candidates) == 1
+    identity_match_mode = "POINT_IN_TIME_CAPTURE"
+
+    if len(candidates) > 1:
+        raise PublicCaptureMatchError(
+            f"capture_match_ambiguous_at_capture names={row['player_1_name']}|{row['player_2_name']} count={len(candidates)}"
+        )
+    if not candidates and evaluation_as_of > captured_at:
+        candidates = _identity_candidates(conn, row=row, as_of=evaluation_as_of)
+        identity_match_mode = "POST_CAPTURE_IDENTITY_LINK"
+
     if len(candidates) != 1:
         raise PublicCaptureMatchError(
             f"capture_match_not_unique names={row['player_1_name']}|{row['player_2_name']} count={len(candidates)}"
         )
+
     c, orientation = candidates[0]
     match_id, p1_id, p2_id, p1_name, p2_name, frozen_start, tour_scope, qualifying, tournament_id = c
     if abs((frozen_start - start).total_seconds()) > 60 * 60:
@@ -114,24 +146,38 @@ def _match_one(conn: psycopg.Connection, row: dict[str, Any], captured_at: datet
         "tournament_id": str(tournament_id),
         "source_url": str(row["source_url"]),
         "orientation_from_capture": orientation,
+        "sports_edge_fixture_visible_at_competitor_capture": visible_at_capture,
+        "identity_match_mode": identity_match_mode,
+        "identity_link_as_of_utc": _iso(evaluation_as_of),
     }
 
 
-def match_capture(conn: psycopg.Connection, payload: dict[str, Any]) -> dict[str, Any]:
+def match_capture(
+    conn: psycopg.Connection,
+    payload: dict[str, Any],
+    *,
+    evaluation_as_of: datetime | None = None,
+) -> dict[str, Any]:
     captured_at = utc(str(payload["captured_at_utc"]))
+    evaluation_as_of = evaluation_as_of or captured_at
+    if evaluation_as_of < captured_at:
+        raise PublicCaptureMatchError("evaluation_as_of_precedes_capture")
     if payload.get("rights") != "authorized_public_export":
         raise PublicCaptureMatchError("capture_rights_not_authorized_public_export")
     evidence = payload.get("evidence")
     if not isinstance(evidence, list) or not evidence:
         raise PublicCaptureMatchError("capture_has_no_evidence")
-    matched = [_match_one(conn, row, captured_at) for row in evidence]
+    matched = [
+        _match_one(conn, row, captured_at, evaluation_as_of=evaluation_as_of)
+        for row in evidence
+    ]
     if len({row["match_id"] for row in matched}) != len(matched):
         raise PublicCaptureMatchError("duplicate_canonical_match")
 
     starts = [utc(row["frozen_start_utc"]) for row in matched]
     baseline = export_original(
         conn,
-        as_of=captured_at,
+        as_of=evaluation_as_of,
         start_at=min(starts) - timedelta(hours=1),
         end_at=max(starts) + timedelta(hours=1),
     )
@@ -140,15 +186,20 @@ def match_capture(conn: psycopg.Connection, payload: dict[str, Any]) -> dict[str
     return {
         "capture_version": payload["capture_version"],
         "captured_at_utc": _iso(captured_at),
+        "evaluation_as_of_utc": _iso(evaluation_as_of),
         "rights": payload["rights"],
         "matched_competitor_forecasts": matched,
         "sports_edge_original_pre_match_forecasts": original,
         "matched_competitor_count": len(matched),
         "sports_edge_same_fixture_count": len(original),
+        "post_capture_identity_link_count": sum(
+            row["identity_match_mode"] == "POST_CAPTURE_IDENTITY_LINK" for row in matched
+        ),
         "ready_for_future_settlement_scoring": True,
         "no_database_writes": True,
         "interpretation": (
-            "Prospective competitor observations are now frozen and canonically matched. "
+            "Competitor probabilities stay frozen at first public capture. "
+            "A later canonical identity link does not change publication time or probability. "
             "Comparative performance remains pending until authoritative results are observed."
         ),
     }
@@ -158,12 +209,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("capture_json", type=Path)
     parser.add_argument("--dsn", default=os.environ.get("TENNIS_DATABASE_URL"))
+    parser.add_argument(
+        "--evaluation-as-of-utc",
+        help="Optional later point-in-time used only to link canonical identity and read Sports Edge first-issued forecasts.",
+    )
     args = parser.parse_args(argv)
     if not args.dsn:
         parser.error("TENNIS_DATABASE_URL required")
     payload = json.loads(args.capture_json.read_text(encoding="utf-8"))
+    evaluation_as_of = (
+        utc(args.evaluation_as_of_utc)
+        if args.evaluation_as_of_utc
+        else utc(str(payload["captured_at_utc"]))
+    )
     with psycopg.connect(args.dsn, autocommit=True, connect_timeout=10) as conn:
-        report = match_capture(conn, payload)
+        report = match_capture(conn, payload, evaluation_as_of=evaluation_as_of)
     print(json.dumps(report, sort_keys=True))
     return 0
 
