@@ -17,7 +17,7 @@ SUPPORTED_COMPETITION_TIERS = (
     "ATP_250",
     "CHALLENGER",
 )
-SUPPORTED_OUTCOME_STATUSES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED", "POSTPONED")
+SUPPORTED_OUTCOME_STATUSES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED", "POSTPONED", "DEFAULTED")
 _PROBABILITY_QUANTUM = Decimal("0.000001")
 
 Surface = Literal["HARD", "CLAY", "GRASS", "CARPET"]
@@ -30,7 +30,7 @@ CompetitionTier = Literal[
     "ATP_250",
     "CHALLENGER",
 ]
-OutcomeStatus = Literal["COMPLETED", "RETIRED", "WALKOVER", "CANCELLED", "POSTPONED"]
+OutcomeStatus = Literal["COMPLETED", "RETIRED", "WALKOVER", "CANCELLED", "POSTPONED", "DEFAULTED"]
 
 
 class SurfaceEloValidationError(ValueError):
@@ -470,6 +470,12 @@ def update_rating_pair(
 def _status_is_eligible(outcome_status: OutcomeStatus, config: SurfaceEloConfig) -> bool:
     if outcome_status == "COMPLETED":
         return True
+    # An in-match default is an authoritative terminal/VOID result for reporting,
+    # never a played match for Elo ratings. Keep the V1 feature/config contract
+    # stable and preserve the original categorical status instead of disguising
+    # a default as a retirement or cancellation.
+    if outcome_status == "DEFAULTED":
+        return False
     policy_by_status = {
         "RETIRED": config.retired_policy,
         "WALKOVER": config.walkover_policy,
