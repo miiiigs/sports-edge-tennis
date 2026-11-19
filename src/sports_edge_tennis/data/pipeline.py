@@ -122,7 +122,7 @@ def _orient_players(winner_player_id: int, loser_player_id: int) -> tuple[int, i
 
 
 def _historical_match_status(outcome_status: str) -> str:
-    if outcome_status in {"COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"}:
+    if outcome_status in {"COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED"}:
         return outcome_status
     raise ValueError(f"unsupported historical outcome status: {outcome_status}")
 
