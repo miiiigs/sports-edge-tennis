@@ -17,7 +17,7 @@ CompetitionTier = Literal[
     "CHALLENGER",
 ]
 TennisSurface = Literal["HARD", "CLAY", "GRASS", "CARPET"]
-MatchStatus = Literal["COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"]
+MatchStatus = Literal["COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED"]
 IdentityStatus = Literal["RESOLVED", "UNMATCHED", "AMBIGUOUS"]
 
 

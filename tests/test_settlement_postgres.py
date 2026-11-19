@@ -294,7 +294,7 @@ def test_settlement_waits_for_result_then_is_idempotent(db):
     ).fetchone()
     assert int(persisted[0]) == result_id
     assert persisted[1] == "WON"
-    assert "tennis_match_winner_settlement_v1" in persisted[2]
+    assert "tennis_match_winner_settlement_v2" in persisted[2]
 
     second = settle_type_a_match_winner_decisions(db, settled_at=_dt(15))
     assert second.inserted == 0
@@ -432,3 +432,11 @@ def test_equivalent_void_result_does_not_abort(db):
     assert reconciled.reconciled == 1
     assert reconciled.void == 1
     assert _persisted_settlement(db, decision_id)[1] == "VOID"
+
+def test_defaulted_match_is_provider_neutral_void_not_win_or_loss():
+    assert classify_match_winner_settlement(
+        outcome_status="DEFAULTED", winner_side=1, selection_side=1
+    ) == "VOID"
+    assert classify_match_winner_settlement(
+        outcome_status="DEFAULTED", winner_side=1, selection_side=2
+    ) == "VOID"

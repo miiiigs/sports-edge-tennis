@@ -17,7 +17,7 @@ from sports_edge_tennis.dashboard.aligned_model_picks import (
     aligned_production_model_picks_cte,
 )
 
-TERMINAL_FIXTURE_STATUSES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED")
+TERMINAL_FIXTURE_STATUSES = ("COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED")
 
 _COVERAGE_SQL = """
     WITH {cte},
@@ -39,7 +39,7 @@ _COVERAGE_SQL = """
         SELECT DISTINCT ON (match_id)
             match_id
         FROM match_result_observations
-        WHERE outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+        WHERE outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
         ORDER BY match_id, as_of DESC, source_observed_at DESC, match_result_observation_id DESC
     )
     SELECT
@@ -52,7 +52,7 @@ _COVERAGE_SQL = """
     JOIN latest_match_version lmv ON lmv.match_id = am.match_id
     LEFT JOIN terminal_result tr ON tr.match_id = am.match_id
     WHERE tr.match_id IS NULL
-      AND lmv.match_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+      AND lmv.match_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
       AND lmv.match_start_at IS NOT NULL
       AND lmv.match_start_at < %s
     ORDER BY lmv.match_start_at, am.match_id

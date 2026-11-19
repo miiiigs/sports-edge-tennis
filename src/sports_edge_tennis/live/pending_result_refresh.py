@@ -94,7 +94,7 @@ PICK_SOURCE_MANAGER = "MANAGER_CONSENSUS"
 PICK_SOURCE_WIDE_SPREAD = "A1_A2_WIDE_SPREAD"
 PICK_SOURCE_TYPE_A_BET = "TYPE_A_BET"
 
-_TERMINAL_OUTCOMES = ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED")
+_TERMINAL_OUTCOMES = ("COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED")
 _TERMINAL_SQL = ",".join(f"'{status}'" for status in _TERMINAL_OUTCOMES)
 # Exactly the cohort ``settle_type_a_match_winner_decisions`` treats as eligible.
 _TYPE_A_BET_PREDICATE = """
@@ -360,7 +360,7 @@ def _expected_result(terminal, selected_side: int | None) -> str | None:
         if terminal.winner_side in (1, 2):
             return "LOST"
         return None
-    if terminal.outcome_status in ("RETIRED", "WALKOVER", "CANCELLED"):
+    if terminal.outcome_status in ("RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED"):
         return "VOID"
     return None
 

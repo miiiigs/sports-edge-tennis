@@ -96,3 +96,9 @@ def test_retired_match_void_is_not_scored_as_a_model_win():
     report=compare([fx(91,status="RETIRED",winner="1")],[fc(91)])
     assert report["settled_unique_matches"]==0
     assert report["pending_or_void_matches"]==1
+
+def test_defaulted_is_terminal_but_ungraded_in_competitor_metrics():
+    report=compare([fx(1,status="DEFAULTED",winner="1")],[fc(1)])
+    assert report["settled_unique_matches"]==0
+    assert report["pending_or_void_matches"]==1
+    assert report["per_tour"][0]["settled_evaluated"]==0

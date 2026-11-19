@@ -411,3 +411,17 @@ def test_history_fetch_provider_failure_only_logs_safe_category(monkeypatch):
     assert exc_info.value.kind == "PROVIDER_ERROR"
     assert "diagnostic=ACCOUNT_OR_PLAN" in str(exc_info.value)
     assert "KEY_SECRET_99" not in str(exc_info.value)
+
+def test_parse_terminal_result_preserves_awarded_as_defaulted_with_winner():
+    result = parse_terminal_result(
+        _fixture(event_status="Awarded", event_winner="First Player", event_final_result="-")
+    )
+    assert result is not None
+    assert result.outcome_status == "DEFAULTED"
+    assert result.winner_side == 1
+    assert result.retired_side is None
+
+    with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
+        parse_terminal_result(
+            _fixture(event_status="Awarded", event_winner=None, event_final_result="-")
+        )
