@@ -34,6 +34,56 @@
   </div>
 </section>
 
+<section class="section" aria-label="Live Agent 1 calibration evidence">
+  <h2 class="section-title">Agent 1 · Challenger calibration watch</h2>
+  <p class="section-note">
+    Real production first-issued predictions, one per match, across historical model versions.
+    This is <strong>Agent 1 research evidence</strong>, not the current Manager's Model Picks
+    win rate and not a betting-profit result.
+  </p>
+  {% if a1_live_performance.available and a1_live_performance.overall %}
+  <div class="stat-grid">
+    <article class="stat">
+      <span class="stat-value">{{ a1_live_performance.overall.accuracy }}</span>
+      <span class="stat-label">Agent 1 graded accuracy</span>
+      <span class="stat-note">
+        {{ a1_live_performance.overall.scored }} completed of
+        {{ a1_live_performance.overall.sample }} first-issued predictions
+      </span>
+    </article>
+    <article class="stat">
+      <span class="stat-value">{{ a1_live_performance.overall.scored_confidence }}</span>
+      <span class="stat-label">Mean confidence · same graded set</span>
+      <span class="stat-note">Confidence is computed only on the completed outcomes above</span>
+    </article>
+    {% if a1_live_performance.high_confidence %}
+    <article class="stat">
+      <span class="stat-value">{{ a1_live_performance.high_confidence.overconfidence_pp }}</span>
+      <span class="stat-label">80%+ predictions · confidence minus accuracy</span>
+      <span class="stat-note">
+        {{ a1_live_performance.high_confidence.scored }} graded ·
+        {{ a1_live_performance.high_confidence.accuracy }} won versus
+        {{ a1_live_performance.high_confidence.scored_confidence }} confidence
+      </span>
+    </article>
+    {% endif %}
+  </div>
+  <p class="section-note" style="margin-top: 12px;">
+    Positive confidence gap means the model assigned higher probabilities than its realised
+    accuracy in that group. This is descriptive evidence from historical production regimes,
+    not proof that recalibration improves winner selection. Original picks and voids stay in
+    <a href="/model-pick-results">Model Picks Results</a>.
+    Research tests do not change published picks.
+  </p>
+  {% else %}
+  <div class="notice">
+    <h3>Live Agent 1 calibration evidence unavailable</h3>
+    <p>{{ a1_live_performance.reason or 'No eligible first-issued data' }}.
+      No historical research figures are substituted for a live database result.</p>
+  </div>
+  {% endif %}
+</section>
+
 <section class="section" aria-label="Historical model validation">
   <h2 class="section-title">Historical model validation</h2>
   <div class="notice notice-warning">
