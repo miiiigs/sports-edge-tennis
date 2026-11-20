@@ -102,3 +102,58 @@ def test_defaulted_is_terminal_but_ungraded_in_competitor_metrics():
     assert report["settled_unique_matches"]==0
     assert report["pending_or_void_matches"]==1
     assert report["per_tour"][0]["settled_evaluated"]==0
+
+
+
+def test_overall_comparison_uses_only_shared_settled_fixtures_not_individual_rates():
+    fixtures = [fx(1), fx(2), fx(3, "CHALLENGER"), fx(4, status="DEFAULTED", winner="1")]
+    forecasts = [
+        fc(1, p=".9"), fc(2, p=".55"), fc(3, p=".6"), fc(4, p=".9"),
+        fc(1, source="vendor", p=".6", rights="licensed"),
+        fc(3, source="vendor", p=".75", rights="licensed"),
+        fc(4, source="vendor", p=".9", rights="licensed"),
+    ]
+    r = compare(fixtures, forecasts)
+    assert r["settled_unique_matches"] == 3
+    by_source = {x["source"]: x for x in r["overall"]}
+    assert by_source["sports_edge_original"]["settled_evaluated"] == 3
+    assert by_source["vendor"]["settled_evaluated"] == 2
+    assert by_source["vendor"]["forward_captured"] == 3
+
+    paired = next(x for x in r["paired_overall"] if x["challenger"] == "vendor")
+    assert paired["paired_settled_matches"] == 2
+    assert paired["calendar_span_days"] == 1
+    assert paired["baseline_on_shared_fixtures"]["settled_evaluated"] == 2
+    assert paired["challenger_on_shared_fixtures"]["settled_evaluated"] == 2
+    assert paired["paired_brier_delta"] is not None
+    assert paired["paired_log_loss_95pct_cluster_ci"] is None
+    assert paired["size_and_duration_gate_met"] is False
+    assert paired["not_proof_of_prospective_or_licensed_access"] is True
+
+
+def test_unmatched_vendor_cannot_claim_advantage_or_satisfy_forward_gate():
+    r = compare([fx(1), fx(2)], [
+        fc(1), fc(2),
+        fc(1, source="vendor", rights="licensed", captured="2026-11-18T17:59:00Z"),
+    ])
+    paired = next(x for x in r["paired_overall"] if x["challenger"] == "vendor")
+    assert paired["paired_settled_matches"] == 0
+    assert paired["paired_log_loss_delta"] is None
+    assert paired["paired_brier_delta"] is None
+    assert paired["baseline_on_shared_fixtures"]["settled_evaluated"] == 0
+    assert paired["size_and_duration_gate_met"] is False
+    assert r["rejected_forecast_rows"]["LATE_OR_UNVERIFIABLE_TIMESTAMP"] == 1
+
+
+def test_void_default_and_retirement_never_enter_paired_score():
+    r = compare(
+        [fx(1), fx(2, status="DEFAULTED"), fx(3, status="RETIRED")],
+        [fc(1), fc(2), fc(3),
+         fc(1, "vendor", p=".55", rights="licensed"),
+         fc(2, "vendor", p=".9", rights="licensed"),
+         fc(3, "vendor", p=".9", rights="licensed")],
+    )
+    paired = r["paired_overall"][0]
+    assert paired["paired_settled_matches"] == 1
+    assert paired["challenger_on_shared_fixtures"]["settled_evaluated"] == 1
+
