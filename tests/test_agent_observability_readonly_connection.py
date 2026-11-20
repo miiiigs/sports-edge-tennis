@@ -1,4 +1,5 @@
 """Ops Agent report must open a working read-only PostgreSQL connection."""
+import ast
 from pathlib import Path
 
 import psycopg
@@ -9,6 +10,8 @@ def test_agent_observability_report_uses_supported_libpq_readonly_option():
     text=Path("ops/agent_observability_report.py").read_text()
     assert 'options="-c default_transaction_read_only=on"' in text
     assert "read_only=True" not in text
+    ast.parse(text, filename="ops/agent_observability_report.py")
+    assert r"\n" not in text.split("with psycopg.connect(", 1)[1].split(") as conn:", 1)[0]
 
 
 def test_operator_connection_is_read_only_and_supports_query(migrated_postgres):
