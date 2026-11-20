@@ -574,6 +574,59 @@ def value(
     )
 
 
+
+def _load_a1_challenger_performance() -> dict[str, object]:
+    """First-issued A1 Challenger evidence, separate from original Model Picks.
+
+    Only compare realised accuracy to predicted confidence on the SAME
+    completed-result subset; never equate these to bet/Manager accuracy.
+    """
+    if DEMO_MODE:
+        return {"available": False, "reason": "Demo mode has no live scoring evidence"}
+    conn = _connect()
+    if conn is None:
+        return {"available": False, "reason": "Live database unavailable"}
+    try:
+        from sports_edge_tennis.performance.a1_diagnostic import (
+            load_a1_live_challenger_diagnostic,
+        )
+
+        report = load_a1_live_challenger_diagnostic(conn)
+    except psycopg.Error:
+        return {"available": False, "reason": "Live calibration evidence unavailable"}
+    finally:
+        conn.close()
+    if not report.initialized:
+        return {"available": False, "reason": "No eligible first-issued observations"}
+
+    def _slice(dimension: str, value: str) -> dict[str, object] | None:
+        row = next((x for x in report.slices
+                    if x.dimension == dimension and x.value == value), None)
+        if row is None:
+            return None
+        scored_mean = row.scored_mean_confidence
+        gap = (scored_mean - row.accuracy) * 100 if (
+            scored_mean is not None and row.accuracy is not None
+        ) else None
+        return {
+            "sample": row.sample,
+            "scored": row.scored,
+            "accuracy": f"{row.accuracy * 100:.1f}%" if row.accuracy is not None else "—",
+            "scored_confidence": f"{scored_mean * 100:.1f}%" if scored_mean is not None else "—",
+            "overconfidence_pp": f"{gap:+.1f} pp" if gap is not None else "—",
+        }
+
+    return {
+        "available": True,
+        "overall": _slice("overall", "ALL"),
+        "high_confidence": _slice("confidence_band", "80%+"),
+        "middle_confidence": _slice("confidence_band", "70-80%"),
+        "scope": "First-issued Challenger Agent 1 predictions across all production versions, "
+                 "one row per match, only verified completed outcomes graded",
+        "research_only": True,
+    }
+
+
 @app.get("/performance", response_class=HTMLResponse)
 def performance(request: Request):
     return templates.TemplateResponse(
@@ -581,6 +634,7 @@ def performance(request: Request):
         "performance.html",
         {
             "models": MODEL_PERFORMANCE,
+            "a1_live_performance": _load_a1_challenger_performance(),
             **_load_regime_context(_request_timezone(request)),
             "pres": pres,
             "demo_mode": DEMO_MODE,
