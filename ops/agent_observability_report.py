@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
         print("AGENT_OBSERVABILITY_BLOCKED reason=NO_DATABASE")
         return 2
 
-    with psycopg.connect(args.dsn, autocommit=True, read_only=True) as conn:
+    with psycopg.connect(\n        args.dsn, autocommit=True,\n        options="-c default_transaction_read_only=on",\n    ) as conn:
         has_reason_column = (
             conn.execute(
                 "SELECT count(*) FROM information_schema.columns "
