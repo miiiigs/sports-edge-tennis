@@ -68,7 +68,8 @@ def discover(conn:psycopg.Connection, *, cutoff:datetime,
 
 def _reason(agent_rows:dict[str,tuple[str,int|None,float|None]],
             manager:tuple[str,str,int|None,Decimal|None]|None,
-            aligned_type:str|None)->str:
+            aligned_type:str|None, first_issue_run_id:int|None=None,
+            current_run_id:int|None=None)->str:
     if aligned_type=="MANAGER_CONSENSUS":
         return "DASHBOARD_MANAGER_CONSENSUS_PICK"
     if aligned_type=="A1_A2_WIDE_SPREAD":
@@ -82,7 +83,10 @@ def _reason(agent_rows:dict[str,tuple[str,int|None,float|None]],
     if status=="CONSENSUS":
         if prob is not None and prob<Decimal(".60"):
             return "MANAGER_CONSENSUS_BELOW_60_PCT_DASHBOARD_FLOOR"
-        return "CONSENSUS_NOT_IN_FIRST_ALIGNED_LEDGER"
+        if (first_issue_run_id is not None and current_run_id is not None
+                and first_issue_run_id != current_run_id):
+            return "CONSENSUS_FOR_PREVIOUSLY_FIRST_ISSUED_MATCH"
+        return "CONSENSUS_NOT_IN_ALIGNED_LEDGER_NEEDS_INVESTIGATION"
     return "MANAGER_REJECTED:" + reason
 
 
@@ -91,10 +95,15 @@ def summarise(*, run_id:int,targets:list[int],
               managers:dict[int,tuple[str,str,int|None,Decimal|None]],
               aligned:dict[int,tuple[str,Decimal]],
               market:dict[int,list[tuple[str,str,str,bool]]],
-              finalized_at:datetime)->dict[str,Any]:
+              finalized_at:datetime,
+              first_issued:dict[int,tuple[int,str,Decimal]]|None=None
+              )->dict[str,Any]:
     if len(set(targets))!=len(targets):
         raise ValueError("duplicate canonical targets")
     tset=set(targets)
+    first_issued=first_issued or {}
+    if any(mid not in tset for mid in first_issued):
+        raise ValueError("cross-run first issue outside targets")
     if any(mid not in tset for mid in aligned):
         raise ValueError("aligned picks exist outside run targets")
     if any(mid not in tset for mid in managers):
@@ -122,7 +131,9 @@ def summarise(*, run_id:int,targets:list[int],
             all_three+=1
         mgr=managers.get(mid)
         pick=aligned.get(mid)
-        code=_reason(agents,mgr,pick[0] if pick else None)
+        prior=first_issued.get(mid)
+        code=_reason(agents,mgr,pick[0] if pick else None,
+                     prior[0] if prior else None,run_id)
         reasons[code]+=1
         decisions=market.get(mid,[])
         if len(decisions)>10:
@@ -133,6 +144,9 @@ def summarise(*, run_id:int,targets:list[int],
             "manager_status":mgr[0] if mgr else "MISSING",
             "manager_reason":mgr[1] if mgr else "MISSING",
             "dashboard_aligned_type":pick[0] if pick else None,
+            "first_issued_aligned_run":prior[0] if prior else None,
+            "first_issued_aligned_type":prior[1] if prior else None,
+            "previously_issued_aligned":bool(prior and prior[0]!=run_id),
             "dashboard_aligned_confidence":float(pick[1]) if pick else None,
             "classification":code,
             "market_decision_statuses":[
@@ -163,6 +177,9 @@ def summarise(*, run_id:int,targets:list[int],
         "manager_consensus_count":manager_cons,
         "manager_rejected_count":len(targets)-manager_cons,
         "dashboard_aligned_picks":dashboard,
+        "previously_issued_aligned_on_other_runs":sum(
+            row[0]!=run_id for row in first_issued.values()),
+        "ever_first_issued_aligned_among_targets":len(first_issued),
         "dashboard_manager_picks":sum(x[0]=="MANAGER_CONSENSUS" for x in aligned.values()),
         "dashboard_a1a2_tracking_only":sum(x[0]=="A1_A2_WIDE_SPREAD" for x in aligned.values()),
         "aligned_confidence70_research_only_count":confidence70,
@@ -224,16 +241,20 @@ def read_run(conn:psycopg.Connection, *, run_id:int)->dict[str,Any]:
             raise ValueError("duplicate Manager result for run")
         managers[int(match_id)]=(status,selected,side,prob)
     aligned={}
+    first_issued={}
     rows=conn.execute(
         f"WITH {aligned_production_model_picks_cte()} "
-        "SELECT match_id,aligned_pick_type,aligned_probability "
-        "FROM aligned_model_picks WHERE prediction_run_id=%s",
-        (run_id,)
+        "SELECT match_id,prediction_run_id,aligned_pick_type,aligned_probability "
+        "FROM aligned_model_picks WHERE match_id=ANY(%s)",
+        (targets,)
     ).fetchall()
-    for mid,pick_type,prob in rows:
-        if int(mid) in aligned:
-            raise ValueError("duplicate aligned first-issued Model Pick")
-        aligned[int(mid)]=(str(pick_type),Decimal(prob))
+    for mid,first_run,pick_type,prob in rows:
+        mid=int(mid)
+        if mid in first_issued:
+            raise ValueError("duplicate canonical first-issued Model Pick")
+        first_issued[mid]=(int(first_run),str(pick_type),Decimal(prob))
+        if int(first_run)==run_id:
+            aligned[mid]=(str(pick_type),Decimal(prob))
     market={}
     for mid,status,reason,signal,published in conn.execute("""
         SELECT match_id,decision_status::text,reason_code::text,
@@ -248,7 +269,7 @@ def read_run(conn:psycopg.Connection, *, run_id:int)->dict[str,Any]:
         )
     return summarise(run_id=run_id,targets=targets,agent_rows=agents,
                      managers=managers,aligned=aligned,market=market,
-                     finalized_at=head[0])
+                     first_issued=first_issued,finalized_at=head[0])
 
 
 def main(argv:list[str]|None=None)->int:

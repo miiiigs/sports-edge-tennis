@@ -91,7 +91,7 @@ def test_research_has_distinct_model_and_market_reason_classification():
         "MANAGER_REJECTED:PROBABILITY_SPREAD"
     )
     assert _reason(a,("CONSENSUS","NONE",1,Decimal(".8")),None)==(
-        "CONSENSUS_NOT_IN_FIRST_ALIGNED_LEDGER"
+        "CONSENSUS_NOT_IN_ALIGNED_LEDGER_NEEDS_INVESTIGATION"
     )
 
 
@@ -103,3 +103,50 @@ def test_empty_migrated_postgres_is_not_fake_completed_26_by_7(migrated_postgres
         actual=read_run(c,run_id=123456)
     assert actual["status"]=="NOT_COMPLETED_NONEXPERIMENT_RUN"
     assert actual["db_writes"] is False
+
+
+def test_first_issue_in_an_earlier_hourly_run_explains_new_consensus():
+    agents={AGENTS[0]:agent("PREDICTED"),AGENTS[1]:agent("PREDICTED"),
+            AGENTS[2]:agent("ABSTAINED")}
+    a=summarise(
+        run_id=2369,targets=[101,102],
+        agent_rows={101:agents,102:agents},
+        managers={
+            101:("CONSENSUS","NONE",1,Decimal(".72")),
+            102:("CONSENSUS","NONE",1,Decimal(".55")),
+        },
+        aligned={},
+        market={
+            101:[("BET","NONE","TYPE_A_MODEL_EDGE",True)],
+        },
+        first_issued={
+            101:(2317,"MANAGER_CONSENSUS",Decimal(".75"))
+        },
+        finalized_at=datetime(2026,11,20,tzinfo=UTC),
+    )
+    assert a["manager_consensus_count"]==2
+    assert a["dashboard_aligned_picks"]==0
+    assert a["previously_issued_aligned_on_other_runs"]==1
+    assert a["ever_first_issued_aligned_among_targets"]==1
+    assert a["market_bet_matches"]==1
+    assert a["per_target_exclusion_reasons"]=={
+        "CONSENSUS_FOR_PREVIOUSLY_FIRST_ISSUED_MATCH":1,
+        "MANAGER_CONSENSUS_BELOW_60_PCT_DASHBOARD_FLOOR":1,
+    }
+    first=next(row for row in a["per_match_evidence"] if row["match_id"]==101)
+    assert first["first_issued_aligned_run"]==2317
+    assert first["previously_issued_aligned"] is True
+    assert first["market_bet"] is True
+
+
+def test_nonexistent_first_issued_match_does_not_silently_claim_it_was_sent():
+    result=summarise(
+        run_id=9,targets=[1],
+        agent_rows={1:{name:agent("PREDICTED") for name in AGENTS}},
+        managers={1:("CONSENSUS","NONE",1,Decimal(".81"))},
+        aligned={},first_issued={},market={},
+        finalized_at=datetime(2026,11,20,tzinfo=UTC),
+    )
+    assert result["per_target_exclusion_reasons"]=={
+        "CONSENSUS_NOT_IN_ALIGNED_LEDGER_NEEDS_INVESTIGATION":1
+    }
