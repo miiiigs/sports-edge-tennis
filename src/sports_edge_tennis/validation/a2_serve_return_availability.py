@@ -14,17 +14,22 @@ from datetime import UTC, datetime
 from typing import Any
 import psycopg
 
-VERSION="A2_TWO_SIDED_SERVE_RETURN_AVAILABILITY_V1"
+VERSION="A2_TWO_SIDED_SERVE_RETURN_AVAILABILITY_RAW_COHORT_V2"
 
 
 def source_query()->str:
+    """Replay the RAW_SOURCE same-provider coherent cohort selection in A2.
+
+    This intentionally mirrors agent2_history.stat_query's grouped source
+    observations. Exact raw-player ID joins are a LOWER BOUND because the
+    production loader subsequently resolves provider identity bridges.
+    """
     return """
         WITH mv AS (
           SELECT DISTINCT ON (match_id)
              match_id,player_1_id,player_2_id,
              tour_scope::text AS tour_scope,
-             COALESCE(surface::text,'UNKNOWN') AS surface,
-             match_start_at
+             COALESCE(surface::text,'UNKNOWN') AS surface
           FROM match_versions
           WHERE as_of<=%(as_of)s
             AND source_observed_at<=%(as_of)s
@@ -32,22 +37,30 @@ def source_query()->str:
           ORDER BY match_id,as_of DESC,source_observed_at DESC,
                    match_version_id DESC
         ),
-        stats AS (
-          SELECT DISTINCT ON (match_id,player_id)
-            match_id,player_id,first_serves_in,
-            first_serve_points_won,second_serve_points_won,
-            service_points_played,return_points_won,
-            break_points_saved,break_points_faced
+        stat_cohorts AS (
+          SELECT match_id,source_system,source_observed_at,as_of,
+                 count(*) AS stat_row_count,
+                 count(DISTINCT player_id) AS player_count
           FROM match_stat_observations
-          WHERE observation_kind='NORMALIZED_SOURCE'
+          WHERE observation_kind='RAW_SOURCE'
             AND as_of<=%(as_of)s
             AND source_observed_at<=%(as_of)s
             AND ingested_at<=%(as_of)s
-          ORDER BY match_id,player_id,as_of DESC,
-                   source_observed_at DESC,match_stat_observation_id DESC
+          GROUP BY match_id,source_system,source_observed_at,as_of
+        ),
+        chosen AS (
+          SELECT match_id,source_system,source_observed_at,as_of,
+                 row_number() OVER (
+                   PARTITION BY match_id
+                   ORDER BY as_of DESC,source_observed_at DESC,
+                            source_system DESC
+                 ) AS cohort_rank
+          FROM stat_cohorts
+          WHERE stat_row_count=2 AND player_count=2
         ),
         pairs AS (
           SELECT mv.tour_scope,mv.surface,mv.match_id,
+             COALESCE(chosen.source_system,'NO_COHERENT_RAW_STAT_COHORT') AS stat_source,
              (s1.player_id IS NOT NULL AND s2.player_id IS NOT NULL)
                  AS two_sided,
              (
@@ -69,19 +82,31 @@ def source_query()->str:
                AND s2.break_points_faced IS NOT NULL
              ) AS extended_complete
           FROM mv
-          LEFT JOIN stats s1 ON s1.match_id=mv.match_id
-                            AND s1.player_id=mv.player_1_id
-          LEFT JOIN stats s2 ON s2.match_id=mv.match_id
-                            AND s2.player_id=mv.player_2_id
+          LEFT JOIN chosen ON chosen.match_id=mv.match_id
+                          AND chosen.cohort_rank=1
+          LEFT JOIN match_stat_observations s1
+            ON s1.match_id=mv.match_id
+           AND s1.player_id=mv.player_1_id
+           AND s1.source_system=chosen.source_system
+           AND s1.source_observed_at=chosen.source_observed_at
+           AND s1.as_of=chosen.as_of
+           AND s1.observation_kind='RAW_SOURCE'
+          LEFT JOIN match_stat_observations s2
+            ON s2.match_id=mv.match_id
+           AND s2.player_id=mv.player_2_id
+           AND s2.source_system=chosen.source_system
+           AND s2.source_observed_at=chosen.source_observed_at
+           AND s2.as_of=chosen.as_of
+           AND s2.observation_kind='RAW_SOURCE'
         )
-        SELECT tour_scope,surface,count(*) AS recorded_matches,
+        SELECT tour_scope,surface,stat_source,count(*) AS recorded_matches,
                count(*) FILTER (WHERE two_sided) AS two_sided,
                count(*) FILTER (WHERE essential_complete) AS essential_complete,
                count(*) FILTER (WHERE essential_complete AND extended_complete)
                      AS extended_complete
         FROM pairs
-        GROUP BY tour_scope,surface
-        ORDER BY tour_scope,surface
+        GROUP BY tour_scope,surface,stat_source
+        ORDER BY tour_scope,surface,stat_source
     """
 
 
@@ -107,14 +132,15 @@ def report_coverage(rows:list[tuple], source_rows:list[tuple],
     totals={"recorded_matches":0,"two_sided":0,
             "essential_complete":0,"extended_complete":0}
     by_tour={}
-    for tour,surface,raw,paired,essential,extended in rows:
+    for tour,surface,source,raw,paired,essential,extended in rows:
         count={"recorded_matches":int(raw),"two_sided":int(paired),
                "essential_complete":int(essential),
                "extended_complete":int(extended)}
         if not (0<=count["extended_complete"]<=count["essential_complete"]
                 <=count["two_sided"]<=count["recorded_matches"]):
             raise ValueError("incoherent match-stat source completeness counts")
-        group.append({"tour":str(tour),"surface":str(surface),**count,
+        group.append({"tour":str(tour),"surface":str(surface),
+                      "stat_source":str(source),**count,
                       "essential_coverage_pct":
                       100*count["essential_complete"]/count["recorded_matches"]
                       if count["recorded_matches"] else None})
@@ -137,14 +163,17 @@ def report_coverage(rows:list[tuple], source_rows:list[tuple],
         "totals":totals,"by_tour":by_tour,
         "tour_surface":group,"source_inventory":inv,
         "source_licenses_verified":False,
+        "exact_raw_player_id_lower_bound_only":True,
+        "provider_identity_bridge_applied":False,
         "PIT_for_each_original_prediction_verified":False,
         "missing_values_imputed":False,
         "production_model_changed":False,"db_writes":False,
         "interpretation":(
-            "Two-sided normalized historical serve/return point coverage is "
-            "a necessary but insufficient precondition for adapting Gollub's "
-            "opponent-adjusted A2. Availability at an original prediction's "
-            "as-of time and rights to reuse source data must be proven separately."
+            "Two-sided coherent RAW_SOURCE historical serve/return point coverage "
+            "with exact source player IDs is a lower bound for Gollub's "
+            "opponent-adjusted A2. Existing A2 can bridge player identities, "
+            "which this source-only audit does not. PIT at an original "
+            "prediction time and third-party commercial use rights remain unproven."
         ),
     }
 
