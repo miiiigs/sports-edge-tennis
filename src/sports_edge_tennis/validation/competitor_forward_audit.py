@@ -198,6 +198,55 @@ def compare(fixtures: list[dict[str, str]],
                 "sample_caution":"descriptive only; no improvement conclusion without adequate clusters and prospective validation",
             })
 
+    # Overall paired scorecard uses ONLY the settled fixture intersection.
+    # Individual per-source hit rates are not comparable when coverage differs.
+    # Preserve per-tour calculations above, and do not use results as features.
+    overall = []
+    for source in sorted(sources):
+        covered = [mid for mid in universe if (source,mid) in accepted]
+        values = [(accepted[(source,mid)],scored[mid]["y"]) for mid in scored
+                  if (source,mid) in accepted]
+        overall.append({
+            "source":source,
+            "universe_matches":len(universe),
+            "settled_matches":len(scored),
+            "forward_captured":len(covered),
+            "settled_coverage":len(values)/len(scored) if scored else None,
+            **_metrics(values),
+        })
+
+    paired_overall = []
+    for source in sorted(sources - {baseline}):
+        both = [mid for mid in scored if (source,mid) in accepted
+                and (baseline,mid) in accepted]
+        challenger_points = [(accepted[(source,mid)],scored[mid]["y"]) for mid in both]
+        baseline_points = [(accepted[(baseline,mid)],scored[mid]["y"]) for mid in both]
+        ll_diffs = [(scored[mid]["cluster"],
+                     _logloss(accepted[(source,mid)],scored[mid]["y"])
+                     - _logloss(accepted[(baseline,mid)],scored[mid]["y"]))
+                    for mid in both]
+        brier_diffs = [(scored[mid]["cluster"],
+                        (accepted[(source,mid)]-scored[mid]["y"])**2
+                        - (accepted[(baseline,mid)]-scored[mid]["y"])**2)
+                       for mid in both]
+        dates = [universe[mid]["start"].date() for mid in both]
+        span = (max(dates)-min(dates)).days+1 if dates else 0
+        paired_overall.append({
+            "challenger":source,
+            "baseline":baseline,
+            "paired_settled_matches":len(both),
+            "calendar_span_days":span,
+            "challenger_on_shared_fixtures":_metrics(challenger_points),
+            "baseline_on_shared_fixtures":_metrics(baseline_points),
+            "paired_log_loss_delta":_mean([value for _,value in ll_diffs]),
+            "paired_brier_delta":_mean([value for _,value in brier_diffs]),
+            "paired_log_loss_95pct_cluster_ci":_cluster_ci(ll_diffs),
+            "paired_brier_95pct_cluster_ci":_cluster_ci(brier_diffs),
+            "direction":"negative_delta_favors_challenger",
+            "size_and_duration_gate_met":len(both)>=200 and span>=30,
+            "not_proof_of_prospective_or_licensed_access":True,
+        })
+
     return {
         "version":VERSION,"pre_match_cutoff_minutes":cutoff_minutes,
         "universe_unique_matches":len(universe),
@@ -206,6 +255,7 @@ def compare(fixtures: list[dict[str, str]],
         "sources":sorted(sources),
         "rejected_forecast_rows":dict(sorted(rejected.items())),
         "per_tour":per_tour,"paired":pairs,
+        "overall":overall,"paired_overall":paired_overall,
         "provenance_notice":(
             "All sources and rights are user-supplied. In-file timestamps and "
             "SHA-256 cannot independently prove pre-match publication. Not a "
