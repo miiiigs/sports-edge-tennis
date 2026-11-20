@@ -522,7 +522,7 @@ def test_model_picks_default_to_today_not_newest_future_slate(monkeypatch):
     monkeypatch.setattr(
         model_pick_history,
         "load_aligned_daily_model_pick_summaries",
-        lambda conn, timezone_name="UTC": aligned,
+        lambda conn, timezone_name="UTC", **kwargs: aligned,
     )
     monkeypatch.setattr(
         model_pick_history,

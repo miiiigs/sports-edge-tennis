@@ -376,20 +376,44 @@ def get_issued_day_state(
         conn, decision_date=run_date, timezone_name=timezone_name
     )
     runs = completed_day_run_rows(conn, run_date, timezone_name)
+
+    # A first-qualified pick is assigned to the scheduled MATCH date, not the
+    # calendar date on which its prediction run executed. An early prediction
+    # of tomorrow's match can therefore legitimately exist even when there
+    # has been no run whose persisted targets are dated tomorrow. Never let
+    # that lack of a same-day run erase an already issued Model Pick.
+    if picks:
+        if runs:
+            latest_run_id, latest_as_of = runs[-1]
+        else:
+            latest_pick = max(
+                picks, key=lambda p: (p.picked_at, p.prediction_run_id)
+            )
+            latest_run_id = latest_pick.prediction_run_id
+            latest_as_of = latest_pick.picked_at
+        matches = _load_aligned_match_views(conn, picks)
+        return RunState(
+            kind="POPULATED",
+            run_date=run_date,
+            as_of=latest_as_of,
+            prediction_run_id=latest_run_id,
+            run_status="COMPLETED",
+            matches=matches,
+        )
+
     if not runs:
-        # No completed production run covers this local day. Fall back for
-        # context only; it cannot introduce non-qualifying picks.
+        # No qualifying original Model Picks and no same-day completed run:
+        # retain the existing empty-slate/legacy context only.
         return get_run_for_date(conn, run_date, timezone_name)
 
     latest_run_id, latest_as_of = runs[-1]
-    matches = _load_aligned_match_views(conn, picks) if picks else []
     return RunState(
-        kind="POPULATED" if matches else "EMPTY_SLATE",
+        kind="EMPTY_SLATE",
         run_date=run_date,
         as_of=latest_as_of,
         prediction_run_id=latest_run_id,
         run_status="COMPLETED",
-        matches=matches,
+        matches=[],
     )
 
 

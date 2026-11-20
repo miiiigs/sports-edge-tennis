@@ -9,10 +9,15 @@ from sports_edge_tennis.dashboard.basic_access import install_production_basic_a
 
 install_production_basic_auth(app)
 templates.env.globals["tennis_auth_enabled"] = False
+from sports_edge_tennis.dashboard.calendar_coverage_routes import api_calendar_coverage
+from sports_edge_tennis.dashboard.tour_daily_model_picks_routes import api_tour_daily_model_picks
+from sports_edge_tennis.dashboard.source_attendance_routes import api_source_attendance
 from sports_edge_tennis.dashboard.daily_history import api_bet_history, bet_history
 from sports_edge_tennis.dashboard.model_evidence_routes import api_model_evidence
 from sports_edge_tennis.dashboard.model_pick_history import (
     api_model_pick_results,
+    api_nov9_audit,
+    api_all_history_reconciliation,
     model_pick_results,
 )
 from sports_edge_tennis.dashboard.observability_routes import (
@@ -56,6 +61,14 @@ app.get(
     name="api_model_pick_results",
 )(api_model_pick_results)
 app.get(
+    "/api/dashboard/nov9-audit",
+    name="api_nov9_audit",
+)(api_nov9_audit)
+app.get(
+    "/api/dashboard/all-history-reconciliation",
+    name="api_all_history_reconciliation",
+)(api_all_history_reconciliation)
+app.get(
     "/api/dashboard/pick-lifecycle",
     name="api_pick_lifecycle",
 )(api_pick_lifecycle)
@@ -63,6 +76,18 @@ app.get(
     "/api/dashboard/paper-bankroll",
     name="api_paper_bankroll",
 )(api_paper_bankroll)
+app.get(
+    "/api/dashboard/calendar-coverage",
+    name="api_calendar_coverage",
+)(api_calendar_coverage)
+app.get(
+    "/api/dashboard/source-attendance",
+    name="api_source_attendance",
+)(api_source_attendance)
+app.get(
+    "/api/dashboard/tour-daily-model-picks",
+    name="api_tour_daily_model_picks",
+)(api_tour_daily_model_picks)
 app.get(
     "/api/dashboard/model-evidence",
     name="api_model_evidence",
@@ -108,6 +133,8 @@ _required_paths = {
     "/api/dashboard/bet-history",
     "/api/dashboard/value-bet-results",
     "/api/dashboard/model-pick-results",
+    "/api/dashboard/nov9-audit",
+    "/api/dashboard/all-history-reconciliation",
     "/api/dashboard/pick-lifecycle",
     "/api/dashboard/paper-bankroll",
     "/api/dashboard/model-evidence",
@@ -116,6 +143,9 @@ _required_paths = {
     "/api/dashboard/agent-abstention",
     "/api/dashboard/result-coverage",
     "/api/dashboard/pending-results",
+    "/api/dashboard/calendar-coverage",
+    "/api/dashboard/tour-daily-model-picks",
+    "/api/dashboard/source-attendance",
     "/api/dashboard/monitoring-summary",
     "/api/dashboard/calibration-health",
     "/diagnostics/calibration",

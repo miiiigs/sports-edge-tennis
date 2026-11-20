@@ -116,6 +116,12 @@ def api_model_evidence():
                         "accuracy": _percent(row.accuracy),
                         "brier_score": row.brier_score,
                         "mean_confidence": _percent(row.mean_confidence),
+                        "scored_mean_confidence": _percent(row.scored_mean_confidence),
+                        "confidence_minus_accuracy_pp": (
+                            round((row.scored_mean_confidence - row.accuracy) * 100, 2)
+                            if row.scored_mean_confidence is not None
+                            and row.accuracy is not None else None
+                        ),
                     }
                     for row in a1_challenger.slices
                 ],

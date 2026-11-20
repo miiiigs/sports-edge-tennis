@@ -733,6 +733,23 @@ def _pending_result_diagnostics_cycle(dsn: str) -> None:
         ) as conn:
             report = load_pending_result_diagnostics(conn)
         _log(report.summary_line())
+        # Keep older unresolved records visible even when the normal
+        # API-Tennis recovery lane's deliberately bounded three-day
+        # provider window no longer contains the fixture.
+        from sports_edge_tennis.live.aged_result_recovery_plan import (
+            plan_aged_recovery,
+        )
+        backlog = plan_aged_recovery(
+            report, as_of=report.generated_at,
+        )
+        _log(backlog.log_line())
+        if backlog.overdue_match_ids:
+            _log(
+                "PENDING_RESULT_OVERDUE_ALERT "
+                f"count={len(backlog.overdue_match_ids)} "
+                "status=STORED_PROVIDER_EVIDENCE_NOT_REVERIFIED "
+                "action=IDENTITY_SAFE_RETRY_AND_ESCALATE"
+            )
         actionable = [
             item
             for item in report.items

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+import logging
 from decimal import Decimal
 from typing import Iterable
 from zoneinfo import ZoneInfo
@@ -34,6 +35,16 @@ from sports_edge_tennis.dashboard.history_alignment import (
     ALIGNED_MIN_MODEL_PROBABILITY,
     since_aligned_start,
 )
+from sports_edge_tennis.dashboard.qualified_history import (
+    daily_history_payload,
+    load_qualified_history,
+)
+from sports_edge_tennis.dashboard.recent_quality_summary import (
+    latest_five_day_evidence,
+)
+from sports_edge_tennis.dashboard.three_window_evidence import (
+    report_windows,
+)
 from sports_edge_tennis.dashboard.pagination import (
     DEFAULT_PAGE_SIZE,
     build_page_url,
@@ -45,6 +56,7 @@ from sports_edge_tennis.dashboard.timezone import (
     dashboard_today,
 )
 from sports_edge_tennis.dashboard.manager_five_day_target import manager_five_day_target
+from sports_edge_tennis.dashboard.aligned_five_day_target import aligned_five_day_target
 from sports_edge_tennis.live.pending_result_diagnostics import is_schedule_change
 from sports_edge_tennis.performance.regimes import (
     ModelRegimeCohort,
@@ -58,6 +70,7 @@ from sports_edge_tennis.performance.regimes import (
 )
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -70,6 +83,13 @@ class DailyModelPickSummary:
     wins: int
     losses: int
     hit_rate: float | None
+    # Classifications are display-only; raw pending remains unchanged in the
+    # append-only audit ledger and Brian's five-day acceptance calculation.
+    awaiting_result: int = 0
+    not_started: int = 0
+    rescheduled: int = 0
+    postponed: int = 0
+    needs_review: int = 0
 
 
 @dataclass(frozen=True)
@@ -81,6 +101,13 @@ class PeriodModelPickSummary:
     wins: int
     losses: int
     hit_rate: float | None
+    # Classifications are display-only; raw pending remains unchanged in the
+    # append-only audit ledger and Brian's five-day acceptance calculation.
+    awaiting_result: int = 0
+    not_started: int = 0
+    rescheduled: int = 0
+    postponed: int = 0
+    needs_review: int = 0
 
 
 @dataclass(frozen=True)
@@ -108,6 +135,23 @@ class ModelPickRow:
     # Set by the loader with the shared ``is_schedule_change`` rule evaluated
     # in the dashboard timezone, so a move across local midnight is caught.
     schedule_changed: bool = False
+
+    @property
+    def lifecycle_status(self) -> str:
+        """Customer-facing state, never a settlement or W/L modification."""
+        if self.result_status != "PENDING":
+            return self.result_status
+        if self.is_postponed:
+            return "POSTPONED"
+        if self.latest_fixture_status in ("COMPLETED", "RETIRED", "WALKOVER", "CANCELLED"):
+            return "NEEDS_RESULT_REVIEW"
+        if self.is_rescheduled:
+            return "RESCHEDULED"
+        if self.latest_fixture_status in ("NOT_STARTED", "SCHEDULED"):
+            return "NOT_STARTED"
+        if self.latest_fixture_status is None:
+            return "NEEDS_RESULT_REVIEW"
+        return "AWAITING_RESULT"
 
     @property
     def pending_explanation(self) -> str | None:
@@ -172,6 +216,9 @@ class ModelPickRow:
 class ModelPickResultsView:
     all_summaries: tuple[DailyModelPickSummary, ...] = ()
     aligned_summaries: tuple[DailyModelPickSummary, ...] = ()
+    # Brian's acceptance always uses Manila dates, regardless of UI timezone.
+    aligned_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
+    manager_acceptance_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_summaries: tuple[DailyModelPickSummary, ...] = ()
     current_regime: ModelRegimeIdentity | None = None
     current_regime_started_at: datetime | None = None
@@ -214,6 +261,11 @@ def _summary_from_row(row) -> DailyModelPickSummary:
         wins=wins,
         losses=losses,
         hit_rate=(wins / scored) if scored else None,
+        awaiting_result=int(row[7]) if len(row) >= 12 else 0,
+        not_started=int(row[8]) if len(row) >= 12 else 0,
+        rescheduled=int(row[9]) if len(row) >= 12 else 0,
+        postponed=int(row[10]) if len(row) >= 12 else 0,
+        needs_review=int(row[11]) if len(row) >= 12 else 0,
     )
 
 
@@ -243,6 +295,11 @@ def aggregate_model_pick_summaries(
         wins=wins,
         losses=losses,
         hit_rate=(wins / scored) if scored else None,
+        awaiting_result=sum(row.awaiting_result for row in selected),
+        not_started=sum(row.not_started for row in selected),
+        rescheduled=sum(row.rescheduled for row in selected),
+        postponed=sum(row.postponed for row in selected),
+        needs_review=sum(row.needs_review for row in selected),
     )
 
 
@@ -289,7 +346,8 @@ def load_aligned_daily_model_pick_summaries(
                 COALESCE(
                     (mv.match_start_at AT TIME ZONE %s::text)::date,
                     (p.picked_at AT TIME ZONE %s::text)::date
-                ) AS match_date
+                ) AS match_date,
+                mv.match_start_at AS original_match_start_at
             FROM aligned_model_picks p
             LEFT JOIN LATERAL (
                 SELECT mv0.match_start_at
@@ -307,7 +365,9 @@ def load_aligned_daily_model_pick_summaries(
             SELECT
                 d.*,
                 r.outcome_status,
-                r.winner_side
+                r.winner_side,
+                lv.match_start_at AS latest_match_start_at,
+                lv.latest_status
             FROM dated d
             LEFT JOIN LATERAL (
                 SELECT
@@ -315,14 +375,50 @@ def load_aligned_daily_model_pick_summaries(
                     mro.winner_side
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
-                  AND mro.outcome_status IN (
-                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  AND mro.outcome_status::text IN (
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
                          mro.source_observed_at DESC,
                          mro.match_result_observation_id DESC
                 LIMIT 1
             ) r ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT mv1.match_start_at,
+                       mv1.match_status::text AS latest_status
+                FROM match_versions mv1
+                WHERE mv1.match_id = d.match_id
+                ORDER BY mv1.as_of DESC, mv1.source_observed_at DESC,
+                         mv1.match_version_id DESC
+                LIMIT 1
+            ) lv ON TRUE
+        ),
+        classified AS (
+            SELECT *,
+                CASE
+                    WHEN outcome_status = 'COMPLETED'
+                         AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                         THEN 'NEEDS_REVIEW'
+                    WHEN outcome_status IS NOT NULL THEN 'SETTLED'
+                    WHEN latest_status = 'POSTPONED' THEN 'POSTPONED'
+                    WHEN latest_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
+                         THEN 'NEEDS_REVIEW'
+                    WHEN original_match_start_at IS NOT NULL
+                         AND latest_match_start_at IS NOT NULL
+                         AND (
+                             abs(extract(epoch FROM (latest_match_start_at - original_match_start_at))) >= 21600
+                             OR (
+                                 abs(extract(epoch FROM (latest_match_start_at - original_match_start_at))) >= 3600
+                                 AND (latest_match_start_at AT TIME ZONE %s::text)::date
+                                   <> (original_match_start_at AT TIME ZONE %s::text)::date
+                             )
+                         ) THEN 'RESCHEDULED'
+                    WHEN latest_status IN ('NOT_STARTED', 'SCHEDULED')
+                         OR latest_match_start_at > now() THEN 'NOT_STARTED'
+                    WHEN latest_status IS NULL THEN 'NEEDS_REVIEW'
+                    ELSE 'AWAITING_RESULT'
+                END AS result_lifecycle
+            FROM with_results
         )
         SELECT
             match_date,
@@ -330,9 +426,14 @@ def load_aligned_daily_model_pick_summaries(
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
             )::int AS scored,
-            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
             count(*) FILTER (
-                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+                WHERE outcome_status IS NULL OR (
+                    outcome_status = 'COMPLETED'
+                    AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                )
+            )::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
             )::int AS voids,
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED'
@@ -342,14 +443,23 @@ def load_aligned_daily_model_pick_summaries(
                 WHERE outcome_status = 'COMPLETED'
                   AND winner_side IN (1, 2)
                   AND winner_side <> selected_side
-            )::int AS losses
-        FROM with_results
+            )::int AS losses,
+            count(*) FILTER (WHERE result_lifecycle = 'AWAITING_RESULT')::int AS awaiting_result,
+            count(*) FILTER (WHERE result_lifecycle = 'NOT_STARTED')::int AS not_started,
+            count(*) FILTER (WHERE result_lifecycle = 'RESCHEDULED')::int AS rescheduled,
+            count(*) FILTER (WHERE result_lifecycle = 'POSTPONED')::int AS postponed,
+            count(*) FILTER (WHERE result_lifecycle = 'NEEDS_REVIEW')::int AS needs_review
+        FROM classified
         WHERE match_date >= %s
         GROUP BY match_date
         ORDER BY match_date DESC
         LIMIT %s
         """,
-        (timezone_name, timezone_name, ALIGNED_LIVE_HISTORY_START, limit),
+        (
+            timezone_name, timezone_name,
+            timezone_name, timezone_name,
+            ALIGNED_LIVE_HISTORY_START, limit
+        ),
     ).fetchall()
     return tuple(_summary_from_row(row) for row in rows)
 
@@ -399,8 +509,8 @@ def load_daily_model_pick_summaries(
                     mro.winner_side
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
-                  AND mro.outcome_status IN (
-                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  AND mro.outcome_status::text IN (
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
                          mro.source_observed_at DESC,
@@ -414,9 +524,14 @@ def load_daily_model_pick_summaries(
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED' AND winner_side IN (1, 2)
             )::int AS scored,
-            count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
             count(*) FILTER (
-                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+                WHERE outcome_status IS NULL OR (
+                    outcome_status = 'COMPLETED'
+                    AND (winner_side IS NULL OR winner_side NOT IN (1, 2))
+                )
+            )::int AS pending,
+            count(*) FILTER (
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
             )::int AS voids,
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED'
@@ -468,7 +583,7 @@ def load_daily_model_picks(
                 WHEN r.outcome_status = 'COMPLETED'
                      AND r.winner_side IN (1, 2)
                      AND r.winner_side <> p.selected_side THEN 'LOST'
-                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED') THEN 'VOID'
+                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED') THEN 'VOID'
                 ELSE 'PENDING'
             END AS result_status,
             (
@@ -507,8 +622,8 @@ def load_daily_model_picks(
                 mro.winner_side
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
-              AND mro.outcome_status IN (
-                  'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+              AND mro.outcome_status::text IN (
+                  'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
                      mro.source_observed_at DESC,
@@ -586,7 +701,7 @@ def load_aligned_daily_model_picks(
                 WHEN r.outcome_status = 'COMPLETED'
                      AND r.winner_side IN (1, 2)
                      AND r.winner_side <> p.selected_side THEN 'LOST'
-                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED') THEN 'VOID'
+                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED') THEN 'VOID'
                 ELSE 'PENDING'
             END AS result_status,
             (
@@ -625,8 +740,8 @@ def load_aligned_daily_model_picks(
                 mro.winner_side
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
-              AND mro.outcome_status IN (
-                  'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+              AND mro.outcome_status::text IN (
+                  'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
                      mro.source_observed_at DESC,
@@ -696,8 +811,20 @@ def _load_history(
         aligned_summaries = load_aligned_daily_model_pick_summaries(
             conn, timezone_name=tz.iana
         )
+        aligned_acceptance_summaries = (
+            aligned_summaries if tz.iana == "Asia/Manila" else
+            load_aligned_daily_model_pick_summaries(
+                conn, limit=100, timezone_name="Asia/Manila"
+            )
+        )
         # Original first-production Manager ledger is retained for auditing.
         summaries = load_daily_model_pick_summaries(conn, timezone_name=tz.iana)
+        manager_acceptance_summaries = (
+            summaries if tz.iana == "Asia/Manila" else
+            load_daily_model_pick_summaries(
+                conn, timezone_name="Asia/Manila"
+            )
+        )
         current_regime = resolve_current_model_regime(conn)
         current_summaries: tuple[DailyModelPickSummary, ...] = ()
         started_at = None
@@ -739,6 +866,8 @@ def _load_history(
         return ModelPickResultsView(
             all_summaries=summaries,
             aligned_summaries=aligned_summaries,
+            aligned_acceptance_summaries=aligned_acceptance_summaries,
+            manager_acceptance_summaries=manager_acceptance_summaries,
             current_summaries=current_summaries,
             current_regime=current_regime,
             current_regime_started_at=started_at,
@@ -748,9 +877,114 @@ def _load_history(
             picks=picks,
         )
     except Exception:
+        # A 200 authentication success must not be confused with a successful
+        # database-backed results page. Preserve a safe error page for Brian
+        # while recording a server-side stack trace for a real release diagnosis.
+        log.exception(
+            "Model Pick Results ledger lookup failed for day=%s timezone=%s",
+            requested_date, tz.iana,
+        )
         return ModelPickResultsView(selected_date=requested_date, failed=True)
     finally:
         conn.close()
+
+
+def _aligned_acceptance_today() -> date:
+    """Independent from viewer-selected UTC/London timezone."""
+    return datetime.now(ZoneInfo("Asia/Manila")).date()
+
+
+def _load_parallel_history():
+    """Independent read-only research; never break original Model Picks pages."""
+    conn = None
+    try:
+        conn = _connect()
+        if conn is None:
+            return (), True
+        days = load_qualified_history(conn, as_of_date=_aligned_acceptance_today())
+        return days, False
+    except Exception:
+        log.exception("Qualified research history unavailable; original scorecard unaffected")
+        return (), True
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+def _live_five_day_evidence(
+    parallel_days, view: ModelPickResultsView,
+) -> dict[str, object] | None:
+    """Fail visibly when independent original and filtered ledgers disagree."""
+    if view.failed or not parallel_days:
+        return None
+    try:
+        manager = manager_five_day_target(
+            view.manager_acceptance_summaries,
+            as_of_date=_aligned_acceptance_today(),
+        )
+        return latest_five_day_evidence(
+            parallel_days,
+            as_of_date=_aligned_acceptance_today(),
+            manager=manager,
+            independent_original_days=view.aligned_acceptance_summaries,
+        )
+    except Exception:
+        log.exception("Five-day source-ledger comparison unavailable")
+        return None
+
+
+def _live_baseline_snapshot() -> tuple[
+    dict[str, object] | None,
+    dict[str, object] | None,
+    dict[str, object] | None,
+]:
+    """All days, all unresolved cases, and three periods in ONE DB snapshot.
+
+    No historical truncation, inferred void, silent pick removal or cached
+    fallback. Any unresolved mismatch is displayed as unverified rather than
+    a clean settled/verified claim.
+    """
+    conn=None
+    try:
+        from sports_edge_tennis.dashboard.lifetime_reconciliation import (
+            compare_all_history_with_existing_daily,
+            load_lifetime_reconciliation,
+            pending_dashboard_audit,
+        )
+        conn=_connect()
+        if conn is None:
+            return None,None,None
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        stamp=conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        today=stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        aligned=load_qualified_history(conn,as_of_date=today)
+        manager=load_daily_model_pick_summaries(
+            conn,timezone_name="Asia/Manila"
+        )
+        three_window=report_windows(
+            list(aligned),list(manager),
+            as_of_date=today,source_refresh_at=stamp,
+        )
+        lifetime=load_lifetime_reconciliation(conn,as_of=stamp)
+        lifetime=compare_all_history_with_existing_daily(
+            lifetime,aligned,as_of=stamp,
+        )
+        pending_audit=pending_dashboard_audit(lifetime)
+        if lifetime["original"]["pending"] != pending_audit["total"]:
+            raise ValueError("lifetime pending does not match the pending case table")
+        # The raw full row-level ledger is provided through a separately
+        # authenticated endpoint, not embedded into the main HTML context.
+        summary={key:value for key,value in lifetime.items()
+                 if key not in ("all_match_records","unresolved_matches")}
+        summary["all_match_records_count"]=len(lifetime["all_match_records"])
+        summary["unresolved_match_records_count"]=len(lifetime["unresolved_matches"])
+        return three_window,pending_audit,summary
+    except Exception:
+        log.exception("All-history Sports Edge audit unavailable")
+        return None,None,None
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
@@ -762,6 +996,11 @@ def _period_json(summary: PeriodModelPickSummary) -> dict[str, object]:
         "wins": summary.wins,
         "losses": summary.losses,
         "hit_rate": summary.hit_rate,
+        "awaiting_result": summary.awaiting_result,
+        "not_started": summary.not_started,
+        "rescheduled": summary.rescheduled,
+        "postponed": summary.postponed,
+        "needs_review": summary.needs_review,
     }
 
 
@@ -782,6 +1021,11 @@ def model_pick_results(
     view = _load_history(requested_date, tz)
     as_of_date = dashboard_today(tz)
     aligned_summaries = since_aligned_start(view.aligned_summaries)
+    parallel_days, parallel_history_error = (
+        _load_parallel_history() if not view.failed else ((), True)
+    )
+    recent_five_day = _live_five_day_evidence(parallel_days, view)
+    three_window_evidence, pending_case_audit, all_history_evidence = _live_baseline_snapshot()
 
     history_rows, history_pagination = paginate(
         aligned_summaries, page=history_page, page_size=DEFAULT_PAGE_SIZE
@@ -830,12 +1074,117 @@ def model_pick_results(
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
             ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
+            ),
             "performance_as_of": as_of_date,
             "model_pick_history_error": view.failed,
+            "qualified_parallel_history_days": parallel_days,
+            "qualified_parallel_history_error": parallel_history_error,
+            "recent_five_day_evidence": recent_five_day,
+            "recent_five_day_error": recent_five_day is None,
+            "pending_case_audit": pending_case_audit,
+            "three_window_evidence": three_window_evidence,
+            "three_window_error": three_window_evidence is None,
+            "all_history_evidence": all_history_evidence,
+            "all_history_error": all_history_evidence is None,
             "page_url": lambda param, page: build_page_url(request, param, page),
             "pct": _pct,
         },
     )
+
+
+@router.get("/api/dashboard/all-history-reconciliation")
+def api_all_history_reconciliation(request: Request):
+    """Authenticated ALL-DAYS source-of-truth pick ledger, zero date cutoffs.
+
+    Full IDs, terminal evidence, stale/unverified pending status and source
+    timestamps are returned. Disagreement with the legacy daily report
+    generates HTTP 409 with discrepancies, rather than lying with 200.
+    """
+    conn=None
+    try:
+        from sports_edge_tennis.dashboard.lifetime_reconciliation import (
+            compare_all_history_with_existing_daily,
+            load_lifetime_reconciliation,
+        )
+        conn=_connect()
+        if conn is None:
+            return JSONResponse(
+                {"error":"Railway PostgreSQL unavailable",
+                 "status":"BLOCKED_DATABASE_ACCESS"},
+                status_code=503,
+            )
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        stamp=conn.execute("SELECT transaction_timestamp()").fetchone()[0]
+        today=stamp.astimezone(ZoneInfo("Asia/Manila")).date()
+        lifetime=load_lifetime_reconciliation(conn,as_of=stamp)
+        historical=load_qualified_history(conn,as_of_date=today)
+        report=compare_all_history_with_existing_daily(
+            lifetime,historical,as_of=stamp,
+        )
+        return JSONResponse(
+            report,
+            status_code=(
+                409 if report["legacy_daily_reconciliation"]["discrepancies"]
+                else 200
+            ),
+        )
+    except Exception:
+        log.exception("All-history match-ID evidence cannot be verified")
+        return JSONResponse(
+            {"error":"All-history audit failed",
+             "status":"BLOCKED_SOURCE_AUDIT"},
+            status_code=503,
+        )
+    finally:
+        if conn is not None:
+            conn.close()
+
+
+@router.get("/api/dashboard/nov9-audit")
+def api_nov9_audit(request: Request):
+    """Protected source-backed per-match Nov9 record, never a cached total.
+
+    If this database query cannot match the canonical daily ledger, expose a
+    503 rather than a misleading 200 with missing selections.
+    """
+    conn = None
+    try:
+        from sports_edge_tennis.dashboard.nov09_source_proof import (
+            DAY, load_nov9_proof,
+        )
+        conn = _connect()
+        if conn is None:
+            return JSONResponse(
+                {"error":"database unavailable","status":"BLOCKED"},
+                status_code=503,
+            )
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        as_of = conn.execute(
+            "SELECT transaction_timestamp()"
+        ).fetchone()[0]
+        days = load_qualified_history(
+            conn,
+            as_of_date=as_of.astimezone(ZoneInfo("Asia/Manila")).date(),
+        )
+        nov9 = next((day for day in days if day.day == DAY), None)
+        if nov9 is None:
+            raise ValueError("Nov9 missing from immutable qualified history")
+        evidence = load_nov9_proof(
+            conn, as_of=as_of, daily=nov9,
+        )
+        return JSONResponse(evidence)
+    except Exception:
+        log.exception("Nov9 match-level source audit unavailable")
+        return JSONResponse(
+            {"error":"match-level audit not verifiable","status":"BLOCKED"},
+            status_code=503,
+        )
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 @router.get("/api/dashboard/model-pick-results")
@@ -861,13 +1210,30 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
     current_windows = build_model_pick_windows(
         view.current_summaries, as_of_date=as_of_date
     )
+    parallel_days, parallel_history_error = _load_parallel_history()
+    recent_five_day = _live_five_day_evidence(parallel_days, view)
+    three_window_evidence, pending_case_audit, all_history_evidence = _live_baseline_snapshot()
 
     return JSONResponse(
         {
             "manager_accuracy_target": manager_five_day_target(
                 view.all_summaries, as_of_date=as_of_date
             ),
+            "aligned_accuracy_target": aligned_five_day_target(
+                view.aligned_acceptance_summaries,
+                as_of_date=_aligned_acceptance_today(),
+            ),
             "as_of_date": as_of_date.isoformat(),
+            "qualified_parallel_history": (
+                None if parallel_history_error else daily_history_payload(parallel_days)
+            ),
+            "recent_five_day_evidence": recent_five_day,
+            "recent_five_day_error": recent_five_day is None,
+            "pending_case_audit": pending_case_audit,
+            "three_window_evidence": three_window_evidence,
+            "three_window_error": three_window_evidence is None,
+            "all_history_evidence": all_history_evidence,
+            "all_history_error": all_history_evidence is None,
             "display_timezone": {
                 "key": tz.key,
                 "iana": tz.iana,
@@ -943,6 +1309,11 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     "wins": row.wins,
                     "losses": row.losses,
                     "hit_rate": row.hit_rate,
+                    "awaiting_result": row.awaiting_result,
+                    "not_started": row.not_started,
+                    "rescheduled": row.rescheduled,
+                    "postponed": row.postponed,
+                    "needs_review": row.needs_review,
                 }
                 for row in aligned_summaries
             ],
@@ -977,6 +1348,7 @@ def api_model_pick_results(request: Request, date: str | None = Query(default=No
                     if row.consensus_probability is not None
                     else None,
                     "result": row.result_status,
+                    "lifecycle_status": row.lifecycle_status,
                     "pending_explanation": row.pending_explanation,
                     "latest_fixture_status": row.latest_fixture_status,
                     "is_value_bet": row.is_value_bet,

@@ -29,6 +29,7 @@ class A1DiagnosticSlice:
     accuracy: float | None
     brier_score: float | None
     mean_confidence: float | None
+    scored_mean_confidence: float | None = None
 
 
 @dataclass(frozen=True)
@@ -231,7 +232,9 @@ def load_a1_live_challenger_diagnostic(
             count(*) FILTER (WHERE correct_flag = 1) AS correct,
             avg(correct_flag::numeric) FILTER (WHERE winner_side IS NOT NULL) AS accuracy,
             avg(squared_error) FILTER (WHERE winner_side IS NOT NULL) AS brier_score,
-            avg(win_probability) AS mean_confidence
+            avg(win_probability) AS mean_confidence,
+            avg(win_probability) FILTER (WHERE winner_side IS NOT NULL)
+                AS scored_mean_confidence
         FROM dimensions
         GROUP BY dimension, value
         ORDER BY
@@ -262,6 +265,7 @@ def load_a1_live_challenger_diagnostic(
             accuracy=_as_float(row[5]),
             brier_score=_as_float(row[6]),
             mean_confidence=_as_float(row[7]),
+            scored_mean_confidence=_as_float(row[8]),
         )
         for row in rows
     )

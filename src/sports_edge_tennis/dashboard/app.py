@@ -33,6 +33,7 @@ from sports_edge_tennis.dashboard.picks import (
     VALUE_BET,
     build_today_picks,
 )
+from sports_edge_tennis.dashboard.qualified_parallel import build_qualified_parallel
 from sports_edge_tennis.dashboard.read_model import (
     LiveHealthView,
     RunState,
@@ -288,6 +289,50 @@ def _load_market_overlay(prediction_run_id: int | None):
         conn.close()
 
 
+
+def _load_aligned_day_summary(
+    requested_date: date, tz: DashboardTimezone | None = None
+):
+    """Read the SAME original-aligned daily ledger as the Results scoreboard.
+
+    No pick rules, date bucketing, or outcome values are recomputed here.
+    """
+    if DEMO_MODE:
+        return None
+    conn = _connect()
+    if conn is None:
+        return None
+    try:
+        from sports_edge_tennis.dashboard.model_pick_history import (
+            load_aligned_daily_model_pick_summaries,
+        )
+        rows = load_aligned_daily_model_pick_summaries(
+            conn, limit=100, timezone_name=(tz or DEFAULT_TIMEZONE).iana
+        )
+        return next(
+            (row for row in rows if row.decision_date == requested_date), None
+        )
+    except psycopg.Error:
+        logger.exception("Aligned daily scoreboard lookup unavailable")
+        return None
+    finally:
+        conn.close()
+
+
+def _aligned_cards_reconcile(summary, cards) -> bool | None:
+    """Fail visibly if any original picks/outcomes are absent from Today cards."""
+    if summary is None:
+        return None
+    results = {status: sum(p.result_status == status for p in cards)
+               for status in ("WON", "LOST", "VOID", "PENDING")}
+    return (
+        summary.picks == len(cards)
+        and summary.wins == results["WON"]
+        and summary.losses == results["LOST"]
+        and summary.voids == results["VOID"]
+        and summary.pending == results["PENDING"]
+    )
+
 def _load_history(tz: DashboardTimezone | None = None):
     if DEMO_MODE:
         state = build_demo_state()
@@ -461,6 +506,11 @@ def today(request: Request, date: str | None = Query(default=None)):
         _load_guide_odds(requested_date, tz),
         _load_issued_model_pick_results(requested_date, tz),
     )
+    aligned_day_summary = _load_aligned_day_summary(requested_date, tz)
+    aligned_cards_reconciled = _aligned_cards_reconcile(
+        aligned_day_summary, today_picks.picks
+    )
+    qualified_parallel = build_qualified_parallel(today_picks.picks)
     no_bet_matches = [m for m in state.matches if m.manager_status == "NO_BET"]
     return templates.TemplateResponse(
         request,
@@ -472,6 +522,9 @@ def today(request: Request, date: str | None = Query(default=None)):
             "latest_activity": _latest_activity(),
             "operational_health": _load_live_health(),
             "today_picks": today_picks,
+            "aligned_day_summary": aligned_day_summary,
+            "aligned_cards_reconciled": aligned_cards_reconciled,
+            "qualified_parallel": qualified_parallel,
             "no_bet_matches": no_bet_matches,
             "demo_mode": DEMO_MODE,
             "prev_date": requested_date.fromordinal(requested_date.toordinal() - 1),
@@ -521,6 +574,59 @@ def value(
     )
 
 
+
+def _load_a1_challenger_performance() -> dict[str, object]:
+    """First-issued A1 Challenger evidence, separate from original Model Picks.
+
+    Only compare realised accuracy to predicted confidence on the SAME
+    completed-result subset; never equate these to bet/Manager accuracy.
+    """
+    if DEMO_MODE:
+        return {"available": False, "reason": "Demo mode has no live scoring evidence"}
+    conn = _connect()
+    if conn is None:
+        return {"available": False, "reason": "Live database unavailable"}
+    try:
+        from sports_edge_tennis.performance.a1_diagnostic import (
+            load_a1_live_challenger_diagnostic,
+        )
+
+        report = load_a1_live_challenger_diagnostic(conn)
+    except psycopg.Error:
+        return {"available": False, "reason": "Live calibration evidence unavailable"}
+    finally:
+        conn.close()
+    if not report.initialized:
+        return {"available": False, "reason": "No eligible first-issued observations"}
+
+    def _slice(dimension: str, value: str) -> dict[str, object] | None:
+        row = next((x for x in report.slices
+                    if x.dimension == dimension and x.value == value), None)
+        if row is None:
+            return None
+        scored_mean = row.scored_mean_confidence
+        gap = (scored_mean - row.accuracy) * 100 if (
+            scored_mean is not None and row.accuracy is not None
+        ) else None
+        return {
+            "sample": row.sample,
+            "scored": row.scored,
+            "accuracy": f"{row.accuracy * 100:.1f}%" if row.accuracy is not None else "—",
+            "scored_confidence": f"{scored_mean * 100:.1f}%" if scored_mean is not None else "—",
+            "overconfidence_pp": f"{gap:+.1f} pp" if gap is not None else "—",
+        }
+
+    return {
+        "available": True,
+        "overall": _slice("overall", "ALL"),
+        "high_confidence": _slice("confidence_band", "80%+"),
+        "middle_confidence": _slice("confidence_band", "70-80%"),
+        "scope": "First-issued Challenger Agent 1 predictions across all production versions, "
+                 "one row per match, only verified completed outcomes graded",
+        "research_only": True,
+    }
+
+
 @app.get("/performance", response_class=HTMLResponse)
 def performance(request: Request):
     return templates.TemplateResponse(
@@ -528,6 +634,7 @@ def performance(request: Request):
         "performance.html",
         {
             "models": MODEL_PERFORMANCE,
+            "a1_live_performance": _load_a1_challenger_performance(),
             **_load_regime_context(_request_timezone(request)),
             "pres": pres,
             "demo_mode": DEMO_MODE,
@@ -574,8 +681,26 @@ def api_today(request: Request, date: str | None = Query(default=None)):
         _load_guide_odds(requested_date, tz),
         _load_issued_model_pick_results(requested_date, tz),
     )
+    aligned_day_summary = _load_aligned_day_summary(requested_date, tz)
+    aligned_cards_reconciled = _aligned_cards_reconcile(
+        aligned_day_summary, today_picks.picks
+    )
     payload = {
         "date": state.run_date.isoformat() if state.run_date else None,
+        "original_aligned_day": (
+            {
+                "picks": aligned_day_summary.picks,
+                "wins": aligned_day_summary.wins,
+                "losses": aligned_day_summary.losses,
+                "voids": aligned_day_summary.voids,
+                "pending": aligned_day_summary.pending,
+                "graded": aligned_day_summary.scored,
+                "win_rate": aligned_day_summary.hit_rate,
+                "displayed_cards": len(today_picks.picks),
+                "cards_reconciled": aligned_cards_reconciled,
+            }
+            if aligned_day_summary is not None else None
+        ),
         # Canonical timestamps stay timezone-aware ISO-8601 UTC. This block only
         # tells a client how the calendar dates were resolved for display.
         "display_timezone": {
@@ -583,6 +708,7 @@ def api_today(request: Request, date: str | None = Query(default=None)):
             "iana": tz.iana,
             "label": tz.display_label,
         },
+        "qualified_parallel": build_qualified_parallel(today_picks.picks).as_dict(),
         "picks": [_pick_payload(pick) for pick in today_picks.picks],
         "pick_counts": {
             "total": today_picks.total,

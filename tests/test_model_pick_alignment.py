@@ -209,7 +209,7 @@ def test_load_history_uses_aligned_population_for_summary_and_detail(monkeypatch
     monkeypatch.setattr(
         model_pick_history,
         "load_aligned_daily_model_pick_summaries",
-        lambda conn, timezone_name="UTC": aligned_rows,
+        lambda conn, timezone_name="UTC", **kwargs: aligned_rows,
     )
     monkeypatch.setattr(
         model_pick_history,

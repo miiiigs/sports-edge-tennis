@@ -85,8 +85,8 @@ def test_today_warning_copy_does_not_assume_every_warning_is_stale_odds():
     assert "Live data is older than expected." not in body
 
 
-def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypatch):
-    """Do not present an unqualified A1/A2 average as a customer Model Pick."""
+def test_wide_spread_a1_a2_research_is_visible_with_original_aligned_picks(monkeypatch):
+    """Keep A1/A2 tracking visible in scored original cohort, never a Value Bet."""
     from dataclasses import replace
     from decimal import Decimal
 
@@ -136,17 +136,13 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     response = TestClient(app).get("/today?tz=utc")
     assert response.status_code == 200
     page = response.text
-    assert "3 Manager-qualified selections" in page
-    assert 'id="tracking-only-disclosure"' in page
-    assert "TRACKING TEST PLAYER" in page
-    assert "research-only tracking" in page
-    assert "not published Manager Model Picks" in page
+    assert "4 original aligned selections (3 Manager · 1 A1/A2 tracking)" in page
+    assert 'id="tracking-only-disclosure"' not in page
     main_cards = page.split('id="today-pick-list"', 1)[1].split("</section>", 1)[0]
     assert "Carlos Alcaraz" in main_cards
-    assert "TRACKING TEST PLAYER" not in main_cards
-    tracking_section = page.split('id="tracking-only-disclosure"', 1)[1]
-    assert "TRACKING TEST PLAYER" in tracking_section
-    assert "16.00%" in tracking_section
+    assert "TRACKING TEST PLAYER" in main_cards
+    assert "A1/A2 aligned tracking · not a Value Bet" in main_cards
+    assert "16.00%" in main_cards
     # The presentation-only split must NOT remove tracking from the issued
     # picks API or the complete evaluated match source population.
     source_api = TestClient(app).get("/api/dashboard/today?tz=utc").json()
@@ -179,18 +175,18 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
         for match in source_api["matches"]
     )
 
-    # Tracking-only day: empty customer list must not hide the disclosure
-    # or claim the A1/A2 average passed the Manager gate.
+    # Tracking-only day still shows its original aligned pick, while clearly
+    # distinguishing it from Manager consensus or a Value Bet.
     monkeypatch.setattr(
         dashboard_app,
         "build_demo_state",
         lambda: replace(original, matches=(tracking_only,)),
     )
     only_tracking_page = TestClient(app).get("/today?tz=utc").text
-    assert "0 Manager-qualified selections" in only_tracking_page
-    assert "No Manager-qualified Model Picks yet today" in only_tracking_page
-    assert 'id="today-pick-list"' not in only_tracking_page
-    assert 'id="tracking-only-disclosure"' in only_tracking_page
+    assert "1 original aligned selection (0 Manager · 1 A1/A2 tracking)" in only_tracking_page
+    assert "No original aligned Model Picks for this date" not in only_tracking_page
+    assert 'id="today-pick-list"' in only_tracking_page
+    assert 'id="tracking-only-disclosure"' not in only_tracking_page
     assert "TRACKING TEST PLAYER" in only_tracking_page
 
     # A NO_BET row with the same reason code but no valid A1/A2
@@ -214,11 +210,12 @@ def test_wide_spread_a1_a2_research_stays_out_of_primary_manager_picks(monkeypat
     )
     mixed_no_bet_page = TestClient(app).get("/today?tz=utc").text
     ordinary_no_bets = mixed_no_bet_page.split("Show no-bet matches", 1)[1]
-    research_section = mixed_no_bet_page.split(
-        'id="tracking-only-disclosure"', 1
-    )[1].split("</details>", 1)[0]
+    primary_cards = mixed_no_bet_page.split(
+        'id="today-pick-list"', 1
+    )[1].split("</section>", 1)[0]
     assert "NONQUALIFYING SPREAD PLAYER" in ordinary_no_bets
-    assert "NONQUALIFYING SPREAD PLAYER" not in research_section
+    assert "NONQUALIFYING SPREAD PLAYER" not in primary_cards
+    assert "TRACKING TEST PLAYER" in primary_cards
 
 
 def test_primary_cards_contain_complete_identity_time_probability_price_and_result(monkeypatch):
