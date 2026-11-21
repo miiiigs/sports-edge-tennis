@@ -118,9 +118,19 @@ def _paired_selected(a:list[ObservedPair],b:list[ObservedPair])->dict[str,Any]:
     }
 
 
-def evaluate(observations:list[ObservedPair],*,as_of:datetime)->dict[str,Any]:
-    if as_of.tzinfo is None:
-        raise ValueError("explicit as-of timezone required")
+def evaluate(
+    observations:list[ObservedPair],*,as_of:datetime,
+    validation_start:datetime,holdout_start:datetime
+)->dict[str,Any]:
+    if any(t.tzinfo is None for t in (as_of,validation_start,holdout_start)):
+        raise ValueError("explicit UTC-aware cutoff times required")
+    if (validation_start.utcoffset()!=timedelta(0)
+        or holdout_start.utcoffset()!=timedelta(0)
+        or validation_start.time()!=datetime.min.time()
+        or holdout_start.time()!=datetime.min.time()):
+        raise ValueError("split boundaries must be midnight UTC")
+    if not validation_start<holdout_start<as_of:
+        raise ValueError("validation/holdout must precede as-of in date order")
     if len({o.pair.match_id for o in observations})!=len(observations):
         raise ValueError("duplicate canonical match in original cohort")
     for obs in observations:
@@ -164,12 +174,20 @@ def evaluate(observations:list[ObservedPair],*,as_of:datetime)->dict[str,Any]:
         "first_coissued_paired_originals":len(observations),
         "as_of_utc":as_of.astimezone(UTC).isoformat(),
         "fractions":list(FRACTIONS),
+        "predeclared_split_utc":{
+            "validation_start":validation_start.isoformat(),
+            "holdout_start":holdout_start.isoformat(),
+        },
+        "split_boundaries_determined_from_future_match_dates":False,
     }
     if len(dates)<16:
         return base
-    val_start=dates[int(.50*len(dates))]
-    hold_start=dates[int(.75*len(dates))]
-    hold_boundary=datetime.combine(hold_start,datetime.min.time(),tzinfo=UTC)
+    # Split points MUST be passed explicitly. Computing them from the full
+    # historical date distribution would let future forecast availability
+    # change which observations train the cutoff.
+    val_start=validation_start.date()
+    hold_start=holdout_start.date()
+    hold_boundary=holdout_start
     val=[
         o for o in observations
         if (val_start <= o.pair.start_at.astimezone(UTC).date()<hold_start)
@@ -240,7 +258,10 @@ def evaluate(observations:list[ObservedPair],*,as_of:datetime)->dict[str,Any]:
     }
 
 
-def run(conn:psycopg.Connection,*,as_of:datetime)->dict[str,Any]:
+def run(
+    conn:psycopg.Connection,*,as_of:datetime,
+    validation_start:datetime,holdout_start:datetime
+)->dict[str,Any]:
     conn.execute("SET default_transaction_read_only=on")
     raw=conn.execute(source_sql(),{"as_of":as_of}).fetchall()
     pairs,rejections=normalize(raw,as_of=as_of)
@@ -252,22 +273,32 @@ def run(conn:psycopg.Connection,*,as_of:datetime)->dict[str,Any]:
         known[mid]=row[14] if row[12]=="COMPLETED" else None
     report=evaluate([
         ObservedPair(pair=p,result_known_at=known[p.match_id]) for p in pairs
-    ],as_of=as_of)
+    ],as_of=as_of,validation_start=validation_start,holdout_start=holdout_start)
     return {**report,"source_rows":len(raw),"source_rejections":rejections}
 
 
 def main(argv:list[str]|None=None)->int:
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--as-of-utc",required=True)
+    parser.add_argument("--validation-start-utc",required=True)
+    parser.add_argument("--holdout-start-utc",required=True)
     args=parser.parse_args(argv)
-    if not args.as_of_utc.endswith("Z"):
-        parser.error("as-of-utc must be explicit UTC with Z suffix")
+    if any(not value.endswith("Z") for value in (
+        args.as_of_utc,args.validation_start_utc,args.holdout_start_utc
+    )):
+        parser.error("all cutoffs must use explicit UTC Z suffix")
     dsn=os.environ.get("TENNIS_DATABASE_URL")
     if not dsn:
         parser.error("TENNIS_DATABASE_URL required")
     with psycopg.connect(dsn,autocommit=True,connect_timeout=10) as conn:
         result=run(
-            conn,as_of=datetime.fromisoformat(args.as_of_utc.replace("Z","+00:00"))
+            conn,as_of=datetime.fromisoformat(args.as_of_utc.replace("Z","+00:00")),
+            validation_start=datetime.fromisoformat(
+                args.validation_start_utc.replace("Z","+00:00")
+            ),
+            holdout_start=datetime.fromisoformat(
+                args.holdout_start_utc.replace("Z","+00:00")
+            ),
         )
     print("A1_A2_VALIDATION_FROZEN_SELECTION "+json.dumps(result,sort_keys=True))
     return 0
