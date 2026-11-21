@@ -55,6 +55,20 @@ The raw historical result census returned exactly **117,713 distinct canonical m
 - A controlled two-match negative regression test was added to PR #347. An earlier match with a late result can be evaluated after a later-played match with a faster result, and its Elo history can include that later match. This demonstrates the **mechanism of possible future-match leakage in the legacy evaluation method**, not confirmed prevalence in all historical production matches.
 - The earlier "approximately 14,000 historical predictions at ~75%" claim **cannot be reproduced from these stored result counts**. No matching immutable run manifest, model version, pre-match feature timestamp snapshot, publication eligibility denominator, exact selected fixture IDs or approved commercial-use data rights have been established in this audit. Do not present 117,713 raw results as 117,713 pre-match forecasts.
 
+## Follow-up source-timestamp explanation: actual run, PR #350
+
+A second isolated read-only Railway execution, deployment 7bf7c96a-7e02-473c-82cc-2a7a47a5daa5, using source PR #350 at SHA e416eb561ac13fbce6a6e5cd729d909e12a74dcf, distinguished absent match-version rows from retrospective imports. Dataset digest 5750daf187f28ad8fe9ee814482926c4a7e2460ad5f347aeeaa37536f0328d83.
+
+**Genuine source finding:**
+- 117,713/117,713 historical results have one or more match-version rows stored by the November 21, 2026 report cutoff. They are not missing from today's database.
+- 117,713/117,713 have EVERY version's actual ingested_at later than the historical result_as_of timestamp. Therefore NONE of the versions was already ingested in our database before its original result timestamp.
+- 117,713/117,713 have zero strictly pre-match-ingested versions in the repository, across each year 2016–2025.
+- Example canonical match_id 1, result_as_of 2016-01-17T23:59:59Z, match-version as_of also 2016-01-17T23:59:59Z, but actual version ingested_at 2026-08-31T08:18:46Z. This is **historical backfill**, not an immutable prediction we made in 2016.
+
+**Important nuance:** Later local ingestion does not invalidate all retrospective backtesting. A properly documented historical replay can still use archival data that was genuinely publicly available by the pre-match cutoff. But the raw 2016–2025 database rows by themselves do NOT establish that fact, nor supply an immutable original prediction/publication record. A new validated reconstruction must recover the actual public source-availability dates, prevent result/winner-order features, hold out future information and verify code/config/labels and training chronology. Legacy result-visibility replay is not this reconstruction.
+
+No accuracy/ROI conclusion is drawn from these version counters and no production changes are required. Source PR #350 pending CI at the time of initial data collection.
+
 ## Correct next steps
 
 1. Source-ledger independent missed-run census and provider attendance per day, ATP/CH/qualifying, including 14–16 November no-picks and source outages. Never synthesize retroactive Model Picks.
