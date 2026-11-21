@@ -9,6 +9,7 @@ import pytest
 from sports_edge_tennis.validation.agent1_walk_forward import (
     ValidationObservation,
     build_prediction_target,
+    run_walk_forward_validation,
 )
 from sports_edge_tennis.validation.pit_eligible_denominator_provenance import (
     _classify, fixture_source_sql, legacy_historical_sql,
@@ -145,6 +146,41 @@ def test_legacy_result_timestamp_is_not_pre_match_issue_timestamp():
     # Same result is deliberately NOT ingested into its own player-rating
     # state before prediction, but another later finished match could be.
     assert "legacy_boundary" in legacy_historical_sql()
+
+
+def test_legacy_evaluator_can_use_result_of_match_played_after_target():
+    """Negative control: this old evaluation is ordered by result arrival.
+
+    An earlier match's winner is held out, but a later-played match with
+    faster result ingestion is already present in the Elo history when the
+    earlier match is finally evaluated. That is future match information
+    relative to the *earlier fixture's start*, despite its own label holdout.
+    """
+    older_game=datetime(2024,6,1,12,tzinfo=UTC)
+    later_game=older_game+timedelta(days=3)
+    earlier=ValidationObservation(
+        season_year=2024,match_id=7001,player_1_id=100,player_2_id=200,
+        surface="HARD",tour_scope="ATP_MAIN",competition_tier="ATP_250",
+        best_of_sets=3,qualifying_flag=False,match_start_at=older_game,
+        outcome_status="COMPLETED",winner_side=2,
+        source_observed_at=older_game+timedelta(days=7),
+        as_of=older_game+timedelta(days=7),
+    )
+    later=ValidationObservation(
+        season_year=2024,match_id=7002,player_1_id=100,player_2_id=300,
+        surface="HARD",tour_scope="ATP_MAIN",competition_tier="ATP_250",
+        best_of_sets=3,qualifying_flag=False,match_start_at=later_game,
+        outcome_status="COMPLETED",winner_side=1,
+        source_observed_at=later_game+timedelta(hours=3),
+        as_of=later_game+timedelta(hours=3),
+    )
+    report=run_walk_forward_validation([earlier,later])
+    records={p.match_id:p for p in report["prediction_records"]}
+    assert later_game > older_game
+    assert later.visibility_at < earlier.visibility_at
+    assert records[7001].prediction_as_of > older_game
+    assert records[7001].player_1_overall_prior_matches >= 1
+    assert records[7002].player_1_overall_prior_matches == 0
 
 
 def test_legacy_census_separates_result_order_and_boundary_evidence():
