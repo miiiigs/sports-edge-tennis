@@ -15,8 +15,8 @@ from sports_edge_tennis.validation.a1_a2_validation_frozen_selection import (
 
 BASE=datetime(2026,9,1,12,tzinfo=UTC)
 CUTOFF=datetime(2026,11,21,3,30,tzinfo=UTC)
-VAL_START=BASE+timedelta(days=24)
-HOLD_START=BASE+timedelta(days=36)
+VAL_START=(BASE+timedelta(days=24)).replace(hour=0)
+HOLD_START=(BASE+timedelta(days=36)).replace(hour=0)
 
 
 def corpus(*, flip_later:bool=False, late_validation:bool=False,
