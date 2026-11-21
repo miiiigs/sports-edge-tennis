@@ -50,7 +50,9 @@ def test_matched_independence_metrics_have_honest_denominators():
     assert report["per_tour"]["CHALLENGER"]["settled"] == 20
     curve = report["accuracy_by_paired_cohort_selection_fraction"]["a1_surface_elo"]
     assert curve["0.4"]["pair_cohort_denominator"] == 40
-    assert curve["0.4"]["selections"] == 16
+    assert curve["0.4"]["selections"] == 40
+    assert curve["0.4"]["extra_selections_from_unbroken_ties"] == 24
+    assert curve["0.4"]["achieved_fraction_of_paired_settled"] == 1.0
     assert curve["0.4"]["full_eligible_match_coverage"] is None
     assert report["full_eligible_fixture_denominator"] is None
     assert not report["full_eligible_match_coverage_verified"]
@@ -106,7 +108,25 @@ def test_historical_subset_stable_to_input_order_and_tracks_odd_fraction():
     for model in ("a1_surface_elo", "a2_serve_return_markov", "equal_log_odds_blend"):
         assert (a["accuracy_by_paired_cohort_selection_fraction"][model]
                 == b["accuracy_by_paired_cohort_selection_fraction"][model])
-    assert a["accuracy_by_paired_cohort_selection_fraction"]["a1_surface_elo"]["0.4"]["selections"] == 17
+    assert a["accuracy_by_paired_cohort_selection_fraction"]["a1_surface_elo"]["0.4"]["selections"] == 41
+
+
+def test_top_k_includes_boundary_ties_without_cherry_picking():
+    from dataclasses import replace
+
+    data = corpus(n=40)
+    # Twenty strong forecasts have identical confidence: selecting only
+    # 16 of them would require an arbitrary, potentially biased tie-break.
+    data = [
+        replace(row, a1_p1=(.8 if row.a1_p1 > .5 else .2)
+                if i < 20 else (.7 if row.a1_p1 > .5 else .3))
+        for i, row in enumerate(data)
+    ]
+    result = evaluate(data)
+    item = result["accuracy_by_paired_cohort_selection_fraction"]["a1_surface_elo"]["0.4"]
+    assert item["selections"] == 20
+    assert item["extra_selections_from_unbroken_ties"] == 4
+    assert item["achieved_fraction_of_paired_settled"] == .5
 
 
 def test_database_source_runs_read_only_against_migrated_schema(migrated_postgres):
