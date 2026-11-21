@@ -99,7 +99,19 @@ def _curve(rows: list[Pair], model: str) -> dict[str, dict[str, Any]]:
     curves: dict[str, dict[str, Any]] = {}
     for fraction in FRACTIONS:
         desired = math.ceil(fraction * eligible_paired)
-        selected = ranked[:desired]
+        # Never cherry-pick among indistinguishable model confidences.
+        # A numerical target is not an excuse to break equal-confidence
+        # forecasts by match_id (or, worse, by eventual result).
+        if desired and ranked:
+            boundary = ranked[min(desired, len(ranked))-1][1]
+            cutoff = max(boundary, 1-boundary)
+            selected = [
+                (row, p) for row, p in ranked
+                if max(p, 1-p) >= cutoff - EPSILON
+            ]
+        else:
+            cutoff = None
+            selected = []
         result = _summary(selected)
         curves[str(fraction)] = {
             **result,
@@ -108,8 +120,10 @@ def _curve(rows: list[Pair], model: str) -> dict[str, dict[str, Any]]:
                 len(selected) / eligible_paired if eligible_paired else None
             ),
             "pair_cohort_denominator": eligible_paired,
+            "inclusive_confidence_cutoff": cutoff,
+            "extra_selections_from_unbroken_ties": len(selected) - min(desired, len(ranked)),
             "full_eligible_match_coverage": None,
-            "selection_rule": "fixed top-k by pre-issued confidence, canonical match id tie-break",
+            "selection_rule": "fixed top-k target using pre-issued confidence, include all boundary ties",
         }
     return curves
 
