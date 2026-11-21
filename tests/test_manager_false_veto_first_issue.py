@@ -85,16 +85,19 @@ def test_same_match_true_discordance_has_no_double_counting():
     rows=(
         fixture(1,original=True,winner=1)+
         fixture(2,original=True,winner=2)+
-        fixture(3,original=True,winner=2,
+        fixture(3,original=True,winner=1,
+                manager_side=2,votes=((1,.78),(1,.71),(None,None)))+
+        fixture(4,original=True,winner=2,
                 manager_side=2,votes=((1,.78),(1,.71),(None,None)))
     )
     a=audit(rows)["counterfactuals"]["B"]
-    assert a["both_select_same_match"]==3
-    assert a["same_match_both_settled"]==3
+    assert a["both_select_same_match"]==4
+    assert a["same_match_both_settled"]==4
     assert a["on_shared_settled"]=={
-        "both_correct":1,"both_wrong":1,"only_experiment_correct":1
+        "both_correct":1,"both_wrong":1,"only_experiment_correct":1,
+        "only_original_correct":1
     }
-    assert a["different_side_on_shared_settled"]==1
+    assert a["different_side_on_shared_settled"]==2
     assert a["alternative_admits_original_rejections"]["issued"]==0
 
 
