@@ -108,8 +108,18 @@ def test_no_duplicate_or_future_outcomes_are_allowed():
     with pytest.raises(ValueError,match="unsafe result visibility"):
         evaluate([bad],as_of=CUTOFF)
     late=replace(data[0],pair=replace(data[0].pair,issued_at=data[0].pair.start_at+timedelta(minutes=1)))
-    with pytest.raises(ValueError,match="after match start"):
+    with pytest.raises(ValueError,match="too late"):
         evaluate([late],as_of=CUTOFF)
+
+
+def test_prematch_thirty_minute_cutoff_is_mandatory_even_for_direct_evaluation():
+    data=corpus()
+    early=data[0]
+    invalid=replace(early,pair=replace(
+        early.pair,issued_at=early.pair.start_at-timedelta(minutes=10)
+    ))
+    with pytest.raises(ValueError,match="too late"):
+        evaluate([invalid],as_of=CUTOFF)
 
 
 def test_reordering_inputs_preserves_cohort_and_cutoffs():
