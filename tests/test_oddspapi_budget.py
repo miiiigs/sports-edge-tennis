@@ -12,6 +12,31 @@ from sports_edge_tennis.live.oddspapi_budget import (
 
 BOOKS = ("pinnacle+30", "1xbet", "unibet", "bet365")
 
+# The generic budget planner still supports arbitrary bookmaker sets. The
+# renewed LIVE Tennis Normal subscription, however, must send only three.
+from sports_edge_tennis.live.oddspapi import ODDSPAPI_PLAN_BOOKMAKERS
+
+
+def test_renewed_tennis_plan_three_books_with_monthly_guard():
+    assert ODDSPAPI_PLAN_BOOKMAKERS == ("pinnacle+30", "1xbet", "bet365")
+    policy = OddspapiBudgetPolicy()
+    assert policy.monthly_limit == 5000
+    assert policy.reserve == 500
+    plan = plan_oddspapi_qualification(
+        tournament_ids=(44,),
+        books=ODDSPAPI_PLAN_BOOKMAKERS,
+        discovery_book="pinnacle+30",
+        policy=policy,
+    )
+    assert plan.discovery_requests == 1
+    assert plan.odds_requests == 3
+    assert plan.total_requests == 4
+    assert plan.total_requests <= policy.per_cycle_limit
+    assert policy.projected_monthly(plan.total_requests) == 2976
+    assert policy.projected_monthly(policy.per_cycle_limit) == 3720
+    assert policy.projected_monthly(policy.per_cycle_limit) < policy.usable_monthly
+
+
 
 def test_zero_consensus_plans_zero_requests() -> None:
     assert qualification_odds_required(manager_consensus_count=0) is False

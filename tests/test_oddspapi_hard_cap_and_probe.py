@@ -289,6 +289,7 @@ def test_probe_full_run_within_cap_writes_only_ledger_rows(db: psycopg.Connectio
         return received, [_payload("id-probe", p1_id=1, p2_id=2)]
 
     def odds(key, *, tournament_ids, bookmakers, ledger, fallback_budget, **kw):
+        # The bounded diagnostic probe disables 404 fallbacks by design.
         assert fallback_budget == 0 and tuple(tournament_ids) == (303,)
         for book in bookmakers:
             ledger.reserve(endpoint="odds-by-tournaments", bookmaker=book)
@@ -297,7 +298,7 @@ def test_probe_full_run_within_cap_writes_only_ledger_rows(db: psycopg.Connectio
     report = run_probe(db, api_key="k", now=NOW, execute=True, fetch_fixtures=fixtures, fetch_odds=odds)
 
     assert report.stop_reason == "COMPLETED"
-    assert report.attempts_used == 5
+    assert report.attempts_used == 4
     assert [m["match_id"] for m in report.matched] == [match_id]
     assert report.matched[0]["orientation"] == "DIRECT"
     assert report.acceptance["3_canonical_match"] == "PASS"
@@ -335,7 +336,7 @@ def test_probe_reports_prices_change_marks_and_unmatched_fixtures(db: psycopg.Co
 
     report = run_probe(db, api_key="k", now=NOW, execute=True, fetch_fixtures=fixtures, fetch_odds=odds)
 
-    assert report.stop_reason == "COMPLETED" and report.attempts_used == 5
+    assert report.stop_reason == "COMPLETED" and report.attempts_used == 4
     assert [u["oddspapi_fixture_id"] for u in report.unmatched] == ["id-stranger"]
     assert report.odds_received_at == AS_OF.isoformat()
     by_book = {q["bookmaker_key"]: q for q in report.quotes}

@@ -601,3 +601,12 @@ def test_correction_from_another_source_system_does_not_widen_identity(
         {"event_key": "7789001", "reason": "event_identity_conflict:tournament"},
     )
     assert db.execute("SELECT count(*) FROM match_versions").fetchone()[0] == 1
+
+def test_awarded_status_maps_to_distinct_defaulted_terminal_state():
+    records, rejected = parse_api_tennis_fixtures(
+        [_fixture(event_key="default-1", event_status="Awarded")],
+        received_at=_received_at(),
+    )
+    assert rejected == []
+    assert len(records) == 1
+    assert records[0].match_status == "DEFAULTED"

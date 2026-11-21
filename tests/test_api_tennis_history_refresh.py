@@ -79,6 +79,30 @@ def test_parse_terminal_result_maps_completed_retired_and_cancelled():
     assert cancelled.winner_side is None
 
 
+def test_parse_terminal_result_allows_winnerless_walkover_only():
+    result = parse_terminal_result(
+        _fixture(event_status="Walkover", event_winner=None, event_final_result="-")
+    )
+    assert result is not None
+    assert result.outcome_status == "WALKOVER"
+    assert result.winner_side is None
+    assert result.retired_side is None
+
+    for event_status in ("Finished", "Retired"):
+        with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
+            parse_terminal_result(_fixture(event_status=event_status, event_winner=""))
+
+
+def test_two_word_api_tennis_walk_over_is_terminal_and_void_eligible():
+    for status in ("Walkover", "Walk Over", "walk over"):
+        row = parse_terminal_result(
+            _fixture(event_status=status, event_winner="Second Player")
+        )
+        assert row is not None
+        assert row.outcome_status == "WALKOVER"
+        assert row.winner_side == 2
+
+
 def test_parse_terminal_result_fails_closed_without_terminal_winner():
     with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
         parse_terminal_result(_fixture(event_winner=""))
@@ -387,3 +411,17 @@ def test_history_fetch_provider_failure_only_logs_safe_category(monkeypatch):
     assert exc_info.value.kind == "PROVIDER_ERROR"
     assert "diagnostic=ACCOUNT_OR_PLAN" in str(exc_info.value)
     assert "KEY_SECRET_99" not in str(exc_info.value)
+
+def test_parse_terminal_result_preserves_awarded_as_defaulted_with_winner():
+    result = parse_terminal_result(
+        _fixture(event_status="Awarded", event_winner="First Player", event_final_result="-")
+    )
+    assert result is not None
+    assert result.outcome_status == "DEFAULTED"
+    assert result.winner_side == 1
+    assert result.retired_side is None
+
+    with pytest.raises(HistoryRefreshError, match="missing_terminal_winner"):
+        parse_terminal_result(
+            _fixture(event_status="Awarded", event_winner=None, event_final_result="-")
+        )

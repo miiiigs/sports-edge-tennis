@@ -1,0 +1,237 @@
+"""Historical walk-forward invariants; no credentials or production data needed."""
+from __future__ import annotations
+
+from dataclasses import replace
+from datetime import UTC, date, datetime, timedelta
+import json
+from pathlib import Path
+
+import pytest
+
+from sports_edge_tennis.performance.v2_quality_research import FrozenPick, POLICIES
+from sports_edge_tennis.performance.v2_walkforward import (
+    walk_forward, reconcile_original_days, acceptance_evidence,
+)
+
+
+def _t(day: int, hour: int = 0) -> datetime:
+    return datetime(2026, 10, day, hour, tzinfo=UTC)
+
+
+def _p(mid: int, *, day: int, result: str = "WON", raw: float = .76,
+       observed: datetime | None = None, ingested: datetime | None = None) -> FrozenPick:
+    finished = observed if observed is not None else _t(day, 10)
+    return FrozenPick(
+        match_id=mid, day=date(2026, 10, day),
+        picked_at=_t(day - 1, 6),
+        kind="MANAGER_CONSENSUS", side=1, raw=raw,
+        surface="HARD", tier="ATP_TOUR",
+        a1_side=1, a2_side=1, a1=.76, a2=.77,
+        a3_status="ABSTAINED", a3_side=None,
+        result=result, result_as_of=finished,
+        result_source_observed_at=finished,
+        result_ingested_at=ingested or finished,
+    )
+
+
+def test_daily_training_cutoff_only_includes_results_visible_before_midnight():
+    early = _p(1, day=27, observed=_t(28, 0))
+    later = _p(2, day=27, observed=_t(30, 0))
+    win = _p(3, day=29, observed=_t(30, 10))
+    loss = _p(4, day=29, result="LOST", raw=.69, observed=_t(30, 10))
+    r = walk_forward(
+        (early, later, win, loss),
+        start=date(2026, 10, 27), end=date(2026, 10, 30),
+        evaluated_at=_t(31),
+    )
+    folds = {fold["date"]: fold for fold in r["folds"]}
+    assert folds["2026-10-27"]["calibration_training"]["prior_visible_graded"] == 0
+    assert folds["2026-10-28"]["calibration_training"]["prior_visible_graded"] == 0
+    assert folds["2026-10-29"]["calibration_training"]["prior_visible_graded"] == 1
+    assert folds["2026-10-30"]["calibration_training"]["prior_visible_graded"] == 1
+    assert (folds["2026-10-29"]["policies"]["original"]["won"],
+            folds["2026-10-29"]["policies"]["original"]["lost"]) == (1, 1)
+    assert (folds["2026-10-29"]["policies"]["confidence70"]["won"],
+            folds["2026-10-29"]["policies"]["confidence70"]["lost"]) == (1, 0)
+    assert folds["2026-10-29"]["policies"]["confidence70"]["avoided_losses"] == 1
+    assert r["summary"]["original"]["picks"] == 4
+    assert r["summary"]["confidence70"]["picks"] == 3
+    assert r["summary"]["v2_calibrated"]["picks"] == 0
+    assert r["rule_selection"] == "PREDECLARED_FIXED_CANDIDATES_ONLY"
+    assert r["not_prospective_validation"] is True
+    assert r["live_selection_changed"] is False
+
+
+def test_result_ingested_after_folds_cutoff_is_excluded_from_training():
+    before = _p(1, day=27, observed=_t(27, 12))
+    delayed = replace(before, match_id=2, result_ingested_at=_t(29, 9))
+    outcome = _p(3, day=29, result="LOST")
+    r = walk_forward(
+        (before, delayed, outcome),
+        start=date(2026, 10, 29), end=date(2026, 10, 29),
+        evaluated_at=_t(31),
+    )
+    assert r["folds"][0]["calibration_training"]["prior_visible_graded"] == 1
+    assert r["folds"][0]["policies"]["original"]["lost"] == 1
+
+
+def test_later_known_truth_is_pending_when_scored_at_earlier_instant():
+    # A future-ingested WON cannot be displayed in a Nov 07 09:00 local report.
+    future = _p(1, day=29, result="WON", observed=_t(29, 8),
+                ingested=datetime(2026, 11, 8, 0, tzinfo=UTC))
+    actual = _p(2, day=29, result="LOST", raw=.8, observed=_t(29, 8))
+    r = walk_forward(
+        (future, actual),
+        start=date(2026, 10, 29), end=date(2026, 10, 29),
+        evaluated_at=datetime(2026, 11, 7, 1, tzinfo=UTC),
+    )
+    orig = r["folds"][0]["policies"]["original"]
+    assert (orig["won"], orig["lost"], orig["pending"]) == (0, 1, 1)
+    assert r["summary"]["original"]["graded"] == 1
+    assert orig["passes_73_daily"] is False
+
+
+def test_future_unissued_predictions_are_not_treated_as_historical():
+    first = _p(1, day=29)
+    later = replace(_p(2, day=30), picked_at=_t(31))
+    r = walk_forward((first, later),
+        start=date(2026, 10, 29), end=date(2026, 10, 30),
+        evaluated_at=_t(30, 6),
+    )
+    assert r["summary"]["original"]["picks"] == 1
+    assert r["folds"][1]["policies"]["original"]["picks"] == 0
+
+
+def test_no_rewriting_and_no_posthoc_outcome_gate():
+    pick = _p(1, day=29, result="WON")
+    lost = replace(pick, match_id=2, result="LOST")
+    original = (pick, lost)
+    r = walk_forward(original,
+        start=date(2026, 10, 29), end=date(2026, 10, 29),
+        evaluated_at=_t(31),
+    )
+    assert original == (pick, lost)
+    assert set(r["summary"]) == set(POLICIES)
+    assert r["summary"]["v2_agreement"]["picks"] == 2
+    assert r["folds"][0]["policies"]["v2_agreement"]["won"] == 1
+    assert r["folds"][0]["policies"]["v2_agreement"]["lost"] == 1
+    assert not r["folds"][0]["policies"]["v2_agreement"]["passes_73_daily"]
+
+
+def test_rejects_bad_interval_timezones_duplicates():
+    p = _p(1, day=29)
+    with pytest.raises(ValueError, match="reversed"):
+        walk_forward((p,), start=date(2026, 10, 30),
+                     end=date(2026, 10, 29), evaluated_at=_t(31))
+    with pytest.raises(ValueError, match="timezone"):
+        walk_forward((p,), start=date(2026, 10, 29),
+                     end=date(2026, 10, 29), evaluated_at=datetime(2026, 10, 31))
+    with pytest.raises(ValueError, match="duplicate"):
+        walk_forward((p, p), start=date(2026, 10, 29),
+                     end=date(2026, 10, 29), evaluated_at=_t(31))
+    with pytest.raises(ValueError, match="beyond"):
+        walk_forward((p,), start=date(2026, 11, 1),
+                     end=date(2026, 11, 2), evaluated_at=_t(31))
+
+
+def test_original_daily_ledger_reconciliation_fails_closed_on_any_difference():
+    original = (
+        _p(1, day=29, result="WON"),
+        _p(2, day=29, result="LOST"),
+        _p(3, day=30, result="VOID"),
+    )
+    r = walk_forward(original, start=date(2026, 10, 29),
+                     end=date(2026, 10, 30), evaluated_at=_t(31))
+    expected = {
+        "2026-10-29": {"picks": 2, "won": 1, "lost": 1, "void": 0, "pending": 0},
+        "2026-10-30": {"picks": 1, "won": 0, "lost": 0, "void": 1, "pending": 0},
+    }
+    status = reconcile_original_days(r, expected)
+    assert status["status"] == "RECONCILED_AGAINST_FROZEN_ORIGINAL_LEDGER"
+    assert status["days"] == 2 and status["original_graded"] == 2
+    mismatch = {**expected, "2026-10-29": {**expected["2026-10-29"], "won": 2}}
+    with pytest.raises(ValueError, match="original cohort mismatch"):
+        reconcile_original_days(r, mismatch)
+    with pytest.raises(ValueError, match="dates mismatch"):
+        reconcile_original_days(r, {"2026-10-29": expected["2026-10-29"]})
+    bad = {**expected, "2026-10-29": {**expected["2026-10-29"], "picks": True}}
+    with pytest.raises(ValueError, match="missing/invalid"):
+        reconcile_original_days(r, bad)
+
+
+def test_frozen_original_snapshot_has_complete_accounting_for_all_eleven_days():
+    path = (Path(__file__).parents[1] / "research/tennis_v2_20261107" /
+            "original_daily_scorecard_20261027_1106.json")
+    obj = json.loads(path.read_text())
+    assert obj["scope"] == "ALL_ORIGINAL_ALIGNED_MODEL_PICKS"
+    assert obj["as_of"] == "2026-11-07T09:04:42+08:00"
+    days = obj["days"]
+    assert len(days) == 11
+    assert set(days) == {
+        (date(2026, 10, 27) + timedelta(days=i)).isoformat()
+        for i in range(11)
+    }
+    assert all(row["won"] + row["lost"] + row["void"] + row["pending"] ==
+               row["picks"] for row in days.values())
+    assert days["2026-10-30"]["won"] == 6
+    assert days["2026-10-31"]["lost"] == 7
+    assert days["2026-11-06"]["won"] == 6
+
+
+def test_acceptance_requires_five_consecutive_fully_settled_high_coverage_days():
+    def fold(i, *, wins=4, losses=1, pending=0, total=8, qualified=5):
+        return {
+            "date": (date(2026, 10, 27) + timedelta(days=i)).isoformat(),
+            "policies": {
+                "original": {"picks": total},
+                "v2_agreement": {
+                    "picks": qualified, "won": wins, "lost": losses,
+                    "void": qualified-wins-losses-pending, "pending": pending,
+                    "graded": wins+losses,
+                },
+            },
+        }
+    five = [fold(i) for i in range(5)]
+    ev = acceptance_evidence(
+        five, "v2_agreement", current_day=date(2026, 11, 7),
+    )
+    assert ev["five_day_research_gate_met"]
+    assert ev["longest_consecutive_days"] == 5
+    assert ev["trailing_consecutive_days"] == 5
+    assert ev["not_brian_official_acceptance"]
+    # Pending is never called a successful research day.
+    cases = [
+        (fold(2, wins=3, losses=1, pending=1), "UNSETTLED"),
+        (fold(2, wins=2, losses=3), "BELOW_73"),
+        (fold(2, wins=3, losses=1, qualified=4), "INSUFFICIENT_GRADED"),
+        (fold(2, wins=4, losses=1, total=20), "LOW_COVERAGE"),
+        (fold(2, wins=0, losses=0, total=0, qualified=0), "NO_ORIGINAL_PICKS"),
+    ]
+    for bad, reason in cases:
+        alternate = five.copy()
+        alternate[2] = bad
+        check = acceptance_evidence(
+            alternate, "v2_agreement", current_day=date(2026, 11, 7),
+        )
+        assert check["daily"][2]["research_status"] == reason
+        assert not check["five_day_research_gate_met"]
+        assert check["trailing_consecutive_days"] == 2
+
+
+def test_current_day_and_future_days_never_count_as_73_acceptance():
+    fold = {
+        "date": "2026-11-07",
+        "policies": {
+            "original": {"picks": 6},
+            "v2_agreement": {"picks": 6, "won": 6, "lost": 0,
+                             "void": 0, "pending": 0, "graded": 6},
+        },
+    }
+    result = acceptance_evidence(
+        [fold], "v2_agreement", current_day=date(2026, 11, 7),
+    )
+    assert result["daily"][0]["research_status"] == "IN_PROGRESS"
+    assert result["days_passing_proposed_gate"] == 0
+    with pytest.raises(ValueError, match="coverage_floor"):
+        acceptance_evidence([fold], "v2_agreement",
+                            current_day=date(2026, 11, 7), coverage_floor=1.2)

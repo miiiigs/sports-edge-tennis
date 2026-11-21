@@ -257,7 +257,7 @@ def _historical_corpus_present(conn: psycopg.Connection) -> bool:
 # Mirrors live.oddspapi.ODDSPAPI_SHARP_BOOKMAKER / ODDSPAPI_PLAN_BOOKMAKERS;
 # kept literal to avoid importing the HTTP transport here (asserted by tests).
 ODDSPAPI_SHARP_KEY = "pinnacle+30"
-ODDSPAPI_OFFERED_KEYS = ("1xbet", "unibet", "bet365")
+ODDSPAPI_OFFERED_KEYS = ("1xbet", "bet365")
 
 
 def _oddspapi_mapping_state(

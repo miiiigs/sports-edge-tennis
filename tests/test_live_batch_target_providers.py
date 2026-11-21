@@ -265,7 +265,6 @@ def test_target_mode_uses_only_sportradar_and_oddspapi(monkeypatch, tmp_path):
     assert board_calls[0][1]["bookmakers"] == (
         "pinnacle+30",
         "1xbet",
-        "unibet",
         "bet365",
     )
     assert ingest_calls[0]["candidate_match_ids"] == (10,)

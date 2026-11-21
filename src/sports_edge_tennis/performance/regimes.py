@@ -960,7 +960,7 @@ def load_model_regime_cohorts(
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
                   AND mro.outcome_status IN (
-                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
                          mro.source_observed_at DESC,
@@ -977,7 +977,7 @@ def load_model_regime_cohorts(
             )::int AS scored,
             count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
             count(*) FILTER (
-                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
             )::int AS voids,
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED'
