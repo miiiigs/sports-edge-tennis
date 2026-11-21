@@ -15,6 +15,8 @@ from sports_edge_tennis.validation.a1_a2_validation_frozen_selection import (
 
 BASE=datetime(2026,9,1,12,tzinfo=UTC)
 CUTOFF=datetime(2026,11,21,3,30,tzinfo=UTC)
+VAL_START=BASE+timedelta(days=24)
+HOLD_START=BASE+timedelta(days=36)
 
 
 def corpus(*, flip_later:bool=False, late_validation:bool=False,
@@ -48,9 +50,13 @@ def corpus(*, flip_later:bool=False, late_validation:bool=False,
     return rows
 
 
+def assay(data):
+    return evaluate(data,as_of=CUTOFF,validation_start=VAL_START,holdout_start=HOLD_START)
+
+
 def test_frozen_earlier_cutoffs_never_change_after_later_winners_flip():
-    a=evaluate(corpus(),as_of=CUTOFF)
-    b=evaluate(corpus(flip_later=True),as_of=CUTOFF)
+    a=assay(corpus())
+    b=assay(corpus(flip_later=True))
     assert a["status"]=="VALIDATION_FROZEN_SHADOW_HISTORICAL_HOLDOUT"
     assert a["validation_outcomes_known_before_holdout"]==120
     assert a["holdout_settled"]==120
@@ -69,14 +75,14 @@ def test_frozen_earlier_cutoffs_never_change_after_later_winners_flip():
 
 
 def test_future_known_validation_results_excluded_from_selection_training():
-    r=evaluate(corpus(late_validation=True),as_of=CUTOFF)
+    r=assay(corpus(late_validation=True))
     assert r["status"]=="INSUFFICIENT_STRICT_VALIDATION_OR_HOLDOUT"
     assert r["validation_outcomes_known_before_holdout"]==0
     assert "validation_frozen_curves" not in r
 
 
 def test_ungraded_holdout_is_in_issuance_coverage_but_never_scored():
-    r=evaluate(corpus(add_ungraded=True),as_of=CUTOFF)
+    r=assay(corpus(add_ungraded=True))
     assert r["status"]=="VALIDATION_FROZEN_SHADOW_HISTORICAL_HOLDOUT"
     assert r["holdout_issued"]==120
     assert r["holdout_settled"]==108
@@ -103,13 +109,13 @@ def test_original_probability_ties_cannot_be_arbitrarily_split():
 def test_no_duplicate_or_future_outcomes_are_allowed():
     data=corpus()
     with pytest.raises(ValueError,match="duplicate"):
-        evaluate(data+[data[0]],as_of=CUTOFF)
+        assay(data+[data[0]])
     bad=replace(data[0],result_known_at=CUTOFF+timedelta(days=1))
     with pytest.raises(ValueError,match="unsafe result visibility"):
-        evaluate([bad],as_of=CUTOFF)
+        assay([bad])
     late=replace(data[0],pair=replace(data[0].pair,issued_at=data[0].pair.start_at+timedelta(minutes=1)))
     with pytest.raises(ValueError,match="too late"):
-        evaluate([late],as_of=CUTOFF)
+        assay([late])
 
 
 def test_prematch_thirty_minute_cutoff_is_mandatory_even_for_direct_evaluation():
@@ -119,12 +125,12 @@ def test_prematch_thirty_minute_cutoff_is_mandatory_even_for_direct_evaluation()
         early.pair,issued_at=early.pair.start_at-timedelta(minutes=10)
     ))
     with pytest.raises(ValueError,match="too late"):
-        evaluate([invalid],as_of=CUTOFF)
+        assay([invalid])
 
 
 def test_reordering_inputs_preserves_cohort_and_cutoffs():
-    a=evaluate(corpus(),as_of=CUTOFF)
-    b=evaluate(list(reversed(corpus())),as_of=CUTOFF)
+    a=assay(corpus())
+    b=assay(list(reversed(corpus())))
     assert a["dataset_sha256"]==b["dataset_sha256"]
     assert a["validation_outcomes_known_before_holdout"]==b["validation_outcomes_known_before_holdout"]
     for frac in ("0.25","0.4","0.5","0.75","1.0"):
@@ -136,9 +142,38 @@ def test_reordering_inputs_preserves_cohort_and_cutoffs():
             assert x["losses"]==y["losses"]
 
 
+def test_future_holdout_fixture_arrivals_cannot_shift_explicit_split():
+    data=corpus()
+    before=assay(data)
+    start=BASE+timedelta(days=49)
+    future=replace(
+        data[0],pair=replace(
+            data[0].pair,match_id=9898,start_at=start,
+            issued_at=start-timedelta(hours=2)
+        ),result_known_at=start+timedelta(hours=3)
+    )
+    after=assay(data+[future])
+    assert before["predeclared_split_utc"]==after["predeclared_split_utc"]
+    assert not after["split_boundaries_determined_from_future_match_dates"]
+    assert after["holdout_issued"]==before["holdout_issued"]+1
+    for fraction in ("0.25","0.4","0.5","0.75","1.0"):
+        for model in ("a1_surface_elo","a2_serve_return_markov","equal_log_odds_blend"):
+            assert (
+                before["validation_frozen_curves"][fraction]["models"][model]["cutoff_frozen_from_validation"]
+                == after["validation_frozen_curves"][fraction]["models"][model]["cutoff_frozen_from_validation"]
+            )
+
+
+def test_predeclared_boundaries_must_be_valid_midnight_utc():
+    with pytest.raises(ValueError,match="precede"):
+        evaluate(corpus(),as_of=CUTOFF,validation_start=HOLD_START,holdout_start=VAL_START)
+    with pytest.raises(ValueError,match="midnight UTC"):
+        evaluate(corpus(),as_of=CUTOFF,validation_start=VAL_START+timedelta(hours=1),holdout_start=HOLD_START)
+
+
 def test_empty_migrated_database_is_unscored_and_read_only(migrated_postgres):
     with psycopg.connect(migrated_postgres,autocommit=True) as conn:
-        r=run(conn,as_of=CUTOFF)
+        r=run(conn,as_of=CUTOFF,validation_start=VAL_START,holdout_start=HOLD_START)
     assert r["source_rows"]==0
     assert r["status"]=="INSUFFICIENT_CHRONOLOGICAL_MATCH_DATES"
     assert r["db_writes"] is False
