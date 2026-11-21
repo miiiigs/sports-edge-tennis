@@ -44,7 +44,7 @@ def test_header_aliases_nonempty_fraction_and_unverified_market(tmp_path):
     assert not report["purchase_approved"]
     assert report["cost_usd"]==0
     assert len(report["sha256"])==64
-    assert "a" not in json.dumps(report["fields"])
+    assert "Extra Research Field" not in json.dumps(report["fields"])
 
 
 def test_date_only_is_distinguished_from_prematch_aware(tmp_path):
