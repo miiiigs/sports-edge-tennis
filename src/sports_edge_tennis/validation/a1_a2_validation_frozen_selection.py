@@ -16,13 +16,13 @@ import hashlib
 import json
 import math
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
 
 from sports_edge_tennis.validation.a1_a2_blend_shadow import (
-    Pair, _cluster_ci, _stats, candidate_probabilities, normalize, source_sql,
+    PREMATCH_MINUTES, Pair, _cluster_ci, _stats, candidate_probabilities, normalize, source_sql,
 )
 from sports_edge_tennis.validation.a1_a2_weight_selection_shadow import ObservedPair
 
@@ -127,8 +127,9 @@ def evaluate(observations:list[ObservedPair],*,as_of:datetime)->dict[str,Any]:
         row=obs.pair
         if row.issued_at.tzinfo is None or row.start_at.tzinfo is None:
             raise ValueError("naive first issued or match timestamp")
-        if row.issued_at > row.start_at:
-            raise ValueError("original prediction after match start")
+        if (row.issued_at > as_of
+            or row.issued_at > row.start_at-timedelta(minutes=PREMATCH_MINUTES)):
+            raise ValueError("original prediction too late for frozen PIT forecast")
         if obs.result_known_at is not None:
             if (obs.result_known_at.tzinfo is None
                 or obs.result_known_at > as_of
