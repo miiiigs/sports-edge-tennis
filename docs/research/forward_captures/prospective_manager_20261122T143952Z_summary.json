@@ -1,0 +1,53 @@
+{
+  "cannot_claim_future_accuracy_until_outcomes": true,
+  "capture_time_utc": "2026-11-22T14:39:52.896578+00:00",
+  "discarded_counts": {},
+  "first_issued_future_targets": 90,
+  "frozen_rules": {
+    "A1A2_equal_log_odds_blend": {
+      "earlier_validation_target": 0.4,
+      "threshold": 0.6711558673472298
+    },
+    "B_guarded2_floor60_spread20": {
+      "earlier_validation_target": 0.2,
+      "threshold": 0.667679
+    },
+    "C_uncalibrated_mean_floor60": {
+      "earlier_validation_target": 0.2,
+      "threshold": 0.7070145
+    },
+    "original_manager": {
+      "earlier_validation_target": 0.1,
+      "threshold": 0.612597
+    },
+    "production_original_as_issued": {
+      "earlier_validation_target": null,
+      "threshold": 0
+    }
+  },
+  "no_database_writes": true,
+  "no_market_api_calls": true,
+  "note": "Actual research shadow captured before the earliest scheduled match; no match outcomes known; full official match denominator unknown.",
+  "official_complete_fixture_denominator": null,
+  "original_query_cutoff_utc": "2026-11-22T14:39:52.896578+00:00",
+  "prior_evidence_warning": "Cutoffs sourced from already-inspected October-November 2026 historical original-run research. Exact policy rules and thresholds are now frozen for NEW FUTURE first-issued predictions only. Coverage target denominators differ between prior experiments; do not compare these target fractions as equivalent achieved coverage.",
+  "research_freeze_code_sha": "177ec8146561c4e06d28e3e490dad38421388035",
+  "selection_counts": {
+    "A1A2_equal_log_odds_blend": 19,
+    "B_guarded2_floor60_spread20": 14,
+    "C_uncalibrated_mean_floor60": 13,
+    "original_manager": 9,
+    "production_original_as_issued": 14
+  },
+  "settled_match_results_at_capture": 0,
+  "utc_capture_records_sha256": "e11a6393140c86e5e76d2493818fd0ce9301585d33b35d75024c6f1961e34627",
+  "version": "BRAZZY365_PROSPECTIVE_MANAGER_SHADOW_FROZEN_V1",
+  "window_end_utc": "2026-12-02T14:39:52.896578+00:00",
+  "window_start_utc": "2026-11-22T15:09:52.896578+00:00",
+  "original_Railway_deployment": "f5591b15-afde-4e5a-b036-31420c5ca094",
+  "original_railway_service": "tennis-forward-manager-shadow-once-20261122",
+  "original_railway_log_timestamp": "2026-11-22T14:39:53.072196902Z",
+  "source_PR": "https://github.com/miiiigs/sports-edge-tennis/pull/360",
+  "original_source_git_commit_sha": "177ec8146561c4e06d28e3e490dad38421388035",
+  "dataset_file": "docs/research/forward_captures/prospective_manager_20261122T143952Z.jsonl"
+}
