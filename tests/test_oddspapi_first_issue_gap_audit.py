@@ -115,6 +115,7 @@ def test_sql_original_pit_and_empty_db_readonly(migrated_postgres):
     s=query()
     assert "o.ingested_at<=b.picked_at" in s
     assert "msi.created_at <= b.picked_at" in s
+    assert "LIKE '%%ODDS%%PAPI%%'" in s
     assert "o.market_type='MATCH_WINNER'" in s
     assert "o.market_status='OPEN'" in s
     assert "INSERT " not in s
