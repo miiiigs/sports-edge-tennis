@@ -101,7 +101,7 @@ def test_no_silent_training_on_evaluation_or_target_result():
 
 
 def test_original_late_issuance_is_red_but_replay_generation_may_be_late():
-    late=replace(proof(),created=MATCH+timedelta(minutes=1))
+    late=replace(proof(),created_at=MATCH+timedelta(minutes=1))
     assert "ORIGINAL_FORECAST_CREATED_AFTER_PREMATCH_DEADLINE" in grade(late)["reason_codes"]
     replay=proof("RECONSTRUCTED",created=MODERN+timedelta(days=1))
     assert grade(replay)["grade"]==EvidenceGrade.AMBER.value
