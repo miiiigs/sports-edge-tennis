@@ -40,16 +40,16 @@ def query()->str:
       LEFT JOIN LATERAL (
         SELECT
           COUNT(*) FILTER (
-            WHERE UPPER(msi.source_system) LIKE '%ODDS%PAPI%'
+            WHERE UPPER(msi.source_system) LIKE '%%ODDS%%PAPI%%'
               AND msi.source_match_id IS NOT NULL
           ) AS ever_odds_papi,
           COUNT(*) FILTER (
-            WHERE UPPER(msi.source_system) LIKE '%ODDS%PAPI%'
+            WHERE UPPER(msi.source_system) LIKE '%%ODDS%%PAPI%%'
               AND msi.source_match_id IS NOT NULL
               AND msi.created_at <= b.picked_at
           ) AS preissue_odds_papi,
           COUNT(*) FILTER (
-            WHERE UPPER(msi.source_system) LIKE '%ODDS%PAPI%'
+            WHERE UPPER(msi.source_system) LIKE '%%ODDS%%PAPI%%'
               AND msi.source_match_id IS NOT NULL
               AND msi.created_at > b.picked_at
           ) AS mapping_created_later
