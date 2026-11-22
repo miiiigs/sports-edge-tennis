@@ -53,7 +53,10 @@ from sports_edge_tennis.live.oddspapi_identity_cache import (
     upsert_cached_identity,
 )
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
-from sports_edge_tennis.live.prospective_manager_capture import observe_first_issued_runs
+from sports_edge_tennis.live.prospective_manager_capture import (
+    capture_heartbeat,
+    observe_first_issued_runs,
+)
 from sports_edge_tennis.live.oddspapi_reconciliation import (
     OddspapiReconciliationError,
     reconcile_oddspapi_event,
@@ -699,6 +702,11 @@ def _run_batch(
         "clv_calculated": 0,
     }
     prediction_run_ids: list[int] = []
+    shadow_capture_enabled = os.environ.get("TENNIS_FORWARD_MANAGER_SHADOW_CAPTURE") == "1"
+    shadow_capture_attempted = 0
+    shadow_capture_successful = 0
+    shadow_capture_failed = 0
+    shadow_capture_records = 0
     primary_failure_kinds: list[str | None] = []
     offered_odds_result: dict[str, Any] | None = None
 
@@ -797,15 +805,23 @@ def _run_batch(
                     # Research-only contemporaneous capture. This is deliberately
                     # separate from Manager consensus and offered-odds spending;
                     # errors cannot suppress a live pick or result settlement.
-                    if os.environ.get("TENNIS_FORWARD_MANAGER_SHADOW_CAPTURE") == "1":
+                    if shadow_capture_enabled:
+                        shadow_capture_attempted += 1
                         try:
-                            observe_first_issued_runs(
+                            shadow_report = observe_first_issued_runs(
                                 dsn=args.dsn,
                                 run_ids=(result.prediction_run_id,),
                                 enabled=True,
                                 log=_log,
                             )
+                            if shadow_report is None:
+                                raise ValueError("observer returned no report")
+                            shadow_capture_successful += 1
+                            shadow_capture_records += int(
+                                shadow_report["first_issued_future_targets"]
+                            )
                         except Exception as exc:
+                            shadow_capture_failed += 1
                             _log(
                                 "TENNIS_FROZEN_SHADOW_CAPTURE_UNAVAILABLE "
                                 f"reason={type(exc).__name__}"
@@ -1302,6 +1318,15 @@ def _run_batch(
 
     if summary_sink is not None:
         summary_sink(dict(totals))
+    # One privacy-safe liveness line even if disabled or no new runs were
+    # produced. The log is NOT evidence that future records were archived.
+    _log(capture_heartbeat(
+        enabled=shadow_capture_enabled,
+        attempted=shadow_capture_attempted,
+        successful=shadow_capture_successful,
+        records=shadow_capture_records,
+        failed=shadow_capture_failed,
+    ))
     _log(
         "LIVE_BATCH_SUCCESS "
         + " ".join(f"{key}={value}" for key, value in totals.items())
