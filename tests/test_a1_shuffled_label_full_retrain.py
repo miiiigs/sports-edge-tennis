@@ -70,10 +70,9 @@ def test_holding_outcome_labels_fixed_keeps_predicted_probabilities_invariant():
     ],train_cutoff=CUT,evaluation_end=END,min_train=60,min_eval=30,repeats=2)
     # Predictions are made only from training data. Evaluation labels
     # contribute to metrics but cannot leak back into the frozen model.
-    assert before["real_label_trained_model"]["predictions_sha256"]!=after["real_label_trained_model"]["predictions_sha256"]
-    # The current digest deliberately includes the true y label; compare
-    # probability traces via the exact deterministic prediction record IDs
-    # and use score differences as the observed holdout-only effect.
+    assert before["real_label_trained_model"]["forecast_only_sha256"]==after["real_label_trained_model"]["forecast_only_sha256"]
+    assert all(a["forecast_only_sha256"]==b["forecast_only_sha256"] for a,b in zip(before["shuffled_training_retrains"],after["shuffled_training_retrains"]))
+    # The labelled result hash DOES change, but frozen forecasts cannot.
     assert before["training_label_counts"]==after["training_label_counts"]
     assert before["real_label_trained_model"]["brier"]!=after["real_label_trained_model"]["brier"]
 
