@@ -165,9 +165,9 @@ def audit(rows:list[dict[str,Any]],*,as_of:datetime,
             key:dict(sorted(c.items())) for key,c in sorted(tour.items())
         },
         "original_gate_reasons":dict(sorted(Counter(
-            q["original_abstain_reason"] for q in cases
+            q["original_abstain_reason"] or "UNSPECIFIED" for q in cases
             if q["original_status"]=="ABSTAINED"
-        ).items(),key=lambda x:str(x[0]))),
+        ).items())),
         "raw_graph_soft_candidate_hypothesis_count":len(candidates),
         "candidate_sample_count":len(sample),
         "candidate_samples":sample,
