@@ -95,8 +95,8 @@ def test_reject_old_fixture_if_capture_after_30min_cutoff():
     for r in rows:
         x=list(r);x[3]=NOW+timedelta(minutes=29)
         modified.append(tuple(x))
-    out=capture(modified)
-    assert out["first_issued_future_targets"]==0 or False
+    with pytest.raises(ValueError,match="fixture not in frozen future window"):
+        capture(modified)
 
 
 def test_fail_on_inconsistent_repeated_original_match_run():
