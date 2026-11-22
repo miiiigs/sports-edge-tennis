@@ -207,6 +207,81 @@ def paired_overlap(first:list[dict],second:list[dict],
     }
 
 
+
+def exact_issued_coverage_descriptive(
+    population:list[dict[str,Any]], *, target:float
+)->dict[str,Any]:
+    """Descriptive exact-K equal-coverage evaluation, NOT a deployable cutoff.
+
+    Knowing the evaluation cohort's full confidence distribution to choose
+    top K is only permitted for RESEARCH presentation. The separately
+    reported validation-frozen thresholds are the deployable methodology.
+    Both use only original pre-match prediction scores, never outcomes
+    for ranking.
+    """
+    if target not in COVERAGE_TARGETS:
+        raise ValueError("coverage must use registered fixed targets")
+    k=math.ceil(len(population)*target)
+    output={
+        "target_fraction_of_first_run_targets":target,
+        "target_exact_issued_count":k,
+        "full_eligible_fixture_coverage":None,
+        "historical_cohort_ranking_not_operational_threshold":True,
+        "policies":{},
+    }
+    chosen={}
+    for policy in POLICIES:
+        available=[r for r in population if r["candidates"][policy] is not None]
+        available.sort(key=lambda r:(
+            -max(float(r["candidates"][policy][1]),
+                 1-float(r["candidates"][policy][1])),
+            r["match_id"],
+        ))
+        if len(available)<k:
+            output["policies"][policy]={
+                "status":"UNACHIEVABLE_WITH_EXISTING_PREDICTIONS",
+                "existing_candidates":len(available),
+                "needed_exact_issue_count":k,
+                "cannot_fabricate_missing_forecasts":True,
+            }
+            continue
+        selected=available[:k]
+        chosen[policy]=selected
+        graded=[r for r in selected if r["winner"] in (1,2)]
+        wins=sum(r["candidates"][policy][0]==r["winner"] for r in graded)
+        scored=[
+            (float(r["candidates"][policy][1]),int(r["winner"]==1))
+            for r in graded
+        ]
+        output["policies"][policy]={
+            "status":"EXACT_K_DESCRIPTIVE_ONLY",
+            "issued":len(selected),"settled":len(graded),
+            "ungraded":len(selected)-len(graded),
+            "wins":wins,"losses":len(graded)-wins,
+            "accuracy":wins/len(graded) if graded else None,
+            "accuracy_wilson95":_wilson(wins,len(graded)),
+            "brier":brier(scored) if scored else None,
+            "log_loss":log_loss(scored) if scored else None,
+            "conditional_first_run_target_coverage":len(selected)/len(population) if population else None,
+            "actual_official_fixture_coverage":None,
+        }
+    if "B_guarded2_floor60_spread20" in chosen and "C_uncalibrated_mean_floor60" in chosen:
+        output["paired_B_vs_C_on_exact_K_overlap_only"]=paired_overlap(
+            chosen["B_guarded2_floor60_spread20"],
+            chosen["C_uncalibrated_mean_floor60"],
+            first_policy="B_guarded2_floor60_spread20",
+            second_policy="C_uncalibrated_mean_floor60",
+        )
+    if "original_manager" in chosen and "B_guarded2_floor60_spread20" in chosen:
+        output["paired_original_vs_B_on_exact_K_overlap_only"]=paired_overlap(
+            chosen["original_manager"],
+            chosen["B_guarded2_floor60_spread20"],
+            first_policy="original_manager",
+            second_policy="B_guarded2_floor60_spread20",
+        )
+    return output
+
+
 def evaluate(records:list[dict[str,Any]], *,start:datetime,end:datetime,
              as_of:datetime,validation_end:datetime,
              exclusion_counts:dict[str,int]|None=None,
@@ -242,6 +317,7 @@ def evaluate(records:list[dict[str,Any]], *,start:datetime,end:datetime,
         "no_market_odds":True,"no_purchases":True,
         "no_original_model_pick_mutation":True,"no_live_rules_changed":True,
         "curve":{},
+        "descriptive_equal_issued_count_curves":{},
     }
     for target in COVERAGE_TARGETS:
         name=str(round(target,4))
@@ -271,6 +347,7 @@ def evaluate(records:list[dict[str,Any]], *,start:datetime,end:datetime,
                 second_policy="B_guarded2_floor60_spread20",
             )
         result["curve"][name]=row
+        result["descriptive_equal_issued_count_curves"][name]=exact_issued_coverage_descriptive(holdout,target=target)
     result["per_tour_holdout_capacity"]={
         tour:{
             "first_run_targets":sum(r["tour"]==tour for r in holdout),
@@ -291,7 +368,9 @@ def evaluate(records:list[dict[str,Any]], *,start:datetime,end:datetime,
         "by the system and cannot substitute for independently enumerated official fixtures. "
         "A/B/C different selected populations require identical-match and "
         "equivalent-coverage comparisons, not raw percentages alone. "
-        "Only original Manager was actually issued."
+        "Only original Manager was actually issued. Exact-K descriptive curves "
+        "rank the FULL later evaluation cohort by original scores and are "
+        "therefore retrospective and NOT usable as frozen live thresholds."
     )
     return result
 
