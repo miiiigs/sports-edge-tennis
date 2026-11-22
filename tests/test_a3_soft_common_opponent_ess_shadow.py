@@ -16,7 +16,7 @@ NOW=datetime(2026,11,22,14,tzinfo=UTC)
 MANIFEST="a"*64
 
 
-def snapshot(*,age_days=300,gaps=4,future=False):
+def snapshot(*,age_days=250,gaps=4,future=False):
     pairs={}
     adj={1:set(),2:set()}
     obs_at=NOW+timedelta(days=1) if future else NOW-timedelta(days=age_days)
