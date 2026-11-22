@@ -53,6 +53,7 @@ from sports_edge_tennis.live.oddspapi_identity_cache import (
     upsert_cached_identity,
 )
 from sports_edge_tennis.live.oddspapi_odds import ingest_oddspapi_tennis_odds
+from sports_edge_tennis.live.prospective_manager_capture import observe_first_issued_runs
 from sports_edge_tennis.live.oddspapi_reconciliation import (
     OddspapiReconciliationError,
     reconcile_oddspapi_event,
@@ -793,6 +794,22 @@ def _run_batch(
                     )
                 if result.prediction_run_id is not None:
                     prediction_run_ids.append(result.prediction_run_id)
+                    # Research-only contemporaneous capture. This is deliberately
+                    # separate from Manager consensus and offered-odds spending;
+                    # errors cannot suppress a live pick or result settlement.
+                    if os.environ.get("TENNIS_FORWARD_MANAGER_SHADOW_CAPTURE") == "1":
+                        try:
+                            observe_first_issued_runs(
+                                dsn=args.dsn,
+                                run_ids=(result.prediction_run_id,),
+                                enabled=True,
+                                log=_log,
+                            )
+                        except Exception as exc:
+                            _log(
+                                "TENNIS_FROZEN_SHADOW_CAPTURE_UNAVAILABLE "
+                                f"reason={type(exc).__name__}"
+                            )
                     reason_counts = _load_manager_reason_counts(
                         conn, result.prediction_run_id
                     )
