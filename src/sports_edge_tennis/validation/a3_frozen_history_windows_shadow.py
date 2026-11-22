@@ -42,6 +42,22 @@ def _in_window(observation:Any, *,cutoff:datetime,days:int)->bool:
     return cutoff-timedelta(days=days)<=when<cutoff
 
 
+
+def _validate_original_snapshot(snapshot:Agent3HistorySnapshot, cutoff:datetime)->None:
+    """Require past-only observations before touching production math."""
+    def check(observations)->None:
+        for observation in observations:
+            if _utc(observation.observed_at)>=cutoff:
+                raise ValueError("snapshot includes future or cutoff-time observation")
+    for player in snapshot.players.values():
+        check(player.all_observations)
+        for records in player.surface_observations.values():
+            check(records)
+    for pair in snapshot.pairs.values():
+        check(pair.all_observations)
+        for records in pair.surface_observations.values():
+            check(records)
+
 def filter_snapshot(snapshot:Agent3HistorySnapshot, *,cutoff:datetime,
                     days:int)->Agent3HistorySnapshot:
     """Returns a new snapshot. Does NOT mutate original production state."""
@@ -124,8 +140,9 @@ def compare_locked_windows(request:PredictionRequest, *,issue_at:datetime,
         raise ValueError("shadow generated or issued too late for original fixture")
     if not request.pit_state_resolved or not request.supported_matchup:
         raise ValueError("unresolved original pre-match state")
-    # The caller must provide a trustable snapshot. No retrospective
-    # result or observation joins are performed within this module.
+    # The caller must additionally prove source-level ingestion before the
+    # cutoff. The snapshot itself does not contain source ingestion metadata.
+    _validate_original_snapshot(request.history_snapshot,cutoff)
     baseline=predict(request,DEFAULT_CONFIG)
     variants={}
     for days in WINDOW_DAYS:
