@@ -11,7 +11,7 @@ import hashlib
 import json
 import os
 from collections import Counter, defaultdict
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import psycopg
@@ -156,7 +156,7 @@ def summarize(rows:list[tuple], *, as_of:datetime)->dict[str,Any]:
             raise ValueError("impossible mapping chronology")
         safely_pre_match=bool(
             start is not None and start.tzinfo is not None
-            and issued<=start
+            and issued<=start-timedelta(minutes=30)
         )
         paired=(book_source is not None and bookmaker is not None
                 and odds1 is not None and odds2 is not None)
