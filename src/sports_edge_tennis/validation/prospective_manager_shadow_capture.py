@@ -107,7 +107,8 @@ def _candidate(name:str,pick:tuple[int,float]|None)->dict[str,Any]:
 def collect(rows:list[tuple], *,
             cutoff:datetime,captured_at:datetime,
             window_start:datetime,window_end:datetime,
-            source_sha:str)->dict[str,Any]:
+            source_sha:str,
+            only_run_ids:set[int]|None=None)->dict[str,Any]:
     cutoff,captured_at,window_start,window_end=map(
         lambda x:_instant(x[1],x[0]),(
             ("cutoff",cutoff),("captured_at",captured_at),
@@ -127,6 +128,8 @@ def collect(rows:list[tuple], *,
     digest=hashlib.sha256()
     for match_id in sorted(grouped):
         records=grouped[match_id]
+        if only_run_ids is not None and int(records[0][1]) not in only_run_ids:
+            continue
         first=records[0]
         (mid,run_id,issued,match_start,tour,edition_id,
          _agent_code,_status,_side,_prob,_pred_asof,
@@ -210,6 +213,7 @@ def collect(rows:list[tuple], *,
         "window_start_utc":window_start.isoformat(),
         "window_end_utc":window_end.isoformat(),
         "first_issued_future_targets":len(accepted),
+        "filtered_to_first_run_ids":sorted(only_run_ids) if only_run_ids is not None else None,
         "discarded_counts":dict(sorted(excluded.items())),
         "selection_counts":{
             name:sum(rec["frozen_research_policies"][name]["status"]=="SELECTED"
@@ -228,7 +232,8 @@ def collect(rows:list[tuple], *,
 
 
 def run(conn:psycopg.Connection, *, captured_at:datetime,
-        start:datetime,end:datetime,source_sha:str)->dict[str,Any]:
+        start:datetime,end:datetime,source_sha:str,
+        only_run_ids:set[int]|None=None)->dict[str,Any]:
     # Capture once at query time. Do not substitute retrospective as-of.
     captured_at=_instant(captured_at,"captured_at")
     conn.execute("SET default_transaction_read_only=on")
@@ -237,7 +242,8 @@ def run(conn:psycopg.Connection, *, captured_at:datetime,
         "end":_instant(end,"end"),
     }).fetchall()
     return collect(rows,cutoff=captured_at,captured_at=captured_at,
-                   window_start=start,window_end=end,source_sha=source_sha)
+                   window_start=start,window_end=end,source_sha=source_sha,
+                   only_run_ids=only_run_ids)
 
 
 def main(argv:list[str]|None=None)->int:
