@@ -97,6 +97,7 @@ def _evaluate(training:list[ValidationObservation],
     brier_sum=0.
     loss_sum=0.
     predictions=[]
+    forecast_only=[]
     for rec in evaluating:
         target=EvaluationTarget(
             season_year=rec.season_year,
@@ -123,6 +124,7 @@ def _evaluate(training:list[ValidationObservation],
         brier_sum+=(p-y)**2
         loss_sum+=-(y*math.log(p)+(1-y)*math.log(1-p))
         predictions.append((int(rec.match_id),round(p,6),y))
+        forecast_only.append((int(rec.match_id),round(p,6)))
     return {
         "n":n,"wins":wins,
         "accuracy":round(wins/n,8),
@@ -130,6 +132,9 @@ def _evaluate(training:list[ValidationObservation],
         "log_loss":round(loss_sum/n,8),
         "predictions_sha256":hashlib.sha256(
             json.dumps(predictions,separators=(",",":")).encode()
+        ).hexdigest(),
+        "forecast_only_sha256":hashlib.sha256(
+            json.dumps(forecast_only,separators=(",",":")).encode()
         ).hexdigest(),
         "trained_history_count":state.eligible_history_match_count,
     }
