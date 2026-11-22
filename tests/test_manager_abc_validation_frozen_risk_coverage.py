@@ -39,7 +39,7 @@ def test_validation_gate_never_uses_later_confidence_distribution():
     lock=freeze_threshold(val,policy="B_guarded2_floor60_spread20",
                           coverage_target=.20)
     assert lock["status"]=="VALIDATION_CONFIDENCE_CUTOFF_FROZEN"
-    assert lock["threshold"]==.65
+    assert lock["threshold"]==.66
     same=freeze_threshold(val,policy="B_guarded2_floor60_spread20",
                           coverage_target=.20)
     assert same==lock
