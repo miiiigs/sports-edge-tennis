@@ -48,6 +48,7 @@ def test_high_consensus_prospectively_selected_without_retro_results():
     assert x["frozen_research_policies"]["C_uncalibrated_mean_floor60"]["status"]=="SELECTED"
     assert x["frozen_research_policies"]["A1A2_equal_log_odds_blend"]["status"]=="SELECTED"
     assert x["frozen_research_policies"]["original_manager"]["status"]=="ABSTAINED"
+    assert x["frozen_research_policies"]["production_original_as_issued"]["status"]=="ABSTAINED"
     assert x["scheduled_start_at_utc"]>x["captured_at_utc"]
     assert r["settled_match_results_at_capture"]==0
     assert r["no_market_api_calls"] is True
