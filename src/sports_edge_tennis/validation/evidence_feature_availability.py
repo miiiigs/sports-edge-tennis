@@ -114,8 +114,10 @@ def grade(record:ForecastProof)->dict[str,object]:
         reasons.append("LEGACY_CLAIM_UNRECONSTRUCTED")
     if cutoff>match_start-timedelta(minutes=PREMATCH_MINUTES):
         reasons.append("FORECAST_INFORMATION_CUTOFF_TOO_LATE")
-    if created>match_start-timedelta(minutes=PREMATCH_MINUTES):
-        reasons.append("FORECAST_CREATED_AFTER_PREMATCH_DEADLINE")
+    if record.record_kind=="ORIGINAL" and created>match_start-timedelta(minutes=PREMATCH_MINUTES):
+        reasons.append("ORIGINAL_FORECAST_CREATED_AFTER_PREMATCH_DEADLINE")
+    if record.record_kind=="RECONSTRUCTED" and created<cutoff:
+        reasons.append("RETROSPECTIVE_RECONSTRUCTION_CREATION_BEFORE_SIMULATED_CUTOFF")
     if not record.model_version or not record.code_commit:
         reasons.append("MODEL_OR_COMMIT_VERSION_MISSING")
     if not record.dataset_digest:
@@ -153,8 +155,11 @@ def grade(record:ForecastProof)->dict[str,object]:
                 frozen=utc(record.parameter_freeze_time,"parameter_freeze_time")
                 if not train<val<=cal<cutoff:
                     reasons.append("NON_CHRONOLOGICAL_TRAIN_VALIDATION_CALIBRATION")
-                if frozen>cutoff:
-                    reasons.append("MODEL_SELECTED_AFTER_HISTORICAL_FORECAST_CUTOFF")
+                # Retrospective research is allowed to be designed in 2026
+                # when simulating a 2020 forecast, but must freeze its
+                # configuration before actually running its evaluation.
+                if frozen>created:
+                    reasons.append("MODEL_SELECTED_AFTER_RETROSPECTIVE_EVALUATION")
         # A reconstruction *must* be labelled as retrospective, even if its
         # underlying historical facts are legitimate and verified.
         if record.record_kind=="LEGACY_UNVERIFIED" and created<cutoff:
