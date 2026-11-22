@@ -32,6 +32,10 @@ VERSION="BRAZZY365_PROSPECTIVE_MANAGER_SHADOW_FROZEN_V1"
 # Nov4..Nov20. These are fixed as research candidates before new forecasts,
 # not untouched forward-test thresholds or proof of superiority.
 FROZEN = {
+    "production_original_as_issued": {
+        "threshold":0.0,
+        "earlier_validation_target":None,
+    },
     "original_manager": {
         "threshold":0.612597,
         "earlier_validation_target":0.10,
@@ -174,6 +178,7 @@ def collect(rows:list[tuple], *,
             raise ValueError("invalid original Manager status")
         a=_p1(active,CODES[0])
         b=_p1(active,CODES[1])
+        proposed["production_original_as_issued"]=proposed["original_manager"]
         proposed["A1A2_equal_log_odds_blend"]=_blend(a,b)
         selections={name:_candidate(name,proposed.get(name)) for name in FROZEN}
         record={
