@@ -344,6 +344,7 @@ def audit(manifest:Manifest,refs:list[Reference],
 
 def run_db(conn:psycopg.Connection,manifest:Manifest,
            refs:list[Reference])->dict[str,Any]:
+    manifest.validate()
     conn.execute("SET default_transaction_read_only=on")
     internal={
         ref.source_match_id:source_matching(conn,manifest=manifest,ref=ref)
