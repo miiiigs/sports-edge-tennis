@@ -6,7 +6,7 @@ import pytest
 
 from sports_edge_tennis.validation.manager_abc_validation_frozen_risk_coverage import (
     COVERAGE_TARGETS,POLICIES,normalize,freeze_threshold,evaluate_selected,
-    paired_overlap,evaluate,run,
+    paired_overlap,evaluate,run,exact_issued_coverage_descriptive,
 )
 
 START=datetime(2026,10,15,tzinfo=UTC)
@@ -128,3 +128,46 @@ def test_empty_migrated_postgres(migrated_postgres):
     assert result["all_first_run_targets"]==0
     assert result["curve"]["0.1"]["original_manager"]["unreachable"] is True
     assert result["no_live_rules_changed"] is True
+
+
+def test_exact_k_equal_coverage_and_unreachable_policy_slots():
+    hold=[
+        rec(100+i,part="holdout",day=5,
+            original=i<=2,b=i<=4,c=i<=9,
+            conf=.60+i*.02,
+            winner=(1 if i%3 else 2))
+        for i in range(1,11)
+    ]
+    a=exact_issued_coverage_descriptive(hold,target=.20)
+    assert a["target_exact_issued_count"]==2
+    for policy in POLICIES:
+        assert a["policies"][policy]["issued"]==2
+        assert a["policies"][policy]["settled"]==2
+        assert a["policies"][policy]["status"]=="EXACT_K_DESCRIPTIVE_ONLY"
+    assert a["historical_cohort_ranking_not_operational_threshold"] is True
+    b=exact_issued_coverage_descriptive(hold,target=.40)
+    assert b["target_exact_issued_count"]==4
+    assert b["policies"]["original_manager"]["status"]=="UNACHIEVABLE_WITH_EXISTING_PREDICTIONS"
+    assert b["policies"]["B_guarded2_floor60_spread20"]["issued"]==4
+
+
+def test_exact_k_rejects_hypothetical_full_100pct_when_b_c_abstain():
+    hold=[rec(100+i,part="holdout",day=5,
+          original=False,b=i<=2,c=i<=3) for i in range(1,11)]
+    z=exact_issued_coverage_descriptive(hold,target=1.0)
+    assert all(z["policies"][p]["status"]=="UNACHIEVABLE_WITH_EXISTING_PREDICTIONS"
+               for p in POLICIES)
+    assert all(z["policies"][p]["cannot_fabricate_missing_forecasts"]
+               for p in POLICIES)
+
+
+def test_exact_k_ranking_disallows_outcome_driven_reselection():
+    hold=[rec(100+i,part="holdout",day=5,conf=.60+.03*i,
+              winner=1) for i in range(1,8)]
+    before=exact_issued_coverage_descriptive(hold,target=.20)
+    changed=[dict(r,winner=2) for r in hold]
+    after=exact_issued_coverage_descriptive(changed,target=.20)
+    assert before["target_exact_issued_count"]==after["target_exact_issued_count"]
+    assert before["policies"]["C_uncalibrated_mean_floor60"]["issued"]==after["policies"]["C_uncalibrated_mean_floor60"]["issued"]
+    # Performance changes, but threshold/selection ranking itself does not.
+    assert before["policies"]["C_uncalibrated_mean_floor60"]["accuracy"]!=after["policies"]["C_uncalibrated_mean_floor60"]["accuracy"]
