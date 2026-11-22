@@ -2,8 +2,9 @@
 
 Research-only. No live Manager, odds, settlement, Model Picks publication or vendor data changes.
 
-Four predeclared candidate policies:
-- Original production Manager consensus with cutoff 0.612597 (October validation target 10%).
+Five recorded decision views:
+- Actual original production Manager consensus AS ISSUED, with no extra research cutoff (untouched operational baseline).
+- Selective original Manager research subset with cutoff 0.612597 (October validation target 10%).
 - Guarded two-agent B, >=2 same-side approvals, >=60% agreeing confidence, spread <=20 points, frozen selection score >=0.667679 (October validation target 20%).
 - Raw-average C, >=2 valid agents and >=60% raw winner confidence, frozen selection score >=0.7070145 (October validation target 20%).
 - Equal A1/A2 log-odds blend, first true co-issued Elo+Markov predictions, frozen cutoff 0.6711558673472298 (earlier Oct/November research validation target 40%).
