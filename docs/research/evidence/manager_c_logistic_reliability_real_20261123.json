@@ -1,0 +1,307 @@
+{
+  "evidence_class": "AMBER_HISTORICAL_ALREADY_INSPECTED_NOT_UNSEEN",
+  "model_status": "RESEARCH_ONLY_NOT_PROMOTED",
+  "scientific_decision": "HOLD_UNPROVEN_RELIABILITY_CHOOSER",
+  "log_timestamp_utc": "2026-11-23T12:09:14.454921685Z",
+  "oneoff_railway_deployment_id": "00ff36cc-d2c5-4de2-84a8-0a49c4062a7e",
+  "exact_production_source_commit": "da954163b20f5d0fb986432da792c79c7e82210d",
+  "notes": [
+    "203? no; exact 403 labelled training C forecasts only observed by Nov4",
+    "November evaluation was previously inspected by many experiments; calibration worse across identical 283 completed C candidates",
+    "69.71% vs68.75% is NOT matched effective coverage; candidate selects 260 vs275, settles241 vs256.",
+    "Meta-model did NOT establish 72-75% at 40-50% complete eligible official fixture coverage",
+    "Do not retune this model on Nov4-20 outcomes and call it new test.",
+    "Next experiment needs licensed and original PIT player-history confidence/depth and opponent-adjusted serve reliability."
+  ],
+  "report": {
+    "candidate_train_sha256": "bfd365738faa4cda3c7437622a4ebe211c830198a72f4e9475e855478fb1a766",
+    "dataset_sha256": "e7d70fb821d7c69339adfce51bbd7fe35161adda49c595124d1791fef1b56863",
+    "evaluation_targets": 656,
+    "evidence": "AMBER_HISTORICAL_ALREADY_INSPECTED",
+    "feature_names": [
+      "intercept",
+      "confidence_scaled",
+      "is_challenger",
+      "a1_a2_p1_distance",
+      "a1_a2_disagree",
+      "a1_a2_missing"
+    ],
+    "fitted_weights": {
+      "a1_a2_disagree": 0.10451760125650822,
+      "a1_a2_missing": 0,
+      "a1_a2_p1_distance": 0.042997209713610124,
+      "confidence_scaled": 0.38137489435491906,
+      "intercept": 0.5312054351203861,
+      "is_challenger": -0.18756185306595313
+    },
+    "fixed_learning_rate": 0.12,
+    "full_candidate_correctness_calibration": {
+      "calibrated_selection_model": {
+        "brier": 0.21568814824109186,
+        "log_loss": 0.6223976666256784,
+        "n": 283
+      },
+      "original_c_confidence": {
+        "brier": 0.212589895738,
+        "log_loss": 0.6138753483248836,
+        "n": 283
+      }
+    },
+    "independent_prospective_confirmation": false,
+    "iterations": 350,
+    "no_live_selection_changes": true,
+    "not_full_official_fixture_denominator": true,
+    "original_pit_exclusions": {
+      "UNSAFE_OR_LATE_FIRST_PREMATCH_ISSUE": 9,
+      "UNSAFE_RESULT_GRADED_AS_UNRESOLVED": 17
+    },
+    "result_known_cutoff_enforced": true,
+    "ridge_lambda": 8,
+    "threshold_experiments": {
+      "0.2": {
+        "achieved_coverage_first_runs": {
+          "independent_official": null,
+          "original": 0.17835365853658536,
+          "reliability": 0.13414634146341464
+        },
+        "identical_match_id_overlap": 78,
+        "no_unseen_result_used_in_rank_or_cutoff": true,
+        "original": {
+          "accuracy": 0.7476635514018691,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.7142857142857143,
+              "losses": 2,
+              "settled": 7,
+              "wins": 5
+            },
+            "CHALLENGER": {
+              "accuracy": 0.75,
+              "losses": 25,
+              "settled": 100,
+              "wins": 75
+            }
+          },
+          "issued": 117,
+          "losses": 27,
+          "settled": 107,
+          "ungraded": 10,
+          "wilson95": [
+            0.6577647569908553,
+            0.8203956765138767
+          ],
+          "wins": 80
+        },
+        "original_confidence_cutoff": 0.7070145,
+        "original_only": {
+          "accuracy": 0.6857142857142857,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": null,
+              "losses": 0,
+              "settled": 0,
+              "wins": 0
+            },
+            "CHALLENGER": {
+              "accuracy": 0.6857142857142857,
+              "losses": 11,
+              "settled": 35,
+              "wins": 24
+            }
+          },
+          "issued": 39,
+          "losses": 11,
+          "settled": 35,
+          "ungraded": 4,
+          "wilson95": [
+            0.5202023638793081,
+            0.8144915532573418
+          ],
+          "wins": 24
+        },
+        "reliability": {
+          "accuracy": 0.7804878048780488,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.7142857142857143,
+              "losses": 4,
+              "settled": 14,
+              "wins": 10
+            },
+            "CHALLENGER": {
+              "accuracy": 0.7941176470588235,
+              "losses": 14,
+              "settled": 68,
+              "wins": 54
+            }
+          },
+          "issued": 88,
+          "losses": 18,
+          "settled": 82,
+          "ungraded": 6,
+          "wilson95": [
+            0.6794794576232296,
+            0.8563921437213483
+          ],
+          "wins": 64
+        },
+        "reliability_cutoff": 0.6552313644804185,
+        "reliability_only": {
+          "accuracy": 0.8,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.7142857142857143,
+              "losses": 2,
+              "settled": 7,
+              "wins": 5
+            },
+            "CHALLENGER": {
+              "accuracy": 1,
+              "losses": 0,
+              "settled": 3,
+              "wins": 3
+            }
+          },
+          "issued": 10,
+          "losses": 2,
+          "settled": 10,
+          "ungraded": 0,
+          "wilson95": [
+            0.49016247153664183,
+            0.9433178485456247
+          ],
+          "wins": 8
+        },
+        "same_volume_not_guaranteed": true,
+        "selected_match_ids_sha256": {
+          "original": "3ee22e7807bb1145c4179daf9a41138bebd7d98650365e3f7049f9d1e265564e",
+          "reliability": "42f3d2d5b061150f09dff64c3ccd474dc489ecc670e325873e293c3279e54c74"
+        }
+      },
+      "0.4": {
+        "achieved_coverage_first_runs": {
+          "independent_official": null,
+          "original": 0.4192073170731707,
+          "reliability": 0.39634146341463417
+        },
+        "identical_match_id_overlap": 249,
+        "no_unseen_result_used_in_rank_or_cutoff": true,
+        "original": {
+          "accuracy": 0.6875,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.6923076923076923,
+              "losses": 4,
+              "settled": 13,
+              "wins": 9
+            },
+            "CHALLENGER": {
+              "accuracy": 0.6872427983539094,
+              "losses": 76,
+              "settled": 243,
+              "wins": 167
+            }
+          },
+          "issued": 275,
+          "losses": 80,
+          "settled": 256,
+          "ungraded": 19,
+          "wilson95": [
+            0.62830194262617,
+            0.7411541112141282
+          ],
+          "wins": 176
+        },
+        "original_confidence_cutoff": 0.6213299999999999,
+        "original_only": {
+          "accuracy": 0.5384615384615384,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": null,
+              "losses": 0,
+              "settled": 0,
+              "wins": 0
+            },
+            "CHALLENGER": {
+              "accuracy": 0.5384615384615384,
+              "losses": 12,
+              "settled": 26,
+              "wins": 14
+            }
+          },
+          "issued": 26,
+          "losses": 12,
+          "settled": 26,
+          "ungraded": 0,
+          "wilson95": [
+            0.35457938746858797,
+            0.7124414646960878
+          ],
+          "wins": 14
+        },
+        "reliability": {
+          "accuracy": 0.6970954356846473,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.6875,
+              "losses": 5,
+              "settled": 16,
+              "wins": 11
+            },
+            "CHALLENGER": {
+              "accuracy": 0.6977777777777778,
+              "losses": 68,
+              "settled": 225,
+              "wins": 157
+            }
+          },
+          "issued": 260,
+          "losses": 73,
+          "settled": 241,
+          "ungraded": 19,
+          "wilson95": [
+            0.6363622220167159,
+            0.7516439614849589
+          ],
+          "wins": 168
+        },
+        "reliability_cutoff": 0.6080541045193303,
+        "reliability_only": {
+          "accuracy": 0.5454545454545454,
+          "by_tour": {
+            "ATP_MAIN": {
+              "accuracy": 0.6666666666666666,
+              "losses": 1,
+              "settled": 3,
+              "wins": 2
+            },
+            "CHALLENGER": {
+              "accuracy": 0.5,
+              "losses": 4,
+              "settled": 8,
+              "wins": 4
+            }
+          },
+          "issued": 11,
+          "losses": 5,
+          "settled": 11,
+          "ungraded": 0,
+          "wilson95": [
+            0.280091537409322,
+            0.7872872837754024
+          ],
+          "wins": 6
+        },
+        "same_volume_not_guaranteed": true,
+        "selected_match_ids_sha256": {
+          "original": "17b1b6b8e26fdd0d3d26537dc98705a32c31feed86d68e5207e4d78cf4e3b2fa",
+          "reliability": "f7b4e60124e1c2aaf6191cd4e19a4945c0453d249a352bd9ff5808996e25eaa5"
+        }
+      }
+    },
+    "training_cutoff_utc": "2026-11-04T00:00:00+00:00",
+    "training_original_c_settled_known_at_cutoff": 403,
+    "validation_targets": 1027,
+    "version": "BRAZZY365_MANAGER_C_CHOOSER_PIT_LOGISTIC_V1"
+  }
+}
