@@ -27,7 +27,7 @@ from sports_edge_tennis.validation.manager_abc_first_issue_ablation import (
     CODES, _available_agents, _policy, source_sql,
 )
 
-VERSION="BRAZZY365_PROSPECTIVE_MANAGER_SHADOW_FROZEN_V1"
+VERSION="BRAZZY365_PROSPECTIVE_MANAGER_SHADOW_FROZEN_V2"
 # Previously fitted 2026-10-15..2026-11-03 and subsequently INSPECTED
 # Nov4..Nov20. These are fixed as research candidates before new forecasts,
 # not untouched forward-test thresholds or proof of superiority.
@@ -154,6 +154,7 @@ def collect(rows:list[tuple], *,
         if result_status=="COMPLETED" or result_winner in (1,2):
             raise ValueError("prospective fixture cannot have observed final winner")
         preds={}
+        prediction_times={}
         for row in records:
             code,status,side,prob,pred_at=row[6:11]
             if code is None:
@@ -165,6 +166,7 @@ def collect(rows:list[tuple], *,
             preds[code]=(str(status),
                          int(side) if side is not None else None,
                          float(prob) if prob is not None else None)
+            prediction_times[code]=_instant(pred_at,"agent as_of").isoformat()
         active=_available_agents(preds)
         proposed=_policy(active)
         proposed["original_manager"]=None
@@ -197,6 +199,21 @@ def collect(rows:list[tuple], *,
             "original_agent_statuses":{
                 code:preds.get(code,("MISSING",None,None))[0] for code in CODES
             },
+            # V2: publish exact persisted ORIGINAL agent probabilities, not
+            # only an ensemble. Keep source prediction times separate from
+            # unverified underlying provider feature publication times.
+            "original_agent_forecasts":{
+                code:{
+                    "status":preds.get(code,("MISSING",None,None))[0],
+                    "selection_side":active[code][0] if code in active else None,
+                    "player_1_probability":active[code][1] if code in active else None,
+                    "prediction_as_of_utc":prediction_times.get(code),
+                } for code in CODES
+            },
+            "underlying_feature_cutoff_provenance_complete":False,
+            "underlying_feature_snapshot_sha256":None,
+            "original_production_model_version_unavailable":True,
+            "frozen_research_definition_commit":source_sha,
             "frozen_research_policies":selections,
             "not_a_published_model_pick":True,
             "new_feature_data_used":False,
