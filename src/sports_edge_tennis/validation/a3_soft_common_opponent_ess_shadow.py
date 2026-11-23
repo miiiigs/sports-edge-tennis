@@ -88,7 +88,7 @@ def _soft_variant(request:PredictionRequest, *,edge_min:float,
     a,b=request.player_1_id,request.player_2_id
     snapshot=request.history_snapshot
     opps=(set(snapshot.adjacency.get(a,()))&
-          set(snapshot.adjacency.get(b,)))-{a,b}
+          set(snapshot.adjacency.get(b,()))))-{a,b}
     cutoff=_utc(request.as_of)
     evidence=[]
     for opp in sorted(opps):
@@ -196,12 +196,12 @@ def capture_provisional_live_shadow(
     start=_utc(match_start_at)
     if not cutoff<=captured<=start-timedelta(minutes=30):
         raise ValueError("live Agent3 shadow requires actual pre-match 30min timing")
+    if not isinstance(canonical_match_id,int) or canonical_match_id<=0:
+        raise ValueError("original canonical match id required")
     profiles={
         name:_soft_variant(request,edge_min=edge,cross_surface_weight=surface)
         for name,(edge,surface) in PROFILES.items()
     }
-    if not isinstance(canonical_match_id,int) or canonical_match_id<=0:
-        raise ValueError("original canonical match id required")
     data={
         "canonical_match_id":canonical_match_id,
         "version":"A3_LIVE_SOFT_PIT_PROVISIONAL_V1",
