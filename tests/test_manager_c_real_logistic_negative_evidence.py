@@ -6,7 +6,7 @@ F=Path(__file__).parents[1]/"docs/research/evidence/manager_c_logistic_reliabili
 
 
 def test_live_readonly_manager_c_logistic_experiment_not_promotable():
-    e=json.loads(F.read());r=e["report"]
+    e=json.loads(F.read_text());r=e["report"]
     assert e["scientific_decision"]=="HOLD_UNPROVEN_RELIABILITY_CHOOSER"
     assert e["model_status"]=="RESEARCH_ONLY_NOT_PROMOTED"
     assert r["independent_prospective_confirmation"] is False
