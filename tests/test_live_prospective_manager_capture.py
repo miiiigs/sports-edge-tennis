@@ -129,3 +129,38 @@ def test_live_capture_heartbeat_logged_before_success_message():
     src = inspect.getsource(batch._run_batch)
     assert src.index("_log(capture_heartbeat(") < src.index('"LIVE_BATCH_SUCCESS "')
     assert src.index("observe_first_issued_runs(") < src.index("_log(capture_heartbeat(")
+
+
+def test_forward_v2_live_observer_reports_exact_runtime_code_revision(monkeypatch):
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "live-checkpoint-sha-1234567890")
+    logs=[]
+    def fake_run(conn, *, captured_at,start,end,source_sha,only_run_ids):
+        return {
+            "first_issued_future_targets": 1,
+            "genuine_future_shadow_records": [{
+                "canonical_match_id": 77221,
+                "captured_at_utc": NOW.isoformat(),
+                "original_agent_forecasts": {
+                    "AGENT_1_SURFACE_ELO": {
+                        "player_1_probability": .72,
+                        "prediction_as_of_utc": (NOW-timedelta(minutes=1)).isoformat()
+                    },
+                },
+                "not_a_published_model_pick": True,
+            }],
+            "utc_capture_records_sha256": "original-hash",
+        }
+    monkeypatch.setattr(capture, "run", fake_run)
+    result=capture.observe_first_issued_runs(
+        dsn="read-only-dsn",run_ids=[10],enabled=True,log=logs.append,
+        capture_at=NOW,connector=lambda *a,**kw: FakeConn())
+    assert result["observer_record_schema_version"].endswith("_V2")
+    assert result["railway_deployed_commit"]=="live-checkpoint-sha-1234567890"
+    assert result["per_agent_original_model_version_verified"] is False
+    assert result["external_append_only_archive_verified"] is False
+    assert len(logs)==2
+    a=json.loads(logs[0].split(" ",1)[1])
+    b=json.loads(logs[1].split(" ",1)[1])
+    assert a["original_agent_forecasts"]["AGENT_1_SURFACE_ELO"]["player_1_probability"]==.72
+    assert b["observer_record_schema_version"]==capture.VERSION
+    assert b["railway_deployed_commit"]==result["railway_deployed_commit"]
