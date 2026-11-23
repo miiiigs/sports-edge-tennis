@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+import os
 
 import psycopg
 
@@ -315,11 +317,56 @@ def _run_agent3(
                 target=target, snapshot=snapshot, result=result, as_of=as_of
             ),
         )
+    if (conn is not None and
+        os.environ.get("TENNIS_A3_SOFT_SHADOW_CAPTURE") == "1" and
+        target.tour_scope in ("ATP_MAIN","CHALLENGER") and
+        target.qualifying_flag is False):
+        try:
+            _capture_optional_a3_soft_shadow(conn,target=target,
+                                             request=request,original_result=result,
+                                             as_of=as_of)
+        except Exception as exc:
+            # The experimental research observer MUST NEVER block the original
+            # A3/Manager/pick calculation or alter original settlement.
+            print("TENNIS_A3_SOFT_SHADOW_UNAVAILABLE "+json.dumps({
+                "match_id":target.match_id,
+                "exception_type":type(exc).__name__,
+                "original_forecast_unchanged":True,
+            },sort_keys=True),flush=True)
     return PredictiveAgentMatrixPrediction(
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
     )
+
+
+def _capture_optional_a3_soft_shadow(conn, *, target, request,
+                                     original_result, as_of) -> None:
+    """Original in-memory source snapshot, genuinely before target start.
+
+    This cannot verify every underlying provider's ingestion provenance and
+    must never be counted as a validated original first published forecast
+    without later first-run matching against the immutable run ledger.
+    """
+    from sports_edge_tennis.validation.a3_soft_common_opponent_ess_shadow import (
+        capture_provisional_live_shadow,
+    )
+    start=conn.execute("""
+        SELECT match_start_at FROM match_versions
+        WHERE match_version_id=%s
+          AND as_of<=%s AND source_observed_at<=%s AND ingested_at<=%s
+        LIMIT 1
+    """,(target.match_version_id,as_of,as_of,as_of)).fetchone()
+    if start is None or start[0] is None:
+        raise ValueError("original PIT match version missing scheduled start")
+    record=capture_provisional_live_shadow(
+        request,canonical_match_id=target.match_id,
+        capture_at=_utc_now(),match_start_at=start[0],
+        original_result=original_result,
+        production_commit=os.environ.get("RAILWAY_GIT_COMMIT_SHA") or None,
+    )
+    print("TENNIS_A3_SOFT_PROSPECTIVE_SHADOW "+
+          json.dumps(record,sort_keys=True),flush=True)
 
 
 def _validate_result(
