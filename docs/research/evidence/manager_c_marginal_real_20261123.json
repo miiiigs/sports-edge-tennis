@@ -1,0 +1,231 @@
+{
+  "research_class": "AMBER_HISTORICAL_PREVIOUSLY_INSPECTED",
+  "real_database_read_only_observation": true,
+  "railway_deployment_id": "15b862b1-12d3-409d-9e71-428eb30150ce",
+  "railway_logged_at_utc": "2026-11-23T11:04:23.932010663Z",
+  "exact_code_sha": "5197cdddb7a40ca94c0ecb7283d81f1d6d852f11",
+  "database_mutation": false,
+  "api_requests_made": 0,
+  "notes": [
+    "Manager C narrower EXACT match IDs all appear within broader group.",
+    "Selection cutoffs fitted to earlier Oct15-Nov3 validation-only confidence; Nov4-Nov20 evaluation historically inspected.",
+    "Coverage denominator first-run known targets, not independent official full match census.",
+    "A1/A2 disagreement and ATP/CH breakdown are observational, not proven causal or forward gains.",
+    "Time-safe Elo/player-history/serve/odds conditions not available in original established PR357 join."
+  ],
+  "report": {
+    "additional_only": {
+      "a1_a2": {
+        "counts": {
+          "AGREE": 140,
+          "DISAGREE": 18
+        },
+        "performance": {
+          "AGREE": {
+            "accuracy": 0.6287878787878788,
+            "losses": 49,
+            "selected": 140,
+            "settled": 132,
+            "wins": 83
+          },
+          "DISAGREE": {
+            "accuracy": 0.7647058823529411,
+            "losses": 4,
+            "selected": 18,
+            "settled": 17,
+            "wins": 13
+          }
+        }
+      },
+      "accuracy": 0.6442953020134228,
+      "accuracy_wilson95": [
+        0.5646867548642904,
+        0.7166505232000691
+      ],
+      "brier": 0.2272108398343943,
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.6666666666666666,
+          "losses": 2,
+          "selected": 6,
+          "settled": 6,
+          "wins": 4
+        },
+        "CHALLENGER": {
+          "accuracy": 0.6433566433566433,
+          "losses": 51,
+          "selected": 152,
+          "settled": 143,
+          "wins": 92
+        }
+      },
+      "log_loss": 0.6466254471479044,
+      "losses": 53,
+      "mean_agent_probability_disagreement": 0.16057358860759496,
+      "mean_winner_confidence": 0.6614614715189874,
+      "selected": 158,
+      "settled": 149,
+      "ungraded": 9,
+      "wins": 96
+    },
+    "additional_only_interpretation": "Exact original match ID nesting verified on this frozen data cohort; the marginal group is broad MINUS narrow, not a newly tuned model or independent prospective performance.",
+    "broad": {
+      "a1_a2": {
+        "counts": {
+          "AGREE": 257,
+          "DISAGREE": 18
+        },
+        "performance": {
+          "AGREE": {
+            "accuracy": 0.6820083682008368,
+            "losses": 76,
+            "selected": 257,
+            "settled": 239,
+            "wins": 163
+          },
+          "DISAGREE": {
+            "accuracy": 0.7647058823529411,
+            "losses": 4,
+            "selected": 18,
+            "settled": 17,
+            "wins": 13
+          }
+        }
+      },
+      "accuracy": 0.6875,
+      "accuracy_wilson95": [
+        0.62830194262617,
+        0.7411541112141282
+      ],
+      "brier": 0.20935853090271778,
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.6923076923076923,
+          "losses": 4,
+          "selected": 13,
+          "settled": 13,
+          "wins": 9
+        },
+        "CHALLENGER": {
+          "accuracy": 0.6872427983539094,
+          "losses": 76,
+          "selected": 262,
+          "settled": 243,
+          "wins": 167
+        }
+      },
+      "log_loss": 0.6069342948933628,
+      "losses": 80,
+      "mean_agent_probability_disagreement": 0.1428546509090909,
+      "mean_winner_confidence": 0.7104169836363636,
+      "selected": 275,
+      "settled": 256,
+      "ungraded": 19,
+      "wins": 176
+    },
+    "conditional_coverage": {
+      "additional": 0.24085365853658536,
+      "broad": 0.4192073170731707,
+      "narrow": 0.17835365853658536,
+      "official_eligible_coverage": null
+    },
+    "cutoffs_fitted_earlier_validation_only": {
+      "broad_40pct": {
+        "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+        "threshold": 0.6213299999999999,
+        "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+        "validation_policy_candidates": 471,
+        "validation_target_fixtures": 1027
+      },
+      "narrow_20pct": {
+        "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+        "threshold": 0.7070145,
+        "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+        "validation_policy_candidates": 471,
+        "validation_target_fixtures": 1027
+      }
+    },
+    "dataset_sha256": "e7d70fb821d7c69339adfce51bbd7fe35161adda49c595124d1791fef1b56863",
+    "evaluation_first_run_targets": 656,
+    "evaluation_match_ids_and_outcomes_sha256": "ab7673f6281b8abed75ce3bbe2a9d12ee6bfc2fa3d78efb4c590a694e62abc5a",
+    "historical_evaluation_previously_inspected": true,
+    "historical_gap_to_72pct_broad": 9,
+    "historical_gap_to_75pct_broad": 16,
+    "independent_forward_validation": false,
+    "narrow": {
+      "a1_a2": {
+        "counts": {
+          "AGREE": 117
+        },
+        "performance": {
+          "AGREE": {
+            "accuracy": 0.7476635514018691,
+            "losses": 27,
+            "selected": 117,
+            "settled": 107,
+            "wins": 80
+          }
+        }
+      },
+      "accuracy": 0.7476635514018691,
+      "accuracy_wilson95": [
+        0.6577647569908553,
+        0.8203956765138767
+      ],
+      "brier": 0.18449877360533645,
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.7142857142857143,
+          "losses": 2,
+          "selected": 7,
+          "settled": 7,
+          "wins": 5
+        },
+        "CHALLENGER": {
+          "accuracy": 0.75,
+          "losses": 25,
+          "selected": 110,
+          "settled": 100,
+          "wins": 75
+        }
+      },
+      "log_loss": 0.5516634380155446,
+      "losses": 27,
+      "mean_agent_probability_disagreement": 0.11892651282051281,
+      "mean_winner_confidence": 0.7765278461538462,
+      "selected": 117,
+      "settled": 107,
+      "ungraded": 10,
+      "wins": 80
+    },
+    "no_production_changes": true,
+    "no_retrospective_training_or_threshold_selection": true,
+    "not_available_from_validated_first_run_source": [
+      "PIT_Elo_differences",
+      "PIT_surface_Elo",
+      "PIT_player_history_depth",
+      "PIT_serve_return_completeness",
+      "PIT_inactivity",
+      "PIT_surface_label",
+      "PIT_bookmaker_odds",
+      "PIT_ranking_revisions"
+    ],
+    "official_fixture_denominator": null,
+    "selected_ids": {
+      "broad": 275,
+      "broad_only": 158,
+      "broad_only_ids_sha256": "c8f33227e131dacdf43a546ebba7c2c1c4a739d1c0c88ff33a2336ccc79743c8",
+      "narrow": 117,
+      "narrow_missing_from_broad": 0,
+      "narrow_missing_ids": []
+    },
+    "source": "unchanged PR357 original first-run PIT SQL, read only",
+    "status": "NESTED_VERIFIED_BY_EXACT_MATCH_IDS",
+    "unsafe_original_exclusions": {
+      "UNSAFE_OR_LATE_FIRST_PREMATCH_ISSUE": 9,
+      "UNSAFE_RESULT_GRADED_AS_UNRESOLVED": 17
+    },
+    "validation_targets": 1027,
+    "version": "MANAGER_C_MARGINAL_NESTED_FIRST_ISSUE_V1"
+  }
+}
