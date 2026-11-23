@@ -175,3 +175,55 @@ def compare_snapshot(
         "not_retroactively_representable_as_live_issued":True,
         "requires_true_future_outcomes":True,
     }
+
+
+def capture_provisional_live_shadow(
+    request: PredictionRequest, *, capture_at: datetime,
+    match_start_at: datetime, original_result,
+    production_commit: str | None = None,
+) -> dict[str, Any]:
+    """Preserve actual live-time A3 exploratory probabilities, not retrospective picks.
+
+    Only called on the in-memory snapshot ALREADY used by the original production
+    prediction, before match start. Original individual provider ingestion
+    provenance is NOT independently proven by this adapter: label it explicitly
+    and prohibit these experiments from being called GREEN original-source proof.
+    Repeated production runs can occur; an independent first-run deduplication
+    manifest is needed before scoring any future outcome.
+    """
+    cutoff=_utc(request.as_of)
+    captured=_utc(capture_at)
+    start=_utc(match_start_at)
+    if not cutoff<=captured<=start-timedelta(minutes=30):
+        raise ValueError("live Agent3 shadow requires actual pre-match 30min timing")
+    profiles={
+        name:_soft_variant(request,edge_min=edge,cross_surface_weight=surface)
+        for name,(edge,surface) in PROFILES.items()
+    }
+    data={
+        "version":"A3_LIVE_SOFT_PIT_PROVISIONAL_V1",
+        "original_agent_model_version":DEFAULT_CONFIG.model_version,
+        "research_profiles_version":VERSION,
+        "production_git_sha":production_commit,
+        "player_1_id":request.player_1_id,
+        "player_2_id":request.player_2_id,
+        "surface_at_original_asof":request.surface,
+        "original_model_asof_utc":cutoff.isoformat(),
+        "research_captured_at_utc":captured.isoformat(),
+        "original_scheduled_start_at_utc":start.isoformat(),
+        "original_agent3_as_computed":_result_payload(original_result),
+        "research_soft_common_opponent_variants":profiles,
+        "no_new_history_or_market_fetch":True,
+        "production_model_pick_unchanged":True,
+        "actual_frozen_live_snapshot_not_retrospective_replay":True,
+        "independent_underlying_source_ingestion_verification":False,
+        "underlying_feature_snapshot_manifest_sha256":None,
+        "original_prediction_run_finalization_not_yet_verified":True,
+        "first_issued_unique_canonical_prediction_not_yet_verified":True,
+        "no_result_winner_used":True,
+        "not_calibrated_or_outcome_validated":True,
+        "cannot_promote_to_production":True,
+    }
+    return {**data,"record_sha256":hashlib.sha256(json.dumps(
+        data,sort_keys=True,separators=(",",":")
+    ).encode()).hexdigest()}
