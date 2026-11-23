@@ -84,9 +84,48 @@ def test_invalid_run_ids_fail_closed_without_db():
 
 def test_live_hook_after_issue_is_opt_in_nonblocking():
     source=inspect.getsource(batch._run_batch)
-    assert 'if os.environ.get("TENNIS_FORWARD_MANAGER_SHADOW_CAPTURE") == "1":' in source
+    assert 'shadow_capture_enabled = os.environ.get("TENNIS_FORWARD_MANAGER_SHADOW_CAPTURE") == "1"' in source
+    assert "if shadow_capture_enabled:" in source
+    assert "shadow_capture_failed += 1" in source
+    assert "capture_heartbeat(" in source
     assert "observe_first_issued_runs(" in source
     assert "TENNIS_FROZEN_SHADOW_CAPTURE_UNAVAILABLE" in source
     # Capture occurs after the runner has finalized the actual match forecasts.
     assert source.index("prediction_run_ids.append(result.prediction_run_id)")<source.index("observe_first_issued_runs(")
     assert len(FROZEN)==5
+
+
+@pytest.mark.parametrize("args, expected_status", [
+    ({"enabled": False, "attempted": 0, "successful": 0, "failed": 0, "records": 0}, "DISABLED"),
+    ({"enabled": True, "attempted": 0, "successful": 0, "failed": 0, "records": 0}, "NO_PRODUCTION_RUNS"),
+    ({"enabled": True, "attempted": 1, "successful": 1, "failed": 0, "records": 0}, "NO_FUTURE_FIRST_ISSUES"),
+    ({"enabled": True, "attempted": 3, "successful": 3, "failed": 0, "records": 9}, "CAPTURED"),
+    ({"enabled": True, "attempted": 3, "successful": 2, "failed": 1, "records": 5}, "PARTIAL_FAILURE"),
+    ({"enabled": True, "attempted": 1, "successful": 0, "failed": 1, "records": 0}, "ALL_ATTEMPTS_FAILED"),
+])
+def test_capture_heartbeat_always_distinguishes_observer_state(args, expected_status):
+    line = capture.capture_heartbeat(**args)
+    assert line.startswith("TENNIS_FROZEN_PROSPECTIVE_HEARTBEAT ")
+    row = json.loads(line.split(" ", 1)[1])
+    assert row["status"] == expected_status
+    assert row["enabled"] == args["enabled"]
+    assert row["attempted"] == row["successful"] + row["failed"]
+    assert row["persistent_storage_verified"] is False
+    assert row["published_model_picks_changed"] is False
+    assert row["records_logged"] == args["records"]
+
+
+@pytest.mark.parametrize("args", [
+    {"enabled": False, "attempted": 1, "successful": 1, "failed": 0, "records": 1},
+    {"enabled": True, "attempted": 2, "successful": 1, "failed": 0, "records": 1},
+    {"enabled": True, "attempted": -1, "successful": 0, "failed": 0, "records": 0},
+])
+def test_capture_heartbeat_fails_closed_on_inconsistent_counts(args):
+    with pytest.raises(ValueError):
+        capture.capture_heartbeat(**args)
+
+
+def test_live_capture_heartbeat_logged_before_success_message():
+    src = inspect.getsource(batch._run_batch)
+    assert src.index("_log(capture_heartbeat(") < src.index('"LIVE_BATCH_SUCCESS "')
+    assert src.index("observe_first_issued_runs(") < src.index("_log(capture_heartbeat(")

@@ -24,6 +24,47 @@ POLICY_FROZEN_SOURCE_SHA="177ec8146561c4e06d28e3e490dad38421388035"
 OBSERVATION_HORIZON_DAYS=4
 
 
+def capture_heartbeat(*, enabled: bool, attempted: int, successful: int,
+                      records: int, failed: int) -> str:
+    """Emit a no-secrets, no-query observer liveness proof for each successful batch.
+
+    A missing prospective summary is otherwise ambiguous: the flag may be off,
+    no production prediction run may have occurred, or the observer may have
+    failed. Counts describe logger attempts, NOT unique official eligible
+    matches, persisted archives, or settled predictions.
+    """
+    values = (attempted, successful, records, failed)
+    if any(not isinstance(value, int) or value < 0 for value in values):
+        raise ValueError("observer counters must be nonnegative integers")
+    if successful + failed != attempted:
+        raise ValueError("observer attempts must reconcile")
+    if not enabled and any(values):
+        raise ValueError("disabled observer cannot have capture attempts")
+    if not enabled:
+        status = "DISABLED"
+    elif attempted == 0:
+        status = "NO_PRODUCTION_RUNS"
+    elif failed:
+        status = "PARTIAL_FAILURE" if successful else "ALL_ATTEMPTS_FAILED"
+    elif records == 0:
+        status = "NO_FUTURE_FIRST_ISSUES"
+    else:
+        status = "CAPTURED"
+    return "TENNIS_FROZEN_PROSPECTIVE_HEARTBEAT " + json.dumps(
+        {
+            "enabled": enabled,
+            "attempted": attempted,
+            "successful": successful,
+            "failed": failed,
+            "records_logged": records,
+            "status": status,
+            "persistent_storage_verified": False,
+            "published_model_picks_changed": False,
+        },
+        sort_keys=True,
+    )
+
+
 def observe_first_issued_runs(*,dsn:str,run_ids:list[int]|tuple[int,...],
                               enabled:bool,log:Callable[[str],None],
                               capture_at:datetime|None=None,
