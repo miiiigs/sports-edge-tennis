@@ -88,7 +88,7 @@ def _soft_variant(request:PredictionRequest, *,edge_min:float,
     a,b=request.player_1_id,request.player_2_id
     snapshot=request.history_snapshot
     opps=(set(snapshot.adjacency.get(a,()))&
-          set(snapshot.adjacency.get(b,()))))-{a,b}
+          set(snapshot.adjacency.get(b,())))-{a,b}
     cutoff=_utc(request.as_of)
     evidence=[]
     for opp in sorted(opps):
