@@ -13,12 +13,13 @@ Operator must preserve logs. No historical rerun can recreate publication.
 from __future__ import annotations
 
 import json
+import os
 from datetime import UTC,datetime,timedelta
 from typing import Callable
 
 import psycopg
 
-from sports_edge_tennis.validation.prospective_manager_shadow_capture import run
+from sports_edge_tennis.validation.prospective_manager_shadow_capture import VERSION, run
 
 POLICY_FROZEN_SOURCE_SHA="177ec8146561c4e06d28e3e490dad38421388035"
 OBSERVATION_HORIZON_DAYS=4
@@ -87,6 +88,15 @@ def observe_first_issued_runs(*,dsn:str,run_ids:list[int]|tuple[int,...],
         report=run(read_only,captured_at=now,start=start,end=end,
                    source_sha=POLICY_FROZEN_SOURCE_SHA,
                    only_run_ids=seen)
+    # Original records themselves remain untouched; report metadata records
+    # the runtime source revision without mistaking it for every underlying
+    # agent model config or for verified historical feature publication clocks.
+    report["observer_record_schema_version"]=VERSION
+    report["railway_deployed_commit"]=(
+        os.environ.get("RAILWAY_GIT_COMMIT_SHA") or None
+    )
+    report["per_agent_original_model_version_verified"]=False
+    report["external_append_only_archive_verified"]=False
     for record in report.pop("genuine_future_shadow_records"):
         log("TENNIS_FROZEN_PROSPECTIVE_CANDIDATE "+
             json.dumps(record,sort_keys=True))
