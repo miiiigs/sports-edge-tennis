@@ -1,0 +1,327 @@
+{
+  "class": "AMBER_INTERNAL_FUTURE_SLATE_CACHE_DRYRUN_NOT_PROVIDER_COVERAGE",
+  "railway_deployment_id": "18b3ea1c-da8d-4607-9d1a-62a653a81b90",
+  "original_log_at_utc": "2026-11-23T12:06:35.343033158Z",
+  "code_sha": "a28af39b97ed529272d466d9d02e6cef603d6dd3",
+  "no_new_requests_or_cost": true,
+  "notes": [
+    "Only 2/71 internal eligible future fixture identities have warm verified OddsPapi cached IDs.",
+    "69 cold identities are not an immutable source mapping or a permitted tournament ID; never fabricate provider identity.",
+    "The live runner event reconciliation count and this cache-readiness counter measure DIFFERENT populations and cache rules.",
+    "Official complete ATP/Ch fixture universe still unavailable.",
+    "No subscription, query, odds or new live pick produced by dry-run."
+  ],
+  "result": {
+    "audited_at_utc": "2026-11-23T12:06:32.228075+00:00",
+    "counts": {
+      "identity_cache_missing": 69,
+      "internal_eligible_main_singles": 71,
+      "outside_prematch_or_horizon": 6,
+      "qualifying_or_unknown_draw_excluded": 26,
+      "warm_verified_oddspapi_identity": 2
+    },
+    "deferred_warm_fixture_count": 0,
+    "dryrun_bookmakers": [
+      "pinnacle+30",
+      "1xbet",
+      "bet365"
+    ],
+    "estimated_bookmaker_queries_per_cycle_IF_APPROVED": 3,
+    "estimated_monthly_queries_if_same_cadence": 2232,
+    "estimated_repairable_future_coverage": null,
+    "input_unique_canonical_fixture_count": 103,
+    "missing_or_invalid_cache_sample": [
+      {
+        "match_id": 134101,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134177,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134193,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134195,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134191,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134250,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134244,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134247,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134153,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134278,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134280,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134246,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134159,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134283,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134284,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134285,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134286,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134162,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134167,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134174,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134281,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134282,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134287,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134154,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134161,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134164,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134279,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134288,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134289,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134168,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134170,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134105,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134106,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134107,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134108,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134110,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134175,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134178,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134179,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134180,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134181,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134182,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134183,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134185,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134186,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134187,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134189,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134190,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134192,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134211,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134212,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134213,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134214,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134215,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134216,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134217,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134218,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134219,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134220,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134221,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134243,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134245,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134248,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134249,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134251,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134252,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134253,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134291,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      },
+      {
+        "match_id": 134290,
+        "reason": "NO_CACHED_ODDSPAPI_ID"
+      }
+    ],
+    "monthly_quota_limit": 5000,
+    "monthly_reserved_calls": 500,
+    "no_cold_unknown_tournament_requests_planned": true,
+    "no_database_writes": true,
+    "no_manager_pick_or_market_gate_change": true,
+    "no_new_subscription_or_incremental_bill": true,
+    "no_provider_calls_made": true,
+    "not_all_official_fixture_denominator": true,
+    "per_cycle_quota_limit": 5,
+    "provider_identity_not_equivalent_to_valid_odds": true,
+    "provisionally_schedulable_warm_fixture_count": 2,
+    "requires_separate_approval_before_actual_request_work": true,
+    "verified_warm_fixture_count": 2,
+    "version": "PREISSUE_ODDSPAPI_FULL_SLATE_DRYRUN_V1",
+    "warm_unique_tournament_count": 1
+  }
+}
