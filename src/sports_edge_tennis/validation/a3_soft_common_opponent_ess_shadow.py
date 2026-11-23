@@ -178,8 +178,8 @@ def compare_snapshot(
 
 
 def capture_provisional_live_shadow(
-    request: PredictionRequest, *, capture_at: datetime,
-    match_start_at: datetime, original_result,
+    request: PredictionRequest, *, canonical_match_id: int,
+    capture_at: datetime, match_start_at: datetime, original_result,
     production_commit: str | None = None,
 ) -> dict[str, Any]:
     """Preserve actual live-time A3 exploratory probabilities, not retrospective picks.
@@ -200,7 +200,10 @@ def capture_provisional_live_shadow(
         name:_soft_variant(request,edge_min=edge,cross_surface_weight=surface)
         for name,(edge,surface) in PROFILES.items()
     }
+    if not isinstance(canonical_match_id,int) or canonical_match_id<=0:
+        raise ValueError("original canonical match id required")
     data={
+        "canonical_match_id":canonical_match_id,
         "version":"A3_LIVE_SOFT_PIT_PROVISIONAL_V1",
         "original_agent_model_version":DEFAULT_CONFIG.model_version,
         "research_profiles_version":VERSION,
