@@ -291,7 +291,7 @@ def load_aligned_daily_model_pick_summaries(
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
                   AND mro.outcome_status IN (
-                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
                          mro.source_observed_at DESC,
@@ -307,7 +307,7 @@ def load_aligned_daily_model_pick_summaries(
             )::int AS scored,
             count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
             count(*) FILTER (
-                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
             )::int AS voids,
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED'
@@ -375,7 +375,7 @@ def load_daily_model_pick_summaries(
                 FROM match_result_observations mro
                 WHERE mro.match_id = d.match_id
                   AND mro.outcome_status IN (
-                      'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                      'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
                   )
                 ORDER BY mro.as_of DESC,
                          mro.source_observed_at DESC,
@@ -391,7 +391,7 @@ def load_daily_model_pick_summaries(
             )::int AS scored,
             count(*) FILTER (WHERE outcome_status IS NULL)::int AS pending,
             count(*) FILTER (
-                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED')
+                WHERE outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
             )::int AS voids,
             count(*) FILTER (
                 WHERE outcome_status = 'COMPLETED'
@@ -443,7 +443,7 @@ def load_daily_model_picks(
                 WHEN r.outcome_status = 'COMPLETED'
                      AND r.winner_side IN (1, 2)
                      AND r.winner_side <> p.selected_side THEN 'LOST'
-                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED') THEN 'VOID'
+                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED') THEN 'VOID'
                 ELSE 'PENDING'
             END AS result_status,
             (
@@ -483,7 +483,7 @@ def load_daily_model_picks(
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
               AND mro.outcome_status IN (
-                  'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
                      mro.source_observed_at DESC,
@@ -561,7 +561,7 @@ def load_aligned_daily_model_picks(
                 WHEN r.outcome_status = 'COMPLETED'
                      AND r.winner_side IN (1, 2)
                      AND r.winner_side <> p.selected_side THEN 'LOST'
-                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'CANCELLED') THEN 'VOID'
+                WHEN r.outcome_status IN ('RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED') THEN 'VOID'
                 ELSE 'PENDING'
             END AS result_status,
             (
@@ -601,7 +601,7 @@ def load_aligned_daily_model_picks(
             FROM match_result_observations mro
             WHERE mro.match_id = p.match_id
               AND mro.outcome_status IN (
-                  'COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED'
+                  'COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED'
               )
             ORDER BY mro.as_of DESC,
                      mro.source_observed_at DESC,

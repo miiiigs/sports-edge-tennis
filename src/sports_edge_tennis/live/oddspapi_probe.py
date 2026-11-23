@@ -68,7 +68,6 @@ MAX_UNMATCHED_REPORTED = 40
 EXPECTED_MAPPINGS = {
     "pinnacle+30": ("SHARP", "PINNACLE"),
     "1xbet": ("OFFERED", None),
-    "unibet": ("OFFERED", None),
     "bet365": ("OFFERED", None),
 }
 PASS, FAIL, NOT_EVALUATED = "PASS", "FAIL", "NOT_EVALUATED"

@@ -9,7 +9,8 @@ analytics without changing Today, Manager, or production decision/publication be
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 import psycopg
@@ -751,6 +752,54 @@ def _pending_result_diagnostics_cycle(dsn: str) -> None:
         _log(f"PENDING_RESULT_DIAGNOSTICS_FAILED error_type={type(exc).__name__}")
 
 
+def _source_attendance_cycle(dsn: str) -> None:
+    """Fail-isolated missing-day watchdog; never revises historical picks.
+
+    Re-check the past seven *completed* Philippine dates independently from
+    the active three-day live prediction horizon. An issue that kept the
+    source/prediction jobs from running cannot manufacture historical picks.
+    """
+    try:
+        from sports_edge_tennis.dashboard.source_attendance import (
+            load_source_attendance,
+        )
+        now = datetime.now(UTC)
+        last = now.astimezone(ZoneInfo("Asia/Manila")).date() - timedelta(days=1)
+        first = last - timedelta(days=6)
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            report = load_source_attendance(
+                conn, first=first, last=last, as_of=now,
+            )
+        for day in report["days"]:
+            _log(
+                "DAILY_SOURCE_ATTENDANCE "
+                f"day={day['date']} canonical_now={day['canonical_fixtures_now']} "
+                f"pre_match_observed={day['source_observed_before_30min']} "
+                f"ingestion_jobs={day['ingestion_jobs']} "
+                f"prediction_runs={day['prediction_runs']} "
+                f"status={day['source_attendance']} "
+                "no_retroactive_picks=true"
+            )
+            if day["canonical_fixtures_now"] and day["source_attendance"] in {
+                "HISTORICAL_SOURCE_AND_RUN_GAP",
+                "NO_VERIFIED_PREMATCH_SOURCE",
+                "NO_PREDICTION_RUN_RECORDED",
+            }:
+                _log(
+                    "DAILY_SOURCE_COVERAGE_WARNING "
+                    f"day={day['date']} reason={day['source_attendance']} "
+                    "action=REVIEW_UPSTREAM_RUNNER_OR_PROVIDER "
+                    "auto_grade=FALSE retroactive_predict=FALSE"
+                )
+    except Exception as exc:  # noqa: BLE001 - nonblocking source observability
+        _log(
+            "DAILY_SOURCE_ATTENDANCE_UNAVAILABLE "
+            f"error_type={type(exc).__name__} read_only=true"
+        )
+
+
 def _manager_daily_evidence_cycle(dsn: str) -> None:
     """Log the past seven completed Manila dates; never alters production picks."""
     try:
@@ -804,6 +853,24 @@ def _aligned_five_day_evidence_cycle(dsn: str) -> None:
             _log(line)
     except Exception as exc:  # noqa: BLE001 - nonblocking independent report
         _log(f"ALIGNED_FIVE_DAY_EVIDENCE_FAILED error_type={type(exc).__name__}")
+
+
+
+def _qualified_shadow_evidence_cycle(dsn: str) -> None:
+    """Read-only qualified-confidence reporting; never overrides Model Picks."""
+    try:
+        from sports_edge_tennis.performance.qualified_shadow_evidence import (
+            load as load_qualified_shadow,
+            render as render_qualified_shadow,
+        )
+        with psycopg.connect(
+            dsn, options="-c default_transaction_read_only=on"
+        ) as conn:
+            days = load_qualified_shadow(conn, as_of=datetime.now(UTC))
+        for line in render_qualified_shadow(days):
+            _log(line)
+    except Exception as exc:  # noqa: BLE001 - optional read-only research telemetry
+        _log(f"QUALIFIED_SHADOW_FAILED error_type={type(exc).__name__}")
 
 
 def _a1_evidence_cycle(dsn: str) -> None:
@@ -1056,6 +1123,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         live_status=live_status,
         failed_slates=int(live_summary.get("failed_slates", 0)),
     )
+    _source_attendance_cycle(dsn)
     if live_status != 0:
         # Odds/fixture failures must not suppress bounded result recovery for
         # already-issued production picks. This cannot issue new picks or wagers.
@@ -1070,6 +1138,7 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
             _manager_daily_evidence_cycle(dsn)
             _aligned_replay_evidence_cycle(dsn)
             _aligned_five_day_evidence_cycle(dsn)
+            _qualified_shadow_evidence_cycle(dsn)
         # Preserve the original live failure status, no shadow/publication work.
         return live_status
 
@@ -1093,10 +1162,12 @@ def _run_batch(dsn: str, argv: list[str] | None = None) -> int:
         _manager_daily_evidence_cycle(dsn)
         _aligned_replay_evidence_cycle(dsn)
         _aligned_five_day_evidence_cycle(dsn)
+        _qualified_shadow_evidence_cycle(dsn)
         return 2
     _manager_daily_evidence_cycle(dsn)
     _aligned_replay_evidence_cycle(dsn)
     _aligned_five_day_evidence_cycle(dsn)
+    _qualified_shadow_evidence_cycle(dsn)
 
     _shadow_cycle(
         dsn,

@@ -1,0 +1,44 @@
+name: Tennis A3 A4 Guide Research (DB Free)
+
+on:
+  pull_request:
+    paths:
+      - "src/sports_edge_tennis/performance/a4_quality_shadow.py"
+      - "src/sports_edge_tennis/performance/v2_*.py"
+      - "ops/a4_quality_shadow.py"
+      - "ops/a4_guide_quotes.sql"
+      - "tests/test_a4_quality_shadow.py"
+      - "tests/test_tennis_nov*_production_snapshot.py"
+      - "research/tennis_a3_a4_guide_20261110/**"
+      - ".github/workflows/tennis-a4-research.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  a4-research:
+    name: A3 A4 reliability and Guide Odds offline regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install project and pytest
+        run: python -m pip install -e . "pytest>=8,<10"
+      - name: Compile original A3/A4 research modules
+        run: |
+          python -m py_compile \
+            src/sports_edge_tennis/performance/a4_quality_shadow.py \
+            src/sports_edge_tennis/performance/v2_quality_research.py \
+            src/sports_edge_tennis/performance/v2_walkforward.py \
+            ops/a4_quality_shadow.py \
+            tests/test_a4_quality_shadow.py
+      - name: Run focused A3 A4 shadow tests
+        run: python -m pytest -q tests/test_a4_quality_shadow.py tests/test_tennis_nov10_production_snapshot.py tests/test_tennis_nov11_production_snapshot.py
+      - name: Check read-only CLI
+        run: python ops/a4_quality_shadow.py --help

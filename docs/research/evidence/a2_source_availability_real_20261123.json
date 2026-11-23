@@ -1,0 +1,290 @@
+{
+  "evidence_class": "AMBER_ASOF_SOURCE_COUNTS_NOT_ORIGINAL_PIT",
+  "log_timestamp_utc": "2026-11-23T12:02:50.780808000Z",
+  "railway_deployment_id": "a81e1f32-f4c1-4760-8330-c150451bdf8e",
+  "runner_commit_sha": "a28af39b97ed529272d466d9d02e6cef603d6dd3",
+  "free_read_only_audit": true,
+  "external_provider_calls": 0,
+  "rights_caution": "SACKMANN CC BY-NC-SA historical raw data cannot be assumed commercially usable; API_TENNIS/SPORTRADAR contract and per-prediction PIT also need validation",
+  "source_partition_essential_complete": {
+    "sackmann": 115678,
+    "other_sources": 5011
+  },
+  "report": {
+    "PIT_for_each_original_prediction_verified": false,
+    "as_of_utc": "2026-11-23T11:50:00+00:00",
+    "by_tour": {
+      "ATP_MAIN": {
+        "essential_complete": 37520,
+        "essential_coverage_pct": 88.56994476181484,
+        "extended_complete": 36572,
+        "recorded_matches": 42362,
+        "two_sided": 38970
+      },
+      "CHALLENGER": {
+        "essential_complete": 83169,
+        "essential_coverage_pct": 90.47189104516578,
+        "extended_complete": 79792,
+        "recorded_matches": 91928,
+        "two_sided": 83754
+      }
+    },
+    "db_writes": false,
+    "exact_raw_player_id_lower_bound_only": true,
+    "interpretation": "Two-sided coherent RAW_SOURCE historical serve/return point coverage with exact source player IDs is a lower bound for Gollub's opponent-adjusted A2. Existing A2 can bridge player identities, which this source-only audit does not. PIT at an original prediction time and third-party commercial use rights remain unproven.",
+    "missing_values_imputed": false,
+    "production_model_changed": false,
+    "provider_identity_bridge_applied": false,
+    "source_inventory": [
+      {
+        "distinct_matches": 117713,
+        "observation_kind": "RAW_SOURCE",
+        "rows": 235426,
+        "source_system": "SACKMANN"
+      },
+      {
+        "distinct_matches": 4715,
+        "observation_kind": "RAW_SOURCE",
+        "rows": 9433,
+        "source_system": "API_TENNIS"
+      },
+      {
+        "distinct_matches": 686,
+        "observation_kind": "RAW_SOURCE",
+        "rows": 1372,
+        "source_system": "SPORTRADAR"
+      }
+    ],
+    "source_licenses_verified": false,
+    "status": "HISTORICAL_STAT_SOURCE_AVAILABILITY_ONLY",
+    "totals": {
+      "essential_complete": 120689,
+      "extended_complete": 116364,
+      "recorded_matches": 134290,
+      "two_sided": 122724
+    },
+    "tour_surface": [
+      {
+        "essential_complete": 11171,
+        "essential_coverage_pct": 96.55977180395885,
+        "extended_complete": 11171,
+        "recorded_matches": 11569,
+        "stat_source": "SACKMANN",
+        "surface": "CLAY",
+        "tour": "ATP_MAIN",
+        "two_sided": 11569
+      },
+      {
+        "essential_complete": 4230,
+        "essential_coverage_pct": 92.176944868163,
+        "extended_complete": 4230,
+        "recorded_matches": 4589,
+        "stat_source": "SACKMANN",
+        "surface": "GRASS",
+        "tour": "ATP_MAIN",
+        "two_sided": 4589
+      },
+      {
+        "essential_complete": 664,
+        "essential_coverage_pct": 100,
+        "extended_complete": 0,
+        "recorded_matches": 664,
+        "stat_source": "API_TENNIS",
+        "surface": "HARD",
+        "tour": "ATP_MAIN",
+        "two_sided": 664
+      },
+      {
+        "essential_complete": 0,
+        "essential_coverage_pct": 0,
+        "extended_complete": 0,
+        "recorded_matches": 87,
+        "stat_source": "NO_COHERENT_RAW_STAT_COHORT",
+        "surface": "HARD",
+        "tour": "ATP_MAIN",
+        "two_sided": 0
+      },
+      {
+        "essential_complete": 21080,
+        "essential_coverage_pct": 96.81715886648601,
+        "extended_complete": 21080,
+        "recorded_matches": 21773,
+        "stat_source": "SACKMANN",
+        "surface": "HARD",
+        "tour": "ATP_MAIN",
+        "two_sided": 21773
+      },
+      {
+        "essential_complete": 4,
+        "essential_coverage_pct": 100,
+        "extended_complete": 4,
+        "recorded_matches": 4,
+        "stat_source": "SPORTRADAR",
+        "surface": "HARD",
+        "tour": "ATP_MAIN",
+        "two_sided": 4
+      },
+      {
+        "essential_complete": 284,
+        "essential_coverage_pct": 100,
+        "extended_complete": 0,
+        "recorded_matches": 284,
+        "stat_source": "API_TENNIS",
+        "surface": "UNKNOWN",
+        "tour": "ATP_MAIN",
+        "two_sided": 284
+      },
+      {
+        "essential_complete": 0,
+        "essential_coverage_pct": 0,
+        "extended_complete": 0,
+        "recorded_matches": 3305,
+        "stat_source": "NO_COHERENT_RAW_STAT_COHORT",
+        "surface": "UNKNOWN",
+        "tour": "ATP_MAIN",
+        "two_sided": 0
+      },
+      {
+        "essential_complete": 87,
+        "essential_coverage_pct": 100,
+        "extended_complete": 87,
+        "recorded_matches": 87,
+        "stat_source": "SPORTRADAR",
+        "surface": "UNKNOWN",
+        "tour": "ATP_MAIN",
+        "two_sided": 87
+      },
+      {
+        "essential_complete": 98,
+        "essential_coverage_pct": 100,
+        "extended_complete": 98,
+        "recorded_matches": 98,
+        "stat_source": "SACKMANN",
+        "surface": "CARPET",
+        "tour": "CHALLENGER",
+        "two_sided": 98
+      },
+      {
+        "essential_complete": 1039,
+        "essential_coverage_pct": 100,
+        "extended_complete": 0,
+        "recorded_matches": 1039,
+        "stat_source": "API_TENNIS",
+        "surface": "CLAY",
+        "tour": "CHALLENGER",
+        "two_sided": 1039
+      },
+      {
+        "essential_complete": 0,
+        "essential_coverage_pct": 0,
+        "extended_complete": 0,
+        "recorded_matches": 63,
+        "stat_source": "NO_COHERENT_RAW_STAT_COHORT",
+        "surface": "CLAY",
+        "tour": "CHALLENGER",
+        "two_sided": 0
+      },
+      {
+        "essential_complete": 37178,
+        "essential_coverage_pct": 99.35594216841712,
+        "extended_complete": 37178,
+        "recorded_matches": 37419,
+        "stat_source": "SACKMANN",
+        "surface": "CLAY",
+        "tour": "CHALLENGER",
+        "two_sided": 37419
+      },
+      {
+        "essential_complete": 163,
+        "essential_coverage_pct": 100,
+        "extended_complete": 163,
+        "recorded_matches": 163,
+        "stat_source": "SPORTRADAR",
+        "surface": "CLAY",
+        "tour": "CHALLENGER",
+        "two_sided": 163
+      },
+      {
+        "essential_complete": 1413,
+        "essential_coverage_pct": 99.64739069111424,
+        "extended_complete": 1413,
+        "recorded_matches": 1418,
+        "stat_source": "SACKMANN",
+        "surface": "GRASS",
+        "tour": "CHALLENGER",
+        "two_sided": 1418
+      },
+      {
+        "essential_complete": 1615,
+        "essential_coverage_pct": 100,
+        "extended_complete": 0,
+        "recorded_matches": 1615,
+        "stat_source": "API_TENNIS",
+        "surface": "HARD",
+        "tour": "CHALLENGER",
+        "two_sided": 1615
+      },
+      {
+        "essential_complete": 0,
+        "essential_coverage_pct": 0,
+        "extended_complete": 0,
+        "recorded_matches": 157,
+        "stat_source": "NO_COHERENT_RAW_STAT_COHORT",
+        "surface": "HARD",
+        "tour": "CHALLENGER",
+        "two_sided": 0
+      },
+      {
+        "essential_complete": 40508,
+        "essential_coverage_pct": 99.17007368962224,
+        "extended_complete": 40508,
+        "recorded_matches": 40847,
+        "stat_source": "SACKMANN",
+        "surface": "HARD",
+        "tour": "CHALLENGER",
+        "two_sided": 40847
+      },
+      {
+        "essential_complete": 185,
+        "essential_coverage_pct": 100,
+        "extended_complete": 185,
+        "recorded_matches": 185,
+        "stat_source": "SPORTRADAR",
+        "surface": "HARD",
+        "tour": "CHALLENGER",
+        "two_sided": 185
+      },
+      {
+        "essential_complete": 723,
+        "essential_coverage_pct": 100,
+        "extended_complete": 0,
+        "recorded_matches": 723,
+        "stat_source": "API_TENNIS",
+        "surface": "UNKNOWN",
+        "tour": "CHALLENGER",
+        "two_sided": 723
+      },
+      {
+        "essential_complete": 0,
+        "essential_coverage_pct": 0,
+        "extended_complete": 0,
+        "recorded_matches": 7954,
+        "stat_source": "NO_COHERENT_RAW_STAT_COHORT",
+        "surface": "UNKNOWN",
+        "tour": "CHALLENGER",
+        "two_sided": 0
+      },
+      {
+        "essential_complete": 247,
+        "essential_coverage_pct": 100,
+        "extended_complete": 247,
+        "recorded_matches": 247,
+        "stat_source": "SPORTRADAR",
+        "surface": "UNKNOWN",
+        "tour": "CHALLENGER",
+        "two_sided": 247
+      }
+    ],
+    "version": "A2_TWO_SIDED_SERVE_RETURN_AVAILABILITY_RAW_COHORT_V2"
+  }
+}

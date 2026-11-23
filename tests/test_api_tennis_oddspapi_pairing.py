@@ -424,8 +424,8 @@ def test_batch_api_tennis_oddspapi_never_calls_pinnapi_and_discovers_without_bet
     assert calls["price"][0]["source_systems"] == ("API_TENNIS",)
     assert calls["discovery"][0][0] == "odds-key"
     assert calls["board"][0][1]["tournament_ids"] == (303,)
-    # Discovery (1) + 4 books x 1 chunk stays within the 5-request cycle cap.
-    assert calls["board"][0][1]["fallback_budget"] == 0
+    # Renewed plan: discovery (1) + 3 books x 1 chunk = 4 requests, leaving one capped 404 fallback.
+    assert calls["board"][0][1]["fallback_budget"] == 1
     assert [(c.canonical_match_id, c.player_orientation) for c in calls["cached"]] == [(10, "REVERSED")]
     out = capsys.readouterr().out
     assert "odds_provider=ODDSPAPI_TENNIS" in out

@@ -5,7 +5,7 @@ Only persisted ``BET`` decisions are financially settled. ``NO_BET`` and
 
 Tennis retirement and walkover handling varies by bookmaker. V1 therefore uses a
 conservative provider-neutral rule: only a normally ``COMPLETED`` match settles
-WON/LOST; ``RETIRED`` and ``WALKOVER`` are VOID; ``CANCELLED`` is CANCELLED.
+WON/LOST; ``RETIRED``, ``WALKOVER`` and ``DEFAULTED`` are VOID; ``CANCELLED`` is CANCELLED.
 This avoids inventing bookmaker-specific grading rules we do not possess.
 
 ``decision_settlements`` is append-only, so this service inserts only final rows.
@@ -27,7 +27,7 @@ from typing import Literal
 
 import psycopg
 
-SETTLEMENT_POLICY_VERSION = "tennis_match_winner_settlement_v1"
+SETTLEMENT_POLICY_VERSION = "tennis_match_winner_settlement_v2"
 SettlementStatus = Literal["WON", "LOST", "VOID", "CANCELLED"]
 
 
@@ -78,7 +78,7 @@ def classify_match_winner_settlement(
         if winner_side not in (1, 2):
             raise ValueError("COMPLETED result must carry winner_side 1 or 2")
         return "WON" if winner_side == selection_side else "LOST"
-    if outcome_status in {"RETIRED", "WALKOVER"}:
+    if outcome_status in {"RETIRED", "WALKOVER", "DEFAULTED"}:
         return "VOID"
     if outcome_status == "CANCELLED":
         return "CANCELLED"
@@ -91,7 +91,7 @@ def _latest_result_truth(conn: psycopg.Connection, *, match_id: int) -> _ResultT
         SELECT match_result_observation_id, outcome_status::text, winner_side
         FROM match_result_observations
         WHERE match_id = %s
-          AND outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+          AND outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
         ORDER BY as_of DESC, source_observed_at DESC, match_result_observation_id DESC
         LIMIT 1
         """,
@@ -110,7 +110,7 @@ def _settlement_notes(result: _ResultTruth, status: SettlementStatus) -> str:
     rule = {
         "WON": "completed_selected_side_won",
         "LOST": "completed_selected_side_lost",
-        "VOID": "retired_or_walkover_provider_neutral_void",
+        "VOID": "retired_walkover_or_default_provider_neutral_void",
         "CANCELLED": "match_cancelled",
     }[status]
     return (

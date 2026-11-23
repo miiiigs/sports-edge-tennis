@@ -802,7 +802,7 @@ def _latest_terminal_result(conn: psycopg.Connection, match_id: int):
         SELECT match_result_observation_id, outcome_status::text, winner_side
         FROM match_result_observations
         WHERE match_id = %s
-          AND outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'CANCELLED')
+          AND outcome_status IN ('COMPLETED', 'RETIRED', 'WALKOVER', 'DEFAULTED', 'CANCELLED')
         ORDER BY as_of DESC, source_observed_at DESC, match_result_observation_id DESC
         LIMIT 1
         """,
@@ -1070,7 +1070,7 @@ def finalize_shadow_clv(
 
         reason = None
         closing_same = closing_sharp = margin = clv = None
-        if str(match_status) in {"CANCELLED", "POSTPONED", "WALKOVER"}:
+        if str(match_status) in {"CANCELLED", "POSTPONED", "WALKOVER", "DEFAULTED"}:
             reason = "MATCH_NOT_PLAYED_AS_SCHEDULED"
         elif offered is None:
             reason = "PRICE_TAKEN_LINEAGE_MISSING"

@@ -1,0 +1,128 @@
+{
+  "packet_version": "REVIEWED_PUBLIC_PENDING_RECOVERY_V1",
+  "reviewed_at_utc": "2026-11-19T06:42:00Z",
+  "semantics": {
+    "source_system": "REVIEWED_PUBLIC_CORROBORATION",
+    "no_backdating": true,
+    "no_prediction_mutation": true,
+    "no_match_version_mutation": true,
+    "settlement_policy": "completed may grade W/L; cancelled grades CANCELLED/VOID-equivalent per existing settlement reporting"
+  },
+  "cases": [
+    {
+      "match_id": 130903,
+      "expected": {
+        "player_1": "T. Legout",
+        "player_2": "I. Marcondes",
+        "match_start_at_utc": "2026-09-26T21:05:00Z",
+        "source_system": "SPORTRADAR",
+        "source_match_id": "sr:sport_event:74753234",
+        "round_code": "semifinal",
+        "qualifying_flag": false
+      },
+      "result": {
+        "outcome_status": "COMPLETED",
+        "winner_side": 2,
+        "sets_won_player_1": 1,
+        "sets_won_player_2": 2,
+        "scoreline_text": "7-6(5) 5-7 5-7"
+      },
+      "evidence": [
+        {
+          "url": "https://www.tennis.com/tournaments/atp-challenger-san-diego-2-usa/matches/t-legout-vs-i-marcondes-2026-09-26",
+          "note": "Completed semifinal; Marcondes won 6-7(5), 7-5, 7-5."
+        },
+        {
+          "url": "https://www.365scores.com/tennis/match/challenger-san-diego-2-5478/igor-marcondes-timo-legout-68756-124956-5478",
+          "note": "Independent score corroboration."
+        }
+      ],
+      "identity_note": "Canonical tournament display name retains a stale '- Qualification' suffix, but qualifying_flag=false, round_code=semifinal, pair/date/source identity are unique."
+    },
+    {
+      "match_id": 133361,
+      "expected": {
+        "player_1": "L. Tu",
+        "player_2": "S. Ryan Ziegann",
+        "match_start_at_utc": "2026-11-08T06:15:00Z",
+        "source_system": "API_TENNIS",
+        "source_match_id": "12178118"
+      },
+      "result": {
+        "outcome_status": "CANCELLED",
+        "winner_side": null,
+        "sets_won_player_1": null,
+        "sets_won_player_2": null,
+        "scoreline_text": "cancelled; Li Tu withdrawn"
+      },
+      "evidence": [
+        {
+          "url": "https://www.flashscore.com/match/tennis/tu-li-6XW2OZBr/ryan-ziegann-sam-jFAjgL2S/",
+          "note": "Cancelled; Li Tu withdrawn."
+        },
+        {
+          "url": "https://www.tennislive.net/atp-men/brisbane-3-2026/",
+          "note": "Draw progression corroborates replacement/cancellation rather than completed Tu-Ziegann match."
+        }
+      ]
+    },
+    {
+      "match_id": 133347,
+      "expected": {
+        "player_1": "N. Honda",
+        "player_2": "S. Sakellaridis",
+        "match_start_at_utc": "2026-11-10T01:10:00Z",
+        "source_system": "API_TENNIS",
+        "source_match_id": "12178121"
+      },
+      "result": {
+        "outcome_status": "CANCELLED",
+        "winner_side": null,
+        "sets_won_player_1": null,
+        "sets_won_player_2": null,
+        "scoreline_text": "cancelled; Stefanos Sakellaridis withdrawn/replaced"
+      },
+      "evidence": [
+        {
+          "url": "https://www.flashscore.com/match/tennis/honda-naoya-bPFSuHdh/sakellaridis-stefanos-8XDS9KIA/",
+          "note": "Cancelled; Sakellaridis withdrawn."
+        },
+        {
+          "url": "https://www.tennislive.net/atp-men/matsuyama-2026/",
+          "note": "Honda instead played Chun-Hsin Tseng in the round."
+        }
+      ]
+    },
+    {
+      "match_id": 133978,
+      "expected": {
+        "player_1": "C. Ugo Carabelli",
+        "player_2": "F. Meligeni Alves",
+        "match_start_at_utc": "2026-11-17T16:30:00Z",
+        "source_system": "API_TENNIS",
+        "source_match_id": "12180819"
+      },
+      "result": {
+        "outcome_status": "CANCELLED",
+        "winner_side": null,
+        "sets_won_player_1": null,
+        "sets_won_player_2": null,
+        "scoreline_text": "cancelled; Ugo Carabelli withdrawal/replacement"
+      },
+      "evidence": [
+        {
+          "url": "https://www.tenishoy.com/partidos/ugo-carabelli-vs-meligeni-alves-montevideo-2026",
+          "note": "Original pairing listed cancelled; Meligeni later played Boscardin Dias."
+        },
+        {
+          "url": "https://www.betexplorer.com/tennis/atp-singles/montevideo/camilo-ugo-carabelli-felipe-meligeni-alves/",
+          "note": "Independent cancellation listing."
+        },
+        {
+          "url": "https://www.uruguayopen.com/wp-content/uploads/2026/11/MDS.pdf",
+          "note": "Official draw revision shows Ugo Carabelli withdrawal and replacement."
+        }
+      ]
+    }
+  ]
+}
