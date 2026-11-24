@@ -59,6 +59,8 @@ def identity(fixture, events, index, audit_at):
     if len(candidates) != 1:
         return "IDENTITY_CONFLICT", None
     event = events[next(iter(candidates))]
+    if len(index[("ODDSPAPI", str(event["event_id"]).strip())]) != 1:
+        return "IDENTITY_CONFLICT", None
     # Conflicting known identifiers must not be ignored when one other ID agrees.
     fk, ek = dict(keys(fixture["source_ids"])), dict(event_keys(event))
     if any(fk[k] != ek[k] for k in fk.keys() & ek.keys()):
@@ -83,6 +85,8 @@ def market(fixture, event, quotes, audit_at, book):
     cutoff = stamp(fixture["cutoff"])
     if cutoff > audit_at or cutoff > stamp(fixture["start_at"]) - timedelta(minutes=30):
         return "INVALID_CUTOFF", None
+    if stamp(event["observed_at"]) > cutoff:
+        return "IDENTITY_NOT_AVAILABLE_AT_CUTOFF", None
     rows = [q for q in quotes if q.get("bookmaker") == book
             and q.get("market") == "MATCH_WINNER"]
     if not rows:
