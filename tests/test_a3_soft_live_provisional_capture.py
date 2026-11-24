@@ -154,3 +154,61 @@ def test_shadow_logging_failure_is_nonblocking(monkeypatch):
         raise OSError("closed log pipe")
     monkeypatch.setattr("builtins.print", broken_print)
     assert full_slate._emit_a3_shadow_event("TEST", {}) is False
+
+
+@pytest.mark.parametrize("violation", ["match_id", "status", "as_of", "observed", "ingested"])
+def test_postgres_original_version_pit_rejects_invalid_row(
+    postgres_dsn, monkeypatch, violation,
+):
+    import psycopg
+
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        # Session-local table: exercises the exact observer SELECT without
+        # altering the durable match-version schema or any fixtures.
+        conn.execute("""
+            CREATE TEMP TABLE match_versions (
+                match_version_id bigint, match_id bigint, match_start_at timestamptz,
+                match_status text, as_of timestamptz,
+                source_observed_at timestamptz, ingested_at timestamptz
+            )
+        """)
+        base = [42, 134291, NOW + timedelta(hours=5), "SCHEDULED", NOW, NOW, NOW]
+        index = {"match_id": 1, "status": 3, "as_of": 4, "observed": 5, "ingested": 6}[violation]
+        base[index] = (999 if index == 1 else "CANCELLED" if index == 3
+                       else NOW + timedelta(seconds=1))
+        conn.execute("INSERT INTO match_versions VALUES (%s,%s,%s,%s,%s,%s,%s)", base)
+        monkeypatch.setattr(full_slate, "_utc_now", lambda: NOW)
+        req = request()
+        target = SimpleNamespace(match_id=134291, match_version_id=42)
+        assert not full_slate._observe_a3_soft_shadow(
+            conn, target=target, request=req, original_result=predict(req),
+            as_of=NOW, prediction_run_id=77,
+        )
+        assert conn.execute("SELECT 1").fetchone() == (1,)
+
+
+def test_postgres_observer_uses_selected_version_not_newer_version(postgres_dsn, monkeypatch):
+    import psycopg
+
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        conn.execute("""
+            CREATE TEMP TABLE match_versions (
+                match_version_id bigint, match_id bigint, match_start_at timestamptz,
+                match_status text, as_of timestamptz,
+                source_observed_at timestamptz, ingested_at timestamptz
+            )
+        """)
+        start = NOW + timedelta(hours=5)
+        conn.execute("INSERT INTO match_versions VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                     (42, 134291, start, "SCHEDULED", NOW, NOW, NOW))
+        later = NOW + timedelta(seconds=1)
+        conn.execute("INSERT INTO match_versions VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                     (43, 134291, NOW+timedelta(hours=6), "SCHEDULED", later, later, later))
+        monkeypatch.setattr(full_slate, "_utc_now", lambda: NOW)
+        req = request()
+        record = full_slate._capture_optional_a3_soft_shadow(
+            conn, target=SimpleNamespace(match_id=134291, match_version_id=42),
+            request=req, original_result=predict(req), as_of=NOW, prediction_run_id=77,
+        )
+        assert record["original_scheduled_start_at_utc"] == start.isoformat()
+        assert record["original_match_version_id"] == 42

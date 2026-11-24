@@ -723,3 +723,49 @@ def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psyco
     assert outcome.prediction_run_id > 0
     assert outcome.target_count == 1
     assert outcome.prediction_result_count == 3
+
+
+def test_optional_a3_sql_failure_preserves_full_slate_and_manager(db, monkeypatch, capsys):
+    """Compare the persisted originals, not a reconstructed model pick."""
+    from sports_edge_tennis.runner import full_slate
+
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    request = _request(db, match_ids=[target["match_id"]])
+
+    def originals(run_id):
+        predictions = db.execute("""
+            SELECT match_id, agent_config_version_id, agent_code, prediction_status,
+                   selection_side, win_probability, probability_representation,
+                   model_version, feature_version, as_of, abstain_reason_code
+            FROM predictions WHERE prediction_run_id=%s ORDER BY agent_code
+        """, (run_id,)).fetchall()
+        manager = db.execute("""
+            SELECT match_id, manager_policy_version_id, manager_status, selected_side,
+                   consensus_probability, active_agent_count, abstaining_agent_count,
+                   probability_spread, reason_code, as_of
+            FROM manager_consensus_results WHERE prediction_run_id=%s
+        """, (run_id,)).fetchall()
+        return predictions, manager
+
+    def fail_optional(conn, **kwargs):
+        conn.execute("SELECT 1/0")
+
+    monkeypatch.setattr(full_slate, "_capture_optional_a3_soft_shadow", fail_optional)
+    monkeypatch.delenv("TENNIS_A3_SOFT_SHADOW_CAPTURE", raising=False)
+    control = run_full_slate(db, request)
+    assert control.runner_status == "COMPLETED"
+    assert "TENNIS_A3_SOFT_SHADOW_" not in capsys.readouterr().out
+
+    monkeypatch.setenv("TENNIS_A3_SOFT_SHADOW_CAPTURE", "1")
+    experimental = run_full_slate(db, request)
+    assert experimental.runner_status == "COMPLETED"
+    assert experimental.prediction_result_count == 3
+    assert experimental.manager_result_count == 1
+    assert originals(control.prediction_run_id) == originals(experimental.prediction_run_id)
+    output = capsys.readouterr().out
+    assert '"sqlstate": "22012"' in output
+    assert "TENNIS_A3_SOFT_SHADOW_HEARTBEAT" in output
+    assert '"attempted": 1' in output
+    assert '"failed": 1' in output
+    assert '"captured": 0' in output
