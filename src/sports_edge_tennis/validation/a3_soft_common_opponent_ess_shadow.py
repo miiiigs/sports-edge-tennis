@@ -67,7 +67,7 @@ def _edge(snapshot:Agent3HistorySnapshot,player:int,opponent:int,
     for x in edge.all_observations:
         t=_utc(x.observed_at)
         age=(cutoff-t).total_seconds()/86400
-        if age<0:
+        if age<=0:
             raise ValueError("future observation in historical support graph")
         if age>DEFAULT_CONFIG.lookback_days:
             continue
@@ -181,6 +181,9 @@ def capture_provisional_live_shadow(
     request: PredictionRequest, *, canonical_match_id: int,
     capture_at: datetime, match_start_at: datetime, original_result,
     production_commit: str | None = None,
+    prediction_run_id: int | None = None,
+    match_version_id: int | None = None,
+    tour_scope: str | None = None,
 ) -> dict[str, Any]:
     """Preserve actual live-time A3 exploratory probabilities, not retrospective picks.
 
@@ -204,6 +207,13 @@ def capture_provisional_live_shadow(
     }
     data={
         "canonical_match_id":canonical_match_id,
+        "prediction_run_id":prediction_run_id,
+        "original_match_version_id":match_version_id,
+        "tour_scope":tour_scope,
+        "evaluation_key": (
+            f"{prediction_run_id}:{canonical_match_id}:{VERSION}"
+            if prediction_run_id is not None else None
+        ),
         "version":"A3_LIVE_SOFT_PIT_PROVISIONAL_V1",
         "original_agent_model_version":DEFAULT_CONFIG.model_version,
         "research_profiles_version":VERSION,
