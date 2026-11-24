@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 import os
+from time import perf_counter_ns
 
 import psycopg
 
@@ -262,7 +263,7 @@ def _execute_matrix(
     agent3_snapshot = build_agent3_history_snapshot(conn, as_of)
 
     matrix: list[PredictiveAgentMatrixPrediction] = []
-    shadow_counts = {"attempted": 0, "captured": 0, "failed": 0}
+    shadow_counts = {"attempted": 0, "captured": 0, "failed": 0, "observer_elapsed_ns": 0}
     for target in targets:
         agent1 = _run_agent1(target, agent1_replay, configs[AGENT_1], as_of)
         agent2 = _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
@@ -334,11 +335,13 @@ def _run_agent3(
         os.environ.get("TENNIS_A3_SOFT_SHADOW_CAPTURE") == "1" and
         target.tour_scope in ("ATP_MAIN", "CHALLENGER") and
         target.qualifying_flag is False):
+        observer_started = perf_counter_ns()
         captured = _observe_a3_soft_shadow(
             conn, target=target, request=request, original_result=result,
             as_of=as_of, prediction_run_id=prediction_run_id,
         )
         if shadow_counts is not None:
+            shadow_counts["observer_elapsed_ns"] += perf_counter_ns() - observer_started
             shadow_counts["attempted"] += 1
             shadow_counts["captured" if captured else "failed"] += 1
     return PredictiveAgentMatrixPrediction(
@@ -412,6 +415,7 @@ def _capture_optional_a3_soft_shadow(conn, *, target, request,
         prediction_run_id=prediction_run_id,
         match_version_id=target.match_version_id,
         tour_scope=getattr(target, "tour_scope", None),
+        completion_clock=_utc_now,
     )
 
 

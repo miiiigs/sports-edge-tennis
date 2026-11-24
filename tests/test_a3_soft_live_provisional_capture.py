@@ -212,3 +212,80 @@ def test_postgres_observer_uses_selected_version_not_newer_version(postgres_dsn,
         )
         assert record["original_scheduled_start_at_utc"] == start.isoformat()
         assert record["original_match_version_id"] == 42
+
+
+def test_live_shadow_completion_clock_rejects_calculation_crossing_deadline():
+    req = request()
+    kwargs = dict(canonical_match_id=134291, capture_at=NOW,
+                  match_start_at=NOW+timedelta(minutes=31), original_result=predict(req))
+    with pytest.raises(ValueError, match="completion violates pre-match"):
+        capture_provisional_live_shadow(req, **kwargs,
+            completion_clock=lambda: NOW+timedelta(minutes=2))
+    with pytest.raises(ValueError, match="completion violates pre-match"):
+        capture_provisional_live_shadow(req, **kwargs,
+            completion_clock=lambda: NOW-timedelta(seconds=1))
+    record = capture_provisional_live_shadow(req, **kwargs,
+        completion_clock=lambda: NOW+timedelta(seconds=5))
+    assert record["research_started_at_utc"] == NOW.isoformat()
+    assert record["research_captured_at_utc"] == (NOW+timedelta(seconds=5)).isoformat()
+    assert record["completion_clock_observed"] is True
+
+
+def test_postgres_representative_66_target_observer_benchmark(postgres_dsn, monkeypatch, capsys):
+    """Synthetic workload, not production latency or a prediction-quality test."""
+    from decimal import Decimal
+    from time import perf_counter
+    import psycopg
+    from sports_edge_tennis.agents.agent3_intransitivity import PairHistorySnapshot, ResidualObservation
+
+    samples = []
+    monkeypatch.setattr(full_slate, "_utc_now", lambda: NOW)
+    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
+        conn.execute("""
+            CREATE TEMP TABLE match_versions (
+                match_version_id bigint PRIMARY KEY, match_id bigint, match_start_at timestamptz,
+                match_status text, as_of timestamptz,
+                source_observed_at timestamptz, ingested_at timestamptz
+            )
+        """)
+        for i in range(1, 67):
+            conn.execute("INSERT INTO match_versions VALUES (%s,%s,%s,%s,%s,%s,%s)",
+                         (i, i, NOW+timedelta(hours=5), "SCHEDULED", NOW, NOW, NOW))
+        for common in (0, 10, 100):
+            opponents = tuple(range(1000, 1000+common))
+            pairs = {}
+            for p in (10, 20):
+                observations = tuple(
+                    ResidualObservation(observed_at=NOW-timedelta(days=20*j+1),
+                                        residual=Decimal("0.4" if p == 10 else "-0.4"))
+                    for j in range(8)
+                )
+                for o in opponents:
+                    pairs[(p, o)] = PairHistorySnapshot(
+                        player_low_id=p, player_high_id=o,
+                        all_observations=observations,
+                        surface_observations={"HARD": observations[:4]},
+                    )
+            req = PredictionRequest(
+                player_1_id=10, player_2_id=20, surface="HARD",
+                history_snapshot=Agent3HistorySnapshot(pairs=pairs, adjacency={10: opponents, 20: opponents}),
+                as_of=NOW,
+            )
+            original = predict(req)
+            for i in range(len(samples)+1, len(samples)+23):
+                started = perf_counter()
+                assert full_slate._observe_a3_soft_shadow(
+                    conn, target=SimpleNamespace(match_id=i, match_version_id=i, tour_scope="CHALLENGER"),
+                    request=req, original_result=original, as_of=NOW, prediction_run_id=77,
+                )
+                samples.append((perf_counter()-started)*1000)
+        assert len(samples) == 66
+        assert conn.execute("SELECT count(*) FROM match_versions").fetchone() == (66,)
+    lines = capsys.readouterr().out.splitlines()
+    assert sum(line.startswith("TENNIS_A3_SOFT_PROSPECTIVE_SHADOW ") for line in lines) == 66
+    ordered = sorted(samples)
+    report = dict(targets=66, shared_opponents=[0, 10, 100], observations_per_edge=8,
+                  total_ms=round(sum(samples), 3), p95_ms=round(ordered[62], 3),
+                  max_ms=round(ordered[-1], 3), synthetic=True)
+    with capsys.disabled():
+        print("A3_SYNTHETIC_OBSERVER_BENCHMARK " + json.dumps(report, sort_keys=True))

@@ -769,3 +769,63 @@ def test_optional_a3_sql_failure_preserves_full_slate_and_manager(db, monkeypatc
     assert '"attempted": 1' in output
     assert '"failed": 1' in output
     assert '"captured": 0' in output
+
+
+def test_optional_a3_success_reuses_exact_request_and_preserves_persisted_outputs(db, monkeypatch, capsys):
+    from sports_edge_tennis.runner import full_slate
+    from sports_edge_tennis.validation import a3_soft_common_opponent_ess_shadow as shadow
+
+    _seed_configs(db)
+    target = _insert_scheduled_target(db, as_of=datetime.now(timezone.utc)-timedelta(minutes=5))
+    cutoff = datetime.now(timezone.utc)
+    request = _request(db, match_ids=[target["match_id"]], as_of=cutoff)
+    actual_predict = full_slate.predict_agent3
+    actual_capture = shadow.capture_provisional_live_shadow
+    originals = []
+
+    def observe_original(req, **kwargs):
+        result = actual_predict(req, **kwargs)
+        originals.append((req, result))
+        return result
+
+    def verify_reuse(req, **kwargs):
+        assert req is originals[-1][0]
+        assert req.history_snapshot is originals[-1][0].history_snapshot
+        assert kwargs["original_result"] is originals[-1][1]
+        return actual_capture(req, **kwargs)
+
+    def rows(run_id):
+        predictions = db.execute("""
+            SELECT agent_code, prediction_status, selection_side, win_probability,
+                   probability_representation, model_version, feature_version, as_of, abstain_reason_code
+            FROM predictions WHERE prediction_run_id=%s ORDER BY agent_code
+        """, (run_id,)).fetchall()
+        manager = db.execute("""
+            SELECT manager_status, selected_side, consensus_probability, active_agent_count,
+                   abstaining_agent_count, probability_spread, reason_code, as_of
+            FROM manager_consensus_results WHERE prediction_run_id=%s
+        """, (run_id,)).fetchall()
+        return predictions, manager
+
+    monkeypatch.setattr(full_slate, "predict_agent3", observe_original)
+    monkeypatch.setattr(shadow, "capture_provisional_live_shadow", verify_reuse)
+    monkeypatch.delenv("TENNIS_A3_SOFT_SHADOW_CAPTURE", raising=False)
+    control = run_full_slate(db, request)
+    assert control.runner_status == "COMPLETED"
+    capsys.readouterr()
+    monkeypatch.setenv("TENNIS_A3_SOFT_SHADOW_CAPTURE", "1")
+    experimental = run_full_slate(db, request)
+    assert experimental.runner_status == "COMPLETED"
+    assert rows(control.prediction_run_id) == rows(experimental.prediction_run_id)
+    lines = capsys.readouterr().out.splitlines()
+    records = [json.loads(line.split(" ", 1)[1]) for line in lines
+               if line.startswith("TENNIS_A3_SOFT_PROSPECTIVE_SHADOW ")]
+    assert len(records) == 1
+    assert records[0]["prediction_run_id"] == experimental.prediction_run_id
+    assert records[0]["original_match_version_id"] == target["match_version_id"]
+    assert records[0]["completion_clock_observed"] is True
+    heartbeat = [json.loads(line.split(" ", 1)[1]) for line in lines
+                 if line.startswith("TENNIS_A3_SOFT_SHADOW_HEARTBEAT ")]
+    assert len(heartbeat) == 1
+    assert heartbeat[0]["captured"] == 1 and heartbeat[0]["failed"] == 0
+    assert heartbeat[0]["observer_elapsed_ns"] > 0

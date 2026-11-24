@@ -19,7 +19,7 @@ import hashlib
 import json
 import math
 from datetime import UTC,datetime,timedelta
-from typing import Any
+from typing import Any, Callable
 
 from sports_edge_tennis.agents.agent3_intransitivity import (
     DEFAULT_CONFIG, Agent3HistorySnapshot,PredictionRequest,
@@ -184,6 +184,7 @@ def capture_provisional_live_shadow(
     prediction_run_id: int | None = None,
     match_version_id: int | None = None,
     tour_scope: str | None = None,
+    completion_clock: Callable[[], datetime] | None = None,
 ) -> dict[str, Any]:
     """Preserve actual live-time A3 exploratory probabilities, not retrospective picks.
 
@@ -205,6 +206,11 @@ def capture_provisional_live_shadow(
         name:_soft_variant(request,edge_min=edge,cross_surface_weight=surface)
         for name,(edge,surface) in PROFILES.items()
     }
+    # The runtime supplies a fresh clock after all three profiles finish.
+    # A start timestamp alone cannot prove a pre-match calculation completed.
+    completed = _utc(completion_clock()) if completion_clock is not None else captured
+    if not captured <= completed <= start-timedelta(minutes=30):
+        raise ValueError("live Agent3 shadow completion violates pre-match timing")
     data={
         "canonical_match_id":canonical_match_id,
         "prediction_run_id":prediction_run_id,
@@ -222,7 +228,9 @@ def capture_provisional_live_shadow(
         "player_2_id":request.player_2_id,
         "surface_at_original_asof":request.surface,
         "original_model_asof_utc":cutoff.isoformat(),
-        "research_captured_at_utc":captured.isoformat(),
+        "research_started_at_utc":captured.isoformat(),
+        "research_captured_at_utc":completed.isoformat(),
+        "completion_clock_observed":completion_clock is not None,
         "original_scheduled_start_at_utc":start.isoformat(),
         "original_agent3_as_computed":_result_payload(original_result),
         "research_soft_common_opponent_variants":profiles,
