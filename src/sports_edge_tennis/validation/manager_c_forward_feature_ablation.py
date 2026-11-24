@@ -194,15 +194,19 @@ def _stats(rows, scores, denominator):
     wins = sum(_label(r) for r in graded)
     pairs = [(max(1e-12,min(1-1e-12,scores[r["match_id"]])),_label(r)) for r in graded]
     n = len(graded)
+    pending = sum(r.get("research_grade", "P") != "V" for r in rows if r["winner"] not in (1,2))
+    void = len(rows)-n-pending
     return {"issued":len(rows),"settled":n,"ungraded":len(rows)-n,
-            "wins":wins,"losses":n-wins,"accuracy":wins/n if n else None,
+            "wins":wins,"losses":n-wins,"pending":pending,"void":void,
+            "cancelled_in_void":sum(r.get("research_grade")=="V" and r.get("result_status")=="CANCELLED" for r in rows),
+            "accuracy":wins/n if n else None,
             "wilson95":_wilson(wins,n),"coverage":len(rows)/denominator,
             "brier":sum((p-y)**2 for p,y in pairs)/n if n else None,
             "log_loss":-sum(y*math.log(p)+(1-y)*math.log1p(-p) for p,y in pairs)/n if n else None,
             "ids_sha256":_hash(sorted(r["match_id"] for r in rows))}
 
 
-def _compare(rows, raw, alternative, name, denominator, targets, cutoffs):
+def _compare(rows, raw, alternative, name, denominator, targets, cutoffs, tour_denominators):
     by_id = {r["match_id"]:r for r in rows}
     def pair(a,b):
         ai,bi = set(a),set(b)
@@ -212,7 +216,13 @@ def _compare(rows, raw, alternative, name, denominator, targets, cutoffs):
                 "added":_stats([by_id[i] for i in sorted(bi-ai)],alternative,denominator),
                 "overlap":len(ai&bi),
                 "common_probability_raw":_stats([by_id[i] for i in sorted(ai&bi)],raw,denominator),
-                "common_probability_alternative":_stats([by_id[i] for i in sorted(ai&bi)],alternative,denominator)}
+                "common_probability_alternative":_stats([by_id[i] for i in sorted(ai&bi)],alternative,denominator),
+                "by_tour": {tour:{
+                    "raw":_stats([by_id[i] for i in sorted(ai) if by_id[i]["tour"]==tour],raw,tour_denominators[tour]),
+                    "alternative":_stats([by_id[i] for i in sorted(bi) if by_id[i]["tour"]==tour],alternative,tour_denominators[tour]),
+                    "removed":_stats([by_id[i] for i in sorted(ai-bi) if by_id[i]["tour"]==tour],raw,tour_denominators[tour]),
+                    "added":_stats([by_id[i] for i in sorted(bi-ai) if by_id[i]["tour"]==tour],alternative,tour_denominators[tour])}
+                    for tour in tour_denominators if tour_denominators[tour]}}
     report = {"all_common_candidates":pair(raw,alternative),"targets":{}}
     for target in targets:
         k = math.ceil(denominator*target)
@@ -244,6 +254,7 @@ def evaluate(manifest, records, *, agents, snapshots=None):
     if (set(m["train_ids"]) | set(m["validation_ids"])) & {r["match_id"] for r in records}:
         raise ValueError("evaluation fixture overlaps earlier partition")
     snapshots = snapshots or {}
+    tour_denominators = {tour:sum(r["tour"]==tour for r in records) for tour in ("ATP_MAIN","CHALLENGER")}
     out = {"manifest_sha256":expected,"first_run_targets":len(records),
            "official_eligible_denominator":None,"external_freeze_attestation_required":True,
            "groups":{}}
@@ -258,8 +269,8 @@ def evaluate(manifest, records, *, agents, snapshots=None):
             raw = {r["match_id"]:confidence(r) for r in rows}
             cal = {r["match_id"]:_score(model["matched_calibration_weights"],x[:2]) for r,x in available}
             learned = {r["match_id"]:_score(model["weights"],x) for r,x in available}
-            row["raw_vs_calibration"] = _compare(rows,raw,cal,"calibration",len(records),m["targets"],model["cutoffs"])
-            row["raw_vs_feature"] = _compare(rows,raw,learned,"feature",len(records),m["targets"],model["cutoffs"])
+            row["raw_vs_calibration"] = _compare(rows,raw,cal,"calibration",len(records),m["targets"],model["cutoffs"],tour_denominators)
+            row["raw_vs_feature"] = _compare(rows,raw,learned,"feature",len(records),m["targets"],model["cutoffs"],tour_denominators)
             row["same_candidate_calibration_vs_feature"] = {
                 "calibration":_stats(rows,cal,len(records)),
                 "feature":_stats(rows,learned,len(records))}
