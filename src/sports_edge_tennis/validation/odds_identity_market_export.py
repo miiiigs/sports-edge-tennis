@@ -140,11 +140,14 @@ def extract_one(conn, mid, cutoff, report_at):
     counts["persistent_mapping"]+=int("ODDSPAPI" in src)
     counts["independent_tournament_mapping"]+=int(bool(allowed))
     cache=conn.execute("""SELECT oddspapi_event_id,last_verified_at,resolved_at,resolution_status,
-        scheduled_start,player_orientation FROM oddspapi_event_identity_cache WHERE canonical_match_id=%s""",
+        scheduled_start,player_orientation,sportradar_event_id FROM oddspapi_event_identity_cache WHERE canonical_match_id=%s""",
         (mid,)).fetchone()
     warm=bool(cache and cache[1] and cache[2] and cache[1]<=cutoff and cache[2]<=cutoff
         and cutoff-cache[1]<=timedelta(hours=24) and cache[3]=="EXACT" and cache[4]
-        and abs(cache[4]-start)<=timedelta(minutes=30) and cache[5] in ("DIRECT","REVERSED"))
+        and abs(cache[4]-start)<=timedelta(minutes=30) and cache[5] in ("DIRECT","REVERSED")
+        and cache[0] and (not src.get("SPORTRADAR") or not cache[6]
+             or dict(keys({"SPORTRADAR":src["SPORTRADAR"]})).get("SPORTRADAR")
+             ==dict(keys({"SPORTRADAR":cache[6]})).get("SPORTRADAR")))
     counts["cache_current_row_warm_at_cutoff"]+=int(warm)
     if cache and cache[1] and cache[1]>cutoff:
         counts["cache_updated_after_cutoff_history_unavailable"]+=1
@@ -195,6 +198,9 @@ def extract_one(conn, mid, cutoff, report_at):
             continue
         if susp=="true" or active=="false" or a1=="false" or a2=="false":
             for player in (p1,p2):
+                if any(q["raw_id"]==rid and q["bookmaker"]==book and q["player_id"]==player
+                       and q["status"]=="SUSPENDED" for q in quotes):
+                    continue
                 quotes.append({"event_id":r[1],"bookmaker":book,
                    "source":"SHARP" if book=="pinnacle+30" else "OFFERED",
                    "market":"MATCH_WINNER","player_id":player,"price":None,"status":"SUSPENDED",
@@ -219,6 +225,7 @@ def run(conn, *, as_of, mode, horizon_days=3, match_ids=None):
         else:
             rows=conn.execute(source_sql(),{"as_of":as_of}).fetchall()
             cohort=[(r[0],r[2]) for r in rows if r[2] is not None]
+        input_candidates=len(candidates) if mode=="future" else None
         if len({m for m,_ in cohort})!=len(cohort):
             raise ValueError("duplicate canonical cohort")
         if match_ids is not None:
@@ -229,13 +236,32 @@ def run(conn, *, as_of, mode, horizon_days=3, match_ids=None):
         exports=[]
         qualified=0
         candidates=[]
+        staged=[]
         for mid,cutoff in sorted(cohort):
             data,counts=extract_one(conn,mid,cutoff,as_of)
             counters.update(counts)
             if data is None:
                 continue
+            exports.append(data)
             result=audit(data)
             if counts["conflicting_source_ids"]:
+                identities["IDENTITY_CONFLICT"]+=1
+                continue
+            staged.append((mid,data,counts,result))
+        owners=defaultdict(set)
+        for mid,data,counts,result in staged:
+            if result["identity_counts"].get("VERIFIED_IDENTITY"):
+                from sports_edge_tennis.validation.odds_identity_market_funnel import identity,event_keys
+                index=defaultdict(set)
+                for i,e in enumerate(data["events"]):
+                    for key in event_keys(e):
+                        index[key].add(i)
+                _,event=identity(data["fixtures"][0],data["events"],index,stamp(data["audit_at"]))
+                if event is not None:
+                    owners[event["event_id"]].add(mid)
+        collided={m for matches in owners.values() if len(matches)>1 for m in matches}
+        for mid,data,counts,result in staged:
+            if mid in collided:
                 identities["IDENTITY_CONFLICT"]+=1
                 continue
             identities.update(result["identity_counts"])
@@ -244,8 +270,8 @@ def run(conn, *, as_of, mode, horizon_days=3, match_ids=None):
             qualified+=result["qualified_any_book"]
             if result["identity_counts"].get("VERIFIED_IDENTITY") and not counts["cache_current_row_warm_at_cutoff"]:
                 candidates.append(mid)
-            exports.append(data)
         summary={"mode":mode,"report_as_of":iso(as_of),"cohort_count":len(cohort),
+                 "input_unique_candidates":input_candidates,
                  "cohort_sha256":digest([(m,iso(t)) for m,t in sorted(cohort)]),
                  "sample_sha256":digest(exports),"identity_counts":dict(identities),
                  "book_states":{k:dict(v) for k,v in books.items()},
