@@ -44,12 +44,20 @@ def original_sql():
     )
     SELECT o.*,p.prediction_id,p.prediction_locked_at,p.model_version,
            p.feature_version,p.agent_config_version_id,
-           v.match_version_id,v.surface::text,v.qualifying_flag
+           v.match_version_id,v.surface::text,v.qualifying_flag,
+           EXISTS (SELECT 1 FROM rating_snapshots rs WHERE rs.player_id=v.player_1_id
+             AND rs.model_version=p.model_version AND rs.feature_version=p.feature_version
+             AND rs.experiment_id IS NULL AND rs.as_of<=p.as_of AND rs.created_at<=p.as_of
+             AND rs.sample_match_count IS NOT NULL) AS p1_rating_sample_visible,
+           EXISTS (SELECT 1 FROM rating_snapshots rs WHERE rs.player_id=v.player_2_id
+             AND rs.model_version=p.model_version AND rs.feature_version=p.feature_version
+             AND rs.experiment_id IS NULL AND rs.as_of<=p.as_of AND rs.created_at<=p.as_of
+             AND rs.sample_match_count IS NOT NULL) AS p2_rating_sample_visible
     FROM original o
     LEFT JOIN predictions p ON p.match_id=o.mid AND p.prediction_run_id=o.rid
       AND p.agent_code::text=o.agent AND p.experiment_id IS NULL
     LEFT JOIN LATERAL (
-      SELECT match_version_id,surface,qualifying_flag
+      SELECT match_version_id,surface,qualifying_flag,player_1_id,player_2_id
       FROM match_versions mv
       WHERE mv.match_id=o.mid AND mv.as_of<=o.issued
         AND mv.source_observed_at<=o.issued AND mv.ingested_at<=o.issued
@@ -91,7 +99,8 @@ def decode(raw, *, start, end, as_of):
                 raise ValueError("missing or late original prediction lock")
             m["predictions"][r[6]] = {"prediction_id":r[18],"locked_at":r[19],
                                       "model_version":r[20],"feature_version":r[21],
-                                      "config_id":r[22]}
+                                      "config_id":r[22],
+                                      "both_rating_sample_counts_visible":bool(r[26] and r[27])}
     for r in records:
         m = meta[r["match_id"]]
         r["main_draw_verified"] = m["qualifying"] is False
@@ -130,6 +139,8 @@ def summarize(rows, data):
         fields["original_agent_probability_pair"] += int(all(
             c in data["agents"].get(mid,{}) for c in CODES[:2]))
         fields["original_C_probability"] += int(r["candidates"][POLICY] is not None)
+        fields["any_agent_both_rating_samples_visible_unlinked"] += int(any(
+            x["both_rating_sample_counts_visible"] for x in p.values()))
         fields["all_original_agent_version_ids"] += int(all(
             c in p and all(p[c][k] is not None for k in
                            ("model_version","feature_version","config_id")) for c in CODES))
@@ -138,7 +149,9 @@ def summarize(rows, data):
                                     r["result_status"]=="CANCELLED" for r in rows),
             "available":{k:fields[k] for k in (
                 "surface_at_issue","main_draw_verified","original_agent_probability_pair",
-                "original_C_probability","all_original_agent_version_ids")},
+                "original_C_probability","all_original_agent_version_ids",
+                "any_agent_both_rating_samples_visible_unlinked")},
+            "rating_sample_census_note":"Same canonical players and model/feature versions, both clocks by original agent as_of; no original-run snapshot linkage or identity bridge proof.",
             "not_proven_original_feature_values":["min_player_prior_match_count",
                 "max_player_rating_uncertainty","surface_elo_gap","serve_return_depth"]}
 
