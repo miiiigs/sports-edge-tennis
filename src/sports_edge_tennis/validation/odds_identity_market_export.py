@@ -156,6 +156,7 @@ def extract_one(conn, mid, cutoff, report_at):
         [normalized["ODDSPAPI"]] if "ODDSPAPI" in normalized else [],
         [normalized["SPORTRADAR"]] if "SPORTRADAR" in normalized else [])).fetchall()
     counts["raw_observations"]+=len(raw)
+    counts["fixture_with_raw_observation"]+=int(bool(raw))
     # Latest observation per event; never select an earlier valid row after an invalid latest row.
     latest={}
     for r in raw:
@@ -185,7 +186,8 @@ def extract_one(conn, mid, cutoff, report_at):
             player=p1 if side=="PLAYER_1" else p2
         if not rawobs==obs or not recv<=ing or not created<=ing or not hash_:
             counts["invalid_quote_lineage_clock"]+=1
-            continue
+            # Mark invalid provenance without changing its time to a usable value.
+            player=None
         quotes.append({"event_id":eid,"bookmaker":book,"source":source,"market":"MATCH_WINNER",
             "player_id":player,"price":price,"status":status,"observed_at":iso(obs),
             "as_of":iso(asof),"ingested_at":iso(ing),"snapshot_id":oid,"raw_id":rid,
@@ -196,7 +198,16 @@ def extract_one(conn, mid, cutoff, report_at):
         r=raw_lookup[rid]
         if r[1] not in event_ids:
             continue
+        counts["raw_book_observations"]+=1
         if susp=="true" or active=="false" or a1=="false" or a2=="false":
+            if r[7]!=r[1] or set(player_ids(conn,(r[10],r[11]),max(r[3],r[4])))!={p1,p2}:
+                counts["unverified_raw_suspension_side"]+=1
+                # A conflicting raw state must block comparison, not revive an older open quote.
+                quotes.append({"event_id":r[1],"bookmaker":book,"source":"ODDSPAPI",
+                    "market":"MATCH_WINNER","player_id":None,"price":None,"status":"UNKNOWN",
+                    "observed_at":iso(r[2]),"as_of":iso(r[3]),"ingested_at":iso(max(r[3],r[4])),
+                    "raw_id":rid,"raw_hash":r[6]})
+                continue
             for player in (p1,p2):
                 if any(q["raw_id"]==rid and q["bookmaker"]==book and q["player_id"]==player
                        and q["status"]=="SUSPENDED" for q in quotes):
@@ -207,6 +218,7 @@ def extract_one(conn, mid, cutoff, report_at):
                    "observed_at":iso(r[2]),"as_of":iso(r[3]),"ingested_at":iso(max(r[3],r[4])),
                    "raw_id":rid,"raw_hash":r[6],"derived_raw_suspension":True})
             counts["raw_suspension_observations"]+=1
+    counts["fixture_with_linked_quote_or_state"]+=int(bool(quotes))
     data={"audit_at":iso(cutoff),"fixtures":[fixture],"events":events,"quotes":quotes}
     return data,counts
 
