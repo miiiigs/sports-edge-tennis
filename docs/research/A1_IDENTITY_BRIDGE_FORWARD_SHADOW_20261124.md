@@ -90,15 +90,25 @@ multi-week exercise, not a one-day result.
 
 ### Activation gate
 
+All contrasts are **candidate minus baseline** on the same fixtures.
+
+- Brier and log loss are lower-is-better. An improvement means the point estimate
+  of `candidate − baseline` is **negative**, and its paired 95% interval must lie
+  **entirely below zero**.
+- Winner accuracy is higher-is-better. An improvement means
+  `candidate − baseline` is **positive**, and its paired 95% interval should lie
+  entirely above zero (or at minimum its lower bound should be reported honestly).
+
 All of the following must hold on the frozen forward sample:
 
-1. Bridged A1 Brier improvement over original A1 with a paired 95% interval entirely above zero.
-2. Bridged A1 log-loss improvement with a paired 95% interval entirely above zero.
-3. Bridged A1 winner accuracy not worse than original A1; preferred point estimate at least +1.0
-   percentage point.
-4. Model Picks winner accuracy not worse than production at comparable coverage.
-5. No material degradation in ATP; if ATP is too small, report it as unresolved rather than pooling
-   it away.
+1. `Brier(bridged) − Brier(original) < 0` with a paired 95% interval entirely below zero.
+2. `LogLoss(bridged) − LogLoss(original) < 0` with a paired 95% interval entirely below zero.
+3. Bridged A1 winner accuracy not worse than original A1; preferred point estimate at
+   least +1.0 percentage point.
+4. Model Picks winner accuracy not worse than production at **equal selection count** and,
+   separately, at a frozen eligible-slate coverage. Report overlap and selection changes.
+5. No material degradation in ATP; if ATP is too small, report it as unresolved rather than
+   pooling it away.
 6. Owner approval and a new Agent 1 configuration version. Do not reuse `agent1_surface_elo_v1`.
 
 ### Stop rules
@@ -112,26 +122,105 @@ capture record, or if the forward sample fails any gate. Keep the negative resul
 ```powershell
 $env:PYTHONPATH = "src"
 python -m sports_edge_tennis.validation.a1_identity_bridge_forward_shadow `
-  --run-id <completed_prediction_run_id>
+  --run-id <completed_prediction_run_id> `
+  --require-first-issue `
+  --archive-jsonl <operator-owned-append-only-path>
 ```
 
 The module sets its own session read-only. It can be run from a workstation against the public
 Railway Postgres proxy or from a one-off read-only Railway service. It does not require a new
 provider call and does not touch the production prediction path.
 
-First operational capture (2026-11-24, run `2548`, before any outcome):
+### Verified captures
 
-- 52 future A1 targets captured, 0 failures.
-- 14 bridged selections differed from the stored original side.
-- Record-set SHA-256 `f45bdf834f8cc17a1975934b700c409a158b4abb4331766cafef1fa090e51ef3`.
-- This is a **capture exercise only**. It is not accuracy evidence and must not be described as one.
+Run `2548` (2026-11-24, captured at 08:14Z before any outcome):
+
+- 52 future A1 targets, 0 failures, 14 side changes.
+- **0 of 52 were earliest-issued.** These are later re-issues, not first-issue evidence.
+- All 52 were Challenger main draw; 0 ATP, 0 qualifying.
+- Quarantine: not admissible to the forward first-issue sample.
+
+Run `2535` (2026-11-23 23:01Z issue, captured 2026-11-24 08:20Z before start):
+
+- 17 first-issued future A1 targets, 29 non-first targets filtered.
+- All Challenger main draw; 6 side changes.
+- `prior_a1_prediction_count = 0` for every record.
+- Record-set SHA-256 `e00e5a5effb0e26b4c3a0203233a4a5601a68cb2470c2a6777092fb60686c93a`.
+- This is a genuine pre-outcome first-issue capture, but **not an independent wall-clock
+  collector receipt** because it was run nine hours after issue. It must not be used as the
+  central archive proof.
+
+### Equal-coverage retrospective comparison
+
+Same retrospective harness, settled targets only. Model Picks change because the bridge
+changes confidence and therefore which matches clear the existing 60% rule.
+
+- Original: 1,223 picks, 836W–387L (68.36%).
+- Bridged: 1,168 picks, 821W–347L (70.29%).
+- Overlap: 1,024 matches, **all same side** (0 side flips on overlap).
+- Original-only: 199 picks, 106W–93L (53.27%).
+- Bridged-only: 144 picks, 91W–53L (63.19%).
+- Winners added by bridge: 91. Winners removed: 106. Losses avoided: 93. Losses introduced: 53.
+- Net: 55 fewer settled picks, 15 fewer wins, 40 fewer losses.
+
+At equal selection counts (top confidence per model):
+
+| N | Original | Bridged | ATP orig→bridge | CH orig→bridge | Overlap |
+|---:|---:|---:|---:|---:|---:|
+| 400 | 75.25% | **79.75%** | 84.78→85.42% | 74.01→78.98% | 306 |
+| 600 | 73.17% | **76.17%** | 77.78→83.10% | 72.54→75.24% | 470 |
+| 800 | 71.88% | **74.25%** | 78.35→78.95% | 70.98→73.62% | 644 |
+| 1,000 | 69.80% | **71.50%** | 75.21→73.98% | 69.08→71.15% | 829 |
+| 1,168 | 68.66% | **70.29%** | 75.00→73.72% | 67.86→69.84% | 992 |
+
+The equal-count gain is concentrated in Challenger. ATP is flat-to-slightly-worse at the
+larger counts. These are different matches at the same count, not paired head-to-head
+selections; the overlap column shows that only 306–992 of the picks are shared.
+
+A two-proportion 95% interval for `bridged − original` accuracy is:
+
+| N | Difference | 95% CI |
+|---:|---:|---:|
+| 400 | +4.50 pp | [−1.29, +10.26] |
+| 600 | +3.00 pp | [−1.92, +7.90] |
+| 800 | +2.38 pp | [−1.97, +6.71] |
+| 1,000 | +1.70 pp | [−2.29, +5.68] |
+| 1,168 | +1.63 pp | [−2.11, +5.35] |
+
+Every interval includes zero. The retrospective bridge is **promising but not statistically
+established** at equal coverage. On the 1,024 shared picks the two models are identical
+(730W–294L), so the entire apparent gain comes from dropping some original picks and adding
+different picks, not from better probabilities on the same matches.
+
+### Replay-fidelity diagnosis
+
+The previously reported 91.8% “no-bridge reproduction” is **not** a first-issue reproduction.
+On 3,725 targets used by the reviewed harness:
+
+- **0 of 3,725 targets were the earliest A1 issue.** The harness selects the latest
+  prediction per match, so 91.8% is re-issue fidelity.
+- Missing surface: 571 targets, 73.6% exact. Known surface: 3,154 targets, **95.1% exact**
+  (96.1% within 0.005).
+- 306 of 3,725 (8.2%) differ by more than 1e-6. Roughly half are the unknown-surface cohort.
+- Only 94 targets had player-ID mappings that differed between the original `as_of` and today;
+  those were 79.8% exact.
+
+Conclusion: the bridge uplift must be described as a **retrospective counterfactual on
+re-issued predictions**, with known-surface fidelity around 95%, not as an exact
+reproduction of original first-issued production probabilities.
 
 ## 5. Limitations
 
-- The bridge resolver may still use alias evidence that was ingested after `as_of` but has an earlier
-  `as_of`. Forward capture reduces this to the short interval between prediction finalisation and
-  observer execution; it does not eliminate it. A future revision should add ingestion-time filtering
-  to the resolver itself.
+- The resolver now gates alias and source rows on the ingest run's visibility
+  (`COALESCE(ingest_runs.finished_at, ingest_runs.started_at, created_at) <= as_of`),
+  aliases additionally on `first_observed_at <= as_of`. Historical result evidence stays on
+  `source_observed_at/as_of` because it is existence evidence, not the alias mapping itself.
+  The resolver records resolution method, candidate count, matched alias and bridge event id.
+  A residual risk remains for aliases whose values were updated in place after the cutoff;
+  `updated_at` is not yet used as a visibility gate.
+- The observer records whether the captured prediction is the earliest A1 issue, but a late
+  post-hoc run of an earlier prediction is still not an independent wall-clock collector receipt.
+  Only captures made proximate to issue should enter the central forward archive.
 - The bridge changes only Agent 1 history. It does not bridge A2/A3 history, Manager policy or odds.
 - Bridged probabilities can change sides. That is the point of the experiment, not a defect, but it
   means Model Picks coverage can move.
@@ -139,7 +228,34 @@ First operational capture (2026-11-24, run `2548`, before any outcome):
   remains licensing-unresolved and is not used by this observer.
 - The 2026-11-24 shadow remains retrospective. Only the forward records can support activation.
 
-## 6. Reproduction
+## 6. Licensing and provenance
+
+- The observer reads existing production PostgreSQL rows only. It makes no provider calls and
+  introduces no new training data.
+- The historical rating ledger used by Agent 1 is the existing production corpus. Its historical
+  source is predominantly Sackmann-associated; licensing for any new commercial training use is
+  **not verified**. This observer does not fit new parameters on that corpus.
+- The live fixtures and results used for grading are API-Tennis production observations already
+  present in the canonical database.
+- The new resolver provenance records which alias, persisted bridge or historical identity produced
+  each mapping, so a later audit can distinguish source-backed identity from name matching.
+- Do not use the retrospective bridge uplift as a commercial-performance claim.
+
+## 7. Archival and settlement contract
+
+- `--archive-jsonl PATH` appends canonical JSON lines with `O_APPEND` and `fsync`. The file is never
+  truncated. Each capture record has `record_type=capture`, `settlement_key`, `record_sha256`,
+  `grading_contract`, `outcome_included=false` and `production_changed=false`.
+- The final line is a `record_type=summary` object containing `record_set_sha256`, scope counts,
+  first-issue counts and archive byte/size attestation.
+- Grading joins on `(match_id, prediction_id)` and must use the dedicated settlement path, not the
+  capture process. A capture is admissible only if `is_earliest_issued=true`,
+  `main_draw_eligible=true`, the archive receipt is externally timestamped, and the match had not
+  started at capture.
+- Local `tmp/` archives in this review are **not** the central archive. They are reproduction
+  artifacts.
+
+## 8. Reproduction
 
 - Existing retrospective shadow: `ops/validation/a1_identity_bridge_shadow_20261015.py`.
 - New forward observer:

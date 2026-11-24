@@ -39,6 +39,7 @@ from sports_edge_tennis.runner.live_model_cache import (
 
 MODEL_VERSION = "agent2_hierarchical_markov_v1"
 FEATURE_VERSION = "agent2_serve_return_inputs_v1"
+_EARLY = datetime(2024, 1, 1, tzinfo=UTC)
 
 
 def _player(conn: psycopg.Connection, name: str) -> int:
@@ -48,20 +49,42 @@ def _player(conn: psycopg.Connection, name: str) -> int:
     ).fetchone()[0]
 
 
-def _source(conn: psycopg.Connection, player_id: int, system: str, source_id: str) -> None:
+def _source(
+    conn: psycopg.Connection,
+    player_id: int,
+    system: str,
+    source_id: str,
+    *,
+    created_at: datetime | None = None,
+) -> None:
     conn.execute(
-        "INSERT INTO player_source_ids (player_id, source_system, source_player_id) VALUES (%s, %s, %s)",
-        (player_id, system, source_id),
+        """
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (player_id, system, source_id, created_at or _EARLY),
     )
 
 
 def _alias(conn: psycopg.Connection, player_id: int, alias: str, system: str = "TENNIS_DATA") -> None:
     conn.execute(
         """
-        INSERT INTO player_aliases (player_id, source_system, alias, normalized_alias)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO player_aliases (
+            player_id, source_system, alias, normalized_alias,
+            first_observed_at, created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (player_id, system, alias, normalize_person_lookup(alias)),
+        (
+            player_id,
+            system,
+            alias,
+            normalize_person_lookup(alias),
+            _EARLY,
+            _EARLY,
+            _EARLY,
+        ),
     )
 
 
@@ -166,7 +189,13 @@ def test_new_historical_source_identity_forces_rebuild(db: psycopg.Connection):
 
     # A new historical (SACKMANN) source id must invalidate the cache.
     hist_player = _player(db, "Historical Player")
-    _source(db, hist_player, "SACKMANN", "hist-late")
+    _source(
+        db,
+        hist_player,
+        "SACKMANN",
+        "hist-late",
+        created_at=datetime.now(UTC) + timedelta(seconds=1),
+    )
     assert (
         checkpoint_requires_rebuild(
             db, checkpoint=checkpoint, current_cutoff=cutoff, include_match_stats=True

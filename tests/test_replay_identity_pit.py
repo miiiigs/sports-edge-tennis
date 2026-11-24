@@ -189,9 +189,8 @@ def test_alias_first_observed_after_cutoff_is_blocked(db: psycopg.Connection):
 def test_replay_ignores_alias_evidence_discovered_after_cutoff(db: psycopg.Connection):
     """A mapping discovered later cannot retroactively appear in an earlier replay.
 
-    The current-truth live resolver may bridge using an alias row that exists now,
-    but the replay resolver must require the alias to have been observable by the
-    cutoff. This proves live/replay divergence is bounded to the PIT policy.
+    The live and replay resolvers must both ignore alias evidence that was not
+    observable at the cutoff, and both may use it at a later cutoff.
     """
     live = _player(db, "Kate Kite")
     _source_id(db, live, "API_TENNIS", "api-kate", BEFORE)
@@ -205,14 +204,14 @@ def test_replay_ignores_alias_evidence_discovered_after_cutoff(db: psycopg.Conne
     # The alias linkage is only discovered after the replay cutoff.
     _alias(db, historical, "Kate Kite", first_observed_at=AFTER, created_at=AFTER)
 
-    # Current-truth live resolution uses the alias...
-    assert (
-        resolve_model_player_id(db, player_id=live, as_of=CUTOFF) == historical
-    )
+    # The PIT-aware live resolver must ignore it at CUTOFF...
+    assert resolve_model_player_id(db, player_id=live, as_of=CUTOFF) == live
     # ...while the Sep-10 replay at CUTOFF must remain unresolved.
     resolution = resolve_model_player_id_pit(db, live_player_id=live, as_of=CUTOFF)
     assert resolution.status == STATUS_LIVE_UNRESOLVED
     assert resolution.available is False
+    # At a later cutoff the same alias is legitimately visible.
+    assert resolve_model_player_id(db, player_id=live, as_of=AFTER) == historical
 
 
 def test_ambiguous_identity_at_cutoff_is_blocked(db: psycopg.Connection):

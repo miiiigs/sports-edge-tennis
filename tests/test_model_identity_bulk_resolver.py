@@ -15,6 +15,7 @@ import pytest
 from sports_edge_tennis.data.model_identity import (
     resolve_model_player_id,
     resolve_model_player_ids,
+    resolve_model_player_ids_with_provenance,
 )
 from sports_edge_tennis.data.normalize import normalize_person_lookup
 
@@ -30,20 +31,51 @@ def _player(conn: psycopg.Connection, name: str) -> int:
     ).fetchone()[0]
 
 
-def _source(conn: psycopg.Connection, *, player_id: int, system: str, source_id: str) -> None:
+def _source(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    system: str,
+    source_id: str,
+    created_at: datetime | None = None,
+) -> None:
     conn.execute(
-        "INSERT INTO player_source_ids (player_id, source_system, source_player_id) VALUES (%s, %s, %s)",
-        (player_id, system, source_id),
+        """
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (player_id, system, source_id, created_at or _utc(2024, 1, 1)),
     )
 
 
-def _alias(conn: psycopg.Connection, *, player_id: int, alias: str, system: str = "TENNIS_DATA") -> None:
+def _alias(
+    conn: psycopg.Connection,
+    *,
+    player_id: int,
+    alias: str,
+    system: str = "TENNIS_DATA",
+    created_at: datetime | None = None,
+    first_observed_at: datetime | None = None,
+) -> None:
+    ingested = created_at or _utc(2024, 1, 1)
     conn.execute(
         """
-        INSERT INTO player_aliases (player_id, source_system, alias, normalized_alias)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO player_aliases (
+            player_id, source_system, alias, normalized_alias,
+            first_observed_at, created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (player_id, system, alias, normalize_person_lookup(alias)),
+        (
+            player_id,
+            system,
+            alias,
+            normalize_person_lookup(alias),
+            first_observed_at or ingested,
+            ingested,
+            ingested,
+        ),
     )
 
 
@@ -78,14 +110,36 @@ def _seed_candidate(
     observed_at: datetime,
     with_completed_history: bool = True,
     live_only: bool = False,
+    source_created_at: datetime | None = None,
+    alias_created_at: datetime | None = None,
+    alias_first_observed_at: datetime | None = None,
+    history_ingested_at: datetime | None = None,
 ) -> int:
     """Seed a historical candidate with an alias, optionally PIT-visible results."""
     player_id = _player(conn, name)
     if live_only:
-        _source(conn, player_id=player_id, system="API_TENNIS", source_id=f"live-cand-{player_id}")
+        _source(
+            conn,
+            player_id=player_id,
+            system="API_TENNIS",
+            source_id=f"live-cand-{player_id}",
+            created_at=source_created_at,
+        )
     else:
-        _source(conn, player_id=player_id, system="SACKMANN", source_id=f"hist-cand-{player_id}")
-    _alias(conn, player_id=player_id, alias=alias)
+        _source(
+            conn,
+            player_id=player_id,
+            system="SACKMANN",
+            source_id=f"hist-cand-{player_id}",
+            created_at=source_created_at,
+        )
+    _alias(
+        conn,
+        player_id=player_id,
+        alias=alias,
+        created_at=alias_created_at,
+        first_observed_at=alias_first_observed_at,
+    )
     if not with_completed_history:
         return player_id
 
@@ -97,21 +151,22 @@ def _seed_candidate(
         INSERT INTO match_versions (
             match_id, player_1_id, player_2_id, match_start_at, tour_scope,
             competition_tier, surface, round_code, best_of_sets, qualifying_flag,
-            match_status, source_observed_at, as_of
+            match_status, source_observed_at, as_of, ingested_at
         )
         VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE,
-                'COMPLETED', %s, %s)
+                'COMPLETED', %s, %s, %s)
         """,
-        (match_id, player_id, opponent, observed_at, observed_at, observed_at),
+        (match_id, player_id, opponent, observed_at, observed_at, observed_at,
+         history_ingested_at or observed_at),
     )
     conn.execute(
         """
         INSERT INTO match_result_observations (
-            match_id, outcome_status, winner_side, source_observed_at, as_of
+            match_id, outcome_status, winner_side, source_observed_at, as_of, ingested_at
         )
-        VALUES (%s, 'COMPLETED', 1, %s, %s)
+        VALUES (%s, 'COMPLETED', 1, %s, %s, %s)
         """,
-        (match_id, observed_at, observed_at),
+        (match_id, observed_at, observed_at, history_ingested_at or observed_at),
     )
     return player_id
 
@@ -304,6 +359,165 @@ def test_bulk_resolver_query_count_is_not_proportional_to_player_count(db: psyco
     assert bulk_conn.queries <= 6
     assert scalar_conn.queries >= 10 * bulk_conn.queries
     assert scalar_conn.queries >= len(player_ids)
+
+
+def test_future_ingested_alias_is_invisible_at_original_cutoff(db: psycopg.Connection):
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Future Alias Live")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-future-alias")
+    target = _seed_candidate(
+        db,
+        name="Future Alias Live",
+        alias="Future Alias Live",
+        observed_at=observed,
+        source_created_at=observed,
+        alias_first_observed_at=observed,
+        alias_created_at=cutoff.replace(day=17),
+    )
+
+    at_cutoff = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff
+    )[live]
+    assert at_cutoff.resolved_player_id == live
+    assert at_cutoff.method == "NO_HISTORICAL_CANDIDATE"
+
+    later = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff.replace(day=18)
+    )[live]
+    assert later.resolved_player_id == target
+    assert later.method == "ALIAS"
+
+
+def test_ambiguous_alias_fails_closed_with_provenance(db: psycopg.Connection):
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Ambiguous Orientation")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-ambiguous-orientation")
+    _seed_candidate(
+        db,
+        name="Ambiguous One",
+        alias="Ambiguous Orientation",
+        observed_at=observed,
+        source_created_at=observed,
+        alias_first_observed_at=observed,
+        alias_created_at=observed,
+    )
+    _seed_candidate(
+        db,
+        name="Ambiguous Two",
+        alias="Ambiguous Orientation",
+        observed_at=observed,
+        source_created_at=observed,
+        alias_first_observed_at=observed,
+        alias_created_at=observed,
+    )
+
+    resolution = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff
+    )[live]
+    assert resolution.resolved_player_id == live
+    assert resolution.method == "AMBIGUOUS"
+    assert resolution.candidate_count == 2
+
+
+def test_forward_shadow_targets_preserve_live_and_model_orientation(
+    db: psycopg.Connection,
+):
+    from decimal import Decimal
+
+    from sports_edge_tennis.validation.a1_identity_bridge_forward_shadow import (
+        load_targets,
+    )
+
+    as_of = _utc(2025, 6, 16, 8)
+    start = _utc(2025, 6, 16, 12)
+    live_one = _player(db, "Orientation One")
+    live_two = _player(db, "Orientation Two")
+    _source(db, player_id=live_one, system="API_TENNIS", source_id="api-orient-one")
+    _source(db, player_id=live_two, system="API_TENNIS", source_id="api-orient-two")
+    hist_one = _seed_candidate(
+        db,
+        name="Orientation One",
+        alias="Orientation One",
+        observed_at=_utc(2025, 1, 1, 12),
+        source_created_at=_utc(2025, 1, 1, 12),
+        alias_first_observed_at=_utc(2025, 1, 1, 12),
+        alias_created_at=_utc(2025, 1, 1, 12),
+    )
+    hist_two = _seed_candidate(
+        db,
+        name="Orientation Two",
+        alias="Orientation Two",
+        observed_at=_utc(2025, 1, 1, 12),
+        source_created_at=_utc(2025, 1, 1, 12),
+        alias_first_observed_at=_utc(2025, 1, 1, 12),
+        alias_created_at=_utc(2025, 1, 1, 12),
+    )
+    match_id = _dummy_match(db, "Orientation Open")
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope,
+            competition_tier, surface, round_code, best_of_sets, qualifying_flag,
+            match_status, source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE,
+                'SCHEDULED', %s, %s, %s)
+        """,
+        (match_id, live_one, live_two, start, as_of, as_of, as_of),
+    )
+    from abstention_helpers import (
+        A1,
+        A2,
+        A3,
+        finalize_matrix,
+        insert_run,
+        insert_target,
+        make_result,
+        seed_agent_configs,
+    )
+
+    run_id = insert_run(db, as_of=as_of)
+    insert_target(db, run_id=run_id, match_id=match_id)
+    configs = seed_agent_configs(db)
+    finalize_matrix(
+        db,
+        run_id=run_id,
+        match_id=match_id,
+        configs=configs,
+        results=[
+            make_result(
+                A1,
+                as_of,
+                status="PREDICTED",
+                side=1,
+                probability=Decimal("0.640000"),
+            ),
+            make_result(
+                A2,
+                as_of,
+                status="ABSTAINED",
+                reason="INSUFFICIENT_HISTORY",
+            ),
+            make_result(
+                A3,
+                as_of,
+                status="ABSTAINED",
+                reason="WEAK_SIGNAL",
+            ),
+        ],
+        finalized_at=as_of,
+    )
+
+    targets = load_targets(db, run_ids=[run_id], capture_at=_utc(2025, 6, 16, 9))
+    assert len(targets) == 1
+    target = targets[0]
+    assert target.live_player_1_id == live_one
+    assert target.live_player_2_id == live_two
+    assert target.model_player_1_id == hist_one
+    assert target.model_player_2_id == hist_two
+    assert target.model_player_1_id != target.model_player_2_id
 
 
 if __name__ == "__main__":

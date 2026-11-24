@@ -25,6 +25,8 @@ def _target(**overrides) -> ShadowTarget:
         "match_id": 22,
         "prediction_id": 33,
         "prediction_as_of": _utc(20, 8),
+        "prediction_finalized_at": _utc(20, 8, 1),
+        "match_version_id": 4444,
         "match_start_at": _utc(20, 12),
         "live_player_1_id": 1001,
         "live_player_2_id": 1002,
@@ -37,6 +39,8 @@ def _target(**overrides) -> ShadowTarget:
         "qualifying_flag": False,
         "original_selection_side": 1,
         "original_win_probability": 0.72,
+        "main_draw_eligible": True,
+        "is_earliest_issued": True,
     }
     values.update(overrides)
     return ShadowTarget(**values)
@@ -75,6 +79,12 @@ def test_record_is_outcome_free_and_deterministic() -> None:
     assert record["player_1_bridged"] is True
     assert record["player_2_bridged"] is False
     assert record["selection_changed"] is False
+    assert record["match_version_id"] == 4444
+    assert record["record_type"] == "capture"
+    assert record["settlement_key"] == "22:33"
+    assert record["main_draw_eligible"] is True
+    assert record["coverage_scope"] == "CHALLENGER_MAIN_DRAW"
+    assert record["player_1_resolution"]["method"] == "UNKNOWN"
     assert len(record["record_sha256"]) == 64
 
     again = build_record(
@@ -159,3 +169,36 @@ def test_empty_forward_capture_is_explicit_and_does_not_claim_promotion() -> Non
     assert summary["can_promote"] is False
     assert any("TENNIS_A1_BRIDGE_FORWARD_SUMMARY" in line for line in logs)
     assert conn.statements[0] == "SET default_transaction_read_only=on"
+
+
+def test_empty_capture_can_be_appended_to_archive(tmp_path) -> None:
+    class Cursor:
+        def fetchall(self):
+            return []
+
+    class FakeConn:
+        def execute(self, sql, params=None):
+            return Cursor()
+
+    archive = tmp_path / "capture.jsonl"
+    summary_1 = run(
+        FakeConn(),
+        run_ids=[1],
+        capture_at=_utc(20, 8),
+        archive_path=str(archive),
+        log=lambda _: None,
+    )
+    first = archive.read_text(encoding="utf-8")
+    assert '"record_type":"summary"' in first
+    assert summary_1["archive"]["append_only"] is True
+
+    run(
+        FakeConn(),
+        run_ids=[2],
+        capture_at=_utc(20, 9),
+        archive_path=str(archive),
+        log=lambda _: None,
+    )
+    second = archive.read_text(encoding="utf-8")
+    assert second.startswith(first)
+    assert second.count('"record_type":"summary"') == 2
