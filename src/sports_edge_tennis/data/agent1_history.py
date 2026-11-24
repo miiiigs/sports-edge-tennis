@@ -28,6 +28,7 @@ def load_agent1_history(
     date_start: date | None = None,
     date_end: date | None = None,
     bridge_model_identities: bool = False,
+    ingested_by: datetime | None = None,
 ) -> list[HistoricalMatchObservation]:
     """Load PIT-visible Agent 1 history.
 
@@ -35,6 +36,11 @@ def load_agent1_history(
     namespace, as A2/A3 history and live targets already do. It defaults to False,
     so production Agent 1 inputs are unchanged until the bridged variant has been
     reviewed and explicitly activated; shadow evaluation opts in.
+
+    ``ingested_by`` is an optional extra visibility guard. It is required when a
+    retrospective shadow must prove that a history row was actually *ingested*
+    before the cutoff, not merely backdated with an earlier ``as_of``. The default
+    (``None``) preserves the production query exactly.
     """
     result_filters = [
         "mro.source_observed_at <= %(cutoff)s",
@@ -47,6 +53,10 @@ def load_agent1_history(
         "mv.as_of <= selected_results.as_of",
     ]
     params: dict[str, object] = {"cutoff": cutoff}
+    if ingested_by is not None:
+        result_filters.append("mro.ingested_at <= %(ingested_by)s")
+        version_filters.append("mv.ingested_at <= %(ingested_by)s")
+        params["ingested_by"] = ingested_by
 
     if tour_scopes:
         version_filters.append("mv.tour_scope::text = ANY(%(tour_scopes)s)")
