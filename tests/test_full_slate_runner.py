@@ -261,6 +261,8 @@ def test_bo5_australian_open_target_runs_full_slate_and_keeps_format(
             match_ids=[target["match_id"]],
             as_of=datetime(2027, 1, 17, 9, 0, tzinfo=timezone.utc),
         ),
+        # Simulated January rehearsal; preserve the real-clock future guard.
+        clock=lambda: datetime(2027, 1, 17, 9, 1, tzinfo=timezone.utc),
     )
     assert outcome.runner_status == "COMPLETED"
     assert outcome.target_count == 1
