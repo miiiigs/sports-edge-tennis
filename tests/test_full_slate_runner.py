@@ -220,7 +220,10 @@ def _insert_bo5_australian_open_target(conn: psycopg.Connection) -> dict:
         "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
         (edition_id,),
     )
-    version_as_of = datetime(2027, 1, 17, 8, 0, tzinfo=timezone.utc)
+    # The fixture is a January 2027 event observed in November 2026. The run is
+    # a genuine real-clock pre-match run, not a future-dated simulation, so the
+    # production `created_at >= as_of` guard stays fully enforced.
+    version_as_of = datetime(2026, 11, 20, 8, 0, tzinfo=timezone.utc)
     match_version_id = _fetchval(
         conn,
         """
@@ -259,10 +262,10 @@ def test_bo5_australian_open_target_runs_full_slate_and_keeps_format(
         _request(
             db,
             match_ids=[target["match_id"]],
-            as_of=datetime(2027, 1, 17, 9, 0, tzinfo=timezone.utc),
+            as_of=datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc),
         ),
-        # Simulated January rehearsal; preserve the real-clock future guard.
-        clock=lambda: datetime(2027, 1, 17, 9, 1, tzinfo=timezone.utc),
+        # Deterministic clock, still in the real past; no future-date bypass.
+        clock=lambda: datetime(2026, 11, 20, 9, 1, tzinfo=timezone.utc),
     )
     assert outcome.runner_status == "COMPLETED"
     assert outcome.target_count == 1

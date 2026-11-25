@@ -68,6 +68,7 @@ Executed path:
 | Agent 2 | `BO5_DECIDER_TB10_AT_6_6`; player-1 probability `0.861890…` under synthetic serve probabilities |
 | Manager | Full slate completed; with no synthetic player history A2/A3 abstained, so the real Manager result was `NO_BET` / `TWO_OR_MORE_ABSTENTIONS` |
 | Publication | A clearly labelled synthetic `CONSENSUS` parent was created only to exercise the downstream boundary; the BET decision published at `2026-11-25T03:00:00Z` with publication control enabled |
+| Rescheduling | A second append-only `match_versions` row moved the fixture from 18 Jan to 19 Jan; the original start, first observation and PIT visibility were retained; the target guard still excludes inside the original 30-minute deadline (`ao_2027_reschedule_rehearsal_20261125.json`) |
 | Settlement | A synthetic completed AO result was inserted; settlement created one `WON` decision settlement at `2027-01-18T16:00:00Z` |
 
 The forced-consensus step is not a Manager result and is labelled as such in the evidence (`forced_consensus_for_downstream_rehearsal: true`, `actual_status: NO_BET`). It exists because the database trigger correctly refuses a BET without a CONSENSUS parent, and no synthetic history was loaded to make A2/A3 predict. The rehearsal proves the BO5 format crosses the ingestion, Agent 2, publication and settlement boundaries unchanged; it does not claim a real Manager consensus on an AO fixture.
@@ -78,6 +79,55 @@ The forced-consensus step is not a Manager result and is labelled as such in the
 - The existing Markov implementation is exercised against an independent point-to-match reference for both best-of-3 and best-of-5.
 - The isolated rehearsal persists a real BO5 version and reads it back unchanged before Agent 2 scoring.
 - A PostgreSQL full-slate regression (`test_bo5_australian_open_target_runs_full_slate_and_keeps_format`) is added for CI; it asserts a `GRAND_SLAM` / `HARD` / `R128` / best-of-5 target completes the full slate and still resolves the BO5 rule.
+
+### Rescheduling rehearsal
+
+A separate isolated rehearsal exercises the append-only reschedule path:
+
+- ingest an AO 2027 `R128` fixture for 18 January 2027;
+- append a second `match_versions` row moving it to 19 January, observed after
+  the original;
+- rebuild the timeline directly from the stored rows: original start retained,
+  latest start moved, classification `RESCHEDULED`, one start change, original
+  PIT visibility retained, no retrospective flag;
+- confirm the pre-match target guard admits the fixture with a two-hour lead and
+  excludes it inside the original 30-minute deadline.
+
+Evidence: `docs/research/evidence/ao_2027_reschedule_rehearsal_20261125.json`.
+No historical row is rewritten; the second version exists only in the
+disposable local schema.
+
+### Regulation verification
+
+The general AO/Slam format is verified from the official AO scoring guide and
+the 2027 AO site header (10–31 January 2027). The **2027 edition-specific
+Grand Slam rulebook was not located**; the latest published edition found was
+2026. See
+[`AO_2027_REGULATION_VERIFICATION_20261125.md`](AO_2027_REGULATION_VERIFICATION_20261125.md).
+Release remains owner-gated.
+
+### Realistic Agent 2 support rehearsal
+
+The cold-start synthetic fixture is not the only support condition. A separate
+read-only rehearsal loaded the internal stored history to a fixed cutoff
+(2026-11-25T17:00Z, lookback from 2023) and built the same Agent 2 player and
+population snapshot the live loader uses. It then selected a real AO main-draw
+pairing from the stored hard-court editions and asked Agent 2 to price a
+**synthetic** AO 2027 `R128` BO5 fixture between those two real players.
+
+| Measure | Result |
+|---|---|
+| Loaded historical observations | 58,179 |
+| Stored AO main-draw observations in lookback | 356 |
+| Pairings above the Agent 2 support gates | 356 / 356 |
+| Selected player support | 246 and 219 prior usable matches; 11,648/12,026 hard serve points; 12,313/12,700 hard return points |
+| Agent 2 realistic support | `PREDICTED`, side 2, player-1 probability `0.426741`, win probability `0.573259` |
+| Agent 2 cold-start control | `ABSTAINED`, `INSUFFICIENT_HISTORY` |
+
+This demonstrates the support gate, not a forecast for the real 2027 draw. The
+pairing is synthetic, the 2027 fixture does not exist, and no accuracy claim is
+made. Evidence:
+`docs/research/evidence/ao_2027_a2_support_rehearsal_20261125.json`.
 
 ## 4. What is still blocked
 
@@ -91,11 +141,19 @@ The forced-consensus step is not a Manager result and is labelled as such in the
 
 ```text
 python -m pytest tests/test_ao_2027_format_readiness.py tests/test_historical_sources.py tests/test_sportradar_fixtures.py -q
-58 passed
+66 passed
 
 python ops/validation/ao_january_pipeline_rehearsal_20261125.py \
   --out-json docs/research/evidence/ao_january_pipeline_rehearsal_20261125.json
 REHEARSAL_OK
+
+python ops/validation/ao_2027_reschedule_rehearsal_20261125.py \
+  --out-json docs/research/evidence/ao_2027_reschedule_rehearsal_20261125.json
+RESCHEDULE_REHEARSAL_OK
+
+python ops/validation/ao_2027_a2_support_rehearsal_20261125.py \
+  --out-json docs/research/evidence/ao_2027_a2_support_rehearsal_20261125.json
+A2_SUPPORT_REHEARSAL_OK
 ```
 
 ## Verdict
@@ -107,4 +165,10 @@ The 2026 AO defect is a real ingestion-default and identity-metadata defect, not
 ```text
 docs/research/evidence/ao_january_pipeline_rehearsal_20261125.json
 SHA256 E5B8C55CC4567C336A22FD80775E7DBAF3EB3A6D630F4EF020E86F83FEA27ADD
+
+docs/research/evidence/ao_2027_reschedule_rehearsal_20261125.json
+SHA256 52315BC26DA36F4E7E8D116FA4FE507E568D18B86B3B1547E1F5CA48FB857526
+
+docs/research/evidence/ao_2027_a2_support_rehearsal_20261125.json
+SHA256 AB8BCA878CE76C497BB5069FB8F106ADBAA4EBE3AA9538DAE5D8F29894374411
 ```

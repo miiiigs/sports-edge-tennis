@@ -71,6 +71,75 @@ def test_qualifying_classified_separately_but_not_enabled_for_agent2(round_code)
 
 
 @pytest.mark.parametrize(
+    ("tournament", "event_date", "round_code"),
+    [
+        ("Brisbane", "2027-01-04", "R32"),
+        ("Hong Kong", "2027-01-04", "R32"),
+        ("Adelaide", "2027-01-11", "R32"),
+        ("Auckland", "2027-01-11", "R32"),
+    ],
+)
+def test_january_tournament_discovery_scope_and_formats(
+    tournament, event_date, round_code
+):
+    record = _parse(
+        tournament_name=tournament, event_date=event_date, round=round_code
+    )
+    assert record.best_of_sets == 3
+    assert record.competition_tier == "ATP_TOUR"
+    assert record.qualifying_flag is False
+    assert _rule(record).scoring_rule_version == ScoringRuleVersion.BO3_TB7_ALL_SETS
+
+
+def test_united_cup_is_not_ao_2027_scope():
+    record = _parse(
+        tournament_name="United Cup",
+        event_date="2027-01-01",
+        round="RR",
+    )
+    assert record.best_of_sets == 3
+    assert record.competition_tier == "ATP_TOUR"
+    assert _rule(record).scoring_rule_version == ScoringRuleVersion.BO3_TB7_ALL_SETS
+    resolved = resolve_scoring_rule(
+        canonical_tournament_name="United Cup",
+        season_year=2027,
+        tour_scope="ATP_MAIN",
+        competition_tier="ATP_TOUR",
+        round_code="RR",
+        best_of_sets=3,
+        qualifying_flag=False,
+    )
+    assert resolved.scoring_rule_version == ScoringRuleVersion.BO3_TB7_ALL_SETS
+    assert resolved.scoring_rule_version != ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
+
+
+def test_ao_main_draw_deciding_set_uses_ten_point_tiebreak_rule():
+    for round_code in ("R128", "R64", "R32", "R16", "QF", "SF", "F"):
+        resolved = _rule(_parse(round=round_code))
+        assert resolved.scoring_rule_version is ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
+        assert "TB10" in resolved.scoring_rule_version.value
+
+
+def test_dashboard_aligned_read_model_is_not_tournament_or_season_scoped():
+    # Structural January compatibility: the Model Picks read model selects from
+    # the same Manager/prediction/version tables the runner writes and has no
+    # tournament, tier or season filter that would exclude an AO 2027 pick.
+    from sports_edge_tennis.dashboard.aligned_model_picks import (
+        PIT_MATCH_START_LATERAL,
+        aligned_production_model_picks_cte,
+    )
+
+    sql = aligned_production_model_picks_cte().lower()
+    for token in ("season_year", "australian open", "grand_slam", "atp_250"):
+        assert token not in sql
+    assert "manager_consensus_results" in sql
+    assert "prediction_runs" in sql
+    lateral = PIT_MATCH_START_LATERAL.lower()
+    assert "match_versions" in lateral
+    assert "mv0.as_of <= p.picked_at" in lateral
+
+
+@pytest.mark.parametrize(
     ("overrides", "reason"),
     [
         ({"round": None}, "ao_2027_unverified_round"),

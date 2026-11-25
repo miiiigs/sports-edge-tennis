@@ -25,3 +25,16 @@ On a separate draft branch, only the exact Australian Open 2027 men's ATP scope 
 5. Establish runner/dashboard compatibility, independent archive and settlement, fail-closed scope, controlled deployment/rollback, owner approval. No qualifying, United Cup or AO production-scope expansion merely because this draft exists.
 
 No forecasting uplift has been measured. Do not promote on CI alone.
+
+## Verification status (25 November 2026)
+
+| Required verification | Status | Evidence |
+|---|---|---|
+| Official AO 2027 format and qualifying rules | **Partially verified** — general Slam format confirmed; 2027 edition-specific rulebook not located | [`AO_2027_REGULATION_VERIFICATION_20261125.md`](AO_2027_REGULATION_VERIFICATION_20261125.md) |
+| Full PostgreSQL CI at the exact head | Pending the pushed head | PR #389 checks |
+| Read-only real fixture audit | Measured for stored AO 2016–2026 and January discovery; no official 2027 draw | [`AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md`](AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md) |
+| Chronological historical AO rehearsal | **Blocked** — zero original AO pre-match forecasts | [`AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md`](AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md) |
+| Realistic Agent 2 support | Real stored-history support rehearsal executed; synthetic 2027 pairing, not a forecast | [`AO_2026_DEFECT_RESOLUTION_AND_2027_REHEARSAL_20261125.md`](AO_2026_DEFECT_RESOLUTION_AND_2027_REHEARSAL_20261125.md) |
+| Rescheduling rehearsal | Append-only reschedule preserved original start/PIT; guard tested | `ao_2027_reschedule_rehearsal_20261125.json` |
+| Runner/dashboard compatibility | Runner BO5 regression; dashboard read model structurally tournament-agnostic | January acceptance report |
+| January acceptance | Conditional; owner approval, rules and real slate outstanding | [`AO_2027_JANUARY_READINESS_ACCEPTANCE_20261125.md`](AO_2027_JANUARY_READINESS_ACCEPTANCE_20261125.md) |
