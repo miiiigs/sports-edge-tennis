@@ -581,4 +581,125 @@ commercial, marketing, investor or model-quality contexts. It may only be cited 
 unreproducible legacy internal claim with this audit attached. Replace it with the reproducible
 original-forecast cohort and the forward activation gate in section 3.
 
+## 11. 2026-11-26 implementation completion
+
+This section records the work that converted the remaining design items into implementation
+and bounded evidence. It is still research only: `can_promote=false`, no production
+migration, no activation and no deployment.
+
+### 11.1 Migration train reconciliation
+
+The branch adopts integration PR #392's `0023` (Manager C feature snapshots) and `0024`
+(OddsPapi identity history) as parents, then allocates the next free version, `0025`, to
+identity provenance. This removes the earlier manifest gap and makes the cumulative schema
+snapshot confluent. `0025` is not applied to production.
+
+### 11.2 Versioned reference data — implemented
+
+`0025_identity_provenance_v2` adds:
+
+- `player_name_versions` — append-only canonical-name history. Effective interval is
+  derived from the next `valid_from`; there is no `valid_to` UPDATE. A rename writes a new
+  version at `NEW.updated_at` with a real `recorded_at`, so a backdated rename is visible.
+  Backfill uses `GREATEST(created_at, updated_at)`, so a pre-migration rename is never
+  asserted to have existed from row creation. When no version is visible at a cutoff, a
+  never-updated player row still supplies its current name, exactly as the pre-0025 policy
+  allowed; a renamed row fails closed. The residual "row created after the cutoff but never
+  updated" channel is unchanged and bounded by source-id and history visibility.
+- `player_alias_versions` — append-only alias linkage history, written on insertion.
+- `guard_player_alias_identity()` — rejects any link-column UPDATE on `player_aliases`.
+  Normal pipeline re-observation still updates only `last_observed_at`/`updated_at`.
+- `identity_resolution_provenance` — durable runtime record (section 11.3).
+
+The bulk resolver and the replay resolver now read the version tables when they exist and
+fall back to the legacy current-table gates on a pre-0025 schema. `identity_reference_pit_v3`
+is the versioned policy; `alias_refresh_gate` deliberately forces the legacy path so the
+residual mutable-alias channel stays measurable.
+
+### 11.3 Exact runtime resolution persistence — implemented, inactive
+
+`data/identity_runtime.py` writes and reads one row per player per resolution:
+
+`prediction_run_id`, `match_id`, `match_version_id`, `predicted_at`, `original_player_id`,
+`model_player_id`, `resolution_method`, `evidence`, `name_source`, `candidate_count`,
+`matched_alias`, `bridge_event_id`, `visible_from`, `reference_policy`, `reference_sha256`,
+`record_sha256`, `source_record_sha256`, `capture_source`.
+
+Before insertion it verifies that the match version belongs to the match, that the version
+timestamps and run `as_of` are not later than the observation time, and that `visible_from`
+is not later than the observation. Re-persisting the same key with the same digest is a
+no-op; a different digest fails closed as a lineage conflict.
+
+The live runner passes no observations today, so production behaviour is unchanged.
+
+### 11.4 First-issued capture integration — completed
+
+- `a1_identity_bridge_forward_shadow` can now discover completed, non-experiment runs
+  finalized since a watermark, in finalized order, and never re-appends a run already
+  present in the archive.
+- `validation.a1_identity_capture_integration` verifies a JSONL capture archive and, with
+  `--apply` only, writes the same facts into `identity_resolution_provenance`. Default is a
+  dry run.
+- Run-2603's 2 first-issued records remain the only admissible capture. Run-2548's 52
+  targets stay quarantined; run-2535's 17 pre-outcome records are not an independent
+  receipt.
+
+### 11.5 Shadow non-interference — verified locally
+
+A regression test wraps the observer's connection in a statement guard that rejects any
+non-read-only statement, runs the observer against a real local PostgreSQL run, and asserts
+that `predictions`, `prediction_runs`, `decisions`, `manager_consensus_results`,
+`publication_control_events` and `decision_settlements` are byte-for-byte unchanged. The
+observer sets `default_transaction_read_only=on` and records `outcome_included=false` and
+`production_changed=false`.
+
+### 11.6 Reference-policy experiment — explicit forecasting effect
+
+The 3,778-target census already showed **0** changed mappings for `strict` and
+`strict_alias_refresh_gate` versus `permissive`. The evidence file now records the
+forecasting consequence explicitly: `affected_targets = 0`, `changed_probabilities = 0`,
+`max_abs_probability_delta = 0.0`, replay fidelity `n = 0` and no paired interval. Zero
+mapping changes imply zero replayed probability changes, so this is exact, not a failed
+measurement.
+
+This result is under `identity_reference_pit_v2`. The version-table policy is v3 and must be
+re-measured on production after 0025 is applied. Do not cite the v2 census as a v3 result.
+
+### 11.7 Residual replay mismatch — lineage, not late data
+
+The full-population audit is unchanged: 3,780 targets, 92.78% exact, 94.60% within 0.005,
+273 mismatches, zero late-ingested result observations at every sampled cutoff.
+
+A new bounded case audit of the 30 largest re-issue mismatches
+(`a1_identity_replay_mismatch_cases_20261126.json`, derived from the 3,725-target fidelity
+harness) shows:
+
+- **30/30** changed target identity at the original cutoff; **0/30** were first-issued.
+- **24/30** changed both players; **26/30** changed player 1.
+- **18/30** flipped the modelled side; only **8/30** had a null surface.
+- Absolute probability deltas: 0.188 / 0.283 / 0.451 (min / median / max).
+
+The dominant mechanism is therefore reconstructed target identity — exactly the lineage gap
+the durable runtime record closes for future runs. It is not evidence of a model change or
+late history. The 5.9% unexplained remainder of the 3,780-target audit stays fail-closed and
+is not attributed to a reconstructable value.
+
+### 11.8 Manager interaction — bounded and statistically inconclusive
+
+The existing 3,271-match comparison is unchanged: 546 → 631 consensus, 63.9% → 66.1%, all
+255 shared picks keep the same side. The evidence now adds an explicitly **unpaired**
+two-proportion interval: **+2.17 pp, 95% CI [−3.30, +7.63] pp**, which includes zero. ATP
+coverage rises 58 → 68 while accuracy slips 70.7% → 69.1%; Challenger rises 488 → 563 and
+63.1% → 65.7%. This is a coverage interaction, not a paired activation result.
+
+### 11.9 Legacy claim and readiness
+
+The ~14,000 / ~75% claim remains formally `UNREPRODUCIBLE` / `RETIRE`; the largest
+reproducible original-forecast cohort is 3,375 settled at 62.52%.
+
+`A1_IDENTITY_BRIDGE_PROSPECTIVE_READINESS_20261126.md` and its JSON companion record every
+activation gate. The candidate is **NOT_ELIGIBLE**: 2/200 settled first-issued selections,
+2/30 days, no independent receipt, no paired interval, no forward ATP sample, no new config
+version and no owner approval.
+
 

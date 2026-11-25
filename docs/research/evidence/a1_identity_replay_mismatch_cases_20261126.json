@@ -1,0 +1,28 @@
+{
+  "version": "A1_IDENTITY_REPLAY_MISMATCH_CASES_V1",
+  "generated_at": "2026-11-26T00:00:00+00:00",
+  "derived_from": "docs\\research\\evidence\\a1_identity_bridge_replay_fidelity_20261124.json",
+  "derived_from_sha256": "82a235f44c74bff8ae0f0a1c4f2469400e85307fce5424af70c8759649777e30",
+  "scope": "Top 30 absolute mismatches from the 3,725-target re-issue fidelity harness. This is not the 3,780-target December mismatch audit and must not be pooled with it.",
+  "cases": 30,
+  "is_first_issued": 0,
+  "target_ids_same_at_as_of": 0,
+  "target_ids_changed_at_as_of": 30,
+  "both_players_changed": 24,
+  "player_1_changed": 26,
+  "surface_null": 8,
+  "by_tour": {
+    "ATP_MAIN": 9,
+    "CHALLENGER": 21
+  },
+  "abs_delta": {
+    "min": 0.18791399999999997,
+    "median": 0.282717,
+    "max": 0.45059400000000005
+  },
+  "interpretation": "Every top mismatch is a later re-issue whose reconstructed target identity differed from the live id at the original cutoff. This is the lineage gap the durable runtime provenance record is designed to close: the exact production request player ids were never persisted, so a replay must reconstruct them. It is not evidence of a model change or late history.",
+  "can_promote": false,
+  "production_changed": false,
+  "replay_side_flip": 18,
+  "stored_player_1_probability_below_half": 14
+}

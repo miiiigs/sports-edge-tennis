@@ -87,5 +87,24 @@
   },
   "can_promote": false,
   "production_changed": false,
-  "quarantine_note": "run-2548 52-target cohort remains quarantined; its counterfactual Manager classification lives in a1_target52_manager_counterfactual_20261125.json"
+  "quarantine_note": "run-2548 52-target cohort remains quarantined; its counterfactual Manager classification lives in a1_target52_manager_counterfactual_20261125.json",
+  "consensus_accuracy_delta": {
+    "difference": 0.02166164527495751,
+    "ci95": [
+      -0.03299322547933991,
+      0.07631651602925493
+    ],
+    "includes_zero": true,
+    "paired": false,
+    "note": "Different matches selected; not a paired activation test."
+  },
+  "matched_fixture_contract": {
+    "population": "bounded safely settled Agent 1 targets with all three agents and a stored Manager result",
+    "excluded_not_safely_settled": 507,
+    "same_inputs_except_agent_1": true,
+    "selection_sets_are_not_identical": true,
+    "paired_activation_test": false,
+    "note": "A1 replacement changes which matches clear the existing Manager; it is not a paired head-to-head on identical selections. Shared consensus picks keep the same side, so the difference is coverage, not a better probability on the same match."
+  },
+  "analysis_status": "COMPLETE_BOUNDED"
 }

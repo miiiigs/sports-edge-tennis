@@ -106,5 +106,8 @@
   "retirement_scope": "Retire the '~14,000 historical matches at ~75%' benchmark from every commercial, marketing, investor and model-quality context. It may only be cited as an unreproducible legacy internal claim, with this audit attached.",
   "replacement_evidence": "Use the reproducible original-forecast cohort above, the forward shadow gate (>=200 settled first-issued selections over >=30 days), and the paired proper-score activation rule.",
   "can_promote": false,
-  "production_changed": false
+  "production_changed": false,
+  "claim_status": "RETIRED",
+  "claim_status_date": "2026-11-25",
+  "retirement_is_final": true
 }

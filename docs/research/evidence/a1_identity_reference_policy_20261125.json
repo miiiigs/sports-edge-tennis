@@ -21,6 +21,9 @@
         },
         "affected_metrics": {
           "n": 0
+        },
+        "replay_fidelity": {
+          "n": 0
         }
       },
       "strict": {
@@ -33,6 +36,9 @@
           "HISTORICAL_ID": 5
         },
         "affected_metrics": {
+          "n": 0
+        },
+        "replay_fidelity": {
           "n": 0
         }
       },
@@ -47,6 +53,9 @@
         },
         "affected_metrics": {
           "n": 0
+        },
+        "replay_fidelity": {
+          "n": 0
         }
       }
     },
@@ -54,12 +63,29 @@
       "changed_player_mappings": 0,
       "examples": [],
       "affected_targets": 0,
-      "paired": null
+      "paired": null,
+      "forecast_effect": {
+        "compared_targets": 0,
+        "changed_probabilities": 0,
+        "max_abs_probability_delta": 0.0,
+        "mean_abs_probability_delta": 0.0,
+        "paired": null
+      }
     },
     "strict_alias_refresh_gate_vs_permissive": {
       "changed_player_mappings": 0,
-      "examples": []
-    }
+      "examples": [],
+      "forecast_effect": {
+        "compared_targets": 0,
+        "changed_probabilities": 0,
+        "max_abs_probability_delta": 0.0,
+        "mean_abs_probability_delta": 0.0,
+        "paired": null
+      }
+    },
+    "experiment_status": "COMPLETE",
+    "measurement_basis": "Zero changed player mappings between permissive and each strict policy means no target resolution changed, so no replayed probability can move. The affected population is empty by construction and the forecast effect is exactly zero. The committed mapping census (3,778 targets, 6,556 player resolutions per policy) is the empirical measurement; this block records its forecasting consequence.",
+    "policy_version_measured": "identity_reference_pit_v2"
   },
   "connection_attempts": 1
 }
