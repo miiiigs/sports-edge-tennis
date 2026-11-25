@@ -155,6 +155,20 @@
       "up": "db/migrations/0022_defaulted_outcome.up.sql",
       "down": "db/migrations/0022_defaulted_outcome.down.sql",
       "schema_snapshot": "db/schema/0022_defaulted_outcome.sql"
+    },
+    {
+      "version": "0023",
+      "name": "prediction_feature_snapshots",
+      "up": "db/migrations/0023_prediction_feature_snapshots.up.sql",
+      "down": "db/migrations/0023_prediction_feature_snapshots.down.sql",
+      "schema_snapshot": "db/schema/0023_prediction_feature_snapshots.sql"
+    },
+    {
+      "version": "0024",
+      "name": "oddspapi_identity_history",
+      "up": "db/migrations/0024_oddspapi_identity_history.up.sql",
+      "down": "db/migrations/0024_oddspapi_identity_history.down.sql",
+      "schema_snapshot": "db/schema/0024_oddspapi_identity_history.sql"
     }
   ]
 }

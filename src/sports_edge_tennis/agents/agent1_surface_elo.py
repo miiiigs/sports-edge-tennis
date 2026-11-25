@@ -713,6 +713,26 @@ def advance_replay_history(
     )
 
 
+def resolved_player_states(
+    request: PredictionRequest,
+    replay: ReplayResult,
+    config: SurfaceEloConfig = DEFAULT_CONFIG,
+) -> tuple[PlayerRatingState, PlayerRatingState]:
+    """Return the exact (player_1, player_2) states the prediction will consume.
+
+    Missing players resolve to their cold-start default. Callers that persist
+    evidence must use this helper (or ``predict_from_replay``) so the captured
+    state cannot silently diverge from what the model evaluated.
+    """
+    player_1_state = replay.player_states.get(
+        request.player_1_id, _default_player_state(request.player_1_id, config)
+    )
+    player_2_state = replay.player_states.get(
+        request.player_2_id, _default_player_state(request.player_2_id, config)
+    )
+    return player_1_state, player_2_state
+
+
 def predict_from_replay(
     request: PredictionRequest,
     replay: ReplayResult,
@@ -724,12 +744,7 @@ def predict_from_replay(
     the historical Elo ledger once and reuse the immutable result across every
     target sharing the same ``as_of`` boundary.
     """
-    player_1_state = replay.player_states.get(
-        request.player_1_id, _default_player_state(request.player_1_id, config)
-    )
-    player_2_state = replay.player_states.get(
-        request.player_2_id, _default_player_state(request.player_2_id, config)
-    )
+    player_1_state, player_2_state = resolved_player_states(request, replay, config)
 
     player_1_surface_matches = 0
     player_2_surface_matches = 0
