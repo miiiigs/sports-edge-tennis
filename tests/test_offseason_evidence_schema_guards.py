@@ -70,6 +70,15 @@ def test_0024_and_0023_downgrade_and_reupgrade_cleanly(db):
 
 
 def test_cumulative_0024_snapshot_matches_migrated_schema(db):
+    # Build both states from an empty schema so runtime code that adds columns
+    # to existing tables during other tests cannot contaminate the comparison.
+    def _rebuild_migrated() -> None:
+        db.execute("DROP SCHEMA public CASCADE")
+        db.execute("CREATE SCHEMA public")
+        for entry in MANIFEST:
+            _apply(db, entry["up"])
+
+    _rebuild_migrated()
     migrated = _logical_blocks(db)
     db.execute("DROP SCHEMA public CASCADE")
     db.execute("CREATE SCHEMA public")
@@ -78,6 +87,7 @@ def test_cumulative_0024_snapshot_matches_migrated_schema(db):
     assert migrated[0] == snapshot[0]
     assert migrated[1] == snapshot[1]
     assert migrated[2] == snapshot[2]
+    _rebuild_migrated()
 
 
 def test_combined_snapshot_contains_each_evidence_table_once():
