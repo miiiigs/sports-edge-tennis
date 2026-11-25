@@ -311,9 +311,9 @@ def resolve_model_player_ids_with_provenance(
         return resolutions
 
     # Stage D: PIT-visible reference names for the remaining unresolved players.
-    # The canonical name is gated on ``players.updated_at <= as_of`` so a rename after
-    # the cutoff cannot generate lookup keys for an earlier replay. When the canonical
-    # name is not PIT-visible the player fails closed unless the caller explicitly
+    # The canonical name is only used when the player row was not *mutated* after the
+    # cutoff, so a rename cannot generate lookup keys for an earlier replay. When no
+    # usable canonical name exists the player fails closed unless the caller explicitly
     # opts into the live player's own PIT-visible provider aliases as a fallback tier.
     name_where = ["player_id = ANY(%s)"]
     name_params: list[object] = [unresolved]
