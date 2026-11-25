@@ -2,7 +2,7 @@
   "version": "A1_IDENTITY_REPLAY_MISMATCH_CASES_V1",
   "generated_at": "2026-11-26T00:00:00+00:00",
   "derived_from": "docs/research/evidence/a1_identity_bridge_replay_fidelity_20261124.json",
-  "derived_from_sha256": "82a235f44c74bff8ae0f0a1c4f2469400e85307fce5424af70c8759649777e30",
+  "derived_from_sha256": "c0f74f9b75d013d8ce669833571bf0cf77e1eda66f24028828a3d4ff0ef70e02",
   "scope": "Top 30 absolute mismatches from the 3,725-target re-issue fidelity harness. This is not the 3,780-target December mismatch audit and must not be pooled with it.",
   "cases": 30,
   "is_first_issued": 0,
@@ -24,5 +24,6 @@
   "can_promote": false,
   "production_changed": false,
   "replay_side_flip": 18,
-  "stored_player_1_probability_below_half": 14
+  "stored_player_1_probability_below_half": 14,
+  "derived_from_sha256_normalization": "LF"
 }

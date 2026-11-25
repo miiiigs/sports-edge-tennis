@@ -322,7 +322,8 @@ def test_replay_mismatch_case_audit_is_identity_dominated():
     path = root / "docs" / "research" / "evidence" / "a1_identity_replay_mismatch_cases_20261126.json"
     report = json.loads(path.read_text(encoding="utf-8"))
     source = root / report["derived_from"]
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == report["derived_from_sha256"]
+    normalized = source.read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(normalized).hexdigest() == report["derived_from_sha256"]
     assert report["cases"] == 30
     assert report["target_ids_changed_at_as_of"] == report["cases"]
     assert report["is_first_issued"] == 0
