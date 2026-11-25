@@ -276,13 +276,19 @@ def _parse_fixture(
     source_observed_at = _source_observed_at(fixture, received_at)
     surface = _surface(_optional_text_any(fixture, ("surface", "event_surface")))
     round_code = _optional_text_any(fixture, ("round", "event_round", "round_code"))
-    if match_start_at.year == 2027 and _normalize_token(tournament_name) == "australian open":
+    if match_start_at.year == 2027 and "australian open" in _normalize_token(tournament_name):
+        if _normalize_token(tournament_name) != "australian open":
+            raise ApiTennisSourceAError("ao_2027_unverified_tournament_alias")
         # A reviewed edition-specific contract, not a generic guess from a name
         # or a missing provider field. Unrecognised rounds and contradictions
         # must remain visible as rejected rows, never silently become BO3.
         if tour_scope != "ATP_MAIN" or competition_tier not in {"ATP_TOUR", "GRAND_SLAM"}:
             raise ApiTennisSourceAError("ao_2027_competition_conflict")
         normalized_round = (round_code or "").strip().upper()
+        for field in ("round", "event_round", "round_code"):
+            supplied_round = fixture.get(field)
+            if supplied_round not in (None, "") and str(supplied_round).strip().upper() != normalized_round:
+                raise ApiTennisSourceAError("ao_2027_round_conflict")
         if normalized_round in {"Q1", "Q2", "Q3"}:
             qualifying_flag = True
             best_of_sets = 3
@@ -291,8 +297,15 @@ def _parse_fixture(
             best_of_sets = 5
         else:
             raise ApiTennisSourceAError("ao_2027_unverified_round")
-        if fixture.get("qualifying_flag") not in (None, "") and _qualifying_flag(fixture) != qualifying_flag:
-            raise ApiTennisSourceAError("ao_2027_qualifying_conflict")
+        for field in ("qualifying_flag", "event_qualification"):
+            supplied_flag = fixture.get(field)
+            if supplied_flag not in (None, "") and _qualifying_flag({"qualifying_flag": str(supplied_flag)}) != qualifying_flag:
+                raise ApiTennisSourceAError("ao_2027_qualifying_conflict")
+        for field in ("competition_tier", "event_competition_tier"):
+            supplied_tier = fixture.get(field)
+            if supplied_tier not in (None, "") and str(supplied_tier).strip().upper().replace(" ", "_") not in {"ATP_TOUR", "GRAND_SLAM"}:
+                raise ApiTennisSourceAError("ao_2027_competition_conflict")
+        round_code = normalized_round
         for field in ("best_of_sets", "event_best_of_sets"):
             supplied = fixture.get(field)
             if supplied not in (None, "") and _best_of_sets(supplied) != best_of_sets:

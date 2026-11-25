@@ -126,3 +126,43 @@ def test_markov_uses_different_match_length_and_symmetric_equal_players():
     p = forecast(bo5, "0.65", "0.65", 1)
     q = forecast(bo5, "0.65", "0.65", 2)
     assert abs((p + q) / 2 - Decimal("0.5")) < Decimal("0.00001")
+
+
+@pytest.mark.parametrize("overrides,reason", [
+    ({"event_qualification": "1"}, "ao_2027_qualifying_conflict"),
+    ({"qualifying_flag": False, "event_qualification": "1"}, "ao_2027_qualifying_conflict"),
+    ({"round": "QF", "event_round": "Q1"}, "ao_2027_round_conflict"),
+    ({"competition_tier": "GRAND_SLAM", "event_competition_tier": "ATP_250"}, "ao_2027_competition_conflict"),
+    ({"tournament_name": "ATP Australian Open"}, "ao_2027_unverified_tournament_alias"),
+])
+def test_ao_2027_secondary_metadata_cannot_bypass_guard(overrides, reason):
+    with pytest.raises(ApiTennisSourceAError, match=reason):
+        _parse(**overrides)
+
+
+@pytest.mark.parametrize("p1,p2,expected_bo3,expected_bo5", [
+    ("0.65", "0.65", "0.5", "0.5"),
+    ("0.68", "0.61", "0.8072855395475537", "0.8618903566595986"),
+    ("0.65", "0.62", "0.6465911619592051", "0.6814968606019012"),
+    ("0.70", "0.60", "0.8910122349465719", "0.9388321909043293"),
+    ("0.61", "0.68", "0.19271446045244633", "0.13810964334040127"),
+])
+def test_existing_markov_against_independent_point_to_match_reference(p1, p2, expected_bo3, expected_bo5):
+    # Independent floating-point DP reference: analytic hold and deuce tails,
+    # point-level service-order tiebreak, set winner + next server transitions,
+    # first-server marginalization. Not empirical forecasting results.
+    for rule, expected in (
+        (ScoringRuleVersion.BO3_TB7_ALL_SETS, expected_bo3),
+        (ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6, expected_bo5),
+    ):
+        def average(a, b):
+            return sum(match_probability(
+                player_1_serve_probability=Decimal(a),
+                player_2_serve_probability=Decimal(b),
+                scoring_rule_version=rule,
+                first_server=server,
+            ) for server in (1, 2)) / 2
+
+        actual = average(p1, p2)
+        assert abs(actual - Decimal(expected)) < Decimal("0.00001")
+        assert abs(actual + average(p2, p1) - Decimal("1")) < Decimal("0.00001")

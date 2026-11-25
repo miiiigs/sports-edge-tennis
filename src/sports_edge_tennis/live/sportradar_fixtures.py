@@ -217,6 +217,11 @@ def parse_summary(
     mode = context.get("mode")
     raw_best_of = mode.get("best_of") if isinstance(mode, Mapping) else None
     if raw_best_of in (None, ""):
+        # Never turn an AO 2027 missing provider format into an apparently
+        # valid BO3 match. Provider-specific round/identity mapping is not
+        # yet verified; quarantine rather than infer a replacement format.
+        if match_start_at.year == 2027 and "australian open" in competition_name.casefold():
+            raise SportradarFixtureError("ao_2027_unverified_match_format")
         best_of_sets = 3
     else:
         try:
@@ -242,6 +247,16 @@ def parse_summary(
         "qual" in phase
         or bool(round_code and "qual" in round_code.casefold())
     )
+
+    if match_start_at.year == 2027 and "australian open" in competition_name.casefold():
+        if competition_tier != "GRAND_SLAM" or tour_scope != "ATP_MAIN":
+            raise SportradarFixtureError("ao_2027_competition_conflict")
+        # Unreviewed aliases and provider rounds are not promoted to canonical
+        # main draw. Explicit BO3 cannot pass as a nonqualifying AO fixture.
+        if not qualifying_flag and best_of_sets != 5:
+            raise SportradarFixtureError("ao_2027_match_format_conflict")
+        if qualifying_flag and best_of_sets != 3:
+            raise SportradarFixtureError("ao_2027_match_format_conflict")
 
     return SportradarFixtureCandidate(
         source_match_id=source_match_id,
