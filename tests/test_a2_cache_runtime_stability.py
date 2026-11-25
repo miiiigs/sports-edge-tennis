@@ -43,10 +43,30 @@ _EARLY = datetime(2024, 1, 1, tzinfo=UTC)
 
 
 def _player(conn: psycopg.Connection, name: str) -> int:
-    return conn.execute(
+    player_id = conn.execute(
         "INSERT INTO players (canonical_name, status) VALUES (%s, 'ACTIVE') RETURNING player_id",
         (name,),
     ).fetchone()[0]
+    # These fixtures simulate rows observed at a 2024/2025 cutoff. Migration 0025
+    # captures the name version at insert time, so provide the PIT-visible version the
+    # fixture claims rather than relying on wall-clock insertion.
+    conn.execute(
+        "UPDATE players SET created_at = %s, updated_at = %s WHERE player_id = %s",
+        (_EARLY, _EARLY, player_id),
+    )
+    conn.execute(
+        """
+        INSERT INTO player_name_versions (
+            player_id, canonical_name, valid_from, recorded_at, actor, reason
+        )
+        SELECT player_id, canonical_name, %s, CURRENT_TIMESTAMP,
+               'test_fixture', 'backdated_player_visibility'
+        FROM players WHERE player_id = %s
+        ON CONFLICT (player_id, valid_from) DO NOTHING
+        """,
+        (_EARLY, player_id),
+    )
+    return player_id
 
 
 def _source(

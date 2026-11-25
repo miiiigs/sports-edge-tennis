@@ -18,16 +18,13 @@ This module resolves model identity using only evidence provably available at
    available by ``T`` and which resolves to exactly one PIT-eligible historical
    player.
 
-Mutable reference data is treated as a leakage channel, not an oracle:
-``players.canonical_name`` is used only when the row has not been **mutated** after
-``T`` (``updated_at <= T``, or ``updated_at = created_at`` because it was never
-updated at all).
-``player_aliases`` is gated on ``created_at``/``first_observed_at`` but **not**
-``updated_at``, because the pipeline only refreshes ``last_observed_at`` on
-conflict and the conflict key pins ``player_id`` and ``normalized_alias``. A rename
-after ``T`` therefore fails closed instead of rewriting history; out-of-band alias
-re-pointing remains a residual risk until the immutability trigger proposed under
-integration PR #392 lands.
+Mutable reference data is treated as a leakage channel, not an oracle. With
+migration 0025 the resolver reads append-only ``player_name_versions`` and
+``player_alias_versions`` rows whose ``valid_from`` is at or before ``T``. A rename
+or alias linkage insertion after ``T`` therefore fails closed instead of rewriting
+history. On a pre-0025 schema the legacy current-table gates are retained:
+``players.canonical_name`` only when ``updated_at <= T`` (or never updated), and
+``player_aliases`` on ``created_at``/``first_observed_at``.
 
 Anything else fails closed as ``LIVE_UNRESOLVED`` so the engine can mark
 ``IDENTITY_NOT_AVAILABLE_PIT``. No fuzzy matching and no current-only lookup is
@@ -44,6 +41,7 @@ import psycopg
 from sports_edge_tennis.data.model_identity import (
     NAME_SOURCE_CANONICAL,
     NAME_SOURCE_UNAVAILABLE,
+    identity_version_tables_available,
 )
 from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 from sports_edge_tennis.data.normalize import (
@@ -139,15 +137,34 @@ def _alias_candidate_pit(
     as_of: datetime,
 ) -> tuple[int | None, str]:
     """Return ``(candidate_player_id, name_source)`` using PIT-visible names only."""
-    row = conn.execute(
-        """
-        SELECT canonical_name
-        FROM players
-        WHERE player_id = %s
-          AND (updated_at <= %s OR updated_at = created_at)
-        """,
-        (live_player_id, as_of),
-    ).fetchone()
+    if identity_version_tables_available(conn):
+        row = conn.execute(
+            """
+            SELECT COALESCE(v.canonical_name, p.canonical_name)
+            FROM players p
+            LEFT JOIN LATERAL (
+                SELECT vv.canonical_name
+                FROM player_name_versions vv
+                WHERE vv.player_id = p.player_id
+                  AND vv.valid_from <= %s
+                ORDER BY vv.valid_from DESC, vv.player_name_version_id DESC
+                LIMIT 1
+            ) v ON TRUE
+            WHERE p.player_id = %s
+              AND (v.canonical_name IS NOT NULL OR p.updated_at = p.created_at)
+            """,
+            (as_of, live_player_id),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT canonical_name
+            FROM players
+            WHERE player_id = %s
+              AND (updated_at <= %s OR updated_at = created_at)
+            """,
+            (live_player_id, as_of),
+        ).fetchone()
     if row is None:
         return None, NAME_SOURCE_UNAVAILABLE
     normalized_aliases = sorted(
@@ -160,8 +177,48 @@ def _alias_candidate_pit(
     if not normalized_aliases:
         return None, NAME_SOURCE_CANONICAL
 
-    candidates = conn.execute(
+    if identity_version_tables_available(conn):
+        alias_sql = """
+        SELECT DISTINCT pa.player_id
+        FROM player_alias_versions pa
+        WHERE pa.source_system = 'TENNIS_DATA'
+          AND pa.normalized_alias = ANY(%s)
+          AND pa.player_id <> %s
+          AND (pa.first_observed_at IS NULL OR pa.first_observed_at <= %s)
+          AND pa.valid_from <= %s
+          AND EXISTS (
+              SELECT 1
+              FROM player_source_ids psi
+              WHERE psi.player_id = pa.player_id
+                AND psi.source_system <> ALL(%s)
+                AND psi.created_at <= %s
+          )
+          AND EXISTS (
+              SELECT 1
+              FROM match_result_observations hist_mro
+              JOIN match_versions hist_mv
+                ON hist_mv.match_id = hist_mro.match_id
+               AND hist_mv.source_observed_at <= hist_mro.source_observed_at
+               AND hist_mv.as_of <= hist_mro.as_of
+              WHERE (hist_mv.player_1_id = pa.player_id OR hist_mv.player_2_id = pa.player_id)
+                AND hist_mro.outcome_status = 'COMPLETED'
+                AND hist_mro.source_observed_at <= %s
+                AND hist_mro.as_of <= %s
+          )
+        ORDER BY pa.player_id
         """
+        params = (
+            normalized_aliases,
+            live_player_id,
+            as_of,
+            as_of,
+            list(LIVE_FIXTURE_SOURCE_SYSTEMS),
+            as_of,
+            as_of,
+            as_of,
+        )
+    else:
+        alias_sql = """
         SELECT DISTINCT pa.player_id
         FROM player_aliases pa
         WHERE pa.source_system = 'TENNIS_DATA'
@@ -189,8 +246,8 @@ def _alias_candidate_pit(
                 AND hist_mro.as_of <= %s
           )
         ORDER BY pa.player_id
-        """,
-        (
+        """
+        params = (
             normalized_aliases,
             live_player_id,
             as_of,
@@ -199,8 +256,8 @@ def _alias_candidate_pit(
             as_of,
             as_of,
             as_of,
-        ),
-    ).fetchall()
+        )
+    candidates = conn.execute(alias_sql, params).fetchall()
     if len(candidates) != 1:
         return None, NAME_SOURCE_CANONICAL
     return int(candidates[0][0]), NAME_SOURCE_CANONICAL

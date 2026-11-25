@@ -6,7 +6,7 @@ available by T. Later canonical reconciliation must never leak backwards.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 
@@ -19,7 +19,6 @@ from sports_edge_tennis.replay.identity_pit import (
     resolve_model_player_id_pit,
 )
 
-UTC = timezone.utc
 CUTOFF = datetime(2026, 9, 12, 6, 0, tzinfo=UTC)
 BEFORE = CUTOFF - timedelta(days=30)
 AFTER = CUTOFF + timedelta(days=10)
@@ -184,14 +183,28 @@ def test_alias_linkage_created_after_cutoff_is_blocked_even_with_early_evidence(
     assert resolution.status == STATUS_LIVE_UNRESOLVED
     assert resolution.available is False
 
-    # The same evidence is admissible once the linkage row itself is visible.
-    db.execute(
-        "UPDATE player_aliases SET created_at = %s WHERE player_id = %s",
-        (BEFORE, historical),
+    # The same evidence is admissible when the linkage row itself is visible from the
+    # cutoff. Re-pointing the original row is now rejected by 0025, so the admissible
+    # case is a genuinely separate linkage that existed at the cutoff.
+    live_visible = _player(db, "Jane Visible")
+    _source_id(db, live_visible, "API_TENNIS", "api-jane-visible", BEFORE)
+    historical_visible = _player(db, "Jane Visible")
+    _source_id(db, historical_visible, "SACKMANN", "sack-jane-visible", BEFORE)
+    opponent_visible = _player(db, "Opponent Visible")
+    _source_id(db, opponent_visible, "SACKMANN", "sack-opp-visible", BEFORE)
+    _completed_match(db, historical_visible, opponent_visible, BEFORE)
+    _alias(
+        db,
+        historical_visible,
+        "Jane Visible",
+        first_observed_at=BEFORE,
+        created_at=BEFORE,
     )
-    resolution = resolve_model_player_id_pit(db, live_player_id=live, as_of=CUTOFF)
+    resolution = resolve_model_player_id_pit(
+        db, live_player_id=live_visible, as_of=CUTOFF
+    )
     assert resolution.status == STATUS_BRIDGED
-    assert resolution.model_player_id == historical
+    assert resolution.model_player_id == historical_visible
 
 
 def test_alias_first_observed_after_cutoff_is_blocked(db: psycopg.Connection):

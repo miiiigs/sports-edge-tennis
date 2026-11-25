@@ -48,6 +48,20 @@ def _player(
         "UPDATE players SET created_at = %s, updated_at = %s WHERE player_id = %s",
         (observed_at, observed_at, player_id),
     )
+    # Migration 0025 captures the name version at insert time. A test fixture that
+    # backdates the player row must also provide the PIT-visible version it claims.
+    db.execute(
+        """
+        INSERT INTO player_name_versions (
+            player_id, canonical_name, valid_from, recorded_at, actor, reason
+        )
+        SELECT player_id, canonical_name, %s, CURRENT_TIMESTAMP,
+               'test_fixture', 'backdated_player_visibility'
+        FROM players WHERE player_id = %s
+        ON CONFLICT (player_id, valid_from) DO NOTHING
+        """,
+        (observed_at, player_id),
+    )
     return player_id
 
 

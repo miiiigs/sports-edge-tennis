@@ -40,18 +40,22 @@ import psycopg
 from sports_edge_tennis.data.model_identity import (
     IDENTITY_REFERENCE_POLICY_VERSION,
     IdentityResolution,
+    identity_version_tables_available,
     resolve_model_player_ids_with_provenance,
 )
 
-IDENTITY_PROVENANCE_SCHEMA_VERSION = "identity_provenance_v1"
+IDENTITY_PROVENANCE_SCHEMA_VERSION = "identity_provenance_v2"
 
 # Row families that can change a resolution. Each is fingerprinted from the same
-# PIT view the resolver uses.
+# PIT view the resolver uses. The version tables are empty on a pre-0025 schema, which
+# keeps the digest well-defined there (and visibly different from the versioned path).
 REFERENCE_FAMILIES = (
     "players",
     "player_aliases",
     "player_source_ids",
     "model_identity_bridge_events",
+    "player_name_versions",
+    "player_alias_versions",
 )
 
 
@@ -167,11 +171,38 @@ def _reference_rows(
         """,
         (player_ids, player_ids),
     ).fetchall()
+    if identity_version_tables_available(conn):
+        name_versions = conn.execute(
+            """
+            SELECT player_name_version_id, player_id, canonical_name, valid_from,
+                   recorded_at, actor, reason
+            FROM player_name_versions
+            WHERE player_id = ANY(%s)
+            ORDER BY player_name_version_id
+            """,
+            (player_ids,),
+        ).fetchall()
+        alias_versions = conn.execute(
+            """
+            SELECT player_alias_version_id, player_alias_id, player_id, source_system,
+                   alias, normalized_alias, first_observed_at, valid_from,
+                   recorded_at, actor, reason
+            FROM player_alias_versions
+            WHERE player_id = ANY(%s)
+            ORDER BY player_alias_version_id
+            """,
+            (player_ids,),
+        ).fetchall()
+    else:
+        name_versions = []
+        alias_versions = []
     return {
         "players": [list(row) for row in players],
         "player_aliases": [list(row) for row in aliases],
         "player_source_ids": [list(row) for row in sources],
         "model_identity_bridge_events": [list(row) for row in bridges],
+        "player_name_versions": [list(row) for row in name_versions],
+        "player_alias_versions": [list(row) for row in alias_versions],
     }
 
 

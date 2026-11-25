@@ -10,19 +10,18 @@ have existed, with the value it has today, at the original cutoff. The repositor
 has three mutable reference surfaces that feed player identity:
 
 ``players.canonical_name``
-    Mutable in place (``updated_at``). Gated by ``updated_at <= as_of`` or
-    ``updated_at = created_at`` (never updated). A name that was *mutated* after the
-    cutoff is not reused for an earlier replay.
+    Versioned by ``player_name_versions`` (migration 0025). The resolver reads the
+    name whose ``valid_from <= as_of``; a rename can no longer rewrite an earlier
+    replay. When the version table is absent (pre-0025 deployment) the legacy gate
+    ``updated_at <= as_of`` or ``updated_at = created_at`` is retained.
 ``player_aliases``
-    Mutable in place. ``ensure_player_alias`` only ever refreshes
-    ``last_observed_at``/``updated_at`` on conflict, and the conflict key includes
-    ``player_id`` and ``normalized_alias``, so the code path cannot re-point an alias.
-    The resolver therefore gates on ``created_at`` and ``first_observed_at`` and
-    **not** on ``updated_at``; gating on ``updated_at`` would discard legitimate
-    PIT evidence for every alias the pipeline re-observed after the cutoff.
-    ``alias_refresh_gate=True`` applies that over-conservative gate for measurement
-    only. Out-of-band re-pointing remains an undetectable residual risk until the
-    reference-data immutability trigger proposed under integration PR #392 lands.
+    Linkage columns are immutable under the migration 0025 guard trigger.
+    ``player_alias_versions`` records every linkage insertion, and the resolver
+    reads the version visible at ``as_of``. ``ensure_player_alias`` still only
+    refreshes ``last_observed_at``/``updated_at`` on conflict.
+    ``alias_refresh_gate=True`` deliberately forces the legacy current-table path
+    and applies the over-conservative ``updated_at`` gate; it is a measurement
+    instrument for the residual mutable channel, not a deployable policy.
 ``model_identity_bridge_events``
     Append-only, but ``activated_at`` is caller-supplied and can be backdated.
     Gated by ``created_at <= as_of`` and ``evidence_as_of <= as_of`` in addition to
@@ -55,7 +54,7 @@ from sports_edge_tennis.data.normalize import (
     tennis_data_aliases,
 )
 
-IDENTITY_REFERENCE_POLICY_VERSION = "identity_reference_pit_v2"
+IDENTITY_REFERENCE_POLICY_VERSION = "identity_reference_pit_v3"
 
 REFERENCE_POLICY_STRICT = "strict"
 REFERENCE_POLICY_PERMISSIVE = "permissive"
@@ -83,6 +82,23 @@ def _check_policy(policy: str) -> str:
             f"unknown reference_policy {policy!r}; expected one of {REFERENCE_POLICIES}"
         )
     return policy
+
+
+def identity_version_tables_available(conn: psycopg.Connection) -> bool:
+    """Return True when migration 0025 version tables are present.
+
+    Resolvers must remain able to run against a pre-0025 schema (for example during a
+    rolling deployment). In that case the legacy current-table gates are used. The
+    versioned path is authoritative as soon as the tables exist.
+    """
+    row = conn.execute(
+        """
+        SELECT to_regclass('public.player_name_versions') IS NOT NULL
+           AND to_regclass('public.player_alias_versions') IS NOT NULL
+        """
+    ).fetchone()
+    return bool(row and row[0])
+
 
 
 def has_historical_model_identity(conn: psycopg.Connection, player_id: int) -> bool:
@@ -311,33 +327,75 @@ def resolve_model_player_ids_with_provenance(
         return resolutions
 
     # Stage D: PIT-visible reference names for the remaining unresolved players.
-    # The canonical name is only used when the player row was not *mutated* after the
-    # cutoff, so a rename cannot generate lookup keys for an earlier replay. When no
-    # usable canonical name exists the player fails closed unless the caller explicitly
-    # opts into the live player's own PIT-visible provider aliases as a fallback tier.
-    name_where = ["player_id = ANY(%s)"]
-    name_params: list[object] = [unresolved]
-    if strict:
-        # The risk is a *mutated* canonical name, not a row that first appeared later:
-        # a row inserted after the cutoff and never updated still carries the name it
-        # was created with, and existence-at-T is separately evidenced by source ids
-        # and history rows. An UPDATE after the cutoff is what can rewrite history.
-        name_where.append("(updated_at <= %s OR updated_at = created_at)")
-        name_params.append(as_of)
-    name_sql = (
-        "SELECT player_id, canonical_name AS name, 'CANONICAL' AS kind FROM players "
-        f"WHERE {' AND '.join(name_where)}"
+    # With migration 0025 the resolver reads append-only version tables, so a rename or
+    # alias linkage insertion after the cutoff cannot generate keys for an earlier
+    # replay. Without the tables (pre-0025 deployment) the legacy current-state gates
+    # are retained. ``alias_refresh_gate`` deliberately forces the legacy path so the
+    # residual mutable-alias channel remains measurable.
+    use_versioned_names = (
+        strict and not alias_refresh_gate and identity_version_tables_available(conn)
     )
-    name_query_params: tuple[object, ...] = tuple(name_params)
-    if allow_provider_alias_keys:
-        name_sql += (
-            " UNION ALL "
-            "SELECT player_id, alias AS name, 'ALIAS' AS kind FROM player_aliases "
-            f"WHERE {' AND '.join(name_where)} "
-            "AND created_at <= %s "
-            "AND (first_observed_at IS NULL OR first_observed_at <= %s)"
+    if use_versioned_names:
+        name_sql = """
+            SELECT p.player_id,
+                   COALESCE(v.canonical_name, p.canonical_name) AS name,
+                   'CANONICAL' AS kind
+            FROM players p
+            LEFT JOIN LATERAL (
+                SELECT vv.canonical_name
+                FROM player_name_versions vv
+                WHERE vv.player_id = p.player_id
+                  AND vv.valid_from <= %s
+                ORDER BY vv.valid_from DESC, vv.player_name_version_id DESC
+                LIMIT 1
+            ) v ON TRUE
+            WHERE p.player_id = ANY(%s)
+              AND (
+                  v.canonical_name IS NOT NULL
+                  OR p.updated_at = p.created_at
+              )
+        """
+        name_query_params: tuple[object, ...] = (as_of, unresolved)
+        if allow_provider_alias_keys:
+            name_sql += (
+                " UNION ALL "
+                "SELECT av.player_id, av.alias AS name, 'ALIAS' AS kind "
+                "FROM player_alias_versions av "
+                "WHERE av.player_id = ANY(%s) "
+                "AND av.valid_from <= %s "
+                "AND (av.first_observed_at IS NULL OR av.first_observed_at <= %s)"
+            )
+            name_query_params = (
+                as_of,
+                unresolved,
+                unresolved,
+                as_of,
+                as_of,
+            )
+    else:
+        name_where = ["player_id = ANY(%s)"]
+        name_params: list[object] = [unresolved]
+        if strict:
+            # The risk is a *mutated* canonical name, not a row that first appeared
+            # later: a row inserted after the cutoff and never updated still carries
+            # the name it was created with. An UPDATE after the cutoff is what can
+            # rewrite history.
+            name_where.append("(updated_at <= %s OR updated_at = created_at)")
+            name_params.append(as_of)
+        name_sql = (
+            "SELECT player_id, canonical_name AS name, 'CANONICAL' AS kind FROM players "
+            f"WHERE {' AND '.join(name_where)}"
         )
-        name_query_params = (*name_params, *name_params, as_of, as_of)
+        name_query_params = tuple(name_params)
+        if allow_provider_alias_keys:
+            name_sql += (
+                " UNION ALL "
+                "SELECT player_id, alias AS name, 'ALIAS' AS kind FROM player_aliases "
+                f"WHERE {' AND '.join(name_where)} "
+                "AND created_at <= %s "
+                "AND (first_observed_at IS NULL OR first_observed_at <= %s)"
+            )
+            name_query_params = (*name_params, *name_params, as_of, as_of)
     name_rows = conn.execute(name_sql, name_query_params).fetchall()
 
     canonical_names: dict[int, str] = {}
@@ -403,19 +461,46 @@ def resolve_model_player_ids_with_provenance(
         return resolutions
 
     # Stage E: unique historical alias candidates, resolved in one set-based query.
-    alias_join_where = [
-        "pa.source_system = 'TENNIS_DATA'",
-        "pa.player_id <> l.live_player_id",
-        "(pa.first_observed_at IS NULL OR pa.first_observed_at <= %s)",
-    ]
-    alias_join_params: list[object] = [as_of]
-    if strict and alias_refresh_gate:
-        # Optional ultra-conservative gate. ``updated_at`` is bumped by every
-        # ``last_observed_at`` refresh, so this is NOT the default: it discards
-        # legitimate PIT evidence for any alias the pipeline re-observed after the
-        # cutoff. It exists to measure the size of the residual alias-mutation channel.
-        alias_join_where.append("pa.updated_at <= %s")
-        alias_join_params.append(as_of)
+    if use_versioned_names:
+        # Append-only linkage history: the row visible at ``as_of`` is authoritative.
+        alias_source = "player_alias_versions"
+        alias_join_where = [
+            "pa.source_system = 'TENNIS_DATA'",
+            "pa.player_id <> l.live_player_id",
+            "(pa.first_observed_at IS NULL OR pa.first_observed_at <= %s)",
+            "pa.valid_from <= %s",
+        ]
+        alias_join_params: list[object] = [as_of, as_of]
+        alias_visibility_expr = "COALESCE(pai.finished_at, pai.started_at, pa.valid_from)"
+        alias_visible_from_expr = (
+            "GREATEST("
+            "COALESCE(pai.finished_at, pai.started_at, pa.valid_from), "
+            "COALESCE(pa.first_observed_at, pa.valid_from)"
+            ")"
+        )
+    else:
+        alias_source = "player_aliases"
+        alias_join_where = [
+            "pa.source_system = 'TENNIS_DATA'",
+            "pa.player_id <> l.live_player_id",
+            "(pa.first_observed_at IS NULL OR pa.first_observed_at <= %s)",
+        ]
+        alias_join_params = [as_of]
+        if strict and alias_refresh_gate:
+            # Optional ultra-conservative gate. ``updated_at`` is bumped by every
+            # ``last_observed_at`` refresh, so this is NOT the default: it discards
+            # legitimate PIT evidence for any alias the pipeline re-observed after the
+            # cutoff. It exists to measure the size of the residual alias-mutation
+            # channel and is deliberately disabled on the versioned path.
+            alias_join_where.append("pa.updated_at <= %s")
+            alias_join_params.append(as_of)
+        alias_visibility_expr = "COALESCE(pai.finished_at, pai.started_at, pa.created_at)"
+        alias_visible_from_expr = (
+            "GREATEST("
+            "COALESCE(pai.finished_at, pai.started_at, pa.created_at), "
+            "COALESCE(pa.first_observed_at, pa.created_at)"
+            ")"
+        )
     candidate_rows = conn.execute(
         f"""
         WITH lookup AS (
@@ -424,16 +509,13 @@ def resolve_model_player_ids_with_provenance(
                 AS t(live_player_id, normalized_alias, tier)
         )
         SELECT DISTINCT l.live_player_id, l.tier, pa.player_id, l.normalized_alias,
-               GREATEST(
-                   COALESCE(pai.finished_at, pai.started_at, pa.created_at),
-                   COALESCE(pa.first_observed_at, pa.created_at)
-               ) AS visible_from
+               {alias_visible_from_expr} AS visible_from
         FROM lookup l
-        JOIN player_aliases pa
+        JOIN {alias_source} pa
           ON pa.normalized_alias = l.normalized_alias
          AND {" AND ".join(alias_join_where)}
         LEFT JOIN ingest_runs pai ON pai.ingest_run_id = pa.ingest_run_id
-        WHERE COALESCE(pai.finished_at, pai.started_at, pa.created_at) <= %s
+        WHERE {alias_visibility_expr} <= %s
         AND EXISTS (
               SELECT 1
               FROM player_source_ids psi

@@ -469,6 +469,34 @@ def reference_policy_report(
         )
         if b["prediction_id"] == c["prediction_id"]
     ]
+
+    def _forecast_effect(
+        baseline: list[dict[str, Any]], candidate: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        pairs = [
+            (b, c)
+            for b, c in zip(baseline, candidate, strict=True)
+            if b["prediction_id"] == c["prediction_id"]
+        ]
+        if not pairs:
+            return {
+                "compared_targets": 0,
+                "changed_probabilities": 0,
+                "max_abs_probability_delta": 0.0,
+                "mean_abs_probability_delta": 0.0,
+                "paired": None,
+            }
+        deltas = [abs(c["p1"] - b["p1"]) for b, c in pairs]
+        return {
+            "compared_targets": len(pairs),
+            "changed_probabilities": sum(1 for delta in deltas if delta > 1e-12),
+            "max_abs_probability_delta": max(deltas),
+            "mean_abs_probability_delta": sum(deltas) / len(deltas),
+            "paired": paired_day_bootstrap(
+                [b for b, _ in pairs], [c for _, c in pairs]
+            ),
+        }
+
     return {
         "targets": len(targets),
         "affected_targets": len(affected_targets),
@@ -479,6 +507,7 @@ def reference_policy_report(
                 "affected_metrics": metrics(
                     [(row["p1"], row["y"]) for row in affected_rows[label]]
                 ),
+                "replay_fidelity": _fidelity(affected_rows[label]),
             }
             for label, value in policies.items()
         },
@@ -491,10 +520,16 @@ def reference_policy_report(
                 if comparable
                 else None
             ),
+            "forecast_effect": _forecast_effect(
+                affected_rows["permissive"], affected_rows["strict"]
+            ),
         },
         "strict_alias_refresh_gate_vs_permissive": {
             "changed_player_mappings": len(refresh_differences),
             "examples": refresh_differences[:20],
+            "forecast_effect": _forecast_effect(
+                affected_rows["permissive"], affected_rows["strict_alias_refresh_gate"]
+            ),
         },
     }
 

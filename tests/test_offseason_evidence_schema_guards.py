@@ -69,7 +69,7 @@ def test_0024_and_0023_downgrade_and_reupgrade_cleanly(db):
     assert trigger == [("trg_prediction_feature_snapshots_append_only_mutation",)]
 
 
-def test_cumulative_0024_snapshot_matches_migrated_schema(db):
+def test_latest_cumulative_snapshot_matches_migrated_schema(db):
     # Build both states from an empty schema so runtime code that adds columns
     # to existing tables during other tests cannot contaminate the comparison.
     def _rebuild_migrated() -> None:
@@ -82,7 +82,7 @@ def test_cumulative_0024_snapshot_matches_migrated_schema(db):
     migrated = _logical_blocks(db)
     db.execute("DROP SCHEMA public CASCADE")
     db.execute("CREATE SCHEMA public")
-    _apply(db, MANIFEST[23]["schema_snapshot"])
+    _apply(db, MANIFEST[-1]["schema_snapshot"])
     snapshot = _logical_blocks(db)
     assert migrated[0] == snapshot[0]
     assert migrated[1] == snapshot[1]
@@ -102,7 +102,7 @@ def test_combined_snapshot_contains_each_evidence_table_once():
 
 
 def test_cumulative_snapshots_are_exact_migration_concatenations():
-    for index in (22, 23):
+    for index in (22, 23, 24):
         expected = "\n\n".join(
             (ROOT / entry["up"]).read_text(encoding="utf-8").strip()
             for entry in MANIFEST[: index + 1]

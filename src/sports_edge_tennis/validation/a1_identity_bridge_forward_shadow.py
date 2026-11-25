@@ -120,6 +120,66 @@ def _utc(value: datetime, *, field_name: str) -> datetime:
     return value.astimezone(UTC)
 
 
+DISCOVERY_SQL = """
+SELECT pr.prediction_run_id, pr.as_of, pr.prediction_finalized_at
+FROM prediction_runs pr
+WHERE pr.run_status = 'COMPLETED'
+  AND pr.prediction_contract_version = 'predictive_agent_result_v1'
+  AND pr.prediction_finalized_at IS NOT NULL
+  AND pr.experiment_id IS NULL
+  AND pr.prediction_finalized_at >= %(since)s
+  AND EXISTS (
+      SELECT 1
+      FROM predictions p
+      WHERE p.prediction_run_id = pr.prediction_run_id
+        AND p.agent_code = 'AGENT_1_SURFACE_ELO'
+        AND p.prediction_status = 'PREDICTED'
+        AND p.selection_side IN (1, 2)
+        AND p.win_probability IS NOT NULL
+        AND p.experiment_id IS NULL
+  )
+ORDER BY pr.prediction_finalized_at, pr.prediction_run_id
+LIMIT %(limit)s
+"""
+
+
+def discover_completed_runs(
+    conn: psycopg.Connection,
+    *,
+    since: datetime,
+    limit: int = 25,
+) -> list[int]:
+    """List completed production runs that carry at least one first-party A1 result.
+
+    Discovery is deliberately read-only and excludes experiment runs. The caller
+    still has to pass ``require_first_issue`` for the capture gate; discovery only
+    bounds the amount of work.
+    """
+    since = _utc(since, field_name="since")
+    if limit <= 0:
+        return []
+    rows = conn.execute(DISCOVERY_SQL, {"since": since, "limit": int(limit)}).fetchall()
+    return [int(row[0]) for row in rows]
+
+
+def archived_run_ids(path: str) -> set[int]:
+    """Return run ids already present in an append-only capture archive."""
+    import json
+    from pathlib import Path
+
+    target = Path(path)
+    if not target.exists():
+        return set()
+    run_ids: set[int] = set()
+    for line in target.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        if record.get("record_type") == "summary":
+            run_ids.update(int(run_id) for run_id in record.get("run_ids", []))
+    return run_ids
+
+
 def _canonical_json(payload: dict[str, Any]) -> str:
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
@@ -611,12 +671,84 @@ def run(
     return summary
 
 
+def run_discovered(
+    conn: psycopg.Connection,
+    *,
+    since: datetime,
+    capture_at: datetime | None = None,
+    archive_path: str | None = None,
+    require_first_issue: bool = True,
+    max_runs: int = 25,
+    log: Callable[[str], None] = print,
+) -> dict[str, Any]:
+    """Capture newly completed runs once, in finalized order.
+
+    Archive idempotency is by summary ``run_ids``: a run is never appended twice to the
+    same archive. The observer remains read-only and still writes no prediction,
+    decision, Manager, odds, publication or settlement row.
+    """
+    capture_at = _utc(capture_at or datetime.now(UTC), field_name="capture_at")
+    run_ids = discover_completed_runs(conn, since=since, limit=max_runs)
+    already = archived_run_ids(archive_path) if archive_path else set()
+    pending = [run_id for run_id in run_ids if run_id not in already]
+    summaries: list[dict[str, Any]] = []
+    for run_id in pending:
+        summary = run(
+            conn,
+            run_ids=[run_id],
+            capture_at=capture_at,
+            archive_path=archive_path,
+            require_first_issue=require_first_issue,
+            log=log,
+        )
+        summaries.append(
+            {
+                "prediction_run_id": run_id,
+                "targets": summary["targets"],
+                "captured": summary["captured"],
+                "failed": summary["failed"],
+                "selection_changes": summary["selection_changes"],
+            }
+        )
+    aggregate = {
+        "observer_version": VERSION,
+        "captured_at": capture_at.isoformat(),
+        "since": _utc(since, field_name="since").isoformat(),
+        "discovered_runs": len(run_ids),
+        "already_archived_runs": len(run_ids) - len(pending),
+        "captured_runs": len(pending),
+        "targets": sum(item["targets"] for item in summaries),
+        "captured": sum(item["captured"] for item in summaries),
+        "failed": sum(item["failed"] for item in summaries),
+        "selection_changes": sum(item["selection_changes"] for item in summaries),
+        "runs": summaries,
+        "modified_production": False,
+        "outcome_included": False,
+        "can_promote": False,
+    }
+    log("TENNIS_A1_BRIDGE_FORWARD_CYCLE " + _canonical_json(aggregate))
+    return aggregate
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--run-id", action="append", type=int, required=True, help="prediction run id"
+        "--run-id",
+        action="append",
+        type=int,
+        help="prediction run id; may be repeated",
+    )
+    parser.add_argument(
+        "--discover-since",
+        help="discover completed runs finalized at or after this ISO-8601 timestamp",
+    )
+    parser.add_argument(
+        "--max-runs",
+        type=int,
+        default=25,
+        help="maximum runs to discover in one cycle",
     )
     parser.add_argument("--as-of", help="ISO-8601 capture clock; defaults to now UTC")
     parser.add_argument(
@@ -629,6 +761,8 @@ def main(argv: list[str] | None = None) -> int:
         help="keep only matches where this run holds the earliest original A1 prediction",
     )
     args = parser.parse_args(argv)
+    if not args.run_id and not args.discover_since:
+        parser.error("one of --run-id or --discover-since is required")
 
     capture_at = (
         datetime.fromisoformat(args.as_of).astimezone(UTC)
@@ -649,13 +783,23 @@ def main(argv: list[str] | None = None) -> int:
         else:
             raise SystemExit("TENNIS_DATABASE_URL or PG* variables are required")
     with psycopg.connect(dsn, autocommit=True, connect_timeout=30) as conn:
-        run(
-            conn,
-            run_ids=args.run_id,
-            capture_at=capture_at,
-            archive_path=args.archive_jsonl,
-            require_first_issue=args.require_first_issue,
-        )
+        if args.discover_since:
+            run_discovered(
+                conn,
+                since=datetime.fromisoformat(args.discover_since).astimezone(UTC),
+                capture_at=capture_at,
+                archive_path=args.archive_jsonl,
+                require_first_issue=args.require_first_issue,
+                max_runs=args.max_runs,
+            )
+        else:
+            run(
+                conn,
+                run_ids=args.run_id or [],
+                capture_at=capture_at,
+                archive_path=args.archive_jsonl,
+                require_first_issue=args.require_first_issue,
+            )
     return 0
 
 

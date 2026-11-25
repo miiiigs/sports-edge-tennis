@@ -82,13 +82,23 @@ def test_reference_fingerprint_ignores_benign_reobservation(db: psycopg.Connecti
     assert before.sha256 == after.sha256
 
 
-def test_reference_fingerprint_detects_alias_repointing(db: psycopg.Connection):
+def test_reference_fingerprint_detects_name_mutation_and_alias_guard(
+    db: psycopg.Connection,
+):
     one = _player(db, "Repoint One")
     two = _player(db, "Repoint Two")
     _alias(db, player_id=one, alias="Repoint Shared")
     before = reference_fingerprint(db, player_ids=[one, two], as_of=CUTOFF)
+    # 0025 rejects out-of-band linkage mutation rather than merely detecting it.
+    with pytest.raises(psycopg.errors.RaiseException, match="immutable"):
+        db.execute(
+            "UPDATE player_aliases SET player_id = %s WHERE player_id = %s", (two, one)
+        )
+    # An allowed name mutation still moves the digest.
     db.execute(
-        "UPDATE player_aliases SET player_id = %s WHERE player_id = %s", (two, one)
+        "UPDATE players SET canonical_name = 'Repoint One Renamed', updated_at = %s "
+        "WHERE player_id = %s",
+        (datetime(2025, 7, 1, tzinfo=UTC), one),
     )
     after = reference_fingerprint(db, player_ids=[one, two], as_of=CUTOFF)
     assert before.sha256 != after.sha256
@@ -139,7 +149,9 @@ def test_audit_modules_are_read_only_on_empty_database(db: psycopg.Connection):
 
 def test_replay_mismatch_buckets_are_mutually_exclusive():
     # The bucket assignment order is part of the evidence contract.
-    from sports_edge_tennis.validation.a1_identity_provenance_audit import mismatch_report
+    from sports_edge_tennis.validation.a1_identity_provenance_audit import (
+        mismatch_report,
+    )
 
     assert callable(mismatch_report)
 
@@ -218,6 +230,15 @@ def test_reference_policy_evidence_is_mapping_neutral():
     )
     assert report["can_promote"] is False
     assert report["production_changed"] is False
+    assert reference["experiment_status"] == "COMPLETE"
+    for key in ("strict_vs_permissive", "strict_alias_refresh_gate_vs_permissive"):
+        effect = reference[key]["forecast_effect"]
+        assert effect["compared_targets"] == 0
+        assert effect["changed_probabilities"] == 0
+        assert effect["max_abs_probability_delta"] == 0.0
+        assert effect["paired"] is None
+    for policy in reference["policies"].values():
+        assert policy["replay_fidelity"]["n"] == 0
 
 
 def test_manager_interaction_evidence_is_paired_and_non_promotable():
@@ -238,6 +259,71 @@ def test_manager_interaction_evidence_is_paired_and_non_promotable():
     # side flip rather than a coverage/selection effect.
     consensus = report["consensus"]
     assert consensus["same_side_on_overlap"] == consensus["both"]
+    delta = report["consensus_accuracy_delta"]
+    assert delta["paired"] is False
+    assert delta["includes_zero"] is True
+    assert delta["ci95"][0] < 0.0 < delta["ci95"][1]
+    assert report["matched_fixture_contract"]["paired_activation_test"] is False
+    assert report["analysis_status"] == "COMPLETE_BOUNDED"
+
+
+def test_legacy_claim_is_formally_retired():
+    import json
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "research"
+        / "evidence"
+        / "legacy_75pct_claim_audit_20261125.json"
+    )
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["verdict"] == "UNREPRODUCIBLE"
+    assert report["recommendation"] == "RETIRE"
+    assert report["claim_status"] == "RETIRED"
+    assert report["retirement_is_final"] is True
+
+
+def test_readiness_report_is_complete_and_non_promotable():
+    import json
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "research"
+        / "evidence"
+        / "a1_identity_bridge_readiness_20261126.json"
+    )
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["can_promote"] is False
+    assert report["production_changed"] is False
+    assert report["activation_state"] == "NOT_ELIGIBLE"
+    gates = {gate["gate"]: gate for gate in report["activation_gates"]}
+    assert gates["minimum_200_settled_first_issued_bridged_selections"]["met"] is False
+    assert gates["minimum_30_calendar_days_genuine_future_captures"]["met"] is False
+    assert gates["independent_wall_clock_collector_receipt"]["met"] is False
+    assert gates["no_atp_degradation"]["met"] is False
+    assert report["workstreams"]["legacy_75pct_claim"]["status"] == "RETIRED_UNREPRODUCIBLE"
+    assert report["workstreams"]["manager_interaction"]["ci_includes_zero"] is True
+    assert report["release_requirements"]
+
+
+def test_replay_mismatch_case_audit_is_identity_dominated():
+    import hashlib
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    path = root / "docs" / "research" / "evidence" / "a1_identity_replay_mismatch_cases_20261126.json"
+    report = json.loads(path.read_text(encoding="utf-8"))
+    source = root / report["derived_from"]
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == report["derived_from_sha256"]
+    assert report["cases"] == 30
+    assert report["target_ids_changed_at_as_of"] == report["cases"]
+    assert report["is_first_issued"] == 0
+    assert report["can_promote"] is False
 
 
 def test_replay_mismatch_evidence_matches_committed_buckets():

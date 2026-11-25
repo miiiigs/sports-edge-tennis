@@ -169,6 +169,13 @@
       "up": "db/migrations/0024_oddspapi_identity_history.up.sql",
       "down": "db/migrations/0024_oddspapi_identity_history.down.sql",
       "schema_snapshot": "db/schema/0024_oddspapi_identity_history.sql"
+    },
+    {
+      "version": "0025",
+      "name": "identity_provenance_v2",
+      "up": "db/migrations/0025_identity_provenance_v2.up.sql",
+      "down": "db/migrations/0025_identity_provenance_v2.down.sql",
+      "schema_snapshot": "db/schema/0025_identity_provenance_v2.sql"
     }
   ]
 }

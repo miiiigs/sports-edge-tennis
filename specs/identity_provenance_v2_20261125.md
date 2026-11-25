@@ -1,36 +1,39 @@
-# Identity provenance v2 — reserved schema proposal (coordinate with PR #392)
+# Identity provenance v2 — implemented schema (migration 0025)
 
-**Status:** design only. **No migration file is added by PR #388.**
-**Reserved numbers:** `0023` (Manager C feature snapshots) and `0024` (OddsPapi
-identity history) are owned by integration PR #392. This proposal must be allocated a
-number **after 0024** by #392 or by the next integration train. Do not create
-`db/migrations/0025_*.sql` from this branch.
+**Status:** implemented in `db/migrations/0025_identity_provenance_v2.{up,down}.sql`.
+**Applied to production:** no. **Activation:** no. `can_promote=false`.
 
-**Date:** 2026-11-25
+**Migration numbering:** `0023` (Manager C feature snapshots) and `0024` (OddsPapi
+identity history) are owned by integration PR #392. This branch imports that train and
+allocates the next free version, `0025`, to identity provenance. Do not renumber.
+
+**Date:** 2026-11-25 (design) · 2026-11-26 (implementation)
 **Related code:** `src/sports_edge_tennis/data/model_identity.py`,
 `src/sports_edge_tennis/data/identity_provenance.py`,
+`src/sports_edge_tennis/data/identity_runtime.py`,
 `src/sports_edge_tennis/replay/identity_pit.py`
 
 ## 1. Problem
 
-The live→history identity bridge is a read-time mapping. It reads reference data that
-is *mutable in place*:
+The live→history identity bridge is a read-time mapping over reference data that was
+mutable in place:
 
-| Table | Mutable surface | Current PIT control | Residual gap |
+| Table | Former mutability | Former PIT control | Residual gap |
 |---|---|---|---|
-| `players` | `canonical_name`, `updated_at` | reuse only when `updated_at <= as_of` or `updated_at = created_at` | no name history, so a mutated name cannot be reconstructed |
-| `player_aliases` | `alias`/`player_id` in place; `updated_at` on every re-observation | `created_at`, `first_observed_at`, ingest-run visibility | an out-of-band re-point is undetectable and untimestamped |
-| `model_identity_bridge_events` | append-only, but `activated_at` is caller-supplied | `created_at`, `evidence_as_of`, `activated_at` | fine once `created_at` is gated (done in code) |
+| `players` | `canonical_name` updated in place | `updated_at <= as_of` heuristic | a mutated name could not be reconstructed |
+| `player_aliases` | linkage could be re-pointed out of band | `created_at`, `first_observed_at`, ingest visibility | re-pointing was undetectable and untimestamped |
+| `model_identity_bridge_events` | append-only, caller-dated `activated_at` | `created_at`, `evidence_as_of`, `activated_at` | closed in code |
 
-PR #388 closes every channel that can be closed without a schema change and records a
-deterministic reference digest with each capture, so out-of-band drift is *detectable*
-after the fact. Exact reconstruction still needs versioned reference history.
+Migration 0025 closes the first two with append-only history and a linkage guard, and
+adds the durable runtime record.
 
-## 2. Proposed objects (allocate after 0024)
+## 2. Implemented objects
 
 ### 2.1 `player_name_versions`
 
-Append-only version history of canonical player names.
+Append-only canonical-name history. There is **no `valid_to` column**: closing a row
+would be an UPDATE, which contradicts append-only history. The effective interval is
+`[valid_from, next valid_from)` and is derived at read time.
 
 ```sql
 CREATE TABLE player_name_versions (
@@ -38,159 +41,145 @@ CREATE TABLE player_name_versions (
     player_id BIGINT NOT NULL REFERENCES players(player_id),
     canonical_name TEXT NOT NULL CHECK (btrim(canonical_name) <> ''),
     valid_from TIMESTAMPTZ NOT NULL,
-    valid_to TIMESTAMPTZ,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
-    actor TEXT NOT NULL CHECK (btrim(actor) <> ''),
-    reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
-    CHECK (valid_to IS NULL OR valid_to > valid_from)
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    CHECK (recorded_at >= valid_from - INTERVAL '1 second')
 );
-CREATE UNIQUE INDEX uq_player_name_versions_current
-    ON player_name_versions (player_id) WHERE valid_to IS NULL;
-CREATE INDEX idx_player_name_versions_lookup
-    ON player_name_versions (player_id, valid_from, valid_to);
-
-CREATE TRIGGER trg_player_name_versions_append_only_mutation
-BEFORE UPDATE OR DELETE ON player_name_versions
-FOR EACH ROW EXECUTE FUNCTION raise_append_only_mutation();
+CREATE UNIQUE INDEX uq_player_name_versions_player_valid_from
+    ON player_name_versions (player_id, valid_from);
 ```
 
-A rename closes the open version (`valid_to`) and inserts a new open version in the
-same transaction. Backfill: one open row per existing player with
-`valid_from = players.created_at` (never earlier, never invented).
+- Backfill: one row per existing player with `valid_from = GREATEST(created_at, updated_at)`.
+  This is the earliest time the **current** value is provably true. Using `created_at`
+  alone would assert that a post-creation rename was always the name. In the observed
+  production corpus `updated_at = created_at` for every player, so this is not lossy
+  there; if a rename did occur, the backfill is conservative.
+- New player: `AFTER INSERT ON players` writes the initial version.
+- Rename: `AFTER UPDATE OF canonical_name` writes a new version at `NEW.updated_at`.
+  `recorded_at` is the real write clock, so a backdated rename is visible as such.
+- UPDATE/DELETE on the version table is rejected by the shared append-only trigger.
+- Resolver compatibility: when no version is visible at the cutoff, a player row that was
+  **never updated** (`updated_at = created_at`) still supplies its current name, exactly
+  as the pre-0025 policy allowed. A renamed row (`updated_at > created_at`) does not: it
+  fails closed unless an older visible version exists. The legacy "row created after the
+  cutoff but never updated" channel therefore remains; it is bounded by source-id and
+  history visibility, not by the name gate.
 
 ### 2.2 `player_alias_versions`
 
-Append-only alias linkage history. Identity columns are immutable per version.
+Append-only alias linkage history. Every alias insertion writes one row at
+`created_at`; the guard below prevents later linkage mutation.
 
 ```sql
 CREATE TABLE player_alias_versions (
     player_alias_version_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    player_alias_id BIGINT NOT NULL,           -- logical alias row, no FK: row may be replaced
+    player_alias_id BIGINT NOT NULL,
     player_id BIGINT NOT NULL REFERENCES players(player_id),
-    source_system TEXT NOT NULL CHECK (btrim(source_system) <> ''),
-    normalized_alias TEXT NOT NULL CHECK (btrim(normalized_alias) <> ''),
-    valid_from TIMESTAMPTZ NOT NULL,
-    valid_to TIMESTAMPTZ,
+    source_system TEXT NOT NULL,
+    alias TEXT NOT NULL,
+    normalized_alias TEXT NOT NULL,
     first_observed_at TIMESTAMPTZ,
+    valid_from TIMESTAMPTZ NOT NULL,
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
-    actor TEXT NOT NULL CHECK (btrim(actor) <> ''),
-    reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
-    CHECK (valid_to IS NULL OR valid_to > valid_from)
+    actor TEXT NOT NULL,
+    reason TEXT NOT NULL
 );
 CREATE INDEX idx_player_alias_versions_pit
-    ON player_alias_versions (normalized_alias, valid_from, valid_to);
-CREATE INDEX idx_player_alias_versions_player
-    ON player_alias_versions (player_id, valid_from, valid_to);
-
-CREATE TRIGGER trg_player_alias_versions_append_only_mutation
-BEFORE UPDATE OR DELETE ON player_alias_versions
-FOR EACH ROW EXECUTE FUNCTION raise_append_only_mutation();
+    ON player_alias_versions (normalized_alias, valid_from DESC, player_id);
 ```
 
-### 2.3 Tighten `player_aliases` in place
+### 2.3 `player_aliases` linkage immutability
 
-Convert the mutable table into a value-immutable one: only a monotonic
-`last_observed_at` / `updated_at` refresh remains allowed.
+`guard_player_alias_identity()` rejects any UPDATE that changes a column other than
+`last_observed_at`/`updated_at`, and rejects a non-monotonic `last_observed_at`. The
+pipeline's `ON CONFLICT ... DO UPDATE` only refreshes those two columns, so normal
+traffic is unaffected.
+
+A reviewed repair may opt in for one transaction:
 
 ```sql
-CREATE OR REPLACE FUNCTION guard_player_alias_mutation()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-    IF (to_jsonb(NEW) - ARRAY['last_observed_at', 'updated_at'])
-       IS DISTINCT FROM
-       (to_jsonb(OLD) - ARRAY['last_observed_at', 'updated_at']) THEN
-        RAISE EXCEPTION
-            'player_aliases identity linkage is immutable under identity_provenance_v2; '
-            'insert a player_alias_versions row instead.';
-    END IF;
-    IF NEW.last_observed_at < OLD.last_observed_at THEN
-        RAISE EXCEPTION 'player_aliases.last_observed_at must be monotonic.';
-    END IF;
-    RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER trg_player_aliases_identity_guard
-BEFORE UPDATE ON player_aliases
-FOR EACH ROW EXECUTE FUNCTION guard_player_alias_mutation();
+SET LOCAL tennis.identity_reference_maintenance = 'on';
 ```
 
-Effect on the resolver: once this exists, `player_aliases.updated_at` becomes a
-*refresh* marker only and the current default gate
-(`created_at`/`first_observed_at`) is provably sufficient. The optional
-`alias_refresh_gate` can then be retired.
+That escape hatch is session-scoped and must be recorded by the repair itself. It is
+the only way to re-point an existing alias; a new linkage should be a new reviewed row.
 
 ### 2.4 `identity_resolution_provenance`
 
-The durable runtime record. One row per player per resolution event.
+One row per player per resolution event.
 
 ```sql
 CREATE TABLE identity_resolution_provenance (
     identity_resolution_provenance_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    prediction_run_id BIGINT REFERENCES prediction_runs(prediction_run_id),
+    prediction_run_id BIGINT NOT NULL REFERENCES prediction_runs(prediction_run_id),
     match_id BIGINT NOT NULL REFERENCES matches(match_id),
     match_version_id BIGINT NOT NULL REFERENCES match_versions(match_version_id),
-    predicted_at TIMESTAMPTZ NOT NULL,          -- the resolution as_of
-    live_player_id BIGINT NOT NULL REFERENCES players(player_id),
+    predicted_at TIMESTAMPTZ NOT NULL,
+    original_player_id BIGINT NOT NULL REFERENCES players(player_id),
     model_player_id BIGINT NOT NULL REFERENCES players(player_id),
-    method TEXT NOT NULL,
+    resolution_method TEXT NOT NULL,
     evidence TEXT NOT NULL,
     name_source TEXT NOT NULL,
-    candidate_count INTEGER NOT NULL DEFAULT 0 CHECK (candidate_count >= 0),
+    candidate_count INTEGER NOT NULL DEFAULT 0,
     matched_alias TEXT,
-    bridge_event_id BIGINT REFERENCES model_identity_bridge_events(model_identity_bridge_event_id),
+    bridge_event_id BIGINT REFERENCES model_identity_bridge_events(...),
     visible_from TIMESTAMPTZ,
     reference_policy TEXT NOT NULL,
     reference_sha256 TEXT NOT NULL CHECK (length(reference_sha256) = 64),
     record_sha256 TEXT NOT NULL CHECK (length(record_sha256) = 64),
+    source_record_sha256 TEXT CHECK (
+        source_record_sha256 IS NULL OR length(source_record_sha256) = 64
+    ),
+    capture_source TEXT NOT NULL CHECK (
+        capture_source IN ('LIVE_RUNTIME', 'FORWARD_SHADOW')
+    ),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CHECK (method IN ('HISTORICAL_ID','PERSISTED_BRIDGE','ALIAS','AMBIGUOUS',
-                      'NO_CANDIDATE','NO_HISTORICAL_CANDIDATE','NO_PLAYER'))
+    CHECK (visible_from IS NULL OR visible_from <= predicted_at)
 );
 CREATE UNIQUE INDEX uq_identity_resolution_provenance_key
-    ON identity_resolution_provenance (prediction_run_id, match_id, live_player_id);
-CREATE INDEX idx_identity_resolution_provenance_match
-    ON identity_resolution_provenance (match_id, predicted_at);
-
-CREATE TRIGGER trg_identity_resolution_provenance_append_only_mutation
-BEFORE UPDATE OR DELETE ON identity_resolution_provenance
-FOR EACH ROW EXECUTE FUNCTION raise_append_only_mutation();
+    ON identity_resolution_provenance (
+        prediction_run_id, match_id, original_player_id
+    );
 ```
 
-This is the table that makes item 3 of the December mission durable in production. Until
-it exists, the JSONL capture record in
-`src/sports_edge_tennis/validation/a1_identity_bridge_forward_shadow.py` is the only
-carrier of the same fields.
+The writer at `data/identity_runtime.py` validates the match version, run lineage and
+visibility before inserting. The same key with a different digest fails closed as a
+lineage conflict. The reader verifies every digest.
 
-## 3. Resolver migration path (code, no schema dependency)
+## 3. Resolver migration path
 
-1. **Now (PR #388):** strict reference gates + `identity_reference_sha256` in every
-   capture; optional provider-alias key tier; refresh gate for measurement only.
-2. **After 2.3 lands:** drop `alias_refresh_gate`; alias keys become provably
-   value-immutable.
-3. **After 2.1/2.2 land:** resolve canonical names and aliases from the version tables
-   at `as_of` instead of the current-state tables. The `reference_sha256` then becomes a
-   *verification* digest rather than the only evidence.
-4. **After 2.4 lands:** the observer writes provenance rows in the same transaction as
-   the prediction, and the JSONL archive becomes a portable export rather than the
-   primary record.
+1. **Done (PR #388):** strict gates + reference digest + forward capture.
+2. **Done (0025, not applied):** version tables, alias guard, durable provenance.
+3. **Done in code:** resolver reads `player_name_versions` and
+   `player_alias_versions` when the tables exist; on a pre-0025 schema it falls back to
+   the legacy current-table gates.
+4. **Next:** apply 0025 after 0023/0024, re-run the reference-policy audit under
+   `identity_reference_pit_v3`, and wire the provenance writer into the activated
+   prediction transaction. No backfill of past runs.
 
 ## 4. Backfill rules
 
-- Never invent a pre-ingestion `valid_from`. Backfill uses the earliest provable
-  timestamp: `players.created_at`, `player_aliases.first_observed_at` or
-  `player_aliases.created_at`.
+- Never invent a pre-ingestion `valid_from`. Backfill uses
+  `GREATEST(players.created_at, players.updated_at)` for names and
+  `player_aliases.created_at` for aliases. The name rule is deliberately conservative:
+  if a rename happened, the current value is not asserted to predate `updated_at`.
 - Never backdate a version to make a historical replay resolve more matches. A failed
   PIT resolution is evidence, not a defect to patch.
-- Backfill is idempotent and records `ingest_run_id` + `actor`.
+- Backfill is idempotent by the unique `(player_id, valid_from)` /
+  `(player_alias_id, valid_from)` indexes.
 
-## 5. Acceptance for the migration PR
+## 5. Acceptance status
 
-- Up/down migration parity in the PostgreSQL Foundation CI.
-- Cumulative schema snapshot regenerated; manifest entry added **after 0024**.
-- Append-only triggers verified by a mutation-rejection test.
-- Resolver equivalence test: version-table resolution reproduces current-state
-  resolution for cutoffs where no mutation has occurred.
-- No production activation in the same PR.
+| Check | Status |
+|---|---|
+| Up/down migration parity | implemented; local PostgreSQL test |
+| Cumulative schema snapshot regenerated | yes (`db/schema/0025_identity_provenance_v2.sql`) |
+| Manifest entry after 0024 | yes |
+| Append-only triggers verified | local regression tests |
+| Alias linkage guard verified | local regression tests |
+| Version-table resolver equivalence | local regression tests |
+| No production activation | confirmed |
+| Production migration applied | **no** |

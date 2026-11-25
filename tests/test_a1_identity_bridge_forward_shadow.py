@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import psycopg
 import pytest
 
 from sports_edge_tennis.data.agent1_history import load_agent1_history
@@ -202,3 +204,169 @@ def test_empty_capture_can_be_appended_to_archive(tmp_path) -> None:
     second = archive.read_text(encoding="utf-8")
     assert second.startswith(first)
     assert second.count('"record_type":"summary"') == 2
+
+
+class _ReadOnlyViolation(AssertionError):
+    pass
+
+
+class _StatementGuard:
+    """Wrap a real connection and reject any statement that is not read-only."""
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def execute(self, sql, params=None):
+        head = " ".join(str(sql).strip().split()[:2]).upper()
+        if not head.startswith(
+            ("SELECT", "WITH", "SET DEFAULT_TRANSACTION_READ_ONLY", "SHOW")
+        ):
+            raise _ReadOnlyViolation(f"shadow issued a non-read-only statement: {head}")
+        return self._conn.execute(sql, params)
+
+
+def test_shadow_run_never_changes_original_decision_rows(db) -> None:
+    from tests.abstention_helpers import (
+        A1,
+        A2,
+        A3,
+        finalize_matrix,
+        insert_match,
+        insert_run,
+        insert_target,
+        make_result,
+        seed_agent_configs,
+        utc,
+    )
+
+    match_id = insert_match(db, match_start_at=utc(hour=12))
+    # insert_match's default version is observed at match start; add an earlier
+    # PIT-visible version so the observer has a real target at the 08:00 run cutoff.
+    version_player_1, version_player_2 = db.execute(
+        "SELECT player_1_id, player_2_id FROM match_versions WHERE match_id = %s",
+        (match_id,),
+    ).fetchone()
+    db.execute(
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope,
+            competition_tier, surface, round_code, best_of_sets, qualifying_flag,
+            match_status, source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', 'HARD', 'R32', 3, FALSE,
+                'SCHEDULED', %s, %s, %s)
+        """,
+        (
+            match_id,
+            version_player_1,
+            version_player_2,
+            utc(hour=12),
+            utc(hour=7),
+            utc(hour=7),
+            utc(hour=7),
+        ),
+    )
+    run_id = insert_run(db, as_of=utc(hour=8))
+    insert_target(db, run_id=run_id, match_id=match_id)
+    configs = seed_agent_configs(db)
+    finalize_matrix(
+        db,
+        run_id=run_id,
+        match_id=match_id,
+        configs=configs,
+        results=[
+            make_result(
+                code, utc(hour=8), status="PREDICTED", side=1, probability="0.61"
+            )
+            for code in (A1, A2, A3)
+        ],
+        finalized_at=utc(hour=8, minute=5),
+    )
+    before = {
+        table: db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+        for table in (
+            "predictions",
+            "prediction_runs",
+            "decisions",
+            "manager_consensus_results",
+            "publication_control_events",
+            "decision_settlements",
+        )
+    }
+    stored = db.execute(
+        "SELECT selection_side, win_probability FROM predictions "
+        "WHERE prediction_run_id = %s AND agent_code = 'AGENT_1_SURFACE_ELO'",
+        (run_id,),
+    ).fetchone()
+
+    with psycopg.connect(os.environ["TEST_POSTGRES_DSN"], autocommit=True) as observer_conn:
+        summary = run(
+            _StatementGuard(observer_conn),
+            run_ids=[run_id],
+            capture_at=utc(hour=9),
+            log=lambda _: None,
+        )
+    assert summary["modified_production"] is False
+    assert summary["outcome_included"] is False
+
+    after = {
+        table: db.execute(f"SELECT count(*) FROM {table}").fetchone()[0]
+        for table in before
+    }
+    assert before == after
+    assert db.execute(
+        "SELECT selection_side, win_probability FROM predictions "
+        "WHERE prediction_run_id = %s AND agent_code = 'AGENT_1_SURFACE_ELO'",
+        (run_id,),
+    ).fetchone() == stored
+
+
+def test_discovery_cycle_does_not_rearchive_a_run(tmp_path) -> None:
+    from sports_edge_tennis.validation.a1_identity_bridge_forward_shadow import (
+        run_discovered,
+    )
+
+    class Cursor:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def fetchall(self):
+            return self._rows
+
+    class FakeConn:
+        def __init__(self, rows):
+            self.rows = rows
+            self.statements = []
+
+        def execute(self, sql, params=None):
+            self.statements.append(sql)
+            if "FROM prediction_runs pr" in sql and "prediction_finalized_at >=" in sql:
+                return Cursor(self.rows)
+            return Cursor([])
+
+    archive = tmp_path / "capture.jsonl"
+    conn = FakeConn([(501, _utc(20, 8), _utc(20, 8))])
+    first = run_discovered(
+        conn,
+        since=_utc(20),
+        capture_at=_utc(20, 9),
+        archive_path=str(archive),
+        log=lambda _: None,
+    )
+    assert first["discovered_runs"] == 1
+    assert first["captured_runs"] == 1
+
+    second = run_discovered(
+        conn,
+        since=_utc(20),
+        capture_at=_utc(20, 10),
+        archive_path=str(archive),
+        log=lambda _: None,
+    )
+    assert second["discovered_runs"] == 1
+    assert second["captured_runs"] == 0
+    assert second["already_archived_runs"] == 1
+    assert all(
+        not str(statement).strip().upper().startswith(("INSERT", "UPDATE", "DELETE"))
+        for statement in conn.statements
+    )

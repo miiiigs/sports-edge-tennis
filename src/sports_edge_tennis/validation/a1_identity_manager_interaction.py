@@ -306,6 +306,28 @@ def run(conn: psycopg.Connection) -> dict[str, Any]:
             "accuracy": wins / len(graded) if graded else None,
         }
 
+    def _unpaired_delta(
+        baseline: dict[str, Any], candidate: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Two-proportion difference with a normal-approximation 95% interval.
+
+        The two consensus sets are different matches, so this is explicitly an
+        unpaired descriptive interval, not a paired activation test.
+        """
+        if not baseline["n"] or not candidate["n"]:
+            return None
+        p1 = baseline["wins"] / baseline["n"]
+        p2 = candidate["wins"] / candidate["n"]
+        se = ((p1 * (1 - p1) / baseline["n"]) + (p2 * (1 - p2) / candidate["n"])) ** 0.5
+        delta = p2 - p1
+        return {
+            "difference": delta,
+            "ci95": [delta - 1.96 * se, delta + 1.96 * se],
+            "includes_zero": (delta - 1.96 * se) <= 0.0 <= (delta + 1.96 * se),
+            "paired": False,
+            "note": "Different matches selected; not a paired activation test.",
+        }
+
     reason_transitions = Counter(
         f"{row['original_manager_reason']}->{row['counterfactual_manager_reason']}"
         for row in rows
@@ -359,6 +381,24 @@ def run(conn: psycopg.Connection) -> dict[str, Any]:
             ),
             "original_a1": _accuracy(rows, "original_a1_correct"),
             "bridged_a1": _accuracy(rows, "bridged_a1_correct"),
+        },
+        "consensus_accuracy_delta": _unpaired_delta(
+            _accuracy(original_consensus, "original_manager_correct"),
+            _accuracy(counterfactual_consensus, "counterfactual_manager_correct"),
+        ),
+        "matched_fixture_contract": {
+            "population": "bounded safely settled Agent 1 targets with all three agents "
+            "and a stored Manager result",
+            "excluded_not_safely_settled": int(skipped.get("not_safely_settled", 0)),
+            "same_inputs_except_agent_1": True,
+            "selection_sets_are_not_identical": True,
+            "paired_activation_test": False,
+            "note": (
+                "A1 replacement changes which matches clear the existing Manager; it is "
+                "not a paired head-to-head on identical selections. Shared consensus "
+                "picks keep the same side, so the difference is coverage, not a better "
+                "probability on the same match."
+            ),
         },
         "by_tour": {
             tour: {

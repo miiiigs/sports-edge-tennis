@@ -592,7 +592,10 @@ def test_mutated_canonical_name_is_not_reused_for_earlier_replay(
         db, player_ids=[live], as_of=_utc(2025, 4, 1)
     )[live]
     assert before_rename.resolved_player_id == live
-    assert before_rename.name_source == "PIT_NAME_UNAVAILABLE"
+    # Migration 0025 preserves the pre-rename name, so the PIT lookup is still made
+    # but cannot match an alias that only ever existed under the later name.
+    assert before_rename.name_source == "PIT_CANONICAL_NAME"
+    assert before_rename.method == "NO_HISTORICAL_CANDIDATE"
 
     after_rename = resolve_model_player_ids_with_provenance(
         db, player_ids=[live], as_of=cutoff
@@ -670,11 +673,19 @@ def test_resolution_provenance_freezes_reference_digest(db: psycopg.Connection):
     )
     assert drift["drift"] is False
 
-    # An out-of-band alias re-pointing changes the digest even though no timestamp
-    # column has to move for the check to notice.
+    # Migration 0025 makes alias linkage immutable for normal traffic. An out-of-band
+    # re-point is rejected outright, which is stronger than merely detecting it.
+    with pytest.raises(psycopg.errors.RaiseException, match="immutable"):
+        db.execute(
+            "UPDATE player_aliases SET player_id = %s WHERE player_id = %s",
+            (live, target),
+        )
+
+    # A name mutation is still an allowed operation, and the frozen digest detects it.
     db.execute(
-        "UPDATE player_aliases SET player_id = %s WHERE player_id = %s",
-        (live, target),
+        "UPDATE players SET canonical_name = 'Renamed Provenance Target', updated_at = %s "
+        "WHERE player_id = %s",
+        (_utc(2026, 1, 1), target),
     )
     moved = reference_drift_for(
         db, player_ids=[live, target], recorded=reference.as_record()
