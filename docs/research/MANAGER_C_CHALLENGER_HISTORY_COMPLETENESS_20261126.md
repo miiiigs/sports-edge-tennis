@@ -18,9 +18,9 @@ python -m sports_edge_tennis.validation.manager_c_challenger_history \
   --output docs/research/evidence/manager_c_challenger_history_real_20261126.json
 ```
 
-Source commit parent: `a74d041aa49d6253c486cd78d1239883943cf845`
-(integration PR #392). The adapter reuses the unchanged PR357 first-issue SQL,
-the registered 20%/40% thresholds and the frozen cohort code.
+Source commit: `b2b6f0d` (integration PR #392; repository base `a74d041`,
+readiness commit `8b74a7f`). The adapter reuses the unchanged PR357 first-issue
+SQL, the registered 20%/40% thresholds and the frozen cohort code.
 
 ## 1. Cohort reconciliation
 

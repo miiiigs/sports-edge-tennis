@@ -7,6 +7,9 @@ tunnel (`railway connect Postgres-Sdqz --tunnel-only`), with
 `default_transaction_read_only=on` and `REPEATABLE READ READ ONLY`. Credentials
 are not recorded here.
 
+Probe commit: `8b74a7f` (integration PR #392); OddsPapi companion probe:
+`ac85f34`.
+
 ## 1. Ledger probe result (authorised read-only)
 
 `python ops/validation/production_schema_ledger_probe.py` succeeded against the

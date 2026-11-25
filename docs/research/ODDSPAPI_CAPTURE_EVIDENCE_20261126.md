@@ -1,7 +1,8 @@
 # OddsPapi capture evidence and pre-issue sequencing (2026-11-26)
 
 Research-only, read-only production session. No migration, deployment, provider
-request, purchase or matching-threshold change. Probe:
+request, purchase or matching-threshold change. Probe commit: `ac85f34`
+(integration PR #392). Probe:
 `ops/validation/oddspapi_capture_evidence_probe.py`; evidence JSON:
 `docs/research/evidence/oddspapi_capture_evidence_real_20261126.json`.
 
