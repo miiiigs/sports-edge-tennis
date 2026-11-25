@@ -289,3 +289,67 @@ def test_postgres_representative_66_target_observer_benchmark(postgres_dsn, monk
                   max_ms=round(ordered[-1], 3), synthetic=True)
     with capsys.disabled():
         print("A3_SYNTHETIC_OBSERVER_BENCHMARK " + json.dumps(report, sort_keys=True))
+
+
+@pytest.mark.parametrize("autocommit", [False, True])
+@pytest.mark.parametrize("failure", ["statement_timeout", "lock_timeout", "none"])
+@pytest.mark.parametrize("stricter", [False, True])
+def test_postgres_observer_bounded_sql_restores_caller_settings(
+    postgres_dsn, monkeypatch, capsys, autocommit, failure, stricter,
+):
+    """Real PG cancellation, preservation of settings and caller writes."""
+    import psycopg
+    from psycopg.pq import TransactionStatus
+
+    target = SimpleNamespace(match_id=134291, match_version_id=42)
+    with psycopg.connect(postgres_dsn, autocommit=True) as holder:
+        key = holder.execute("SELECT pg_backend_pid()").fetchone()[0]
+        holder.execute("SELECT pg_advisory_lock(%s)", (key,))
+        with psycopg.connect(postgres_dsn, autocommit=autocommit) as conn:
+            before_ms = ("80ms", "40ms") if stricter else ("0", "0")
+            conn.execute("SELECT set_config('statement_timeout', %s, false), "
+                         "set_config('lock_timeout', %s, false)", before_ms)
+            conn.execute("CREATE TEMP TABLE a3_timeout_probe (id integer PRIMARY KEY)")
+            if not autocommit:
+                conn.commit()
+            conn.execute("INSERT INTO a3_timeout_probe VALUES (1)")
+            before = conn.info.transaction_status
+
+            def settings(connection):
+                return dict(connection.execute(
+                    "SELECT name, setting FROM pg_settings "
+                    "WHERE name IN ('statement_timeout', 'lock_timeout')"
+                ).fetchall())
+
+            caller = settings(conn)
+            expected = {"statement_timeout": "80", "lock_timeout": "40"} if stricter else {
+                "statement_timeout": "250", "lock_timeout": "100"}
+            seen = []
+
+            def probe(connection, **kwargs):
+                seen.append(settings(connection))
+                if failure == "statement_timeout":
+                    connection.execute("SELECT pg_sleep(0.6)")
+                elif failure == "lock_timeout":
+                    connection.execute("SELECT pg_advisory_xact_lock(%s)", (key,))
+                return {"canonical_match_id": target.match_id}
+
+            monkeypatch.setattr(full_slate, "_capture_optional_a3_soft_shadow", probe)
+            ok = full_slate._observe_a3_soft_shadow(
+                conn, target=target, request=request(), original_result=object(),
+                as_of=NOW, prediction_run_id=77,
+            )
+            assert seen == [expected]
+            assert ok is (failure == "none")
+            assert conn.info.transaction_status == before
+            assert before == (TransactionStatus.IDLE if autocommit else TransactionStatus.INTRANS)
+            assert settings(conn) == caller
+            conn.execute("INSERT INTO a3_timeout_probe VALUES (2)")
+            conn.commit()
+            assert conn.execute("SELECT id FROM a3_timeout_probe ORDER BY id").fetchall() == [(1,), (2,)]
+            assert settings(conn) == caller
+            output = capsys.readouterr().out
+            if failure != "none":
+                code = "57014" if failure == "statement_timeout" else "55P03"
+                assert f'"sqlstate": "{code}"' in output
+                assert "TENNIS_A3_SOFT_PROSPECTIVE_SHADOW" not in output

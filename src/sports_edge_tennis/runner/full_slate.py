@@ -367,9 +367,30 @@ def _observe_a3_soft_shadow(conn, *, target, request, original_result,
         # psycopg nests a savepoint inside an existing transaction and owns
         # a short transaction otherwise. Never roll back the caller's work.
         with conn.transaction():
+            # SET LOCAL survives a successful nested savepoint release, so
+            # explicitly restore the caller's settings on success. On error,
+            # the savepoint rollback restores them before the handler runs.
+            # Never relax a stricter existing timeout.
+            previous = dict(conn.execute(
+                "SELECT name, setting FROM pg_settings "
+                "WHERE name IN ('statement_timeout', 'lock_timeout')"
+            ).fetchall())
+            statement_ms = int(previous["statement_timeout"])
+            lock_ms = int(previous["lock_timeout"])
+            conn.execute(
+                "SELECT set_config('statement_timeout', %s, true), "
+                "set_config('lock_timeout', %s, true)",
+                (f"{min(statement_ms, 250) if statement_ms else 250}ms",
+                 f"{min(lock_ms, 100) if lock_ms else 100}ms"),
+            )
             record = _capture_optional_a3_soft_shadow(
                 conn, target=target, request=request, original_result=original_result,
                 as_of=as_of, prediction_run_id=prediction_run_id,
+            )
+            conn.execute(
+                "SELECT set_config('statement_timeout', %s, true), "
+                "set_config('lock_timeout', %s, true)",
+                (f"{statement_ms}ms", f"{lock_ms}ms"),
             )
         # Log only after the optional transaction/savepoint exits successfully.
         if not _emit_a3_shadow_event("TENNIS_A3_SOFT_PROSPECTIVE_SHADOW", record):
