@@ -40,17 +40,24 @@ class _Result:
 
 
 class _CacheConn:
-    def __init__(self, row=None):
+    def __init__(self, row=None, history_present: bool = True):
         self.row = row
+        self.history_present = history_present
         self.deleted: list[int] = []
         self.inserts = 0
+        self.history: list[tuple[str, int]] = []
 
     def execute(self, sql, params=None):
         normalized = " ".join(str(sql).split()).lower()
+        if normalized.startswith("select to_regclass"):
+            return _Result((self.history_present,))
         if normalized.startswith("select canonical_match_id"):
             return _Result(self.row)
         if normalized.startswith("delete from oddspapi_event_identity_cache"):
             self.deleted.append(int((params or (0,))[0]))
+            return _Result((None,))
+        if normalized.startswith("insert into oddspapi_event_identity_history"):
+            self.history.append((str((params or ("",))[10]), int((params or (0,))[0])))
             return _Result((None,))
         if normalized.startswith("insert into oddspapi_event_identity_cache"):
             self.inserts += 1
@@ -166,3 +173,54 @@ def test_partition_warm_and_invalidated_cold() -> None:
     assert warm2 == {}
     assert cold2 == [1]
     assert conn2.deleted == [1]
+
+
+def test_upsert_records_append_only_history() -> None:
+    conn = _CacheConn()
+    upsert_cached_identity(conn, _cached())
+    assert conn.inserts == 1
+    assert conn.history == [("UPSERTED", 1)]
+
+
+def test_invalidation_records_history_before_delete() -> None:
+    warm_row = (
+        1,
+        "sr:sport_event:111",
+        "id120",
+        "111",
+        44,
+        "DIRECT",
+        "EXACT",
+        NOW + timedelta(hours=2),
+        NOW,
+        NOW,
+    )
+    conn = _CacheConn(row=warm_row)
+    warm, cold = partition_cached_identities(
+        conn,
+        candidates=[(1, "sr:sport_event:999", NOW + timedelta(hours=2))],
+        now=NOW,
+    )
+    assert warm == {} and cold == [1]
+    assert conn.deleted == [1]
+    assert conn.history == [("INVALIDATED", 1)]
+
+
+def test_history_absent_is_fail_open() -> None:
+    conn = _CacheConn(history_present=False)
+    upsert_cached_identity(conn, _cached())
+    assert conn.inserts == 1
+    assert conn.history == []
+
+
+def test_history_migration_is_append_only() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    sql = (root / "db" / "migrations" / "0024_oddspapi_identity_history.up.sql").read_text(
+        encoding="utf-8"
+    )
+    assert "CREATE TABLE oddspapi_event_identity_history" in sql
+    assert "trg_oddspapi_identity_history_append_only_mutation" in sql
+    assert "raise_append_only_mutation" in sql
+    assert "event_type IN ('UPSERTED', 'INVALIDATED')" in sql
