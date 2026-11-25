@@ -337,6 +337,17 @@ def resolve_scoring_rule(
         )
 
     if alias in _AUSTRALIAN_OPEN_ALIASES:
+        # AO 2027 main-draw candidate only. Unknown rounds, qualifying,
+        # conflicting metadata and other future editions remain fail-closed.
+        # Do not promote before the edition-specific rule and fixture audit.
+        if season_year == 2027 and (
+            alias != "AUSTRALIAN OPEN"
+            or tour_scope != "ATP_MAIN"
+            or competition_tier != "GRAND_SLAM"
+            or normalized_round_code not in {"R128", "R64", "R32", "R16", "QF", "SF", "F"}
+            or qualifying_flag
+        ):
+            return _unsupported_rule(authoritative_qualifying, qualifying_flag_disagrees)
         return _resolve_grand_slam_rule(
             slam="AO",
             season_year=season_year,
@@ -507,7 +518,7 @@ def _resolve_grand_slam_main_draw_rule(
             ScoringRuleVersion.BO5_DECIDER_ADVANTAGE
             if 2016 <= season_year <= 2018
             else ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
-            if 2019 <= season_year <= 2026
+            if 2019 <= season_year <= 2027
             else None
         )
     if slam == "RG":
