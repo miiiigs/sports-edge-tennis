@@ -45,6 +45,7 @@ the live runner and adds an independent monitor:
 | Duplicate notification is suppressed | `test_incident_notification_is_sent_once_and_recovery_is_sent_once` | PASS |
 | Recovery notification is sent once | same test | PASS |
 | State survives process restart | `test_state_round_trip_suppresses_duplicate_notifications` | PASS |
+| Notifier delivery failure is surfaced, not swallowed | `test_webhook_failure_returns_distinct_exit_code` (exit code 2) | PASS |
 | Duplicate prediction target is rejected before a run | `tests/test_full_slate_runner.py::test_duplicate_target_rejected_without_run` | PASS (PostgreSQL CI) |
 | Runner refuses an incomplete full-slate outcome | `tests/test_full_slate_runner.py` failure-state regressions | PASS (PostgreSQL CI) |
 
@@ -52,7 +53,7 @@ Commands executed locally:
 
 ```text
 python -m pytest tests/test_capture_health_watchdog.py tests/test_fixture_lifecycle.py -q
-25 passed
+26 passed
 ```
 
 The PostgreSQL foundation workflow remains the release gate for the
@@ -91,7 +92,9 @@ Controlled operational release is **conditionally ready**, subject to all of:
 - The platform reason the Railway cron trigger stopped on 12 November is not
   available from the read-only evidence. The release mitigates silence; it does
   not repair the platform fault.
-- Notification delivery to a real endpoint is not exercised here.
+- Notification delivery to a real external endpoint is not exercised here; the
+  decision logic, deduplication, state round-trip and notifier-failure exit code
+  are tested.
 - The watchdog schedule itself is an operational action and is not part of this
   PR.
 - No claim is made that coverage gaps cannot recur. The watchdog makes a

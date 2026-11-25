@@ -184,8 +184,8 @@ without sending. No webhook is configured or called by this repository.
 Regression coverage: `tests/test_capture_health_watchdog.py` checks the exact
 12–16 November boundaries (98 expected slots, 3 served, 95 missed), a silent
 runner with no rows, duplicate executions in one slot, out-of-window
-executions, incident deduplication, a changed incident set and one-time
-recovery.
+executions, incident deduplication, a changed incident set, one-time recovery
+and a notifier-failure exit code.
 
 ### Lifecycle traceability
 
