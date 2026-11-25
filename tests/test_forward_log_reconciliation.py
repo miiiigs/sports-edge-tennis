@@ -79,3 +79,36 @@ def test_incomplete_tail_rejected(export):
     export["counts"][KINDS[3]] -= 1
     with pytest.raises(ValueError, match="incomplete export tail"):
         audit(export)
+
+
+def test_full_day_actual_archive_and_hourly_markers():
+    path = EVIDENCE.with_name("railway_forward_20261124_full_day.json")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    result = audit(data)
+    assert result["batch_cycles"] == 24
+    assert result["capture_summaries"] == result["attempted"] == result["successful"] == 50
+    assert result["failed"] == 0
+    assert result["unique_first_issued_research_targets"] == 51
+    assert result["research_targets_by_tour"] == {"ATP_MAIN": 1, "CHALLENGER": 50}
+    assert result["selection_counts"] == {
+        "A1A2_equal_log_odds_blend": 12,
+        "B_guarded2_floor60_spread20": 10,
+        "C_uncalibrated_mean_floor60": 7,
+        "original_manager": 4,
+        "production_original_as_issued": 5,
+    }
+    assert result["expected_hour_slots_in_export"] == 24
+    assert result["observed_completion_hour_slots"] == 24
+    assert result["hours_without_success_marker"] == []
+    assert result["independent_job_schedule_verified"] is False
+
+
+def test_whole_missing_cycle_reported_as_hour_gap(export):
+    removed = [row for row in export["logs"] if row["timestamp"].startswith("2026-11-25T00:")]
+    export["logs"] = [row for row in export["logs"] if row not in removed]
+    for row in removed:
+        export["counts"][row["message"].split(" ", 1)[0]] -= 1
+    result = audit(export)
+    assert result["batch_cycles"] == 3
+    assert result["hours_without_success_marker"] == ["2026-11-25T00:00:00+00:00"]
+    assert result["independent_job_schedule_verified"] is False
