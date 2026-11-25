@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+import os
+from time import perf_counter_ns
 
 import psycopg
 
@@ -137,7 +140,7 @@ def run_full_slate(
     run_id = create_prediction_run(conn, request=request, started_at=execution_now)
 
     try:
-        matrix = _execute_matrix(conn, targets, configs, request.as_of)
+        matrix = _execute_matrix(conn, targets, configs, request.as_of, prediction_run_id=run_id)
     except Exception as exc:
         return _fail_run(conn, run_id, request.as_of, clock, "AGENT_EXECUTION", exc)
 
@@ -251,6 +254,8 @@ def _execute_matrix(
     targets: list[ResolvedTargetV1],
     configs: dict[str, ResolvedAgentConfigV1],
     as_of: datetime,
+    *,
+    prediction_run_id: int | None = None,
 ) -> list[PredictiveAgentMatrixPrediction]:
     agent1_history = load_agent1_history_observations(conn, as_of)
     agent1_replay = replay_agent1_history(agent1_history, as_of, AGENT1_DEFAULT_CONFIG)
@@ -258,10 +263,14 @@ def _execute_matrix(
     agent3_snapshot = build_agent3_history_snapshot(conn, as_of)
 
     matrix: list[PredictiveAgentMatrixPrediction] = []
+    shadow_counts = {"attempted": 0, "captured": 0, "failed": 0, "observer_elapsed_ns": 0}
     for target in targets:
         agent1 = _run_agent1(target, agent1_replay, configs[AGENT_1], as_of)
         agent2 = _run_agent2(target, agent2_snapshot, configs[AGENT_2], as_of)
-        agent3 = _run_agent3(target, agent3_snapshot, configs[AGENT_3], as_of, conn=conn)
+        agent3 = _run_agent3(
+            target, agent3_snapshot, configs[AGENT_3], as_of, conn=conn,
+            prediction_run_id=prediction_run_id, shadow_counts=shadow_counts,
+        )
         matrix.extend((agent1, agent2, agent3))
         _log_target_diagnostics(
             target.match_id,
@@ -269,6 +278,11 @@ def _execute_matrix(
             agent2.result,
             agent3.result,
         )
+    if os.environ.get("TENNIS_A3_SOFT_SHADOW_CAPTURE") == "1":
+        _emit_a3_shadow_event("TENNIS_A3_SOFT_SHADOW_HEARTBEAT", {
+            "prediction_run_id": prediction_run_id, **shadow_counts,
+            "target_count": len(targets), "stage": "MATRIX_COMPUTED_NOT_FINALIZED",
+        })
     return matrix
 
 
@@ -303,6 +317,8 @@ def _run_agent3(
     as_of,
     *,
     conn: psycopg.Connection | None = None,
+    prediction_run_id: int | None = None,
+    shadow_counts: dict[str, int] | None = None,
 ) -> PredictiveAgentMatrixPrediction:
     request = build_agent3_request(target, snapshot, as_of)
     result = predict_agent3(request, config=AGENT3_DEFAULT_CONFIG)
@@ -315,10 +331,112 @@ def _run_agent3(
                 target=target, snapshot=snapshot, result=result, as_of=as_of
             ),
         )
+    if (conn is not None and
+        os.environ.get("TENNIS_A3_SOFT_SHADOW_CAPTURE") == "1" and
+        target.tour_scope in ("ATP_MAIN", "CHALLENGER") and
+        target.qualifying_flag is False):
+        observer_started = perf_counter_ns()
+        captured = _observe_a3_soft_shadow(
+            conn, target=target, request=request, original_result=result,
+            as_of=as_of, prediction_run_id=prediction_run_id,
+        )
+        if shadow_counts is not None:
+            shadow_counts["observer_elapsed_ns"] += perf_counter_ns() - observer_started
+            shadow_counts["attempted"] += 1
+            shadow_counts["captured" if captured else "failed"] += 1
     return PredictiveAgentMatrixPrediction(
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+    )
+
+
+def _emit_a3_shadow_event(event: str, payload: dict) -> bool:
+    """Research telemetry must not turn a logging failure into a live failure."""
+    try:
+        print(event + " " + json.dumps(payload, sort_keys=True), flush=True)
+        return True
+    except Exception:
+        return False
+
+
+def _observe_a3_soft_shadow(conn, *, target, request, original_result,
+                            as_of, prediction_run_id=None) -> bool:
+    """Recover optional SQL errors before returning to production SQL."""
+    try:
+        # psycopg nests a savepoint inside an existing transaction and owns
+        # a short transaction otherwise. Never roll back the caller's work.
+        with conn.transaction():
+            # SET LOCAL survives a successful nested savepoint release, so
+            # explicitly restore the caller's settings on success. On error,
+            # the savepoint rollback restores them before the handler runs.
+            # Never relax a stricter existing timeout.
+            previous = dict(conn.execute(
+                "SELECT name, setting FROM pg_settings "
+                "WHERE name IN ('statement_timeout', 'lock_timeout')"
+            ).fetchall())
+            statement_ms = int(previous["statement_timeout"])
+            lock_ms = int(previous["lock_timeout"])
+            conn.execute(
+                "SELECT set_config('statement_timeout', %s, true), "
+                "set_config('lock_timeout', %s, true)",
+                (f"{min(statement_ms, 250) if statement_ms else 250}ms",
+                 f"{min(lock_ms, 100) if lock_ms else 100}ms"),
+            )
+            record = _capture_optional_a3_soft_shadow(
+                conn, target=target, request=request, original_result=original_result,
+                as_of=as_of, prediction_run_id=prediction_run_id,
+            )
+            conn.execute(
+                "SELECT set_config('statement_timeout', %s, true), "
+                "set_config('lock_timeout', %s, true)",
+                (f"{statement_ms}ms", f"{lock_ms}ms"),
+            )
+        # Log only after the optional transaction/savepoint exits successfully.
+        if not _emit_a3_shadow_event("TENNIS_A3_SOFT_PROSPECTIVE_SHADOW", record):
+            raise OSError("research log emission failed")
+        return True
+    except Exception as exc:
+        _emit_a3_shadow_event("TENNIS_A3_SOFT_SHADOW_UNAVAILABLE", {
+            "match_id": target.match_id,
+            "match_version_id": target.match_version_id,
+            "prediction_run_id": prediction_run_id,
+            "exception_type": type(exc).__name__,
+            "sqlstate": getattr(exc, "sqlstate", None),
+            "original_forecast_unchanged": True,
+        })
+        return False
+
+
+def _capture_optional_a3_soft_shadow(conn, *, target, request,
+                                     original_result, as_of, prediction_run_id=None) -> dict:
+    """Original in-memory source snapshot, genuinely before target start.
+
+    This cannot verify every underlying provider's ingestion provenance and
+    must never be counted as a validated original first published forecast
+    without later first-run matching against the immutable run ledger.
+    """
+    from sports_edge_tennis.validation.a3_soft_common_opponent_ess_shadow import (
+        capture_provisional_live_shadow,
+    )
+    start=conn.execute("""
+        SELECT match_start_at FROM match_versions
+        WHERE match_version_id=%s AND match_id=%s
+          AND match_status='SCHEDULED'
+          AND as_of<=%s AND source_observed_at<=%s AND ingested_at<=%s
+        LIMIT 1
+    """,(target.match_version_id,target.match_id,as_of,as_of,as_of)).fetchone()
+    if start is None or start[0] is None:
+        raise ValueError("original PIT match version missing scheduled start")
+    return capture_provisional_live_shadow(
+        request,canonical_match_id=target.match_id,
+        capture_at=_utc_now(),match_start_at=start[0],
+        original_result=original_result,
+        production_commit=os.environ.get("RAILWAY_GIT_COMMIT_SHA") or None,
+        prediction_run_id=prediction_run_id,
+        match_version_id=target.match_version_id,
+        tour_scope=getattr(target, "tour_scope", None),
+        completion_clock=_utc_now,
     )
 
 

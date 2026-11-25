@@ -19,7 +19,7 @@ import hashlib
 import json
 import math
 from datetime import UTC,datetime,timedelta
-from typing import Any
+from typing import Any, Callable
 
 from sports_edge_tennis.agents.agent3_intransitivity import (
     DEFAULT_CONFIG, Agent3HistorySnapshot,PredictionRequest,
@@ -67,7 +67,7 @@ def _edge(snapshot:Agent3HistorySnapshot,player:int,opponent:int,
     for x in edge.all_observations:
         t=_utc(x.observed_at)
         age=(cutoff-t).total_seconds()/86400
-        if age<0:
+        if age<=0:
             raise ValueError("future observation in historical support graph")
         if age>DEFAULT_CONFIG.lookback_days:
             continue
@@ -88,7 +88,7 @@ def _soft_variant(request:PredictionRequest, *,edge_min:float,
     a,b=request.player_1_id,request.player_2_id
     snapshot=request.history_snapshot
     opps=(set(snapshot.adjacency.get(a,()))&
-          set(snapshot.adjacency.get(b,)))-{a,b}
+          set(snapshot.adjacency.get(b,())))-{a,b}
     cutoff=_utc(request.as_of)
     evidence=[]
     for opp in sorted(opps):
@@ -175,3 +175,76 @@ def compare_snapshot(
         "not_retroactively_representable_as_live_issued":True,
         "requires_true_future_outcomes":True,
     }
+
+
+def capture_provisional_live_shadow(
+    request: PredictionRequest, *, canonical_match_id: int,
+    capture_at: datetime, match_start_at: datetime, original_result,
+    production_commit: str | None = None,
+    prediction_run_id: int | None = None,
+    match_version_id: int | None = None,
+    tour_scope: str | None = None,
+    completion_clock: Callable[[], datetime] | None = None,
+) -> dict[str, Any]:
+    """Preserve actual live-time A3 exploratory probabilities, not retrospective picks.
+
+    Only called on the in-memory snapshot ALREADY used by the original production
+    prediction, before match start. Original individual provider ingestion
+    provenance is NOT independently proven by this adapter: label it explicitly
+    and prohibit these experiments from being called GREEN original-source proof.
+    Repeated production runs can occur; an independent first-run deduplication
+    manifest is needed before scoring any future outcome.
+    """
+    cutoff=_utc(request.as_of)
+    captured=_utc(capture_at)
+    start=_utc(match_start_at)
+    if not cutoff<=captured<=start-timedelta(minutes=30):
+        raise ValueError("live Agent3 shadow requires actual pre-match 30min timing")
+    if not isinstance(canonical_match_id,int) or canonical_match_id<=0:
+        raise ValueError("original canonical match id required")
+    profiles={
+        name:_soft_variant(request,edge_min=edge,cross_surface_weight=surface)
+        for name,(edge,surface) in PROFILES.items()
+    }
+    # The runtime supplies a fresh clock after all three profiles finish.
+    # A start timestamp alone cannot prove a pre-match calculation completed.
+    completed = _utc(completion_clock()) if completion_clock is not None else captured
+    if not captured <= completed <= start-timedelta(minutes=30):
+        raise ValueError("live Agent3 shadow completion violates pre-match timing")
+    data={
+        "canonical_match_id":canonical_match_id,
+        "prediction_run_id":prediction_run_id,
+        "original_match_version_id":match_version_id,
+        "tour_scope":tour_scope,
+        "evaluation_key": (
+            f"{prediction_run_id}:{canonical_match_id}:{VERSION}"
+            if prediction_run_id is not None else None
+        ),
+        "version":"A3_LIVE_SOFT_PIT_PROVISIONAL_V1",
+        "original_agent_model_version":DEFAULT_CONFIG.model_version,
+        "research_profiles_version":VERSION,
+        "production_git_sha":production_commit,
+        "player_1_id":request.player_1_id,
+        "player_2_id":request.player_2_id,
+        "surface_at_original_asof":request.surface,
+        "original_model_asof_utc":cutoff.isoformat(),
+        "research_started_at_utc":captured.isoformat(),
+        "research_captured_at_utc":completed.isoformat(),
+        "completion_clock_observed":completion_clock is not None,
+        "original_scheduled_start_at_utc":start.isoformat(),
+        "original_agent3_as_computed":_result_payload(original_result),
+        "research_soft_common_opponent_variants":profiles,
+        "no_new_history_or_market_fetch":True,
+        "production_model_pick_unchanged":True,
+        "actual_frozen_live_snapshot_not_retrospective_replay":True,
+        "independent_underlying_source_ingestion_verification":False,
+        "underlying_feature_snapshot_manifest_sha256":None,
+        "original_prediction_run_finalization_not_yet_verified":True,
+        "first_issued_unique_canonical_prediction_not_yet_verified":True,
+        "no_result_winner_used":True,
+        "not_calibrated_or_outcome_validated":True,
+        "cannot_promote_to_production":True,
+    }
+    return {**data,"record_sha256":hashlib.sha256(json.dumps(
+        data,sort_keys=True,separators=(",",":")
+    ).encode()).hexdigest()}

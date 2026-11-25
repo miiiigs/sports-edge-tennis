@@ -1,0 +1,344 @@
+{
+  "cohort_rows": 3836,
+  "cohort_sha256": "6e43a06a91940f9f4c0c40c9b7dae13fbbb11ba987b77c2f4339c714f15b3d4e",
+  "exclusions": {
+    "LATE_OR_UNSAFE_ISSUE": 20,
+    "NOT_SETTLED_COMPLETED": 330,
+    "UNKNOWN_SURFACE": 889
+  },
+  "history_ingestion_coverage": {
+    "first_run_cutoff_utc": "2026-09-09T18:03:03.520849+00:00",
+    "history_observations": 70764,
+    "last_run_cutoff_utc": "2026-11-24T03:01:04.026637+00:00",
+    "result_ingested_after_first_run": 16297,
+    "result_ingested_after_last_run": 0,
+    "version_ingested_after_first_run": 16296
+  },
+  "history_observations_visible": 70764,
+  "history_visibility_max_utc": "2026-11-24T03:01:04.026637+00:00",
+  "latency_ms": {
+    "original_agent3": {
+      "max": 117.365,
+      "n": 2597,
+      "p50": 5.558,
+      "p95": 54.865
+    },
+    "original_edge_threshold_diagnostic": {
+      "max": 3.739,
+      "n": 2597,
+      "p50": 0.201,
+      "p95": 1.288
+    },
+    "relaxed_edge_050_surface_soft065": {
+      "max": 3.52,
+      "n": 2597,
+      "p50": 0.113,
+      "p95": 0.886
+    },
+    "relaxed_edge_050_unweighted": {
+      "max": 3.011,
+      "n": 2597,
+      "p50": 0.128,
+      "p95": 0.993
+    }
+  },
+  "model_identity_sources": {
+    "DIAGNOSTIC_MATCH": 1608,
+    "RESOLVER_ONLY": 989
+  },
+  "no_data_writes": true,
+  "no_production_manager_change": true,
+  "no_provider_calls": true,
+  "not_commercially_verified_dataset": true,
+  "not_green_live_issued": true,
+  "original_agent3_control": {
+    "metrics": {
+      "accuracy": 0.71428571,
+      "brier": 0.23061045,
+      "log_loss": 0.65423004,
+      "n": 14
+    },
+    "predicted": 14,
+    "stored_fidelity": {
+      "both_predicted": 14,
+      "max_abs_p1_delta_where_both": 0.00470335,
+      "reconstructed_predicted": 14,
+      "status_agreement": 0.99961494,
+      "stored_predicted": 15
+    }
+  },
+  "production_observer_disabled": true,
+  "profiles": {
+    "original_edge_threshold_diagnostic": {
+      "abstain_reasons": {
+        "INSUFFICIENT_SOFT_EFFECTIVE_SUPPORT": 2188,
+        "WEAK_SHRUNK_SIGNAL": 209
+      },
+      "abstained": 2397,
+      "by_draw": {
+        "MAIN": {
+          "accuracy": 0.64516129,
+          "brier": 0.2367648,
+          "log_loss": 0.6665312,
+          "n": 186
+        },
+        "QUALIFYING": {
+          "accuracy": 0.64285714,
+          "brier": 0.23222171,
+          "log_loss": 0.65719428,
+          "n": 14
+        }
+      },
+      "by_surface": {
+        "CLAY": {
+          "accuracy": 0.62162162,
+          "brier": 0.23806197,
+          "log_loss": 0.66913747,
+          "n": 74
+        },
+        "HARD": {
+          "accuracy": 0.65873016,
+          "brier": 0.23549818,
+          "log_loss": 0.6639631,
+          "n": 126
+        }
+      },
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.74390244,
+          "brier": 0.22532457,
+          "log_loss": 0.64346669,
+          "n": 82
+        },
+        "CHALLENGER": {
+          "accuracy": 0.57627119,
+          "brier": 0.24417578,
+          "log_loss": 0.68145131,
+          "n": 118
+        }
+      },
+      "coverage": 0.07701194,
+      "day_block_bootstrap_brier": {
+        "days": 55,
+        "p025": 0.22819804,
+        "p975": 0.24520632,
+        "point": 0.23644678,
+        "status": "OK"
+      },
+      "incremental_vs_a1_a2": {
+        "agent1": {
+          "accuracy": 0.6684492,
+          "brier": 0.21588729,
+          "log_loss": 0.61905981,
+          "n": 187
+        },
+        "agent2": {
+          "accuracy": 0.59893048,
+          "brier": 0.22537777,
+          "log_loss": 0.63974751,
+          "n": 187
+        },
+        "intersection_n": 187,
+        "profile": {
+          "accuracy": 0.6631016,
+          "brier": 0.23415105,
+          "log_loss": 0.66125792,
+          "n": 187
+        },
+        "profile_minus_agent1_brier": 0.01826376,
+        "profile_minus_agent2_brier": 0.00877328
+      },
+      "metrics": {
+        "accuracy": 0.645,
+        "brier": 0.23644678,
+        "log_loss": 0.66587762,
+        "n": 200
+      },
+      "predicted": 200,
+      "settled_targets": 2597
+    },
+    "relaxed_edge_050_surface_soft065": {
+      "abstain_reasons": {
+        "INSUFFICIENT_SOFT_EFFECTIVE_SUPPORT": 1313,
+        "WEAK_SHRUNK_SIGNAL": 773
+      },
+      "abstained": 2086,
+      "by_draw": {
+        "MAIN": {
+          "accuracy": 0.59482759,
+          "brier": 0.24299323,
+          "log_loss": 0.67908026,
+          "n": 464
+        },
+        "QUALIFYING": {
+          "accuracy": 0.59574468,
+          "brier": 0.24290413,
+          "log_loss": 0.67888286,
+          "n": 47
+        }
+      },
+      "by_surface": {
+        "CLAY": {
+          "accuracy": 0.58602151,
+          "brier": 0.24343218,
+          "log_loss": 0.67996862,
+          "n": 186
+        },
+        "HARD": {
+          "accuracy": 0.6,
+          "brier": 0.24272912,
+          "log_loss": 0.67854329,
+          "n": 325
+        }
+      },
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.71851852,
+          "brier": 0.23211857,
+          "log_loss": 0.65725777,
+          "n": 135
+        },
+        "CHALLENGER": {
+          "accuracy": 0.55053191,
+          "brier": 0.24688655,
+          "log_loss": 0.68689079,
+          "n": 376
+        }
+      },
+      "coverage": 0.1967655,
+      "day_block_bootstrap_brier": {
+        "days": 67,
+        "p025": 0.23874613,
+        "p975": 0.24834736,
+        "point": 0.24298503,
+        "status": "OK"
+      },
+      "incremental_vs_a1_a2": {
+        "agent1": {
+          "accuracy": 0.64224138,
+          "brier": 0.22555595,
+          "log_loss": 0.64773538,
+          "n": 464
+        },
+        "agent2": {
+          "accuracy": 0.57543103,
+          "brier": 0.23777574,
+          "log_loss": 0.66993218,
+          "n": 464
+        },
+        "intersection_n": 464,
+        "profile": {
+          "accuracy": 0.59482759,
+          "brier": 0.2426029,
+          "log_loss": 0.67828684,
+          "n": 464
+        },
+        "profile_minus_agent1_brier": 0.01704695,
+        "profile_minus_agent2_brier": 0.00482716
+      },
+      "metrics": {
+        "accuracy": 0.59491194,
+        "brier": 0.24298503,
+        "log_loss": 0.6790621,
+        "n": 511
+      },
+      "predicted": 511,
+      "settled_targets": 2597
+    },
+    "relaxed_edge_050_unweighted": {
+      "abstain_reasons": {
+        "INSUFFICIENT_SOFT_EFFECTIVE_SUPPORT": 906,
+        "WEAK_SHRUNK_SIGNAL": 827
+      },
+      "abstained": 1733,
+      "by_draw": {
+        "MAIN": {
+          "accuracy": 0.61780105,
+          "brier": 0.23850113,
+          "log_loss": 0.67001951,
+          "n": 764
+        },
+        "QUALIFYING": {
+          "accuracy": 0.65,
+          "brier": 0.23526132,
+          "log_loss": 0.66353675,
+          "n": 100
+        }
+      },
+      "by_surface": {
+        "CLAY": {
+          "accuracy": 0.60927152,
+          "brier": 0.23956208,
+          "log_loss": 0.6721312,
+          "n": 302
+        },
+        "HARD": {
+          "accuracy": 0.62811388,
+          "brier": 0.23735454,
+          "log_loss": 0.66773124,
+          "n": 562
+        }
+      },
+      "by_tour": {
+        "ATP_MAIN": {
+          "accuracy": 0.72093023,
+          "brier": 0.22927532,
+          "log_loss": 0.65155275,
+          "n": 172
+        },
+        "CHALLENGER": {
+          "accuracy": 0.59682081,
+          "brier": 0.24032607,
+          "log_loss": 0.6736727,
+          "n": 692
+        }
+      },
+      "coverage": 0.33269157,
+      "day_block_bootstrap_brier": {
+        "days": 70,
+        "p025": 0.23325855,
+        "p975": 0.2427153,
+        "point": 0.23812616,
+        "status": "OK"
+      },
+      "incremental_vs_a1_a2": {
+        "agent1": {
+          "accuracy": 0.63037975,
+          "brier": 0.22243716,
+          "log_loss": 0.63765359,
+          "n": 790
+        },
+        "agent2": {
+          "accuracy": 0.60886076,
+          "brier": 0.23229011,
+          "log_loss": 0.65759365,
+          "n": 790
+        },
+        "intersection_n": 790,
+        "profile": {
+          "accuracy": 0.63164557,
+          "brier": 0.23694435,
+          "log_loss": 0.666889,
+          "n": 790
+        },
+        "profile_minus_agent1_brier": 0.01450719,
+        "profile_minus_agent2_brier": 0.00465424
+      },
+      "metrics": {
+        "accuracy": 0.62152778,
+        "brier": 0.23812616,
+        "log_loss": 0.66926919,
+        "n": 864
+      },
+      "predicted": 864,
+      "settled_targets": 2597
+    }
+  },
+  "run_cutoffs": 444,
+  "settled_eligible_targets": 2597,
+  "status": "AMBER_RECONSTRUCTED_PIT_HISTORICAL_EXECUTION",
+  "unique_matches": 2597,
+  "version": "A3_PROFILE_HISTORICAL_EXECUTION_20261125_V1",
+  "window_end_utc": "2026-11-25T00:00:00+00:00",
+  "window_start_utc": "2026-09-08T00:00:00+00:00"
+}
