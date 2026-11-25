@@ -240,5 +240,35 @@ def test_manager_interaction_evidence_is_paired_and_non_promotable():
     assert consensus["same_side_on_overlap"] == consensus["both"]
 
 
+def test_replay_mismatch_evidence_matches_committed_buckets():
+    """The committed mismatch audit must decompose every mismatch exactly once."""
+    import json
+    from pathlib import Path
+
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "docs"
+        / "research"
+        / "evidence"
+        / "a1_identity_replay_mismatch_20261125.json"
+    )
+    report = json.loads(path.read_text(encoding="utf-8"))
+    mismatch = report["mismatch"]
+    buckets = mismatch["mismatch_by_mechanism"]
+    assert set(buckets) == {
+        "unknown_surface",
+        "surface_fallback_resolution",
+        "target_identity_bridged",
+        "unexplained",
+    }
+    assert sum(bucket["mismatches"] for bucket in buckets.values()) == mismatch["total_mismatches"]
+    assert sum(bucket["targets"] for bucket in buckets.values()) == mismatch["population"]
+    assert 0.90 <= mismatch["fidelity"]["exact"] <= 0.95
+    # Late history is not a cause in the observed window.
+    for cutoff in mismatch["history_ingest_visibility"]["cutoffs"]:
+        assert cutoff["ingested_after_cutoff"] == 0
+    assert report["can_promote"] is False
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

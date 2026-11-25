@@ -454,8 +454,39 @@ stores the reference digest and row counts. Schema version is
 
 ### 10.4 Remaining original-replay mismatch
 
-See `docs/research/evidence/a1_identity_provenance_audit_20261125.json` (`mismatch` block) and
-section 10.7 below.
+`docs/research/evidence/a1_identity_replay_mismatch_20261125.json`, full population of
+3,780 latest Agent 1 targets, production-style history and surface resolution:
+
+- Exact reproduction (≤1e-6): **92.78%**; within 0.005: **94.60%**; 273 mismatches (7.22%).
+
+Decomposition of the 273 mismatches (buckets are mutually exclusive, strongest cause first):
+
+| Mechanism | Targets | Mismatches | Rate | Share of mismatches |
+|---|---:|---:|---:|---:|
+| Target identity bridged (PIT id ≠ live id) | 3,138 | 139 | 4.43% | 50.9% |
+| Surface fallback resolution | 209 | 95 | 45.45% | 34.8% |
+| Unknown surface | 371 | 23 | 6.20% | 8.4% |
+| Unexplained remainder | 62 | 16 | 25.81% | 5.9% |
+
+Key conclusions:
+
+- **The late-ingest hypothesis is falsified.** At the earliest, median and latest cutoffs,
+  **zero** result observations visible to the replay had been ingested after that cutoff
+  (117,713 / 132,673 / 134,713 visible rows, 0 late). The replay is not reading history that
+  production could not have seen.
+- **Identity resolution is the largest single share (~51%).** The exact production request
+  player ids were never persisted, so a re-issue replay reconstructs them. Most bridged targets
+  still reproduce exactly (95.6%); the mismatch is concentrated where the reconstructed id
+  differs from whatever production used.
+- **Surface fallback is the highest-*rate* mechanism (~35% of mismatches from only 5.5% of
+  targets).** Where the live version has no surface and production fell back to an edition or
+  historical tournament surface, the replay frequently does not reproduce the stored
+  probability. That is a resolver-reconstruction gap, not a model change.
+- Only 5.9% remains unexplained.
+
+This is a re-issue reproduction, not first-issue fidelity. Closing the identity share requires
+persisting the runtime resolution (section 10.3, and the durable table in the reserved schema),
+not further threshold work.
 
 ### 10.5 Manager interaction on matched populations
 
@@ -524,10 +555,11 @@ in place to keep that true as the corpus evolves. It is a present-tense empirica
 proof about future mutations; the residual out-of-band alias re-pointing risk stays open until
 the immutability guard in `specs/identity_provenance_v2_20261125.md` lands.
 
-**Residual replay mismatch.** See `a1_identity_replay_mismatch_20261125.json` and the summary in
-the PR body. The remaining gap is structural: the exact production request player ids were never
-persisted, so a re-issue replay cannot be bit-identical; the audit separates which share is
-surface fallback, late-ingested history, identity resolution and irreducible remainder.
+**Residual replay mismatch.** `a1_identity_replay_mismatch_20261125.json`, 3,780 targets:
+92.78% exact / 94.60% within 0.005; 273 mismatches. Zero result observations visible to the
+replay were ingested after any cutoff, so late history is *not* a cause. Of the 273 mismatches,
+50.9% are target-identity reconstruction, 34.8% surface-fallback reconstruction, 8.4% unknown
+surface and 5.9% unexplained (full table in section 10.4).
 
 ### 10.8 Legacy "~14,000 at ~75%" claim — provenance verdict
 
