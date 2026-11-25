@@ -45,6 +45,8 @@ def audit(export: dict) -> dict:
     selections = Counter()
     previous = start
     cycles = []
+    batch_receipts = []
+    tours = Counter()
 
     for row in logs:
         receipt = _clock(row["timestamp"])
@@ -54,6 +56,7 @@ def audit(export: dict) -> dict:
         if kind == KINDS[3]:
             _require(heartbeat is not None and not pending, "batch missing complete observer heartbeat")
             cycles.append(heartbeat)
+            batch_receipts.append(receipt)
             heartbeat = None
             summaries = []
             continue
@@ -71,6 +74,7 @@ def audit(export: dict) -> dict:
             match = data["canonical_match_id"]
             _require(match not in seen_matches, "duplicate canonical first issue")
             seen_matches.add(match)
+            tours[data["tour"]] += 1
             pending.append(data)
         elif kind == KINDS[1]:
             capture = _clock(data["capture_time_utc"])
@@ -111,6 +115,13 @@ def audit(export: dict) -> dict:
             heartbeat = data
     _require(not pending and not summaries and heartbeat is None, "incomplete export tail")
     _require(bool(cycles), "no completed batch cycles")
+    # Coverage of observed completion hours is not independent evidence that
+    # every scheduled job actually ran. Report absent hours explicitly when
+    # the bounded export covers whole UTC hours; never infer missing fixtures.
+    expected_hours = []
+    if start.minute == start.second == start.microsecond == 0 and end.minute == end.second == end.microsecond == 0:
+        expected_hours = [start + timedelta(hours=i) for i in range(int((end - start).total_seconds() // 3600))]
+    observed_hours = Counter(t.replace(minute=0, second=0, microsecond=0) for t in batch_receipts)
     return {
         "status": "RECONCILED_EXPORT_ONLY",
         "batch_cycles": len(cycles),
@@ -120,6 +131,12 @@ def audit(export: dict) -> dict:
         "failed": totals["failed"],
         "unique_first_issued_research_targets": len(seen_matches),
         "selection_counts": dict(sorted(selections.items())),
+        "research_targets_by_tour": dict(sorted(tours.items())),
+        "expected_hour_slots_in_export": len(expected_hours) if expected_hours else None,
+        "observed_completion_hour_slots": len(observed_hours),
+        "hours_without_success_marker": [t.isoformat() for t in expected_hours if t not in observed_hours],
+        "hours_with_multiple_success_markers": [t.isoformat() for t, n in sorted(observed_hours.items()) if n > 1],
+        "independent_job_schedule_verified": False,
         "independent_receipt_verified": False,
         "persistent_storage_verified": False,
         "official_eligible_coverage_verified": False,
