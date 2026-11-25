@@ -35,8 +35,7 @@ CREATE TABLE player_name_versions (
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
     actor TEXT NOT NULL CHECK (btrim(actor) <> ''),
-    reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
-    CHECK (recorded_at >= valid_from - INTERVAL '1 second')
+    reason TEXT NOT NULL CHECK (btrim(reason) <> '')
 );
 
 CREATE UNIQUE INDEX uq_player_name_versions_player_valid_from
@@ -61,8 +60,7 @@ CREATE TABLE player_alias_versions (
     recorded_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ingest_run_id BIGINT REFERENCES ingest_runs(ingest_run_id),
     actor TEXT NOT NULL CHECK (btrim(actor) <> ''),
-    reason TEXT NOT NULL CHECK (btrim(reason) <> ''),
-    CHECK (recorded_at >= valid_from - INTERVAL '1 second')
+    reason TEXT NOT NULL CHECK (btrim(reason) <> '')
 );
 
 CREATE UNIQUE INDEX uq_player_alias_versions_alias_valid_from
