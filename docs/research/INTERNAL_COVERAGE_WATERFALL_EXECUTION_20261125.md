@@ -110,6 +110,13 @@ The waterfall isolates a sharp discovery/ingestion gap:
 
 This is an internal fixture-discovery/deadline gap, not an official-fixture shortage. The official denominator is unknown.
 
+The specific cause is now established in
+[`FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md`](FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md):
+the live batch scheduler wrote no heartbeats or scheduled-fixture runs from
+2026-11-13 07:01 UTC to 2026-11-16 23:05 UTC, and the first post-gap fetch was a
+retrospective catch-up that persisted already-completed events with a fetch-time
+observation clock. It was not a provider request failure or a late refresh.
+
 ## Reconciliation of the 57 archived forward targets
 
 The two PR #390 log exports contain **57 unique archived forward targets** (51 from 24 November full day plus 6 from 25 November 00:00–04:00Z).

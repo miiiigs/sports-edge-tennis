@@ -34,6 +34,7 @@ class SportradarIngestedMatch:
     player_2_id: int
     match_status: str
     overlap_status: str
+    match_start_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,7 @@ def ingest_sportradar_daily_summaries(
                             player_2_id=locator.player_2_id,
                             match_status=fixture.match_status,
                             overlap_status=overlap.status,
+                            match_start_at=fixture.match_start_at,
                         )
                     )
             except (SportradarIngestError, ValueError) as exc:

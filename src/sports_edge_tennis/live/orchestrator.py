@@ -69,6 +69,7 @@ from sports_edge_tennis.runner.contracts import (
     FullSlateRunRequestV1,
 )
 from sports_edge_tennis.runner.full_slate import run_full_slate
+from sports_edge_tennis.validation.fixture_lifecycle import select_prematch_targets
 
 
 class LiveMvpError(RuntimeError):
@@ -436,10 +437,26 @@ def run_live_mvp(
     ingest_outcome = ingest_fixtures(conn, fixtures, fixtures_received_at)
     fixture_reconciliation = fixture_reconciliation_summary(ingest_outcome)
 
-    target_matches = [m for m in ingest_outcome.matches if m.match_status == "SCHEDULED"]
-    target_match_ids = tuple(m.match_id for m in target_matches)
-
     prediction_as_of = clock()
+    eligible_target_ids, excluded_targets = select_prematch_targets(
+        ingest_outcome.matches, as_of=prediction_as_of
+    )
+    target_match_ids = tuple(eligible_target_ids)
+    eligible_target_id_set = set(target_match_ids)
+    target_matches = [
+        match
+        for match in ingest_outcome.matches
+        if match.match_id in eligible_target_id_set
+    ]
+    for exclusion in excluded_targets:
+        # A retrospective backfill must never become a new pre-match target.
+        # Log every exclusion so silence cannot be mistaken for full coverage.
+        print(
+            "LIVE_TARGET_EXCLUDED "
+            f"match_id={exclusion['match_id']} reason={exclusion['reason']} "
+            f"cutoff={prediction_as_of.isoformat()}",
+            flush=True,
+        )
 
     # 2. run the frozen full-slate runner + Manager.
     if target_match_ids:
