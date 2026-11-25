@@ -100,6 +100,41 @@ A3's 486 abstentions split as: 406 `INSUFFICIENT_MATCHUP_SUPPORT`, 78 `UNKNOWN_S
 - Result status for the 674 internal fixtures: **527 COMPLETED**, **15 RETIRED**, **1 WALKOVER**, **23 CANCELLED**, **108 NO_RESULT**.
 - The large 24–25 November `NO_RESULT` counts are expected: those fixtures were still pending at report time, not failed settlements.
 
+### As-of refresh (2026-11-25T17:39:59Z)
+
+The earlier tables are the first 25 November snapshot. A second read-only run
+widened the window to `2026-11-14T00:00Z – 2026-11-26T00:00Z` (so it now
+includes the whole of 25 November) and re-ran the same waterfall and the
+57-target reconciliation. Counts are time-varying; this is a later observation,
+not a correction of the earlier numbers.
+
+| Stage | Main draw | Qualifying | Total |
+|---|---:|---:|---:|
+| Stored fixtures | 427 | 250 | 677 |
+| PIT-visible by start-30m | 367 | 123 | 490 |
+| Targeted | 366 | 123 | 489 |
+| Targeted on time | 363 | 123 | 486 |
+| Agent 1 predicted | 366 | 123 | 489 |
+| Agent 2 predicted | 248 | 38 | 286 |
+| Agent 3 predicted | 0 | 0 | **0** |
+| Manager consensus | 67 | 13 | 80 |
+| Settled completed | 353 | 229 | 582 |
+| Cancelled | 18 | 7 | 25 |
+| No result | 46 | 4 | 50 |
+
+The 57 archived forward targets now reconcile as **9 matched** and
+**48 rescheduled since the archive**, with **0 disappeared**, **0 agent-status
+mismatches**, **0 Manager-status mismatches**, **0 first-run changes** and
+**0 tour mismatches**. The larger reschedule count is elapsed time since the
+archive, not a new discrepancy.
+
+The 14–16 November block is unchanged in substance: those fixtures remain
+retrospective, with 0 PIT-visible versions and 0 targets. The refresh does not
+change the independent-denominator blocker below.
+
+Evidence:
+`docs/research/evidence/internal_coverage_waterfall_refresh_20261125T1740Z.json`.
+
 ### The real coverage gap
 
 The waterfall isolates a sharp discovery/ingestion gap:
@@ -223,7 +258,7 @@ Therefore:
 
 ## Verdict
 
-The internal coverage waterfall is now executed with real stored records. It shows a clear 14–16 November PIT/deadline gap, near-complete targeting from 17 November, zero A3 predictions across the window, material A2 abstention (200/486), 80 Manager consensus decisions, 161 on-time aligned picks, and 527 settled results. The 57 archived targets reconcile exactly by identity and agent/Manager status; 36 are rescheduled and none disappeared. This is **internal fixture coverage**, not an independent official census. The official denominator remains a documented blocker.
+The internal coverage waterfall is now executed with real stored records. It shows a clear 14-16 November PIT/deadline gap, near-complete targeting from 17 November, zero A3 predictions across the window, material A2 abstention (200/486), 80 Manager consensus decisions, 161 on-time aligned picks, and 527 settled results at the first snapshot. The 57 archived targets reconcile exactly by identity and agent/Manager status; 36 were rescheduled at that snapshot and none disappeared. The later as-of refresh shows 582 settled results and 48 rescheduled archive targets, with no identity or status mismatch. This is **internal fixture coverage**, not an independent official census. The official denominator remains a documented blocker.
 
 ## Evidence hashes
 
@@ -231,4 +266,8 @@ The internal coverage waterfall is now executed with real stored records. It sho
 docs/research/evidence/internal_coverage_waterfall_20261125.json
 SHA256 37C9F49C2C35FE8AAF09FEDBC75185C450A4157EA68C9ADEB8B68E88DCFC8EF3
 bytes  598357
+
+docs/research/evidence/internal_coverage_waterfall_refresh_20261125T1740Z.json
+SHA256 5F288129072F97DB577F1FF62BD9CA9670B1465A38B5129C9713058F040C8021
+bytes  112404
 ```

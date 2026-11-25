@@ -195,3 +195,47 @@ def test_state_round_trip_suppresses_duplicate_notifications(tmp_path):
         "live_batch_health"
     )
     assert watchdog._load_state(str(tmp_path / "absent.json")) is None
+
+
+class _ConnectionContext:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def execute(self, *args, **kwargs):
+        return None
+
+
+def test_webhook_failure_returns_distinct_exit_code(monkeypatch, tmp_path):
+    report = {
+        "version": "test",
+        "status": "FAILED",
+        "failed_datasets": ["live_batch_health"],
+        "total_missing_execution_slots": 95,
+        "window_start": WINDOW_START.isoformat(),
+        "window_end": WINDOW_END.isoformat(),
+    }
+    monkeypatch.setenv("TENNIS_DATABASE_URL", "postgresql://unused")
+    monkeypatch.setattr(watchdog.psycopg, "connect", lambda *a, **k: _ConnectionContext())
+    monkeypatch.setattr(watchdog, "build_report", lambda *a, **k: dict(report))
+
+    def failing_post(url, payload):
+        raise RuntimeError("notifier unavailable")
+
+    monkeypatch.setattr(watchdog, "_post_webhook", failing_post)
+    exit_code = watchdog.main(
+        [
+            "--as-of",
+            "2026-11-17T00:00:00Z",
+            "--webhook-url",
+            "https://notifier.invalid/hook",
+            "--state-path",
+            str(tmp_path / "state.json"),
+        ]
+    )
+    assert exit_code == 2
+    assert watchdog._load_state(str(tmp_path / "state.json"))["active_fingerprint"] == (
+        "live_batch_health"
+    )
