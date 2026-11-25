@@ -11,7 +11,12 @@ derives or backfills it.
 
 Definition used for ``identity_complete``: both canonical players have at least
 one prior match in the shared rating pool (``overall_match_count > 0``). It is a
-history-completeness flag, not a claim that a rating metric was validated.
+history-completeness flag, not a claim that a rating metric was validated, and
+it is distinct from *identity* completeness in the OddsPapi/player-source sense.
+
+Lineage: a snapshot is bound to the immutable prediction row, its run, match,
+match version with the same player orientation, and the agent configuration
+version that produced it. The database enforces all four bindings.
 """
 from __future__ import annotations
 
@@ -25,7 +30,7 @@ from sports_edge_tennis.agents.agent1_surface_elo import (
 )
 
 SNAPSHOT_TABLE = "prediction_feature_snapshots"
-SNAPSHOT_CONTRACT_VERSION = "prediction_feature_snapshot_v1"
+SNAPSHOT_CONTRACT_VERSION = "prediction_feature_snapshot_v2"
 
 
 class FeatureSnapshotError(ValueError):
@@ -55,6 +60,8 @@ class PredictionFeatureSnapshot:
     prediction_id: int
     prediction_run_id: int
     match_id: int
+    match_version_id: int
+    agent_config_version_id: int
     agent_code: str
     player_1_id: int
     player_2_id: int
@@ -79,6 +86,7 @@ class PredictionFeatureSnapshot:
 
     def __post_init__(self) -> None:
         for name in ("prediction_id", "prediction_run_id", "match_id",
+                     "match_version_id", "agent_config_version_id",
                      "player_1_id", "player_2_id"):
             value = getattr(self, name)
             if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
@@ -142,6 +150,8 @@ class PredictionFeatureSnapshot:
             self.prediction_id,
             self.prediction_run_id,
             self.match_id,
+            self.match_version_id,
+            self.agent_config_version_id,
             self.agent_code,
             self.player_1_id,
             self.player_2_id,
@@ -166,11 +176,63 @@ class PredictionFeatureSnapshot:
         )
 
 
+@dataclass(frozen=True)
+class Agent1FeatureContext:
+    """The *exact* Agent 1 rating inputs used for one prediction request.
+
+    ``PlayerRatingState`` is frozen, so holding these two objects is a genuine
+    point-in-time capture. It is deliberately built from the per-request
+    resolution (including cold-start defaults), never from a replay that may be
+    advanced to a later cutoff afterwards.
+    """
+
+    player_1: PlayerRatingState
+    player_2: PlayerRatingState
+    surface: str | None
+    qualifying_flag: bool
+    model_version: str
+    feature_version: str
+    as_of: datetime
+    rating_uncertainty: Decimal | None = None
+    rating_uncertainty_source: str | None = None
+
+    def to_snapshot(
+        self,
+        *,
+        prediction_id: int,
+        prediction_run_id: int,
+        match_id: int,
+        match_version_id: int,
+        agent_config_version_id: int,
+        prediction_locked_at: datetime,
+    ) -> PredictionFeatureSnapshot:
+        snapshot = build_agent1_feature_snapshot(
+            prediction_id=prediction_id,
+            prediction_run_id=prediction_run_id,
+            match_id=match_id,
+            match_version_id=match_version_id,
+            agent_config_version_id=agent_config_version_id,
+            player_1=self.player_1,
+            player_2=self.player_2,
+            surface=self.surface,
+            qualifying_flag=self.qualifying_flag,
+            model_version=self.model_version,
+            feature_version=self.feature_version,
+            as_of=self.as_of,
+            prediction_locked_at=prediction_locked_at,
+            rating_uncertainty=self.rating_uncertainty,
+            rating_uncertainty_source=self.rating_uncertainty_source,
+        )
+        return snapshot
+
+
 def build_agent1_feature_snapshot(
     *,
     prediction_id: int,
     prediction_run_id: int,
     match_id: int,
+    match_version_id: int,
+    agent_config_version_id: int,
     player_1: PlayerRatingState,
     player_2: PlayerRatingState,
     surface: str | None,
@@ -192,8 +254,11 @@ def build_agent1_feature_snapshot(
     surface_known = surface is not None
     p1_surface_rating = player_1.surface_ratings.get(surface) if surface_known else None
     p2_surface_rating = player_2.surface_ratings.get(surface) if surface_known else None
-    p1_surface_count = player_1.surface_match_counts.get(surface) if surface_known else None
-    p2_surface_count = player_2.surface_match_counts.get(surface) if surface_known else None
+    # A player with no surface history still has a genuine count of zero; using
+    # dict.get() here would fabricate NULL and make every cold-start snapshot
+    # unsaveable. Absent surface ratings stay NULL (never blended).
+    p1_surface_count = player_1.surface_match_count(surface) if surface_known else None
+    p2_surface_count = player_2.surface_match_count(surface) if surface_known else None
     identity_complete = (
         player_1.overall_match_count > 0 and player_2.overall_match_count > 0
     )
@@ -201,6 +266,8 @@ def build_agent1_feature_snapshot(
         prediction_id=prediction_id,
         prediction_run_id=prediction_run_id,
         match_id=match_id,
+        match_version_id=match_version_id,
+        agent_config_version_id=agent_config_version_id,
         agent_code="AGENT_1_SURFACE_ELO",
         player_1_id=player_1.player_id,
         player_2_id=player_2.player_id,
@@ -230,6 +297,8 @@ INSERT INTO {SNAPSHOT_TABLE} (
     prediction_id,
     prediction_run_id,
     match_id,
+    match_version_id,
+    agent_config_version_id,
     agent_code,
     player_1_id,
     player_2_id,
@@ -253,7 +322,7 @@ INSERT INTO {SNAPSHOT_TABLE} (
     prediction_locked_at
 )
 VALUES (
-    %s, %s, %s, %s, %s, %s, %s::tennis_surface,
+    %s, %s, %s, %s, %s, %s, %s, %s, %s::tennis_surface,
     %s::numeric, %s::numeric, %s, %s,
     %s::numeric, %s::numeric, %s, %s,
     %s::numeric, %s, %s, %s::boolean, %s, %s, %s, %s, %s
@@ -273,7 +342,8 @@ def persist_feature_snapshot(conn, snapshot: PredictionFeatureSnapshot) -> int:
 def load_feature_snapshot(conn, *, prediction_id: int) -> dict[str, object] | None:
     row = conn.execute(
         f"""SELECT prediction_feature_snapshot_id, prediction_id, prediction_run_id,
-                   match_id, agent_code::text, player_1_id, player_2_id, surface::text,
+                   match_id, match_version_id, agent_config_version_id,
+                   agent_code::text, player_1_id, player_2_id, surface::text,
                    player_1_overall_rating, player_2_overall_rating,
                    player_1_overall_match_count, player_2_overall_match_count,
                    player_1_surface_rating, player_2_surface_rating,
@@ -288,7 +358,8 @@ def load_feature_snapshot(conn, *, prediction_id: int) -> dict[str, object] | No
         return None
     keys = (
         "prediction_feature_snapshot_id", "prediction_id", "prediction_run_id",
-        "match_id", "agent_code", "player_1_id", "player_2_id", "surface",
+        "match_id", "match_version_id", "agent_config_version_id",
+        "agent_code", "player_1_id", "player_2_id", "surface",
         "player_1_overall_rating", "player_2_overall_rating",
         "player_1_overall_match_count", "player_2_overall_match_count",
         "player_1_surface_rating", "player_2_surface_rating",
@@ -301,6 +372,7 @@ def load_feature_snapshot(conn, *, prediction_id: int) -> dict[str, object] | No
 
 
 __all__ = [
+    "Agent1FeatureContext",
     "FeatureSnapshotError",
     "PredictionFeatureSnapshot",
     "SNAPSHOT_CONTRACT_VERSION",

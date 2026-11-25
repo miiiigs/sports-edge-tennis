@@ -25,6 +25,8 @@ def _build(**overrides):
         prediction_id=11,
         prediction_run_id=22,
         match_id=33,
+        match_version_id=44,
+        agent_config_version_id=55,
         player_1=_state(101),
         player_2=_state(202),
         surface="HARD",
@@ -135,7 +137,9 @@ def test_persist_writes_one_row_and_returns_id():
     sql, params = conn.calls[0]
     assert "prediction_feature_snapshots" in sql
     assert params[0] == 11
-    assert params[3] == "AGENT_1_SURFACE_ELO"
+    assert params[3] == 44
+    assert params[4] == 55
+    assert params[5] == "AGENT_1_SURFACE_ELO"
 
 
 def test_persist_fails_closed_without_id():

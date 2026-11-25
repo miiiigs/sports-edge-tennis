@@ -13,6 +13,7 @@ from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
     predict_from_replay as predict_agent1,
     replay_history as replay_agent1_history,
+    resolved_player_states as agent1_resolved_player_states,
 )
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
     DEFAULT_CONFIG as AGENT2_DEFAULT_CONFIG,
@@ -26,6 +27,7 @@ from sports_edge_tennis.data.a3_support_diagnostics import (
     build_a3_support_diagnostic,
     record_a3_support_diagnostic,
 )
+from sports_edge_tennis.data.feature_snapshots import Agent1FeatureContext
 from sports_edge_tennis.data.prediction_persistence import (
     PredictiveAgentMatrixPrediction,
     persist_and_finalize_prediction_matrix,
@@ -155,6 +157,7 @@ def run_full_slate(
             rows=matrix,
             prediction_finalized_at=finalized_at,
             ended_at=ended_at,
+            require_agent1_features=True,
         )
     except Exception as exc:
         try:
@@ -274,6 +277,20 @@ def _execute_matrix(
 
 def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPrediction:
     request = build_agent1_request(target, as_of)
+    # Bind the evidence to the states this request resolves, before anything can
+    # advance the replay to a later boundary.
+    player_1_state, player_2_state = agent1_resolved_player_states(
+        request, replay, AGENT1_DEFAULT_CONFIG
+    )
+    features = Agent1FeatureContext(
+        player_1=player_1_state,
+        player_2=player_2_state,
+        surface=target.surface,
+        qualifying_flag=target.qualifying_flag,
+        model_version=config.model_version,
+        feature_version=config.feature_version,
+        as_of=as_of,
+    )
     result = predict_agent1(request, replay, config=AGENT1_DEFAULT_CONFIG)
     adapted = adapt_agent1_result(result, config=AGENT1_DEFAULT_CONFIG)
     _validate_result(adapted, AGENT_1, config, as_of)
@@ -281,6 +298,8 @@ def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPredictio
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
+        agent1_features=features,
     )
 
 
@@ -293,6 +312,7 @@ def _run_agent2(target, snapshot, config, as_of) -> PredictiveAgentMatrixPredict
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
     )
 
 
@@ -319,6 +339,7 @@ def _run_agent3(
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
     )
 
 
