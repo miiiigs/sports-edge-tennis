@@ -239,6 +239,9 @@ def test_reference_policy_evidence_is_mapping_neutral():
         assert effect["paired"] is None
     for policy in reference["policies"].values():
         assert policy["replay_fidelity"]["n"] == 0
+    fidelity = reference["replay_fidelity_reference"]
+    assert fidelity["exact"] == 0.9278
+    assert fidelity["within_005"] == 0.946
 
 
 def test_manager_interaction_evidence_is_paired_and_non_promotable():
