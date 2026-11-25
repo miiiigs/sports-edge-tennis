@@ -218,8 +218,24 @@ Rollback:
    rollback loses only the new evidence tables (forward-only history is not
    reconstructible afterwards; export first if it matters).
 
-## 5. Remaining blockers
+## 5. Validation evidence
 
+- GitHub Actions `postgres-foundation`: **2456 passed, 0 failed** in
+  233.32 s on the fix commit after the schema-parity correction. This run
+  includes the psql-backed PostgreSQL integration suite that cannot run
+  without a local client.
+- Local targeted set (feature-snapshot unit/persistence/atomicity, schema
+  guards, integration manifest, identity cache/history, capture sequence,
+  frozen manifest): 59 passed; the schema-guard file was re-run after the
+  CI-driven correction (7 passed).
+- Isolated chain harness: every check listed in section 1 is true, including
+  the populated 0022 -> 0024 upgrade.
+- The full local suite was attempted but abandoned on Windows because each
+  database test performs a full 40-table TRUNCATE and the shared Docker
+  instance made a single-process run exceed the time budget; CI is the
+  authoritative full-suite result above.
+
+## 6. Remaining blockers
 1. Production ledger unverified: private-network-only database, exited
    service. Owner must run the probe or grant read-only access.
 2. Independent OddsPapi tournament mappings and edition end dates still do not
