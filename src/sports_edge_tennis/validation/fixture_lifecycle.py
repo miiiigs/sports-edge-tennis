@@ -399,6 +399,177 @@ def detect_capture_gaps(
     )
 
 
+def _align_slot(moment: datetime, expected_interval: timedelta) -> datetime:
+    """Floor a timestamp to the start of its expected execution slot."""
+
+    seconds = expected_interval.total_seconds()
+    slot_index = int(moment.timestamp() // seconds)
+    return datetime.fromtimestamp(slot_index * seconds, tz=moment.tzinfo)
+
+
+def expected_execution_slots(
+    window_start: datetime,
+    window_end: datetime,
+    expected_interval: timedelta,
+) -> tuple[datetime, ...]:
+    """Return every expected scheduler execution time inside the window.
+
+    The slots are anchored to the Unix epoch, so an hourly schedule produces the
+    top of each UTC hour and a daily schedule produces 00:00 UTC. This is the
+    denominator a cadence check needs: it is derived from the configured
+    schedule, not from the executions that happened to be recorded.
+    """
+    if expected_interval <= timedelta(0):
+        raise ValueError("expected_interval must be positive")
+    if window_end < window_start:
+        raise ValueError("window_end must not precede window_start")
+    first = _align_slot(window_start, expected_interval)
+    if first < window_start:
+        first = _align_slot(window_start + expected_interval, expected_interval)
+    slots: list[datetime] = []
+    current = first
+    while current <= window_end:
+        slots.append(current)
+        current = current + expected_interval
+    return tuple(slots)
+
+
+@dataclass(frozen=True)
+class ExecutionReconciliation:
+    expected_slot_count: int
+    matched_slot_count: int
+    missing_slots: tuple[datetime, ...]
+    duplicate_slots: tuple[dict[str, object], ...]
+    unexpected_executions: tuple[datetime, ...]
+
+    @property
+    def missing_count(self) -> int:
+        return len(self.missing_slots)
+
+    @property
+    def duplicate_count(self) -> int:
+        return len(self.duplicate_slots)
+
+
+def reconcile_expected_executions(
+    executions: Iterable[datetime],
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    expected_interval: timedelta,
+) -> ExecutionReconciliation:
+    """Match observed executions to expected scheduler slots.
+
+    Missing slots are silent scheduler non-executions, which is exactly the
+    13-16 November failure mode. Two executions in one slot are reported as
+    duplicates rather than counted as two healthy runs, and executions outside
+    the window are reported instead of being silently discarded.
+    """
+    slots = expected_execution_slots(window_start, window_end, expected_interval)
+    counts: dict[datetime, int] = {slot: 0 for slot in slots}
+    unexpected: list[datetime] = []
+    for execution in executions:
+        slot = _align_slot(execution, expected_interval)
+        if slot in counts:
+            counts[slot] += 1
+        else:
+            unexpected.append(execution)
+    missing = tuple(slot for slot in slots if counts[slot] == 0)
+    duplicates = tuple(
+        {
+            "slot": slot.isoformat(),
+            "execution_count": counts[slot],
+        }
+        for slot in slots
+        if counts[slot] > 1
+    )
+    return ExecutionReconciliation(
+        expected_slot_count=len(slots),
+        matched_slot_count=sum(1 for slot in slots if counts[slot] >= 1),
+        missing_slots=missing,
+        duplicate_slots=duplicates,
+        unexpected_executions=tuple(sorted(unexpected)),
+    )
+
+
+NOTIFY_NONE = "NONE"
+NOTIFY_INCIDENT = "INCIDENT"
+NOTIFY_RECOVERY = "RECOVERY"
+
+
+@dataclass(frozen=True)
+class NotificationDecision:
+    action: str
+    fingerprint: str | None
+    detail: str
+    state: dict[str, object]
+
+
+def decide_monitoring_notification(
+    report: Mapping[str, object],
+    previous_state: Mapping[str, object] | None,
+    *,
+    observed_at: datetime,
+) -> NotificationDecision:
+    """Decide whether an incident or recovery notification is new.
+
+    A persistent identical failure is suppressed so a scheduled watchdog does
+    not page every interval. A changed failure set is a new incident. Recovery
+    is emitted exactly once, when the failing set becomes empty.
+    """
+    failed = tuple(sorted(str(name) for name in (report.get("failed_datasets") or ())))
+    previous = dict(previous_state or {})
+    previous_fingerprint = previous.get("active_fingerprint")
+    fingerprint = "|".join(failed) if failed else None
+    stamp = observed_at.isoformat()
+
+    if failed:
+        if previous_fingerprint == fingerprint:
+            return NotificationDecision(
+                action=NOTIFY_NONE,
+                fingerprint=fingerprint,
+                detail="DUPLICATE_INCIDENT_SUPPRESSED",
+                state=previous,
+            )
+        state = {
+            "active_fingerprint": fingerprint,
+            "active_since": stamp,
+            "last_notified_at": stamp,
+        }
+        detail = (
+            "INCIDENT_CHANGED"
+            if previous_fingerprint
+            else "INCIDENT_STARTED"
+        )
+        return NotificationDecision(
+            action=NOTIFY_INCIDENT,
+            fingerprint=fingerprint,
+            detail=detail,
+            state=state,
+        )
+
+    if previous_fingerprint:
+        state = {
+            "active_fingerprint": None,
+            "active_since": None,
+            "last_notified_at": stamp,
+            "recovered_at": stamp,
+        }
+        return NotificationDecision(
+            action=NOTIFY_RECOVERY,
+            fingerprint=previous_fingerprint,
+            detail="RECOVERED",
+            state=state,
+        )
+
+    return NotificationDecision(
+        action=NOTIFY_NONE,
+        fingerprint=None,
+        detail="HEALTHY_NO_CHANGE",
+        state=previous,
+    )
+
+
 def reconcile_selection_populations(
     *,
     manager_consensus: Iterable[int],

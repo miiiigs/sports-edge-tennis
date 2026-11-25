@@ -113,9 +113,12 @@ This is an internal fixture-discovery/deadline gap, not an official-fixture shor
 The specific cause is now established in
 [`FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md`](FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md):
 the live batch scheduler wrote no heartbeats or scheduled-fixture runs from
-2026-11-13 07:01 UTC to 2026-11-16 23:05 UTC, and the first post-gap fetch was a
+`2026-11-12T23:01:16Z` to `2026-11-16T23:05:34Z`, missing 95 expected hourly
+executions (13 Nov 00:00Z – 16 Nov 22:00Z). A manual redeploy at
+`2026-11-16T23:03:11Z` restored the schedule; the first post-gap fetch was a
 retrospective catch-up that persisted already-completed events with a fetch-time
-observation clock. It was not a provider request failure or a late refresh.
+observation clock. It was not a provider request failure, a late refresh, or a
+deployment/cron-config change.
 
 ## Reconciliation of the 57 archived forward targets
 

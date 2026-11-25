@@ -1,0 +1,161 @@
+{
+  "access": {
+    "production_database": "read-only transaction, default_transaction_read_only=on",
+    "provider_calls": 0,
+    "railway_cli": "read-only deployment list, service status and historical logs",
+    "writes": 0
+  },
+  "conclusion": {
+    "established": [
+      "The live batch scheduler produced no execution for 95 hourly slots.",
+      "No live-runner deployment, config change or restart occurred at the start of the gap.",
+      "The last execution ended with live_batch_status=2 and released its production lock.",
+      "The runner produced zero application log lines during the gap, so it was not crash-looping or logging provider errors.",
+      "The next execution began within two minutes of a manual redeploy, so recovery required an external restart."
+    ],
+    "not_established": [
+      "Why the Railway cron trigger stopped is not exposed by the Railway CLI deployment list or retained application logs.",
+      "No Railway platform incident record was available to this read-only session.",
+      "This is therefore a scheduler non-execution, not a demonstrated application, provider or database failure."
+    ],
+    "not_the_cause": [
+      "provider outage with recorded request failures",
+      "late hourly refresh",
+      "missing provider fixture IDs or canonical matches",
+      "deployment or railway.toml cron change during the gap",
+      "an application crash loop (zero log lines and no error rows)"
+    ],
+    "primary_cause": "Railway cron executions stopped after the 2026-11-12T23:00Z cycle; the scheduled trigger did not fire again until a manual redeploy restarted the service on 2026-11-16T23:03Z.",
+    "secondary_cause": "The first post-recovery observations were fetch-time observations of already-terminal events, so the 14-16 November fixtures could not become pre-match targets. The 08:16Z bulk catch-up was out-of-band and did not restore pre-match coverage."
+  },
+  "deployment_history": {
+    "config_as_code_unchanged": {
+      "cron_schedule": "0 * * * *",
+      "path": "railway.toml",
+      "restart_policy_type": "NEVER",
+      "start_command": "python -m sports_edge_tennis.live.batch --days 3",
+      "verified_in_current_head": true,
+      "verified_in_deployed_commit": "5a7ec896563cafd89e324c9b47adadc002b3359a"
+    },
+    "deployments_after_recovery": [
+      {
+        "commit": "5a7ec89",
+        "created_at": "2026-11-16T23:41:18.489Z",
+        "deployment_id": "2162826d-4900-4d48-adcb-84bd0f697828",
+        "reason": "deploy"
+      },
+      {
+        "commit": "3837611",
+        "created_at": "2026-11-17T00:44:31.101Z",
+        "deployment_id": "53a89a42-d0c8-48d5-bc10-3df60b8d205a",
+        "reason": "deploy"
+      },
+      {
+        "commit": "22700f6",
+        "created_at": "2026-11-17T06:46:06.874Z",
+        "deployment_id": "65b0d953-7c79-43ee-bcb3-5f6a67ff1d36",
+        "reason": "deploy"
+      },
+      {
+        "commit": "b62acc4",
+        "created_at": "2026-11-18T11:24:26.045Z",
+        "deployment_id": "8bb00574-b165-4772-8dcf-1ca5c60d2864",
+        "reason": "deploy"
+      }
+    ],
+    "deployments_between_2026-11-08_and_2026-11-16T23:03Z": [],
+    "last_before_gap": {
+      "commit": "5a7ec896563cafd89e324c9b47adadc002b3359a",
+      "created_at": "2026-11-02T06:04:11Z",
+      "deployment_id": "49ac64b1-42f4-4bbe-9c21-1176d53a3fcd",
+      "reason": "redeploy",
+      "status": "REMOVED (replaced on 16 Nov 23:03Z)"
+    },
+    "recovery_redeploy": {
+      "commit": "5a7ec896563cafd89e324c9b47adadc002b3359a",
+      "created_at": "2026-11-16T23:03:11.621Z",
+      "deployment_id": "0ec94e4d-efc8-40c0-b154-619d086728d6",
+      "reason": "redeploy"
+    }
+  },
+  "execution_records": {
+    "expected_hourly_slots_in_window": 98,
+    "first_healthy_heartbeat": {
+      "checked_at": "2026-11-17T00:03:28.724249Z",
+      "notes": "completed_runs=1 target_count=65 zero_volume=0",
+      "status": "HEALTHY"
+    },
+    "first_heartbeat_after_gap": {
+      "checked_at": "2026-11-16T23:05:34.209277Z",
+      "notes": "live_batch_status=2",
+      "status": "ERROR"
+    },
+    "first_missed_slot": "2026-11-13T00:00:00Z",
+    "gap_duration_human": "4 days 4 minutes 18 seconds",
+    "gap_duration_seconds": 345857,
+    "last_heartbeat_before_gap": {
+      "checked_at": "2026-11-12T23:01:16.517974Z",
+      "notes": "live_batch_status=2",
+      "status": "ERROR"
+    },
+    "last_missed_slot": "2026-11-16T22:00:00Z",
+    "matched_hourly_slots": 3,
+    "missed_hourly_executions": 95,
+    "note_on_95": "95 is the count of missed hourly slots from 2026-11-13T00:00Z through 2026-11-16T22:00Z. The 2026-11-16T23:00Z slot was served by the manual redeploy at 23:03Z (heartbeat 23:05Z). The earlier document's '13 Nov 07:01Z' was Manila local time for 2026-11-12T23:01Z UTC; both boundaries are now stated in UTC."
+  },
+  "first_ingest_run_after_gap": {
+    "ingest_run_id": 128204,
+    "rows_inserted": 70,
+    "rows_rejected": 325,
+    "rows_seen": 395,
+    "started_at": "2026-11-17T00:01:36.755702Z",
+    "status": "PARTIAL"
+  },
+  "generated_at": "2026-11-25T17:25:00Z",
+  "last_ingest_run_before_gap": {
+    "ingest_run_id": 128171,
+    "rows_inserted": 1,
+    "rows_seen": 1,
+    "started_at": "2026-11-12T22:06:25.692553Z",
+    "status": "COMPLETED"
+  },
+  "out_of_band_catchup": {
+    "ingest_run_id": 128518,
+    "is_hourly_slot_boundary": false,
+    "note": "Not at a scheduled top-of-hour slot; the 08:01Z hourly cycle fetched a normal 406-row slate. This 08:16Z run is an out-of-band catch-up, not proof of an hourly refresh.",
+    "rows_inserted": 243,
+    "rows_rejected": 782,
+    "rows_seen": 1025,
+    "started_at": "2026-11-17T08:16:24.621460Z",
+    "status": "PARTIAL"
+  },
+  "scheduled_fixture_ingest_runs_by_utc_day": {
+    "2026-11-11": 92,
+    "2026-11-12": 82,
+    "2026-11-13": 0,
+    "2026-11-14": 0,
+    "2026-11-15": 0,
+    "2026-11-16": 0,
+    "2026-11-17": 101
+  },
+  "service": {
+    "cron_schedule": "0 * * * *",
+    "environment": "production",
+    "num_replicas": 1,
+    "project": "sports-edge-tennis",
+    "region": "ams",
+    "restart_policy_type": "NEVER",
+    "service": "tennis-live-runner",
+    "service_id": "4bf96d81-43e4-4a25-b162-cf20d86ce63b",
+    "sleep_application": false,
+    "start_command": "python -m sports_edge_tennis.live.batch --days 3"
+  },
+  "service_logs": {
+    "application_log_lines_2026-11-12T23:01:22Z_to_2026-11-16T22:59:59Z": 0,
+    "last_application_log_line": "2026-11-12T23:01:21.412305754Z",
+    "last_application_log_message": "PRODUCTION_LOCK_RELEASED entrypoint=production_batch environment=production owner=854da8565c2e:1",
+    "no_crash_traceback_recorded": true,
+    "query_deployment": "49ac64b1-42f4-4bbe-9c21-1176d53a3fcd"
+  },
+  "version": "RAILWAY_SCHEDULER_GAP_EVIDENCE_20261125_V1"
+}

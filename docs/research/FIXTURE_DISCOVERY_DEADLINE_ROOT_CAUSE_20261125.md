@@ -63,24 +63,83 @@ There were no `api_tennis_scheduled_fixtures` runs at all for four consecutive d
 
 ### Capture-health heartbeats
 
-| Last heartbeat before gap | `2026-11-13T07:01:16Z`, `ERROR`, `live_batch_status=2` |
+All timestamps below are UTC. The earlier draft mixed a Manila-local timestamp
+with a UTC timestamp; the corrected boundaries are shown here and in
+`docs/research/evidence/railway_scheduler_gap_evidence_20261125.json`.
+
+| Last heartbeat before gap | `2026-11-12T23:01:16.517974Z`, `ERROR`, `live_batch_status=2` |
 |---|---|
-| Next heartbeat | `2026-11-16T23:05:34Z`, `ERROR`, `live_batch_status=2` |
-| Detectable gap | **95 missing hourly intervals** |
-| Recovery | `2026-11-17T00:03:28Z`, `HEALTHY` |
-| First scheduled-fixture runs after recovery | `07:02`, then the catch-up bulk run at `08:16` |
+| Next heartbeat | `2026-11-16T23:05:34.209277Z`, `ERROR`, `live_batch_status=2` |
+| First healthy heartbeat | `2026-11-17T00:03:28.724249Z`, `HEALTHY` |
+| Elapsed silence | **4 days 0 hours 4 minutes** |
+| Expected top-of-hour slots, 12 Nov 23:00Z – 17 Nov 00:00Z | **98** |
+| Slots with an execution | **3** (12 Nov 23:00, 16 Nov 23:00, 17 Nov 00:00) |
+| **Missed hourly executions** | **95** (13 Nov 00:00Z – 16 Nov 22:00Z) |
 
-The 13–16 November silence produced **no request-failure rows** because no request was attempted and no cycle wrote a health row. This is the exact failure mode the old health check could not see: it evaluated zero targets only if a cycle ran. A stopped scheduler is silently healthy in a table written only by that scheduler.
+The "13 Nov 07:01" in the earlier draft was **13 November 07:01 Manila time**,
+which is `2026-11-12T23:01:16Z`. The 95 missed intervals are correct, but only
+when counted against the expected top-of-hour slots: the 16 November 23:00Z
+slot was served by the manual redeploy at 23:03Z, so it is not one of the
+missed slots.
 
-### Why the catch-up did not restore pre-match coverage
+The 13–16 November silence produced **no request-failure rows** because no
+request was attempted and no cycle wrote a health row. This is the exact failure
+mode the old health check could not see: it evaluated zero targets only if a
+cycle ran. A stopped scheduler is silently healthy in a table written only by
+that scheduler.
 
-The first post-gap scheduled-fixture run at 08:16 was a larger catch-up payload (1,025 rows versus the usual 300–500), not an hourly slate refresh. The provider payload already contained the 14–16 November events in terminal states. Persisting them created new canonical matches with a single post-start version and a result observation. The live runner's own target list only includes `SCHEDULED` matches, so these were never targeted; in fact none of the 53 ever appears in `prediction_run_targets`.
+### Railway scheduler and deployment evidence
 
-The cause is therefore:
+Read-only Railway CLI evidence (deployment list, service status, historical
+logs) was added to the investigation:
 
-1. **Primary:** the live batch scheduler stopped from 13 Nov 07:01 to 16 Nov 23:05 UTC (about 3 days 16 hours).
-2. **Secondary:** when it resumed, the first scheduled-fixture fetch was a retrospective catch-up whose observation clock is the fetch time, so historical events entered the database as new post-start versions with results.
-3. **Not the cause:** a provider outage with recorded request failures, a late hourly refresh, missing provider fixture IDs, or missing canonical matches.
+| Evidence | Result |
+|---|---|
+| Live-runner deployments between 2026-11-08 and 2026-11-16T23:03Z | **None** |
+| Last deployment before the gap | `49ac64b1…`, 2026-11-02T06:04Z, commit `5a7ec89` |
+| Recovery redeploy | `0ec94e4d…`, **2026-11-16T23:03:11Z**, commit `5a7ec89` |
+| `railway.toml` at the deployed commit and current head | `cronSchedule = "0 * * * *"`, unchanged |
+| Scheduled-fixture ingest runs by UTC day | 11 Nov 92, 12 Nov 82, **13–16 Nov 0**, 17 Nov 101 |
+| Last application log line before the gap | `2026-11-12T23:01:21Z`, `PRODUCTION_LOCK_RELEASED` |
+| Application log lines during the gap | **0** |
+| First execution after the gap | 2026-11-16T23:05:34Z, within two minutes of the redeploy |
+
+This rules out a deployment or cron-config change at the start of the gap. The
+last execution ended, released its production lock, and then the platform
+produced no further execution — no container log, no ingest run, no heartbeat.
+The next execution began only after a human redeploy. The cause is therefore a
+**scheduler non-execution** that required an external restart. Why Railway's
+cron trigger stopped is not exposed by the CLI deployment list or the retained
+application logs, and no platform incident record was available to this
+read-only session; that residual platform question is recorded as unresolved,
+not guessed.
+
+The first post-recovery hourly run at 07:01Z fetched a normal 408-row slate.
+The 1,025-row run at **08:16Z** is not on an hourly slot boundary and the 08:01Z
+hourly cycle had already fetched 406 rows, so 08:16Z is an out-of-band catch-up
+(operator-triggered or deferred), not an hourly refresh. It persisted
+already-terminal events and could not restore pre-match coverage.
+
+### Cause summary
+
+1. **Primary:** Railway cron executions stopped after the
+   2026-11-12T23:00Z cycle and did not fire for 95 expected hourly slots
+   (2026-11-13T00:00Z – 2026-11-16T22:00Z). No deployment, config change or
+   restart occurred at the start of the gap, and the runner wrote no logs, so
+   this was scheduler non-execution rather than an application crash or hang.
+2. **Recovery:** a manual redeploy at 2026-11-16T23:03:11Z started the
+   2026-11-16T23:00Z slot; the first healthy heartbeat is 2026-11-17T00:03Z.
+3. **Secondary:** the first post-recovery observations were fetch-time
+   observations of already-terminal events, so the 14–16 November fixtures
+   could not become pre-match targets. The out-of-band 08:16Z catch-up did not
+   restore pre-match coverage.
+4. **Not the cause:** a provider outage with recorded request failures, a late
+   hourly refresh, missing provider fixture IDs or canonical matches, a
+   deployment/cron-config change during the gap, or an application crash loop.
+5. **Unresolved:** why Railway's cron trigger stopped is not exposed by the
+   read-only CLI evidence available here. It is recorded as an external
+   scheduler failure, not attributed to the application.
+
 
 ## 3. Safeguards implemented
 
@@ -102,11 +161,31 @@ Fixtures with an unknown start, a started match or a terminal status are exclude
 - `LIVE_BATCH_RUNTIME` health rows; and
 - completed non-experimental prediction runs.
 
-It exits non-zero on `NO_HEARTBEAT` or any gap beyond 1.5× the expected interval. It is deliberately a separate process: a watchdog hosted inside the live runner cannot detect the runner being stopped. It performs no writes and no provider calls.
+It derives the expected top-of-hour execution slots from the schedule (not from the runs that happened to be recorded), so a report states how many expected executions are missing rather than only that a gap exists. It reports duplicate executions in one slot and executions outside the window instead of counting them as healthy coverage. It exits non-zero on `NO_HEARTBEAT` or any gap beyond 1.5× the expected interval, and returns a distinct code if a configured notification fails. It is deliberately a separate process: a watchdog hosted inside the live runner cannot detect the runner being stopped. Database access is read-only; it performs no writes and no provider calls.
+
+Notifications are new-incident only:
+
+- one incident notification per distinct failing-dataset set;
+- an unchanged incident is suppressed, so the watchdog does not page every interval;
+- one recovery notification when the failing set becomes empty;
+- `--state-path` persists the suppression state across process restarts.
 
 ```powershell
-python ops/validation/capture_health_watchdog.py --window-hours 6 --expected-minutes 60
+python ops/validation/capture_health_watchdog.py \
+  --window-hours 6 --expected-minutes 60 \
+  --state-path capture-watchdog-state.json \
+  --out-json capture-health.json
 ```
+
+Set `TENNIS_CAPTURE_WATCHDOG_WEBHOOK_URL` (or pass `--webhook-url`) only when an
+external notifier is authorised. `--no-notify` evaluates and persists state
+without sending. No webhook is configured or called by this repository.
+
+Regression coverage: `tests/test_capture_health_watchdog.py` checks the exact
+12–16 November boundaries (98 expected slots, 3 served, 95 missed), a silent
+runner with no rows, duplicate executions in one slot, out-of-window
+executions, incident deduplication, a changed incident set and one-time
+recovery.
 
 ### Lifecycle traceability
 
@@ -164,15 +243,20 @@ No two populations are treated as equivalent and no void is inferred.
 - This is still an **internal stored-record** census. It is not an independent official ATP/Challenger denominator; official discovery recall remains unknown.
 - The catch-up run's payload is the only evidence of which past events the provider returned. It cannot prove that no other official fixtures existed.
 - The 18 additional reschedules since the earlier snapshot mean counts are time-varying; any future count must state its as-of cutoff.
-- The watchdog detects cadence failure only if it is scheduled outside the live runner. Deployment and scheduling remain an operational action, not part of this read-only PR.
+- The watchdog detects cadence failure only if it is scheduled outside the live runner. Deployment and scheduling remain an operational action, not part of this read-only PR; no notifier is configured here.
+- The platform-level reason the Railway cron trigger stopped is unknown. The evidence establishes non-execution, not the internal Railway fault.
+- Notification delivery itself is not exercised against a real external endpoint; only the decision/deduplication logic and the state round-trip are tested.
 
 ## Verdict
 
-The 53-fixture coverage gap is fully explained: a silent 3-day-16-hour stop of the live batch scheduler, followed by a retrospective catch-up that persisted already-completed events with fetch-time observation clocks. It is not a provider request failure, late refresh or missing fixture identity. The safeguards added here fail closed on post-start targets, make capture silence detectable from outside the runner, and preserve original starts and every subsequent schedule/status change. Manager consensus, tracking-only selections, published Model Picks and settlement are now reconciled as distinct populations.
+The 53-fixture coverage gap is explained by a **four-day silent scheduler non-execution**: the last cycle on 12 November 2026 ended, released its lock and wrote an error heartbeat; 95 expected hourly executions then did not happen; a manual redeploy on 16 November restarted the service; and the first observations after recovery were fetch-time observations of already-terminal events. It is not a provider request failure, late refresh or missing fixture identity, and no deployment or cron-config change occurred at the start of the gap. Why the platform trigger stopped remains unresolved from the available read-only evidence. The safeguards added here fail closed on post-start targets, make capture silence and missed executions detectable from outside the runner with incident/recovery deduplication, and preserve original starts and every subsequent schedule/status change. Manager consensus, tracking-only selections, published Model Picks and settlement are reconciled as distinct populations.
 
 ## Evidence hashes
 
 ```text
 docs/research/evidence/fixture_discovery_deadline_root_cause_20261125.json
 SHA256 E5E84ECFE0B5A6B018AB96161ACE66FF8FC5FDA527B26FADD811DBB895794428
+
+docs/research/evidence/railway_scheduler_gap_evidence_20261125.json
+SHA256 B78C25B711626682F2C92993E4C1458A6F67C0A02DFD34B1DFDF57053AAE8EBE
 ```
