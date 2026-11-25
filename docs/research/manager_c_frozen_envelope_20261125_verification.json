@@ -1,0 +1,74 @@
+{
+  "envelope_file_sha256": "bb54892acf5b661f72eab47c7abdcd5d78e6868520071476f308364283c8c74c",
+  "tsr_sha256": "1d27027d824ee1c0ec9513c08019730bb737dfe67ec949cd9189d5c8572278ab",
+  "envelope_field_hash_recomputes": true,
+  "manifest_hash_recomputes": true,
+  "declared_envelope_sha256": "c627c67508e914b2f8891d204ec6833e19489f5ce7a1fb202279e2e0e4e54ff1",
+  "declared_manifest_sha256": "1d9f8748b76c9569071f19ee939d732d400cacc638c06247fc714cdbd8c6f32f",
+  "imprint_equals_envelope_file_sha256": true,
+  "token_signature_verified": true,
+  "gen_time_utc": "2026-11-24T09:11:36Z",
+  "freeze_at": "2026-11-25T00:00:00+00:00",
+  "evaluation_end": "2026-12-23T00:00:00+00:00",
+  "settlement_as_of": "2026-12-30T00:00:00+00:00",
+  "timestamp_precedes_freeze": true,
+  "tsa_policy": "2.16.840.1.114412.7.1",
+  "certificates": [
+    {
+      "subject": "CN=DigiCert Trusted Root G4,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "issuer": "CN=DigiCert Assured ID Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "issuer_present_in_token": false,
+      "signature_verified_by_issuer": null,
+      "valid_at_gen_time": true,
+      "extended_key_usage": null,
+      "self_signed": false
+    },
+    {
+      "subject": "CN=DigiCert Trusted G4 TimeStamping RSA4096 SHA256 2025 CA1,O=DigiCert\\, Inc.,C=US",
+      "issuer": "CN=DigiCert Trusted Root G4,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "issuer_present_in_token": true,
+      "signature_verified_by_issuer": true,
+      "valid_at_gen_time": true,
+      "extended_key_usage": [
+        "1.3.6.1.5.5.7.3.8"
+      ],
+      "self_signed": false
+    },
+    {
+      "subject": "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1,O=DigiCert\\, Inc.,C=US",
+      "issuer": "CN=DigiCert Trusted G4 TimeStamping RSA4096 SHA256 2025 CA1,O=DigiCert\\, Inc.,C=US",
+      "issuer_present_in_token": true,
+      "signature_verified_by_issuer": true,
+      "valid_at_gen_time": true,
+      "extended_key_usage": [
+        "1.3.6.1.5.5.7.3.8"
+      ],
+      "self_signed": false
+    }
+  ],
+  "trust_anchor_note": "The token carries responder + issuing CA + a cross-signed DigiCert Trusted Root G4 whose issuer (DigiCert Assured ID Root CA) is not included. Chain signatures and validity verify within the supplied set; the final trust anchor must be supplied by the verifier's trust store.",
+  "frozen_policy": {
+    "manifest_version": "MANAGER_C_ORIGINAL_SOURCE_V1",
+    "ablation_version": "MANAGER_C_FORWARD_ABLATION_V1",
+    "groups": [
+      "calibration",
+      "disagreement",
+      "history",
+      "uncertainty"
+    ],
+    "targets": [
+      0.1,
+      0.2,
+      0.25,
+      0.4,
+      0.5,
+      0.75
+    ],
+    "train_cutoff": "2026-11-04T00:00:00+00:00",
+    "train_targets": 822,
+    "validation_targets": 535,
+    "policy_matches_code": true
+  },
+  "evaluated": false,
+  "note": "Verification only. No retraining, no scoring, no writes."
+}
