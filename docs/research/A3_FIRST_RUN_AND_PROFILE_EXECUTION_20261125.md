@@ -14,12 +14,18 @@ The DSN was resolved in memory from the linked Railway Postgres service and supp
 
 ### 1. Reconcile the 2,127-match population
 
-```powershell
-python -m sports_edge_tennis.validation.a3_first_unique_support_frontier \
-  --start-utc 2026-10-01T00:00:00Z
+The existing frontier module was invoked through its `run()` function with the original report cutoff, because the CLI defaults `as_of` to the current clock:
+
+```python
+frontier.run(
+    conn,
+    start=datetime.fromisoformat("2026-10-01T00:00:00+00:00"),
+    end=datetime.fromisoformat("2026-11-22T15:36:43.458510+00:00"),
+    as_of=datetime.fromisoformat("2026-11-22T15:36:43.458510+00:00"),
+)
 ```
 
-The run used `as_of = 2026-11-22T15:36:43.458510Z`, the original report time. It reproduced the published population exactly:
+The run reproduced the published population exactly:
 
 | Measure | Reproduced | Original |
 |---|---:|---:|
@@ -156,7 +162,15 @@ Legal status: internal read-only evaluation only. Commercial rights for the stor
 
 ### 5. Three existing Agent 3 profiles on identical fixtures
 
-The three locked profiles were executed unchanged on the same 2,597 settled fixtures, same run cutoff, same restricted history snapshot and same player orientation:
+The three locked profiles were executed unchanged on the same 2,597 settled fixtures, same run cutoff, same resolved model IDs and same player orientation:
+
+```powershell
+python ops/validation/a3_profile_historical_execution_20261125.py \
+  --start-utc 2026-09-08T00:00:00Z \
+  --end-utc 2026-11-25T00:00:00Z \
+  --history-year-start 2022 \
+  --out-json docs/research/evidence/a3_profile_historical_execution_20261125.json
+```
 
 | Profile | Edge minimum | Cross-surface weight |
 |---|---:|---:|
