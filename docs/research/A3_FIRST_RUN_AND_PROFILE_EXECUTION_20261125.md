@@ -78,7 +78,20 @@ A wider 90-day audit (`2026-08-28`–`2026-11-25`) found 3,813 valid first-run t
 | Historical result ingestion earliest | 2026-08-31 |
 | Historical result ingestion latest | 2026-11-25 |
 
-The 2016–2025 history is retrospective backfill: it was ingested from 31 August 2026 onward, with match-date `as_of` values. It is **not** a genuine pre-match live observation record. The target fixture versions are stricter: only 6 of 4,055 PIT-visible versions were ingested after the run cutoff, and the cohort selection excludes them.
+The 2016–2025 history is retrospective backfill: it was ingested from 31 August 2026 onward. Its `as_of` values are weekly tournament-end placeholders for 2022–2025; 2026 rows carry match-level timestamps. It is **not** a genuine pre-match live observation record. The target fixture versions are stricter: only 6 of 4,055 PIT-visible versions were ingested after the run cutoff, and the cohort selection excludes them.
+
+Ingestion timing of the replay inputs:
+
+| Measure | Count |
+|---|---:|
+| History observations loaded | 70,764 |
+| Result rows ingested after the first run cutoff | 16,297 |
+| Version rows ingested after the first run cutoff | 16,296 |
+| History rows ingested after the last run cutoff | 0 |
+| First run cutoff | 2026-09-09T18:03:03Z |
+| Last run cutoff | 2026-11-24T03:01:04Z |
+
+The 16,297 later-ingested rows are the 2026 season results that became available during the cohort window. The replay's match-date visibility semantics keep the production loader's ordering; the ingestion counts are reported so the retrospective assumption is explicit.
 
 ### Historical anchor limitation
 
