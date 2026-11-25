@@ -1,0 +1,50 @@
+{
+  "agent2": {
+    "player_1_probability": "0.86189035665959860329336621758476062564753998370362",
+    "scoring_rule": "BO5_DECIDER_TB10_AT_6_6"
+  },
+  "ingestion": {
+    "best_of_sets": 5,
+    "competition_tier": "GRAND_SLAM",
+    "edition_name": "Australian Open 2027",
+    "edition_surface": "HARD",
+    "match_id": 1,
+    "qualifying_flag": false,
+    "round_code": "R128",
+    "rows_ingested": 1,
+    "rows_seen": 1,
+    "status": "COMPLETED",
+    "surface": "HARD",
+    "tournament_edition_id": 1
+  },
+  "isolated_local_database": true,
+  "manager": {
+    "abstaining_agent_count": 1,
+    "active_agent_count": 2,
+    "actual_reason_code": "TWO_OR_MORE_ABSTENTIONS",
+    "actual_status": "NO_BET",
+    "consensus_probability": "0.65000000000000000000000000000000000000000000000000",
+    "forced_consensus_for_downstream_rehearsal": true,
+    "reason_code": "NONE",
+    "selected_side": 1,
+    "status_used_downstream": "CONSENSUS"
+  },
+  "publication": {
+    "control_enabled": true,
+    "decision_id": 1,
+    "published_at": "2026-11-25T03:00:00+00:00"
+  },
+  "read_only_production": true,
+  "settlement": {
+    "counts": {
+      "existing": 0,
+      "inserted": 1,
+      "pending_results": 0
+    },
+    "outcome": "SETTLED",
+    "settled_at": "2027-01-18T16:00:00+00:00",
+    "status": "WON"
+  },
+  "synthetic_fixture": true,
+  "version": "AO_JANUARY_PIPELINE_REHEARSAL_20261125_V1"
+}

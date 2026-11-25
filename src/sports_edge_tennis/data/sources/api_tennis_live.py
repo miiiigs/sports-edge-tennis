@@ -63,6 +63,16 @@ _CHALLENGER_TYPE_TOKENS = {
     "challenger mens singles",
     "challenger men's singles",
 }
+_AO_CANONICAL_NAME = "Australian Open"
+_AO_REVIEWED_ALIASES = {
+    "australian open": _AO_CANONICAL_NAME,
+    # The 2026 ingestion split the same provider tournament (source id 1236)
+    # across two editions solely because of this provider name variant. The
+    # reviewed future mapping keeps one canonical edition identity.
+    "atp australian open": _AO_CANONICAL_NAME,
+}
+_MAIN_DRAW_ROUNDS = {"R128", "R64", "R32", "R16", "QF", "SF", "F"}
+_QUALIFYING_ROUNDS = {"Q1", "Q2", "Q3"}
 
 
 class ApiTennisSourceAError(ValueError):
@@ -276,26 +286,42 @@ def _parse_fixture(
     source_observed_at = _source_observed_at(fixture, received_at)
     surface = _surface(_optional_text_any(fixture, ("surface", "event_surface")))
     round_code = _optional_text_any(fixture, ("round", "event_round", "round_code"))
-    if match_start_at.year == 2027 and "australian open" in _normalize_token(tournament_name):
-        if _normalize_token(tournament_name) != "australian open":
+    normalized_tournament = _normalize_token(tournament_name)
+    if match_start_at.year >= 2028 and "australian open" in normalized_tournament:
+        # The 2027 rules are edition-specific. A later AO edition needs its own
+        # reviewed contract; never fall back to a silent BO3 default.
+        raise ApiTennisSourceAError("ao_future_edition_unverified")
+    if match_start_at.year == 2027 and "australian open" in normalized_tournament:
+        canonical_name = _AO_REVIEWED_ALIASES.get(normalized_tournament)
+        if canonical_name is None:
             raise ApiTennisSourceAError("ao_2027_unverified_tournament_alias")
-        # A reviewed edition-specific contract, not a generic guess from a name
+        # A reviewed future-edition contract, not a generic guess from a name
         # or a missing provider field. Unrecognised rounds and contradictions
         # must remain visible as rejected rows, never silently become BO3.
+        tournament_name = canonical_name
         if tour_scope != "ATP_MAIN" or competition_tier not in {"ATP_TOUR", "GRAND_SLAM"}:
             raise ApiTennisSourceAError("ao_2027_competition_conflict")
+        if surface is None:
+            # The AO is a hard-court event in every stored edition. This is a
+            # reviewed identity fact, not a guess about an arbitrary surface.
+            surface = "HARD"
+        if surface != "HARD":
+            raise ApiTennisSourceAError("ao_2027_surface_conflict")
         normalized_round = (round_code or "").strip().upper()
         for field in ("round", "event_round", "round_code"):
             supplied_round = fixture.get(field)
             if supplied_round not in (None, "") and str(supplied_round).strip().upper() != normalized_round:
                 raise ApiTennisSourceAError("ao_2027_round_conflict")
-        if normalized_round in {"Q1", "Q2", "Q3"}:
+        if normalized_round in _QUALIFYING_ROUNDS:
             qualifying_flag = True
             best_of_sets = 3
-        elif normalized_round in {"R128", "R64", "R32", "R16", "QF", "SF", "F"}:
+        elif normalized_round in _MAIN_DRAW_ROUNDS:
             qualifying_flag = False
             best_of_sets = 5
         else:
+            # A qualifying round with the Q prefix stripped (QF/SF/F) cannot be
+            # safely distinguished from a main-draw round. Reject it rather
+            # than repeat the 115-row 2026 mislabelling.
             raise ApiTennisSourceAError("ao_2027_unverified_round")
         for field in ("qualifying_flag", "event_qualification"):
             supplied_flag = fixture.get(field)
@@ -314,6 +340,11 @@ def _parse_fixture(
     else:
         best_of_sets = _best_of_sets(fixture.get("best_of_sets") or fixture.get("event_best_of_sets"))
         qualifying_flag = _qualifying_flag(fixture)
+        if qualifying_flag and (round_code or "").strip().upper() in _MAIN_DRAW_ROUNDS:
+            # A qualifying draw whose provider round lost the Q prefix cannot
+            # be given a truthful main-draw round. This is the generic form of
+            # the 115-row AO 2026 mislabelling; reject it fail-closed.
+            raise ApiTennisSourceAError("qualifying_round_unverified")
     raw_fields = dict(fixture)
     hash_fields = {
         "event_key": source_match_id,
@@ -390,7 +421,7 @@ def _persist_fixture(
         edition_name=record.edition_name,
         surface=record.surface,
         start_date=record.tournament_start_date,
-        end_date=None,
+        end_date=_edition_end_date(record),
     )
     locator = repository.upsert_match_version(
         tournament_edition_id=edition_id,
@@ -424,6 +455,23 @@ def _persist_fixture(
             flush=True,
         )
     return locator
+
+
+def _edition_end_date(record: ApiTennisFixtureRecord) -> date | None:
+    """Return an evidence-based edition end date for future AO finals only.
+
+    A final's scheduled date is the edition's last known match date. Nothing is
+    inferred for rounds before the final, and historical editions are not
+    rewritten by a later re-ingestion.
+    """
+    if (
+        record.tournament_name == _AO_CANONICAL_NAME
+        and record.season_year >= 2027
+        and record.round_code == "F"
+        and not record.qualifying_flag
+    ):
+        return record.match_start_at.date()
+    return None
 
 
 def _first_text(fields: Mapping[str, Any], names: tuple[str, ...]) -> str | None:

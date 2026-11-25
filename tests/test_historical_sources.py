@@ -57,6 +57,33 @@ def test_parse_sackmann_realistic_atp_level_without_explicit_competition_tier(tm
     assert outcome.rejected_rows == []
 
 
+def test_parse_sackmann_qf_is_main_draw_not_qualifying(tmp_path: Path):
+    csv_path = tmp_path / "atp_matches_2025.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "tourney_id,tourney_name,surface,draw_size,tourney_level,tourney_date,match_num,winner_id,winner_name,loser_id,loser_name,score,best_of,round",
+                "2025-5800,Australian Open,Hard,128,G,20250113,700,123,Player One,456,Player Two,6-4 6-4 6-4,5,QF",
+                "2025-5800,Australian Open,Hard,128,G,20250108,701,789,Qualifier One,790,Qualifier Two,6-4 6-4,3,Q1",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    document = build_source_document(
+        path=csv_path,
+        source_system="SACKMANN",
+        source_name="Jeff Sackmann tennis_atp historical matches",
+        dataset_type="historical_matches",
+        season=2025,
+    )
+    outcome = parse_sackmann_csv(document)
+    by_round = {record.round_code: record for record in outcome.records}
+    assert by_round["QF"].qualifying_flag is False
+    assert by_round["QF"].best_of_sets == 5
+    assert by_round["Q1"].qualifying_flag is True
+
+
 def test_parse_sackmann_qual_chall_file_keeps_non_challenger_qualifying_rows_atp_main(tmp_path: Path):
     csv_path = tmp_path / "atp_matches_qual_chall_2025.csv"
     csv_path.write_text(

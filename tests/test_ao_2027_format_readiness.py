@@ -91,8 +91,12 @@ def test_conflicting_or_unknown_metadata_rejected(overrides, reason):
 
 def test_other_tournaments_and_historical_ingest_not_rewritten():
     assert _parse(tournament_name="Brisbane").best_of_sets == 3
+    # The 2026 AO is historical data: this future rule must not create a new
+    # corrected version on a re-ingestion. A later AO edition needs its own
+    # reviewed rule rather than a silent BO3 fallback.
     assert _parse(event_date="2026-01-19").best_of_sets == 3
-    assert _rule(_parse(event_date="2028-01-19", best_of_sets=5)).scoring_rule_version is None
+    with pytest.raises(ApiTennisSourceAError, match="ao_future_edition_unverified"):
+        _parse(event_date="2028-01-19", best_of_sets=5)
 
 
 def test_direct_resolver_rejects_bo3_main_draw_and_flag_conflict():
@@ -133,11 +137,50 @@ def test_markov_uses_different_match_length_and_symmetric_equal_players():
     ({"qualifying_flag": False, "event_qualification": "1"}, "ao_2027_qualifying_conflict"),
     ({"round": "QF", "event_round": "Q1"}, "ao_2027_round_conflict"),
     ({"competition_tier": "GRAND_SLAM", "event_competition_tier": "ATP_250"}, "ao_2027_competition_conflict"),
-    ({"tournament_name": "ATP Australian Open"}, "ao_2027_unverified_tournament_alias"),
+    ({"tournament_name": "Australian Open 2027"}, "ao_2027_unverified_tournament_alias"),
 ])
 def test_ao_2027_secondary_metadata_cannot_bypass_guard(overrides, reason):
     with pytest.raises(ApiTennisSourceAError, match=reason):
         _parse(**overrides)
+
+
+def test_qualifying_draw_with_main_draw_round_label_is_rejected_generically():
+    # The 2026 AO qualifying rows were labelled QF/SF/F with the Q prefix
+    # stripped. Future ingestion must quarantine that ambiguity, not repeat it.
+    with pytest.raises(ApiTennisSourceAError, match="qualifying_round_unverified"):
+        _parse(round="QF", qualifying_flag=True, event_date="2026-01-12")
+
+
+def test_reviewed_alias_keeps_one_edition_identity_and_hard_surface():
+    record = _parse(tournament_name="ATP Australian Open")
+    assert record.tournament_name == "Australian Open"
+    assert record.edition_name == "Australian Open 2027"
+    assert record.surface == "HARD"
+    assert record.competition_tier == "GRAND_SLAM"
+    assert record.best_of_sets == 5
+
+
+def test_missing_surface_is_filled_for_the_reviewed_ao_identity():
+    fixture = _fixture()
+    fixture.pop("surface")
+    record = _parse_fixture(
+        fixture, row_number=1, received_at=datetime(2026, 11, 25, tzinfo=UTC)
+    )
+    assert record.surface == "HARD"
+
+
+def test_non_hard_surface_is_rejected_for_the_ao_identity():
+    with pytest.raises(ApiTennisSourceAError, match="ao_2027_surface_conflict"):
+        _parse(surface="Clay")
+
+
+def test_future_final_supplies_an_evidence_based_edition_end_date():
+    from sports_edge_tennis.data.sources.api_tennis_live import _edition_end_date
+
+    final = _parse(round="F", event_date="2027-01-31")
+    assert _edition_end_date(final) == final.match_start_at.date()
+    assert _edition_end_date(_parse(round="R128")) is None
+    assert _edition_end_date(_parse(event_date="2026-01-31", round="F")) is None
 
 
 @pytest.mark.parametrize("p1,p2,expected_bo3,expected_bo5", [
