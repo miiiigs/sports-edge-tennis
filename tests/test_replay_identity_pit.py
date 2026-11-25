@@ -30,8 +30,15 @@ def _fetchval(conn, sql, params=()):
 
 
 def _player(conn, name: str) -> int:
+    # PIT-consistent fixture: the player reference row must predate every cutoff used
+    # here, because ``players.updated_at`` is the reference-visibility gate.
     return _fetchval(
-        conn, "INSERT INTO players (canonical_name) VALUES (%s) RETURNING player_id", (name,)
+        conn,
+        """
+        INSERT INTO players (canonical_name, created_at, updated_at)
+        VALUES (%s, %s, %s) RETURNING player_id
+        """,
+        (name, BEFORE - timedelta(days=1), BEFORE - timedelta(days=1)),
     )
 
 
@@ -145,7 +152,16 @@ def test_live_fixture_source_id_does_not_count_as_historical(db: psycopg.Connect
     assert resolution.status == STATUS_LIVE_UNRESOLVED
 
 
-def test_alias_late_mapping_with_earlier_provider_evidence_is_allowed(db: psycopg.Connection):
+def test_alias_linkage_created_after_cutoff_is_blocked_even_with_early_evidence(
+    db: psycopg.Connection,
+):
+    """A linkage row recorded after the cutoff is a later decision, not an earlier fact.
+
+    PR #388 previously admitted a late-created alias row whenever
+    ``first_observed_at`` predated the cutoff. The mapping *decision* (which
+    historical player owns this alias) was still made after the cutoff, possibly with
+    hindsight, so ``identity_pit_v2`` fails closed on it.
+    """
     live = _player(db, "Jane Doe")
     _source_id(db, live, "API_TENNIS", "api-jane", BEFORE)
 
@@ -165,8 +181,16 @@ def test_alias_late_mapping_with_earlier_provider_evidence_is_allowed(db: psycop
     )
 
     resolution = resolve_model_player_id_pit(db, live_player_id=live, as_of=CUTOFF)
+    assert resolution.status == STATUS_LIVE_UNRESOLVED
+    assert resolution.available is False
+
+    # The same evidence is admissible once the linkage row itself is visible.
+    db.execute(
+        "UPDATE player_aliases SET created_at = %s WHERE player_id = %s",
+        (BEFORE, historical),
+    )
+    resolution = resolve_model_player_id_pit(db, live_player_id=live, as_of=CUTOFF)
     assert resolution.status == STATUS_BRIDGED
-    assert resolution.available is True
     assert resolution.model_player_id == historical
 
 

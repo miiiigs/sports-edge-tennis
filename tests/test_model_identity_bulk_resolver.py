@@ -7,7 +7,7 @@ statements instead of growing with the player count (no N+1).
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 import pytest
@@ -25,9 +25,14 @@ def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0) -> dat
 
 
 def _player(conn: psycopg.Connection, name: str) -> int:
+    # PIT-consistent fixture: the player row must be visible at the 2025 cutoffs used
+    # by these tests. ``players.updated_at`` is the reference-visibility gate.
     return conn.execute(
-        "INSERT INTO players (canonical_name, status) VALUES (%s, 'ACTIVE') RETURNING player_id",
-        (name,),
+        """
+        INSERT INTO players (canonical_name, status, created_at, updated_at)
+        VALUES (%s, 'ACTIVE', %s, %s) RETURNING player_id
+        """,
+        (name, _utc(2024, 1, 1), _utc(2024, 1, 1)),
     ).fetchone()[0]
 
 
@@ -177,6 +182,7 @@ def _seed_bridge(
     live_player_id: int,
     historical_player_id: int,
     activated_at: datetime,
+    created_at: datetime | None = None,
 ) -> None:
     match_id = _dummy_match(conn, f"Bridge Evidence {live_player_id}")
     conn.execute(
@@ -185,12 +191,19 @@ def _seed_bridge(
             live_player_id, action, historical_player_id, evidence_source_system,
             evidence_match_id, evidence_provider_event_id, evidence_provider_player_id,
             evidence_provider_name, evidence_status, evidence_as_of, activated_at,
-            actor, reason
+            actor, reason, created_at
         )
         VALUES (%s, 'BRIDGE', %s, 'SPORTRADAR', %s, 'evt-1', 'prov-1', 'Prov Name',
-                'UNIQUE_PIT_CANDIDATE', %s, %s, 'test', 'parity')
+                'UNIQUE_PIT_CANDIDATE', %s, %s, 'test', 'parity', %s)
         """,
-        (live_player_id, historical_player_id, match_id, activated_at, activated_at),
+        (
+            live_player_id,
+            historical_player_id,
+            match_id,
+            activated_at,
+            activated_at,
+            created_at or activated_at,
+        ),
     )
 
 
@@ -199,11 +212,11 @@ def _seed_disable(conn: psycopg.Connection, *, live_player_id: int, activated_at
         """
         INSERT INTO model_identity_bridge_events (
             live_player_id, action, historical_player_id, evidence_status,
-            evidence_as_of, activated_at, actor, reason
+            evidence_as_of, activated_at, actor, reason, created_at
         )
-        VALUES (%s, 'DISABLE', NULL, 'DISABLE', %s, %s, 'test', 'parity')
+        VALUES (%s, 'DISABLE', NULL, 'DISABLE', %s, %s, 'test', 'parity', %s)
         """,
-        (live_player_id, activated_at, activated_at),
+        (live_player_id, activated_at, activated_at, activated_at),
     )
 
 
@@ -519,6 +532,184 @@ def test_forward_shadow_targets_preserve_live_and_model_orientation(
     assert target.model_player_1_id == hist_one
     assert target.model_player_2_id == hist_two
     assert target.model_player_1_id != target.model_player_2_id
+
+
+def test_backdated_bridge_event_inserted_after_cutoff_is_invisible(
+    db: psycopg.Connection,
+):
+    """``activated_at`` is caller-supplied; the insertion clock is the real gate."""
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Backdated Bridge Live")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-backdated")
+    target = _seed_candidate(
+        db, name="Backdated Bridge Target", alias="Backdated Bridge Target",
+        observed_at=observed,
+    )
+    _seed_bridge(
+        db,
+        live_player_id=live,
+        historical_player_id=target,
+        activated_at=_utc(2025, 4, 1),
+        # Activated in April, but only inserted in July: a mapping decision made with
+        # hindsight must not be visible to an April replay.
+        created_at=_utc(2025, 7, 1),
+    )
+
+    at_cutoff = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff
+    )[live]
+    assert at_cutoff.resolved_player_id == live
+    assert at_cutoff.method == "NO_HISTORICAL_CANDIDATE"
+    assert at_cutoff.bridge_event_id is None
+
+    later = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=_utc(2025, 7, 2)
+    )[live]
+    assert later.resolved_player_id == target
+    assert later.method == "PERSISTED_BRIDGE"
+
+
+def test_mutated_canonical_name_is_not_reused_for_earlier_replay(
+    db: psycopg.Connection,
+):
+    """A rename after the cutoff must not generate lookup keys for an earlier replay."""
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Old Name Player")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-renamed")
+    # The historical candidate only carries the post-rename name.
+    target = _seed_candidate(
+        db, name="Historical Candidate", alias="New Name Player", observed_at=observed
+    )
+    db.execute(
+        "UPDATE players SET canonical_name = 'New Name Player', updated_at = %s "
+        "WHERE player_id = %s",
+        (_utc(2025, 5, 1), live),
+    )
+
+    before_rename = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=_utc(2025, 4, 1)
+    )[live]
+    assert before_rename.resolved_player_id == live
+    assert before_rename.name_source == "PIT_NAME_UNAVAILABLE"
+
+    after_rename = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff
+    )[live]
+    assert after_rename.resolved_player_id == target
+    assert after_rename.name_source == "PIT_CANONICAL_NAME"
+
+
+def test_alias_refresh_is_legitimate_but_refresh_gate_is_measurable(
+    db: psycopg.Connection,
+):
+    """``updated_at`` tracks re-observation, not value history.
+
+    The default strict policy keeps legitimate PIT evidence. The optional refresh gate
+    is available only to size the residual out-of-band mutation channel.
+    """
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Refresh Evidence Live")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-refresh")
+    target = _seed_candidate(
+        db,
+        name="Refresh Evidence Target",
+        alias="Refresh Evidence Live",
+        observed_at=observed,
+    )
+    # The candidate alias was re-observed after the cutoff; only last_observed_at and
+    # updated_at move, the linkage is unchanged.
+    db.execute(
+        "UPDATE player_aliases SET last_observed_at = %s, updated_at = %s "
+        "WHERE player_id = %s",
+        (_utc(2025, 8, 1), _utc(2025, 8, 1), target),
+    )
+
+    default = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff
+    )[live]
+    assert default.resolved_player_id == target
+
+    gated = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=cutoff, alias_refresh_gate=True
+    )[live]
+    assert gated.resolved_player_id == live
+    assert gated.method == "NO_HISTORICAL_CANDIDATE"
+
+
+def test_resolution_provenance_freezes_reference_digest(db: psycopg.Connection):
+    from sports_edge_tennis.data.identity_provenance import (
+        reference_drift_for,
+        resolve_with_provenance,
+    )
+
+    cutoff = _utc(2025, 6, 16)
+    observed = _utc(2025, 1, 1, 12)
+    live = _player(db, "Provenance Live")
+    _source(db, player_id=live, system="API_TENNIS", source_id="api-provenance")
+    target = _seed_candidate(
+        db, name="Provenance Target", alias="Provenance Live", observed_at=observed
+    )
+
+    resolutions, reference = resolve_with_provenance(
+        db, player_ids=[live, target], as_of=cutoff
+    )
+    record = resolutions[live].as_record()
+    assert record["player_id"] == live
+    assert record["resolved_player_id"] == target
+    assert record["method"] == "ALIAS"
+    assert record["evidence"] == "tennis_data_alias_pit"
+    assert record["observed_at"] == cutoff.isoformat()
+    assert record["reference_sha256"] == reference.sha256
+    assert reference.row_counts["players"] == 2  # live and target
+
+    drift = reference_drift_for(
+        db, player_ids=[live, target], recorded=reference.as_record()
+    )
+    assert drift["drift"] is False
+
+    # An out-of-band alias re-pointing changes the digest even though no timestamp
+    # column has to move for the check to notice.
+    db.execute(
+        "UPDATE player_aliases SET player_id = %s WHERE player_id = %s",
+        (live, target),
+    )
+    moved = reference_drift_for(
+        db, player_ids=[live, target], recorded=reference.as_record()
+    )
+    assert moved["drift"] is True
+
+
+def test_strict_policy_is_a_noop_for_live_now_resolution(db: psycopg.Connection):
+    """Live production resolves at ``as_of ~= now``, where every PIT gate is a no-op.
+
+    This guards the production contract: the stricter historical policy must not change
+    which identity a live target resolves to.
+    """
+    now = datetime.now(UTC)
+    live = _player(db, "Live Now Player")
+    db.execute(
+        "INSERT INTO player_source_ids (player_id, source_system, source_player_id, created_at) "
+        "VALUES (%s, 'API_TENNIS', 'api-live-now', %s)",
+        (live, now),
+    )
+    target = _seed_candidate(
+        db,
+        name="Live Now Player",
+        alias="Live Now Player",
+        observed_at=now - timedelta(days=30),
+    )
+    strict = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=now, reference_policy="strict"
+    )[live]
+    permissive = resolve_model_player_ids_with_provenance(
+        db, player_ids=[live], as_of=now, reference_policy="permissive"
+    )[live]
+    assert strict.resolved_player_id == target
+    assert permissive.resolved_player_id == target
+    assert strict.method == permissive.method == "ALIAS"
 
 
 if __name__ == "__main__":

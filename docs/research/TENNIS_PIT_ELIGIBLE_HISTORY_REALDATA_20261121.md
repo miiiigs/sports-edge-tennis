@@ -79,3 +79,31 @@ No accuracy/ROI conclusion is drawn from these version counters and no productio
 6. Prospective frozen winner-model candidates at least 30 days/200 unique settled each; no deployment without Brian's approval.
 
 This is **source integrity and denominator evidence**, not a claim of sustainable 72–75%, full leakage clearance or better production AI. Relevant Trello master https://trello.com/c/jvlNgP4E; production live runner remains on its previous release commit.
+
+## Formal retirement of the "~14,000 at ~75%" claim — 25 Nov 2026
+
+The provenance audit is now complete:
+`docs/research/evidence/legacy_75pct_claim_audit_20261125.json`
+(module `src/sports_edge_tennis/validation/legacy_75pct_claim_audit.py`, read-only).
+
+Fresh read-only execution against production on 2026-11-25:
+
+- 134,383 stored matches, 129,045 safely `COMPLETED` results.
+- 117,713 pre-2026 match-version rows exist, and **0** were ingested before their own match
+  start. Every pre-2026 version carries a single ingest day: **2026-08-31**.
+- The largest reproducible original-forecast cohort is **3,375 settled matches at 62.52%**
+  accuracy — 12.48 percentage points below 75%.
+- The only stored quantity near 14,000 is `trained_history_count = 14,229` in the 2026-11-23
+  label-shuffle artifact over a 623-match holdout. That is a training-corpus row count, not a
+  prediction sample.
+- None of the required artifacts exists: immutable run manifest, exact selected fixture-id set,
+  pre-match feature-timestamp snapshot, post-start outcome join, commercial-use rights.
+
+**Verdict: `UNREPRODUCIBLE`. Formal recommendation: `RETIRE`.**
+
+The claim must not be cited in any commercial, marketing, investor, model-quality or
+"historical accuracy" context. If referenced at all it must be labelled an unreproducible
+legacy internal claim with this audit attached. Use instead the reproducible original-forecast
+cohort above and the forward activation gate in
+`docs/research/A1_IDENTITY_BRIDGE_FORWARD_SHADOW_20261124.md` (≥200 settled first-issued
+selections over ≥30 days, paired proper-score intervals entirely below zero).

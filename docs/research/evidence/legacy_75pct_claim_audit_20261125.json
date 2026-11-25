@@ -1,0 +1,110 @@
+{
+  "version": "LEGACY_75PCT_CLAIM_AUDIT_V1",
+  "generated_at": "2026-11-25T09:04:30.688368+00:00",
+  "claims": [
+    {
+      "claim": "approximately 14,000 historical predictions at ~75% accuracy",
+      "sources": [
+        "docs/research/TENNIS_PIT_ELIGIBLE_HISTORY_REALDATA_20261121.md",
+        "docs/research/TENNIS_A1_A2_INDEPENDENCE_REAL_DATA_20261121.md",
+        "docs/research/TENNIS_A1_A2_VALIDATION_FROZEN_SELECTION_REAL_DATA_20261121.md",
+        "docs/research/BRAZZY365_NOV21_23_LEAKAGE_AND_BENCHMARK_SCOPE.md"
+      ]
+    },
+    {
+      "claim": "sustained 72-75% winner accuracy at 40-50% eligible coverage",
+      "sources": [
+        "docs/research/TENNIS_PROSPECTIVE_MANAGER_FROZEN_PROTOCOL_20261122.md",
+        "docs/research/TENNIS_FEATURE_AVAILABILITY_EVIDENCE_CONTRACT_20261122.md"
+      ]
+    }
+  ],
+  "evidence": {
+    "stored_historical_results": {
+      "total_matches": 134383,
+      "completed": 129045,
+      "by_year": [
+        {
+          "season_year": 2016,
+          "completed": 12056
+        },
+        {
+          "season_year": 2017,
+          "completed": 11317
+        },
+        {
+          "season_year": 2018,
+          "completed": 12321
+        },
+        {
+          "season_year": 2019,
+          "completed": 10905
+        },
+        {
+          "season_year": 2020,
+          "completed": 4491
+        },
+        {
+          "season_year": 2021,
+          "completed": 9721
+        },
+        {
+          "season_year": 2022,
+          "completed": 12222
+        },
+        {
+          "season_year": 2023,
+          "completed": 12962
+        },
+        {
+          "season_year": 2024,
+          "completed": 13713
+        },
+        {
+          "season_year": 2025,
+          "completed": 13444
+        },
+        {
+          "season_year": 2026,
+          "completed": 15893
+        }
+      ]
+    },
+    "original_prediction_records": {
+      "a1_predicted_all_runs": 56853,
+      "distinct_matches_with_original_a1": 3890,
+      "earliest_original_run": "2026-09-08 02:01:09.738947+00:00"
+    },
+    "historical_version_ingest": {
+      "historical_versions_before_2026": 117713,
+      "historical_versions_ingested_before_start": 0,
+      "distinct_historical_ingest_days": [
+        "2026-08-31"
+      ]
+    },
+    "largest_reproducible_cohort": {
+      "settled_matches": 3375,
+      "wins": 2110,
+      "accuracy": 0.6251851851851852,
+      "shortfall_vs_75pct": 0.12481481481481482
+    },
+    "training_corpus_size": {
+      "history_rows_visible_now": 129045,
+      "note": "The 2026-11-23 label-shuffle artifact reports trained_history_count=14229 over a 623-match holdout. That is a training-corpus row count, not a prediction sample, and it is the only stored quantity near 14,000."
+    },
+    "required_artifacts": {
+      "immutable_original_run_manifest_for_14k_sample": false,
+      "exact_selected_fixture_id_set_for_14k_sample": false,
+      "prematch_feature_timestamp_snapshot_for_14k_sample": false,
+      "settled_outcome_join_after_match_start_for_14k_sample": false,
+      "approved_commercial_use_rights_for_historical_corpus": false,
+      "reason": "No prediction_runs/predictions row set of that size exists; stored historical rows were ingested retrospectively on 2026-08-31 and cannot evidence an original forecast."
+    }
+  },
+  "verdict": "UNREPRODUCIBLE",
+  "recommendation": "RETIRE",
+  "retirement_scope": "Retire the '~14,000 historical matches at ~75%' benchmark from every commercial, marketing, investor and model-quality context. It may only be cited as an unreproducible legacy internal claim, with this audit attached.",
+  "replacement_evidence": "Use the reproducible original-forecast cohort above, the forward shadow gate (>=200 settled first-issued selections over >=30 days), and the paired proper-score activation rule.",
+  "can_promote": false,
+  "production_changed": false
+}

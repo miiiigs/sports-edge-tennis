@@ -1,0 +1,65 @@
+{
+  "version": "A1_IDENTITY_PROVENANCE_AUDIT_V1",
+  "generated_at": "2026-11-25T11:00:58.084430+00:00",
+  "since": "2026-09-10T00:00:00+00:00",
+  "targets": 3778,
+  "settled": 3271,
+  "can_promote": false,
+  "production_changed": false,
+  "reference_policy": {
+    "targets": 3778,
+    "affected_targets": 0,
+    "policies": {
+      "permissive": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        }
+      },
+      "strict": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        }
+      },
+      "strict_alias_refresh_gate": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        }
+      }
+    },
+    "strict_vs_permissive": {
+      "changed_player_mappings": 0,
+      "examples": [],
+      "affected_targets": 0,
+      "paired": null
+    },
+    "strict_alias_refresh_gate_vs_permissive": {
+      "changed_player_mappings": 0,
+      "examples": []
+    }
+  },
+  "connection_attempts": 1
+}

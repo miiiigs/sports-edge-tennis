@@ -40,13 +40,14 @@ from sports_edge_tennis.agents.agent1_surface_elo import (
     replay_history,
 )
 from sports_edge_tennis.data.agent1_history import load_agent1_history
-from sports_edge_tennis.data.model_identity import (
-    resolve_model_player_ids_with_provenance,
+from sports_edge_tennis.data.identity_provenance import (
+    IDENTITY_PROVENANCE_SCHEMA_VERSION,
+    resolve_with_provenance,
 )
 
-VERSION = "A1_IDENTITY_BRIDGE_FORWARD_SHADOW_V1"
+VERSION = "A1_IDENTITY_BRIDGE_FORWARD_SHADOW_V2"
 MINIMUM_START_LEAD = timedelta(minutes=30)
-CAPTURE_SCHEMA_VERSION = "a1_identity_bridge_forward_shadow_record_v1"
+CAPTURE_SCHEMA_VERSION = "a1_identity_bridge_forward_shadow_record_v2"
 
 
 class ShadowValidationError(ValueError):
@@ -86,6 +87,15 @@ class ShadowTarget:
     player_2_bridge_event_id: int | None = None
     player_1_visible_from: datetime | None = None
     player_2_visible_from: datetime | None = None
+    player_1_evidence: str = "none"
+    player_2_evidence: str = "none"
+    player_1_name_source: str = "NONE"
+    player_2_name_source: str = "NONE"
+    player_1_observed_at: datetime | None = None
+    player_2_observed_at: datetime | None = None
+    identity_reference_sha256: str | None = None
+    identity_reference_policy: str | None = None
+    identity_reference_row_counts: dict[str, int] | None = None
 
     def __post_init__(self) -> None:
         if self.prediction_as_of.tzinfo is None or self.match_start_at.tzinfo is None:
@@ -217,14 +227,15 @@ def load_targets(
         return []
 
     player_ids = {int(row[8]) for row in rows} | {int(row[9]) for row in rows}
-    # One bulk PIT resolution, exactly the live target resolver's semantics.
+    # One bulk PIT resolution, exactly the live target resolver's semantics, frozen
+    # against the reference-state digest it used.
     as_of_values = {_utc(row[3], field_name="prediction_as_of") for row in rows}
     if len(as_of_values) != 1:
         raise ShadowValidationError(
             "one shadow capture must contain a single prediction as_of"
         )
     prediction_as_of = next(iter(as_of_values))
-    resolutions = resolve_model_player_ids_with_provenance(
+    resolutions, reference = resolve_with_provenance(
         conn, player_ids=player_ids, as_of=prediction_as_of
     )
 
@@ -257,8 +268,8 @@ def load_targets(
             # The observer must only capture genuinely future fixtures. A late
             # post-hoc run or a retry must never be presented as a fresh trial.
             continue
-        res_1 = resolutions[int(live_p1)]
-        res_2 = resolutions[int(live_p2)]
+        res_1 = resolutions[int(live_p1)].resolution
+        res_2 = resolutions[int(live_p2)].resolution
         targets.append(
             ShadowTarget(
                 prediction_run_id=int(prediction_run_id),
@@ -294,6 +305,15 @@ def load_targets(
                 player_2_bridge_event_id=res_2.bridge_event_id,
                 player_1_visible_from=res_1.visible_from,
                 player_2_visible_from=res_2.visible_from,
+                player_1_evidence=res_1.evidence,
+                player_2_evidence=res_2.evidence,
+                player_1_name_source=res_1.name_source,
+                player_2_name_source=res_2.name_source,
+                player_1_observed_at=res_1.observed_at,
+                player_2_observed_at=res_2.observed_at,
+                identity_reference_sha256=reference.sha256,
+                identity_reference_policy=reference.policy_version,
+                identity_reference_row_counts=dict(reference.row_counts),
             )
         )
     return targets
@@ -350,8 +370,17 @@ def build_record(
         "live_player_2_id": target.live_player_2_id,
         "model_player_1_id": target.model_player_1_id,
         "model_player_2_id": target.model_player_2_id,
+        "identity_reference": {
+            "schema_version": IDENTITY_PROVENANCE_SCHEMA_VERSION,
+            "policy_version": target.identity_reference_policy,
+            "reference_sha256": target.identity_reference_sha256,
+            "row_counts": target.identity_reference_row_counts,
+            "observed_at": target.prediction_as_of.isoformat(),
+        },
         "player_1_resolution": {
             "method": target.player_1_resolution_method,
+            "evidence": target.player_1_evidence,
+            "name_source": target.player_1_name_source,
             "candidate_count": target.player_1_candidate_count,
             "matched_alias": target.player_1_matched_alias,
             "bridge_event_id": target.player_1_bridge_event_id,
@@ -360,9 +389,16 @@ def build_record(
                 if target.player_1_visible_from is not None
                 else None
             ),
+            "observed_at": (
+                target.player_1_observed_at.isoformat()
+                if target.player_1_observed_at is not None
+                else target.prediction_as_of.isoformat()
+            ),
         },
         "player_2_resolution": {
             "method": target.player_2_resolution_method,
+            "evidence": target.player_2_evidence,
+            "name_source": target.player_2_name_source,
             "candidate_count": target.player_2_candidate_count,
             "matched_alias": target.player_2_matched_alias,
             "bridge_event_id": target.player_2_bridge_event_id,
@@ -370,6 +406,11 @@ def build_record(
                 target.player_2_visible_from.isoformat()
                 if target.player_2_visible_from is not None
                 else None
+            ),
+            "observed_at": (
+                target.player_2_observed_at.isoformat()
+                if target.player_2_observed_at is not None
+                else target.prediction_as_of.isoformat()
             ),
         },
         "player_1_bridged": target.model_player_1_id != target.live_player_1_id,
@@ -553,6 +594,12 @@ def run(
         log("TENNIS_A1_BRIDGE_FORWARD_RECORD " + _canonical_json(record))
 
     summary["captured"] = len(records)
+    if targets:
+        summary["identity_reference"] = {
+            "policy_version": targets[0].identity_reference_policy,
+            "reference_sha256": targets[0].identity_reference_sha256,
+            "row_counts": targets[0].identity_reference_row_counts,
+        }
     summary["record_set_sha256"] = hashlib.sha256(
         "\n".join(record["record_sha256"] for record in records).encode("utf-8")
     ).hexdigest()

@@ -35,12 +35,20 @@ def _player(
     observed_at: datetime,
 ) -> int:
     repo = HistoricalRepository(db, _ingest_run(db, source_system, observed_at))
-    return repo.create_player_with_source_id(
+    player_id = repo.create_player_with_source_id(
         source_system=source_system,
         source_player_id=source_player_id,
         canonical_name=name,
         observed_at=observed_at,
     )
+    # PIT-consistent fixture: ``players.updated_at`` is the reference-visibility gate,
+    # so a row first observed at ``observed_at`` must not carry a wall-clock
+    # creation/update stamp from test runtime.
+    db.execute(
+        "UPDATE players SET created_at = %s, updated_at = %s WHERE player_id = %s",
+        (observed_at, observed_at, player_id),
+    )
+    return player_id
 
 
 def _match(
@@ -426,16 +434,24 @@ def test_persisted_model_identity_bridge_is_pit_activated_and_disableable(
             evidence_as_of,
             activated_at,
             actor,
-            reason
+            reason,
+            created_at
         )
         VALUES (
             %s, 'BRIDGE', %s, 'SPORTRADAR', %s,
             'sr:sport_event:test', 'sr:competitor:test',
             'Provider Historical Player', 'UNIQUE_PIT_CANDIDATE',
-            %s, %s, 'test', 'verified exact provider bridge'
+            %s, %s, 'test', 'verified exact provider bridge', %s
         )
         """,
-        (live_id, historical_id, evidence_match, before_activation, activated_at),
+        (
+            live_id,
+            historical_id,
+            evidence_match,
+            before_activation,
+            activated_at,
+            activated_at,
+        ),
     )
 
     assert _resolve_model_player_id(db, player_id=live_id, as_of=before_activation) == live_id
@@ -449,11 +465,12 @@ def test_persisted_model_identity_bridge_is_pit_activated_and_disableable(
             evidence_as_of,
             activated_at,
             actor,
-            reason
+            reason,
+            created_at
         )
-        VALUES (%s, 'DISABLE', %s, %s, 'test', 'disable bridge for review')
+        VALUES (%s, 'DISABLE', %s, %s, 'test', 'disable bridge for review', %s)
         """,
-        (live_id, activated_at, disabled_at),
+        (live_id, activated_at, disabled_at, disabled_at),
     )
 
     assert _resolve_model_player_id(db, player_id=live_id, as_of=after_disable) == live_id

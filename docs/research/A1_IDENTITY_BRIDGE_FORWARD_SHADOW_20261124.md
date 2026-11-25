@@ -211,13 +211,20 @@ reproduction of original first-issued production probabilities.
 
 ## 5. Limitations
 
-- The resolver now gates alias and source rows on the ingest run's visibility
+- The resolver gates alias and source rows on the ingest run's visibility
   (`COALESCE(ingest_runs.finished_at, ingest_runs.started_at, created_at) <= as_of`),
-  aliases additionally on `first_observed_at <= as_of`. Historical result evidence stays on
-  `source_observed_at/as_of` because it is existence evidence, not the alias mapping itself.
-  The resolver records resolution method, candidate count, matched alias and bridge event id.
-  A residual risk remains for aliases whose values were updated in place after the cutoff;
-  `updated_at` is not yet used as a visibility gate.
+  aliases additionally on `first_observed_at <= as_of`, player names on
+  `players.updated_at <= as_of` (or a never-updated row) and bridge events on
+  `created_at <= as_of`. The resolver records resolution method, evidence, name source,
+  candidate count, matched alias, bridge event id and a reference-state digest.
+- Residual risk: `player_aliases` can be re-pointed out of band. The upsert key pins
+  `player_id` and `normalized_alias`, so normal pipeline traffic cannot do it, but an
+  operator `UPDATE` could. `updated_at` cannot distinguish that from a benign refresh.
+  The reference digest makes such drift *detectable*, not preventable; the proposed
+  immutability guard in `specs/identity_provenance_v2_20261125.md` is the fix.
+- The reference fingerprint covers the captured players' closure. The history bridge
+  (which reads the whole corpus) is not fingerprinted per capture; it is evidenced by
+  row counts and the append-only `player_source_ids` ledger.
 - The observer records whether the captured prediction is the earliest A1 issue, but a late
   post-hoc run of an earlier prediction is still not an independent wall-clock collector receipt.
   Only captures made proximate to issue should enter the central forward archive.
@@ -260,7 +267,17 @@ reproduction of original first-issued production probabilities.
 - Existing retrospective shadow: `ops/validation/a1_identity_bridge_shadow_20261015.py`.
 - New forward observer:
   `src/sports_edge_tennis/validation/a1_identity_bridge_forward_shadow.py`.
-- Tests: `tests/test_a1_identity_bridge_forward_shadow.py`.
+- Reference-data PIT and replay-mismatch audit:
+  `src/sports_edge_tennis/validation/a1_identity_provenance_audit.py`.
+- Manager interaction audit:
+  `src/sports_edge_tennis/validation/a1_identity_manager_interaction.py`.
+- Legacy 75% claim provenance audit:
+  `src/sports_edge_tennis/validation/legacy_75pct_claim_audit.py`.
+- Reference fingerprint / drift: `src/sports_edge_tennis/data/identity_provenance.py`.
+- Reserved schema proposal: `specs/identity_provenance_v2_20261125.md`.
+- Tests: `tests/test_a1_identity_bridge_forward_shadow.py`,
+  `tests/test_a1_identity_provenance_audit.py`, `tests/test_model_identity_bulk_resolver.py`,
+  `tests/test_replay_identity_pit.py`, `tests/test_live_model_player_history_bridge.py`.
 - Optional loader guard: `src/sports_edge_tennis/data/agent1_history.py` (`ingested_by`).
 - Current PostgreSQL foundation CI is the required gate before this branch is considered reviewable.
 
@@ -379,4 +396,157 @@ the activation sample.
 - A lawful January walk-forward needs either (a) a licensed historical results/stat feed with
   original observation timestamps, or (b) a commercial licence for the Sackmann corpus plus a
   documented point-in-time acquisition trail. Neither is present.
+
+## 10. 2026-11-25 December mission — identity bridge completion
+
+This section records the December mission work. It is research only: no production Agent 1,
+Manager, Model Pick, odds, publication or settlement change. `can_promote=false`.
+
+### 10.1 Reference-data PIT policy (`identity_reference_pit_v2`)
+
+The resolver previously gated alias and source rows on ingest-run visibility but left three
+mutable surfaces. They are now explicit:
+
+| Surface | Mutability | Gate |
+|---|---|---|
+| `players.canonical_name` | updated in place | reused only when `updated_at <= as_of`, or when the row was never updated (`updated_at = created_at`) |
+| `player_aliases` | `last_observed_at`/`updated_at` move on every re-observation | `created_at <= as_of` and `first_observed_at <= as_of`; `updated_at` is **not** a value-version marker because the upsert key pins `player_id` and `normalized_alias` |
+| `model_identity_bridge_events` | append-only, but `activated_at` is caller-supplied | `activated_at <= as_of` **and** `evidence_as_of <= as_of` **and** `created_at <= as_of` |
+
+Two parameters make the policy auditable rather than implicit:
+
+- `reference_policy="permissive"` reproduces the pre-2026-11-25 semantics and exists only to
+  measure the effect of each gate. It must never be used for an evidence claim.
+- `alias_refresh_gate=True` adds the over-conservative `player_aliases.updated_at <= as_of`
+  gate. Because every re-observation bumps `updated_at`, this discards legitimate PIT
+  evidence; it is a measurement instrument, not a deployable policy.
+
+The strict replay resolver (`replay/identity_pit.py`, `identity_pit_v2`) now shares the same
+policy: a linkage row created after the cutoff is no longer admitted merely because
+`first_observed_at` predates it. That earlier behaviour was a hindsight channel: the
+*mapping decision* was still made after the cutoff.
+
+### 10.2 Versioned identity provenance without a schema migration
+
+Each capture now freezes the reference state it used:
+
+- `identity_provenance.reference_fingerprint` hashes every PIT-visible `players`,
+  `player_aliases`, `player_source_ids` and `model_identity_bridge_events` row in the target
+  players' closure. `last_observed_at`/`updated_at` are excluded so benign refreshes do not
+  create false drift; linkage columns and `canonical_name` are included.
+- `resolve_with_provenance` returns the resolution together with that digest.
+- `reference_drift_for` recomputes the digest later. An out-of-band alias re-pointing or
+  player rename is therefore detectable even though the current schema cannot version it.
+
+A migration is still required for exact reconstruction. `specs/identity_provenance_v2_20261125.md`
+specifies `player_name_versions`, `player_alias_versions`, an identity-linkage immutability guard
+on `player_aliases`, and `identity_resolution_provenance`. **No migration file is added by this
+branch.** `0023` and `0024` are owned by integration PR #392; this proposal must be numbered after
+`0024` by that train.
+
+### 10.3 Runtime resolution persistence
+
+Every forward capture record now stores, per player slot: original (live) id, model id, method,
+evidence, name source, candidate count, matched alias, bridge event id, `visible_from`, the
+observation time (the run's `prediction_as_of`) and the match version id. The capture summary
+stores the reference digest and row counts. Schema version is
+`a1_identity_bridge_forward_shadow_record_v2`.
+
+### 10.4 Remaining original-replay mismatch
+
+See `docs/research/evidence/a1_identity_provenance_audit_20261125.json` (`mismatch` block) and
+section 10.7 below.
+
+### 10.5 Manager interaction on matched populations
+
+`docs/research/evidence/a1_identity_manager_interaction_20261125.json` re-evaluates the stored
+Manager on the same matches, changing only Agent 1. Population: 3,271 safely settled matches with
+all three agents and a stored Manager result (507 matches excluded as not safely settled).
+
+- Agent 1 side changed on **562** matches; the Manager decision changed on **861** (26.3%).
+- Consensus picks: **546 → 631**. Original 349W–197L (63.9%); counterfactual 417W–214L (66.1%).
+- Of 255 shared consensus picks, **all 255 keep the same side**. The accuracy difference is
+  therefore caused by which matches clear the Manager, not by better probabilities on the same
+  matches.
+- Reason transitions are overwhelmingly the A3-abstention-spread rule (270 + 210) and
+  directional disagreement (105 + 98 + 96 + 81), i.e. the bridge moves Agent 1 across the
+  Manager's existing spread thresholds.
+- ATP: 58 → 68 consensus, 70.7% → 69.1% (coverage up, accuracy slightly down).
+  Challenger: 488 → 563 consensus, 63.1% → 65.7%.
+- The 52-target run-2548 cohort remains quarantined and is not part of this population.
+
+This is a coverage/selection interaction, not a paired improvement. Any activation decision must
+use the frozen equal-count and frozen-coverage comparisons in section 3.
+
+### 10.6 First-issued shadow capture (run 2603)
+
+Captured 2026-11-25T09:01:09Z for a run issued at 08:05:05Z, with matches starting
+2026-11-27T01:00:00Z.
+
+- 2 first-issued targets, 0 failures, both Challenger main draw, 0 ATP, 0 qualifying.
+- Both were the earliest Agent 1 issue for their match (`prior_a1_prediction_count = 0`).
+- Agent 1 side changed on 1 of 2.
+- Player resolutions: live 4714 → model 2103 (alias `imamura m`), live 4591 → model 3373
+  (alias `sanchis d j`), live 4514 → model 758 (alias `uchida k`), live 5150 → itself
+  (`NO_HISTORICAL_CANDIDATE`).
+- Reference digest `991afee5ef45d4205a8e3833228b2c3813f34e046eb7f0b508a83c5f452612bd`
+  over 4 players / 17 aliases / 12 source ids / 0 bridge events.
+- Record-set SHA-256 `31f0ec4893593f6fb3cabaa14a074d925a53ba70a556bb222e647aaf5a893f60`.
+- Archive: `docs/research/evidence/a1_identity_bridge_forward_capture_2603_20261125.jsonl`.
+
+This is a genuine first-issued, pre-outcome capture made ~56 minutes after issue and before
+scheduled start. It is still not an independent wall-clock collector receipt: the archive is
+committed by hand. Run-2548's 52 targets remain quarantined; run-2535's 17 records remain
+pre-outcome but not an independent receipt.
+
+### 10.7 Reference-policy and replay-mismatch measurements
+
+**Reference-data leakage (full population).** `a1_identity_reference_policy_20261125.json`,
+3,778 targets (3,271 settled), 6,556 player resolutions per policy:
+
+| Policy | Changed mappings vs permissive | Affected targets |
+|---|---:|---:|
+| `strict` | **0** | 0 |
+| `strict_alias_refresh_gate` | **0** | 0 |
+
+The strict gates are **mapping-neutral on the current corpus**. The bridge is not resolving
+anything that depends on reference state created or mutated after the original cutoff:
+
+- `players.updated_at = created_at` for all players, so the canonical-name gate never fires.
+- The single persisted bridge event has `created_at` 10.6 ms after `activated_at`, far inside any
+  cutoff boundary that matters.
+- Every alias the bridge actually resolved through had not been refreshed after its cutoff, so
+  even the over-conservative `updated_at` gate changes nothing.
+
+This is the verification the mission asked for: **the identity correction cannot introduce
+future information through mutable reference data on the observed corpus**, and the gates remain
+in place to keep that true as the corpus evolves. It is a present-tense empirical result, not a
+proof about future mutations; the residual out-of-band alias re-pointing risk stays open until
+the immutability guard in `specs/identity_provenance_v2_20261125.md` lands.
+
+**Residual replay mismatch.** See `a1_identity_replay_mismatch_20261125.json` and the summary in
+the PR body. The remaining gap is structural: the exact production request player ids were never
+persisted, so a re-issue replay cannot be bit-identical; the audit separates which share is
+surface fallback, late-ingested history, identity resolution and irreducible remainder.
+
+### 10.8 Legacy "~14,000 at ~75%" claim — provenance verdict
+
+`docs/research/evidence/legacy_75pct_claim_audit_20261125.json` (read-only, 2026-11-25):
+
+- 134,383 stored matches; 129,045 safely `COMPLETED` results.
+- 117,713 pre-2026 match-version rows exist, and **0** were ingested before their match start.
+  Every pre-2026 version was ingested on **2026-08-31** (retrospective backfill).
+- The only stored quantity near 14,000 is `trained_history_count = 14,229` in the 2026-11-23
+  label-shuffle artifact over a 623-match holdout. That is a training-corpus row count, not a
+  prediction sample, and is the most plausible origin of the number.
+- The largest reproducible original-forecast cohort is 3,375 settled matches at **62.52%**
+  accuracy, 12.48 percentage points below 75%.
+- Required artifacts (immutable run manifest, exact fixture-id set, pre-match feature
+  timestamps, post-start outcome join, commercial-use rights) are all absent.
+
+**Verdict: `UNREPRODUCIBLE`. Formal recommendation: `RETIRE`.** The claim must not appear in
+commercial, marketing, investor or model-quality contexts. It may only be cited as an
+unreproducible legacy internal claim with this audit attached. Replace it with the reproducible
+original-forecast cohort and the forward activation gate in section 3.
+
 

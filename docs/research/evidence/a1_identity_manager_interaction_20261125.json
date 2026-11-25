@@ -1,0 +1,91 @@
+{
+  "version": "A1_IDENTITY_MANAGER_INTERACTION_V1",
+  "generated_at": "2026-11-25T09:41:25.933686+00:00",
+  "since": "2026-09-10T00:00:00+00:00",
+  "population": 3271,
+  "skipped": {
+    "not_safely_settled": 507
+  },
+  "a1_side_changes": 562,
+  "manager_decisions_changed": 861,
+  "reason_transitions": {
+    "AGENT3_ABSTENTION_SPREAD_EXCEEDED->NONE": 270,
+    "NONE->AGENT3_ABSTENTION_SPREAD_EXCEEDED": 210,
+    "DIRECTIONAL_DISAGREEMENT->NONE": 105,
+    "DIRECTIONAL_DISAGREEMENT->AGENT3_ABSTENTION_SPREAD_EXCEEDED": 98,
+    "AGENT3_ABSTENTION_SPREAD_EXCEEDED->DIRECTIONAL_DISAGREEMENT": 96,
+    "NONE->DIRECTIONAL_DISAGREEMENT": 81,
+    "THREE_AGENT_SPREAD_EXCEEDED->NONE": 1
+  },
+  "consensus": {
+    "original": 546,
+    "counterfactual": 631,
+    "both": 255,
+    "original_only": 291,
+    "counterfactual_only": 376,
+    "same_side_on_overlap": 255
+  },
+  "settled_accuracy": {
+    "original_manager_consensus": {
+      "n": 546,
+      "wins": 349,
+      "losses": 197,
+      "accuracy": 0.6391941391941391
+    },
+    "counterfactual_manager_consensus": {
+      "n": 631,
+      "wins": 417,
+      "losses": 214,
+      "accuracy": 0.6608557844690967
+    },
+    "original_a1": {
+      "n": 3271,
+      "wins": 2063,
+      "losses": 1208,
+      "accuracy": 0.630693977376949
+    },
+    "bridged_a1": {
+      "n": 3271,
+      "wins": 2147,
+      "losses": 1124,
+      "accuracy": 0.6563741974931213
+    }
+  },
+  "by_tour": {
+    "ATP_MAIN": {
+      "population": 579,
+      "manager_decisions_changed": 79,
+      "original_manager_consensus": {
+        "n": 58,
+        "wins": 41,
+        "losses": 17,
+        "accuracy": 0.7068965517241379
+      },
+      "counterfactual_manager_consensus": {
+        "n": 68,
+        "wins": 47,
+        "losses": 21,
+        "accuracy": 0.6911764705882353
+      }
+    },
+    "CHALLENGER": {
+      "population": 2692,
+      "manager_decisions_changed": 782,
+      "original_manager_consensus": {
+        "n": 488,
+        "wins": 308,
+        "losses": 180,
+        "accuracy": 0.6311475409836066
+      },
+      "counterfactual_manager_consensus": {
+        "n": 563,
+        "wins": 370,
+        "losses": 193,
+        "accuracy": 0.6571936056838366
+      }
+    }
+  },
+  "can_promote": false,
+  "production_changed": false,
+  "quarantine_note": "run-2548 52-target cohort remains quarantined; its counterfactual Manager classification lives in a1_target52_manager_counterfactual_20261125.json"
+}

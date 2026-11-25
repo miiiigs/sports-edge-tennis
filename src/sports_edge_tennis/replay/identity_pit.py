@@ -11,11 +11,23 @@ This module resolves model identity using only evidence provably available at
 1. the live player already carries a non-live-fixture ``player_source_ids`` row
    that was created at or before ``T`` (only ``created_at``, the earliest time our
    system could have known the mapping, is used);
-2. an append-only ``model_identity_bridge_events`` row with
-   ``activated_at <= T`` **and** evidence captured at or before ``T``, whose
-   historical target also has a PIT-available non-live source identity;
-3. a ``TENNIS_DATA`` alias whose linkage row and observation were both available
-   by ``T`` and which resolves to exactly one PIT-eligible historical player.
+2. an append-only ``model_identity_bridge_events`` row that was **inserted**,
+   activated and evidence-stamped at or before ``T``, whose historical target also
+   has a PIT-available non-live source identity;
+3. a ``TENNIS_DATA`` alias whose linkage row and first observation were both
+   available by ``T`` and which resolves to exactly one PIT-eligible historical
+   player.
+
+Mutable reference data is treated as a leakage channel, not an oracle:
+``players.canonical_name`` is used only when the row has not been **mutated** after
+``T`` (``updated_at <= T``, or ``updated_at = created_at`` because it was never
+updated at all).
+``player_aliases`` is gated on ``created_at``/``first_observed_at`` but **not**
+``updated_at``, because the pipeline only refreshes ``last_observed_at`` on
+conflict and the conflict key pins ``player_id`` and ``normalized_alias``. A rename
+after ``T`` therefore fails closed instead of rewriting history; out-of-band alias
+re-pointing remains a residual risk until the immutability trigger proposed under
+integration PR #392 lands.
 
 Anything else fails closed as ``LIVE_UNRESOLVED`` so the engine can mark
 ``IDENTITY_NOT_AVAILABLE_PIT``. No fuzzy matching and no current-only lookup is
@@ -29,14 +41,26 @@ from datetime import datetime
 
 import psycopg
 
+from sports_edge_tennis.data.model_identity import (
+    NAME_SOURCE_CANONICAL,
+    NAME_SOURCE_UNAVAILABLE,
+)
 from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
-from sports_edge_tennis.data.normalize import normalize_person_lookup, tennis_data_aliases
+from sports_edge_tennis.data.normalize import (
+    normalize_person_lookup,
+    tennis_data_aliases,
+)
 
-IDENTITY_PIT_POLICY_VERSION = "identity_pit_v1"
+IDENTITY_PIT_POLICY_VERSION = "identity_pit_v2"
 
 STATUS_HISTORICAL = "HISTORICAL"
 STATUS_BRIDGED = "BRIDGED"
 STATUS_LIVE_UNRESOLVED = "LIVE_UNRESOLVED"
+
+EVIDENCE_PLAYER_SOURCE_IDS = "player_source_ids"
+EVIDENCE_BRIDGE_EVENTS = "model_identity_bridge_events"
+EVIDENCE_TENNIS_DATA_ALIAS = "tennis_data_alias_pit"
+EVIDENCE_NONE = "none"
 
 
 @dataclass(frozen=True)
@@ -47,6 +71,12 @@ class IdentityResolution:
     available: bool
     evidence: str
     policy_version: str = IDENTITY_PIT_POLICY_VERSION
+    name_source: str = NAME_SOURCE_UNAVAILABLE
+    observed_at: datetime | None = None
+
+    @property
+    def bridged(self) -> bool:
+        return self.model_player_id != self.live_player_id
 
 
 def _has_historical_identity_pit(
@@ -84,10 +114,11 @@ def _active_bridge_pit(
         WHERE e.live_player_id = %s
           AND e.activated_at <= %s
           AND e.evidence_as_of <= %s
+          AND e.created_at <= %s
         ORDER BY e.activated_at DESC, e.model_identity_bridge_event_id DESC
         LIMIT 1
         """,
-        (live_player_id, as_of, as_of),
+        (live_player_id, as_of, as_of, as_of),
     ).fetchone()
     if row is None or str(row[0]) != "BRIDGE" or row[1] is None:
         return None
@@ -106,13 +137,19 @@ def _alias_candidate_pit(
     *,
     live_player_id: int,
     as_of: datetime,
-) -> int | None:
+) -> tuple[int | None, str]:
+    """Return ``(candidate_player_id, name_source)`` using PIT-visible names only."""
     row = conn.execute(
-        "SELECT canonical_name FROM players WHERE player_id = %s",
-        (live_player_id,),
+        """
+        SELECT canonical_name
+        FROM players
+        WHERE player_id = %s
+          AND (updated_at <= %s OR updated_at = created_at)
+        """,
+        (live_player_id, as_of),
     ).fetchone()
     if row is None:
-        return None
+        return None, NAME_SOURCE_UNAVAILABLE
     normalized_aliases = sorted(
         {
             normalize_person_lookup(alias)
@@ -121,7 +158,7 @@ def _alias_candidate_pit(
         }
     )
     if not normalized_aliases:
-        return None
+        return None, NAME_SOURCE_CANONICAL
 
     candidates = conn.execute(
         """
@@ -130,10 +167,8 @@ def _alias_candidate_pit(
         WHERE pa.source_system = 'TENNIS_DATA'
           AND pa.normalized_alias = ANY(%s)
           AND pa.player_id <> %s
-          AND (
-                (pa.first_observed_at IS NOT NULL AND pa.first_observed_at <= %s)
-             OR (pa.first_observed_at IS NULL AND pa.created_at <= %s)
-          )
+          AND (pa.first_observed_at IS NULL OR pa.first_observed_at <= %s)
+          AND pa.created_at <= %s
           AND EXISTS (
               SELECT 1
               FROM player_source_ids psi
@@ -164,11 +199,11 @@ def _alias_candidate_pit(
             as_of,
             as_of,
             as_of,
-        ),  # first_observed_at OR created_at, then candidate source-id cutoff, then history cutoffs
+        ),
     ).fetchall()
     if len(candidates) != 1:
-        return None
-    return int(candidates[0][0])
+        return None, NAME_SOURCE_CANONICAL
+    return int(candidates[0][0]), NAME_SOURCE_CANONICAL
 
 
 def resolve_model_player_id_pit(
@@ -183,7 +218,8 @@ def resolve_model_player_id_pit(
             model_player_id=live_player_id,
             status=STATUS_HISTORICAL,
             available=True,
-            evidence="player_source_ids",
+            evidence=EVIDENCE_PLAYER_SOURCE_IDS,
+            observed_at=as_of,
         )
 
     bridged = _active_bridge_pit(conn, live_player_id=live_player_id, as_of=as_of)
@@ -193,17 +229,22 @@ def resolve_model_player_id_pit(
             model_player_id=bridged,
             status=STATUS_BRIDGED,
             available=True,
-            evidence="model_identity_bridge_events",
+            evidence=EVIDENCE_BRIDGE_EVENTS,
+            observed_at=as_of,
         )
 
-    alias = _alias_candidate_pit(conn, live_player_id=live_player_id, as_of=as_of)
+    alias, name_source = _alias_candidate_pit(
+        conn, live_player_id=live_player_id, as_of=as_of
+    )
     if alias is not None:
         return IdentityResolution(
             live_player_id=live_player_id,
             model_player_id=alias,
             status=STATUS_BRIDGED,
             available=True,
-            evidence="tennis_data_alias_pit",
+            evidence=EVIDENCE_TENNIS_DATA_ALIAS,
+            name_source=name_source,
+            observed_at=as_of,
         )
 
     return IdentityResolution(
@@ -211,14 +252,20 @@ def resolve_model_player_id_pit(
         model_player_id=live_player_id,
         status=STATUS_LIVE_UNRESOLVED,
         available=False,
-        evidence="none",
+        evidence=EVIDENCE_NONE,
+        name_source=name_source,
+        observed_at=as_of,
     )
 
 
 __all__ = [
+    "EVIDENCE_BRIDGE_EVENTS",
+    "EVIDENCE_NONE",
+    "EVIDENCE_PLAYER_SOURCE_IDS",
+    "EVIDENCE_TENNIS_DATA_ALIAS",
     "IDENTITY_PIT_POLICY_VERSION",
-    "STATUS_HISTORICAL",
     "STATUS_BRIDGED",
+    "STATUS_HISTORICAL",
     "STATUS_LIVE_UNRESOLVED",
     "IdentityResolution",
     "resolve_model_player_id_pit",
