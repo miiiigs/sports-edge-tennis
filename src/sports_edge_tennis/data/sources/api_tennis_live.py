@@ -276,8 +276,31 @@ def _parse_fixture(
     source_observed_at = _source_observed_at(fixture, received_at)
     surface = _surface(_optional_text_any(fixture, ("surface", "event_surface")))
     round_code = _optional_text_any(fixture, ("round", "event_round", "round_code"))
-    best_of_sets = _best_of_sets(fixture.get("best_of_sets") or fixture.get("event_best_of_sets"))
-    qualifying_flag = _qualifying_flag(fixture)
+    if match_start_at.year == 2027 and _normalize_token(tournament_name) == "australian open":
+        # A reviewed edition-specific contract, not a generic guess from a name
+        # or a missing provider field. Unrecognised rounds and contradictions
+        # must remain visible as rejected rows, never silently become BO3.
+        if tour_scope != "ATP_MAIN" or competition_tier not in {"ATP_TOUR", "GRAND_SLAM"}:
+            raise ApiTennisSourceAError("ao_2027_competition_conflict")
+        normalized_round = (round_code or "").strip().upper()
+        if normalized_round in {"Q1", "Q2", "Q3"}:
+            qualifying_flag = True
+            best_of_sets = 3
+        elif normalized_round in {"R128", "R64", "R32", "R16", "QF", "SF", "F"}:
+            qualifying_flag = False
+            best_of_sets = 5
+        else:
+            raise ApiTennisSourceAError("ao_2027_unverified_round")
+        if fixture.get("qualifying_flag") not in (None, "") and _qualifying_flag(fixture) != qualifying_flag:
+            raise ApiTennisSourceAError("ao_2027_qualifying_conflict")
+        for field in ("best_of_sets", "event_best_of_sets"):
+            supplied = fixture.get(field)
+            if supplied not in (None, "") and _best_of_sets(supplied) != best_of_sets:
+                raise ApiTennisSourceAError("ao_2027_match_format_conflict")
+        competition_tier = "GRAND_SLAM"
+    else:
+        best_of_sets = _best_of_sets(fixture.get("best_of_sets") or fixture.get("event_best_of_sets"))
+        qualifying_flag = _qualifying_flag(fixture)
     raw_fields = dict(fixture)
     hash_fields = {
         "event_key": source_match_id,
