@@ -263,3 +263,120 @@ reproduction of original first-issued production probabilities.
 - Tests: `tests/test_a1_identity_bridge_forward_shadow.py`.
 - Optional loader guard: `src/sports_edge_tennis/data/agent1_history.py` (`ingested_by`).
 - Current PostgreSQL foundation CI is the required gate before this branch is considered reviewable.
+
+## 9. 2026-11-25 empirical extension
+
+### 9.1 Remaining PIT weaknesses
+
+Implemented:
+
+- Alias and source mappings are gated by the ingest run's visibility
+  (`COALESCE(finished_at, started_at, created_at) <= as_of`) and by
+  `player_aliases.first_observed_at <= as_of`.
+- `IdentityResolution.visible_from` records when the mapping first became legitimately visible.
+- The forward capture records `visible_from` for both player slots.
+
+Measured:
+
+- 16,104 A1 history rows move under the live→history bridge, involving 1,260 live players.
+- Only **48 of 16,104 moved rows (0.30%)** have a mapping whose `visible_from` is later than the
+  history observation time. Reverting those 48 late mappings changes Brier by **−0.000034 to
+  +0.000081** and accuracy by **0.0 to +0.10pp**; the bridge result is not driven by late mappings.
+- 1,259 moved players resolve by `TENNIS_DATA` alias; 1 by persisted bridge event.
+
+Still blocked / not claimed:
+
+- `player_aliases.updated_at` cannot distinguish a value change from a last-observed refresh.
+  Using it would fail closed on aliases observed after the cutoff. A versioned alias history table
+  is required for exact in-place-change PIT.
+- `players.canonical_name` is current-state. There is no player-name history table.
+- The exact production request player IDs were never persisted. The experiment resolves target IDs
+  at each original `as_of`; this reproduces 92.9% of stored A1 probabilities exactly, not 100%.
+
+### 9.2 Unknown-surface targets
+
+- 579 of 3,776 targets have no surface on the selected PIT match version.
+- Production-style surface resolution resolves **209/579** (93 current edition, 19 historical
+  tournament, 97 normalized historical tournament).
+- Strict-PIT resolution (live version, same-match prior version, PIT edition, or PIT tournament-id
+  history) supports only **66/579**.
+- 60 targets have an edition surface that is visible only in the current table state, not at the
+  original cutoff. They are not used as PIT corrections.
+- 513/579 remain unresolved under strict PIT.
+
+This explains a substantial part of the replay mismatch: the old replay used the raw match-version
+surface, while production used its broader resolver. It also means most unknown-surface matches
+cannot be corrected without additional point-in-time surface history.
+
+### 9.3 Four-way comparison
+
+Population: 3,776 latest A1 targets since 2026-09-10; 3,223 safely completed. Target identities are
+resolved at each original `as_of`. History bridging is the current bridge state; the 48 late mappings
+are reverted in variant F. A and C use unbridged history; B, D, E and F use bridged history.
+A and B use production-style surface; C, D and E use strict-PIT surface.
+
+| Variant | Fidelity exact | Accuracy | Brier | Log loss | ATP acc | CH acc |
+|---|---:|---:|---:|---:|---:|---:|
+| A original identities + production surface | 92.89% | 62.77% | 0.23035 | 0.65754 | 67.59% | 61.72% |
+| B bridged identities + production surface | 2.26% | **65.65%** | **0.21373** | **0.61531** | 69.84% | 64.74% |
+| C original identities + strict surface | 92.43% | 62.86% | 0.23022 | 0.65732 | 67.59% | 61.83% |
+| D both corrections | 2.26% | 65.56% | 0.21346 | 0.61474 | 69.84% | 64.63% |
+| E D + dedupe | 2.26% | 65.56% | 0.21341 | 0.61454 | 69.67% | 64.66% |
+| F B with 48 late mappings reverted | 2.26% | 65.68% | 0.21371 | 0.61527 | 69.84% | 64.75% |
+
+Paired day-cluster bootstrap (1,000 reps):
+
+- A→B Brier improvement **0.01262–0.02063**; log-loss **0.03284–0.05219**; accuracy
+  **+1.41 to +4.55pp**. All intervals exclude zero.
+- A→C Brier **−0.000073 to +0.000340**; accuracy **−0.09 to +0.27pp**. Not significant.
+- B→D Brier **−0.000208 to +0.000787**; accuracy **−0.36 to +0.13pp**. Not significant.
+- D→E Brier **−0.000268 to +0.000324**; accuracy **−0.25 to +0.26pp**. Not significant.
+- B→F Brier **−0.000034 to +0.000081**; accuracy **0.0 to +0.10pp**. Not significant.
+
+Conclusion: the **identity bridge** drives the gain. Strict-PIT surface correction and
+cross-provider dedupe are operationally real but too small to establish from this sample. The
+retrospective bridge uplift is not a surface artefact.
+
+Equal-volume top-confidence selections (A1 only):
+
+| N | A | B | C | D | E |
+|---:|---:|---:|---:|---:|---:|
+| 400 | 77.00% | 87.00% | 77.00% | 86.75% | 87.25% |
+| 600 | 74.67% | 84.67% | 74.67% | 84.17% | 84.33% |
+| 800 | 74.50% | 81.87% | 74.50% | 82.00% | 82.25% |
+| 1,000 | 73.60% | 79.80% | 73.50% | 80.00% | 80.00% |
+
+These are different matches selected at the same volume, not paired head-to-head. The bridged
+ranking is much more concentrated, so the apparent lift at high confidence is not proof of a
+75% deployable system.
+
+### 9.4 52-target quarantine classification
+
+The 52 run-2548 targets are all Challenger main draw and **none is earliest-issued**. As of
+2026-11-25 only 14 have safely completed.
+
+- Original A1: 7/14 (50.0%). Bridged A1: 9/14 (64.3%).
+- Original Manager: 9 consensus, 43 no-bet; 4/7 settled consensus picks correct.
+- Counterfactual Manager (A1 replaced by bridged A1): 11 consensus, 41 no-bet; 3/7 settled
+  consensus picks correct.
+- 17/52 Manager decisions changed; 14/52 A1 sides changed.
+- Reasons shift mainly between directional disagreement and A3-abstention spread.
+
+This is a quarantined descriptive population, not forward evidence. It is explicitly excluded from
+the activation sample.
+
+### 9.5 Historical walk-forward feasibility (January / hard / inactivity)
+
+- Sackmann-associated results exist for January in every season, e.g. 1,002 matches in Jan-2025
+  (868 hard), 1,154 in Jan-2024 (968 hard), 1,118 in Jan-2023 (892 hard).
+- Those rows were ingested retrospectively on 2026-08-31 and are licensing-unverified. They cannot
+  be used for commercial model training or presented as original January forecasts.
+- API-Tennis has 1,322 January-2026 fixtures and 1,247 completed results, but every result was
+  observed on 2026-09-13, not at the January match time. January-2026 is therefore not a PIT
+  walk-forward season.
+- Licensed API-Tennis PIT results currently cover only 2026-09-13 onward (~72 days). That supports
+  inactivity studies inside the window but not a previous January season.
+- A lawful January walk-forward needs either (a) a licensed historical results/stat feed with
+  original observation timestamps, or (b) a commercial licence for the Sackmann corpus plus a
+  documented point-in-time acquisition trail. Neither is present.
+

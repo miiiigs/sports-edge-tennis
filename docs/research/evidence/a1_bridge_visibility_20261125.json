@@ -1,0 +1,364 @@
+{
+  "summary": {
+    "moved_rows": 16104,
+    "moved_players": 1260,
+    "late_mapping_rows": 48,
+    "late_mapping_share": 0.0029806259314456036,
+    "methods": {
+      "ALIAS": 1259,
+      "PERSISTED_BRIDGE": 1
+    },
+    "samples_late": [
+      {
+        "match_id": 118035,
+        "history_as_of": "2026-09-13T01:38:49.119194+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 118193,
+        "history_as_of": "2026-09-13T01:38:49.119194+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 118789,
+        "history_as_of": "2026-09-13T01:39:58.679503+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 119618,
+        "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 119677,
+        "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 119775,
+        "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 119876,
+        "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 120060,
+        "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 120134,
+        "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      },
+      {
+        "match_id": 120159,
+        "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+        "visible_from": "2026-09-18T21:47:58.019894+00:00",
+        "late_mapping": true
+      }
+    ]
+  },
+  "late_rows": [
+    {
+      "match_id": 118035,
+      "history_as_of": "2026-09-13T01:38:49.119194+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 118193,
+      "history_as_of": "2026-09-13T01:38:49.119194+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 118789,
+      "history_as_of": "2026-09-13T01:39:58.679503+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 119618,
+      "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 119677,
+      "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 119775,
+      "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 119876,
+      "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120060,
+      "history_as_of": "2026-09-13T01:41:33.067765+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120134,
+      "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120159,
+      "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120194,
+      "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120217,
+      "history_as_of": "2026-09-13T01:42:25.393573+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120600,
+      "history_as_of": "2026-09-13T01:42:59.265360+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120743,
+      "history_as_of": "2026-09-13T01:42:59.265360+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120800,
+      "history_as_of": "2026-09-13T01:43:34.451210+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 120822,
+      "history_as_of": "2026-09-13T01:43:34.451210+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 121151,
+      "history_as_of": "2026-09-13T01:44:09.836617+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 121251,
+      "history_as_of": "2026-09-13T01:44:09.836617+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 121324,
+      "history_as_of": "2026-09-13T01:44:09.836617+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 121769,
+      "history_as_of": "2026-09-13T01:47:25.303277+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 121873,
+      "history_as_of": "2026-09-13T01:47:25.303277+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 122762,
+      "history_as_of": "2026-09-13T01:49:41.565473+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 122812,
+      "history_as_of": "2026-09-13T01:49:50.941726+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 122833,
+      "history_as_of": "2026-09-13T01:49:50.941726+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 123538,
+      "history_as_of": "2026-09-13T01:50:16.687517+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 123628,
+      "history_as_of": "2026-09-13T01:50:16.687517+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 124185,
+      "history_as_of": "2026-09-13T01:50:41.408130+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 124692,
+      "history_as_of": "2026-09-13T01:50:55.319360+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 124818,
+      "history_as_of": "2026-09-13T01:50:55.319360+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125069,
+      "history_as_of": "2026-09-13T01:51:09.689423+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125203,
+      "history_as_of": "2026-09-13T01:51:21.960532+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125240,
+      "history_as_of": "2026-09-13T01:51:21.960532+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125352,
+      "history_as_of": "2026-09-13T01:51:21.960532+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125469,
+      "history_as_of": "2026-09-13T01:51:21.960532+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 125841,
+      "history_as_of": "2026-09-13T01:51:53.832840+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126010,
+      "history_as_of": "2026-09-13T01:51:53.832840+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126180,
+      "history_as_of": "2026-09-13T01:51:53.832840+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126266,
+      "history_as_of": "2026-09-13T01:52:10.277554+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126711,
+      "history_as_of": "2026-09-13T01:52:26.117362+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126899,
+      "history_as_of": "2026-09-13T01:52:26.117362+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 126974,
+      "history_as_of": "2026-09-13T01:52:51.393687+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 127010,
+      "history_as_of": "2026-09-13T01:52:51.393687+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 127206,
+      "history_as_of": "2026-09-13T01:52:51.393687+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 129058,
+      "history_as_of": "2026-09-13T01:54:42.980620+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 129275,
+      "history_as_of": "2026-09-13T01:54:42.980620+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 129340,
+      "history_as_of": "2026-09-13T01:55:07.368850+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 129886,
+      "history_as_of": "2026-09-13T01:55:27.514735+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    },
+    {
+      "match_id": 130004,
+      "history_as_of": "2026-09-13T01:56:07.288807+00:00",
+      "visible_from": "2026-09-18T21:47:58.019894+00:00",
+      "late_mapping": true
+    }
+  ]
+}

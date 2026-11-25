@@ -84,6 +84,8 @@ class ShadowTarget:
     player_2_matched_alias: str | None = None
     player_1_bridge_event_id: int | None = None
     player_2_bridge_event_id: int | None = None
+    player_1_visible_from: datetime | None = None
+    player_2_visible_from: datetime | None = None
 
     def __post_init__(self) -> None:
         if self.prediction_as_of.tzinfo is None or self.match_start_at.tzinfo is None:
@@ -290,6 +292,8 @@ def load_targets(
                 player_2_matched_alias=res_2.matched_alias,
                 player_1_bridge_event_id=res_1.bridge_event_id,
                 player_2_bridge_event_id=res_2.bridge_event_id,
+                player_1_visible_from=res_1.visible_from,
+                player_2_visible_from=res_2.visible_from,
             )
         )
     return targets
@@ -351,12 +355,22 @@ def build_record(
             "candidate_count": target.player_1_candidate_count,
             "matched_alias": target.player_1_matched_alias,
             "bridge_event_id": target.player_1_bridge_event_id,
+            "visible_from": (
+                target.player_1_visible_from.isoformat()
+                if target.player_1_visible_from is not None
+                else None
+            ),
         },
         "player_2_resolution": {
             "method": target.player_2_resolution_method,
             "candidate_count": target.player_2_candidate_count,
             "matched_alias": target.player_2_matched_alias,
             "bridge_event_id": target.player_2_bridge_event_id,
+            "visible_from": (
+                target.player_2_visible_from.isoformat()
+                if target.player_2_visible_from is not None
+                else None
+            ),
         },
         "player_1_bridged": target.model_player_1_id != target.live_player_1_id,
         "player_2_bridged": target.model_player_2_id != target.live_player_2_id,

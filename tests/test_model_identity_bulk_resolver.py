@@ -387,6 +387,7 @@ def test_future_ingested_alias_is_invisible_at_original_cutoff(db: psycopg.Conne
     )[live]
     assert later.resolved_player_id == target
     assert later.method == "ALIAS"
+    assert later.visible_from == cutoff.replace(day=17)
 
 
 def test_ambiguous_alias_fails_closed_with_provenance(db: psycopg.Connection):

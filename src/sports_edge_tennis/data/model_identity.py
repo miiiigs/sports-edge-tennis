@@ -62,6 +62,7 @@ class IdentityResolution:
     candidate_count: int = 0
     matched_alias: str | None = None
     bridge_event_id: int | None = None
+    visible_from: datetime | None = None
 
 
 # Retained name for the guarded Sportradar identity-bridge apply tool. The predicate
@@ -145,6 +146,7 @@ def resolve_model_player_ids_with_provenance(
             e.action,
             e.historical_player_id,
             e.model_identity_bridge_event_id,
+            e.activated_at,
             EXISTS (
                 SELECT 1
                 FROM player_source_ids psi
@@ -169,6 +171,7 @@ def resolve_model_player_ids_with_provenance(
         action,
         historical_player_id,
         bridge_event_id,
+        activated_at,
         target_has_historical,
     ) in bridge_rows:
         live_player_id = int(live_player_id)
@@ -184,6 +187,7 @@ def resolve_model_player_ids_with_provenance(
                 resolved_player_id=int(historical_player_id),
                 method="PERSISTED_BRIDGE",
                 bridge_event_id=int(bridge_event_id),
+                visible_from=activated_at,
             )
 
     unresolved = [
@@ -233,7 +237,11 @@ def resolve_model_player_ids_with_provenance(
             SELECT live_player_id, normalized_alias
             FROM unnest(%s::bigint[], %s::text[]) AS t(live_player_id, normalized_alias)
         )
-        SELECT DISTINCT l.live_player_id, pa.player_id, l.normalized_alias
+        SELECT DISTINCT l.live_player_id, pa.player_id, l.normalized_alias,
+               GREATEST(
+                   COALESCE(pai.finished_at, pai.started_at, pa.created_at),
+                   COALESCE(pa.first_observed_at, pa.created_at)
+               ) AS visible_from
         FROM lookup l
         JOIN player_aliases pa
           ON pa.normalized_alias = l.normalized_alias
@@ -276,10 +284,12 @@ def resolve_model_player_ids_with_provenance(
         ),
     ).fetchall()
     candidates_by_live: dict[int, dict[int, set[str]]] = {}
-    for live_player_id, candidate_player_id, normalized_alias in candidate_rows:
+    visible_by_candidate: dict[tuple[int, int], object] = {}
+    for live_player_id, candidate_player_id, normalized_alias, visible_from in candidate_rows:
         candidates_by_live.setdefault(int(live_player_id), {}).setdefault(
             int(candidate_player_id), set()
         ).add(str(normalized_alias))
+        visible_by_candidate[(int(live_player_id), int(candidate_player_id))] = visible_from
     for player_id in unresolved:
         candidates = candidates_by_live.get(player_id, {})
         if len(candidates) == 1:
@@ -290,6 +300,7 @@ def resolve_model_player_ids_with_provenance(
                 method="ALIAS",
                 candidate_count=1,
                 matched_alias=min(aliases),
+                visible_from=visible_by_candidate.get((player_id, candidate_id)),
             )
         elif len(candidates) > 1:
             resolutions[player_id] = IdentityResolution(
