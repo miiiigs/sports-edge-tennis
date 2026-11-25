@@ -46,6 +46,20 @@ class _CacheConn:
         self.deleted: list[int] = []
         self.inserts = 0
         self.history: list[tuple[str, int]] = []
+        self.transactions = 0
+
+    def transaction(self):
+        conn = self
+        self.transactions += 1
+
+        class _Tx:
+            def __enter__(self):
+                return conn
+
+            def __exit__(self, *exc):
+                return False
+
+        return _Tx()
 
     def execute(self, sql, params=None):
         normalized = " ".join(str(sql).split()).lower()
@@ -210,6 +224,37 @@ def test_history_absent_is_fail_open() -> None:
     conn = _CacheConn(history_present=False)
     upsert_cached_identity(conn, _cached())
     assert conn.inserts == 1
+    assert conn.history == []
+
+
+def test_writes_are_wrapped_in_transactions() -> None:
+    conn = _CacheConn()
+    upsert_cached_identity(conn, _cached())
+    assert conn.transactions == 1
+
+
+def test_read_only_partition_keeps_stale_identity() -> None:
+    warm_row = (
+        1,
+        "sr:sport_event:111",
+        "id120",
+        "111",
+        44,
+        "DIRECT",
+        "EXACT",
+        NOW + timedelta(hours=2),
+        NOW,
+        NOW,
+    )
+    conn = _CacheConn(row=warm_row)
+    warm, cold = partition_cached_identities(
+        conn,
+        candidates=[(1, "sr:sport_event:999", NOW + timedelta(hours=2))],
+        now=NOW,
+        invalidate_stale=False,
+    )
+    assert warm == {} and cold == [1]
+    assert conn.deleted == []
     assert conn.history == []
 
 

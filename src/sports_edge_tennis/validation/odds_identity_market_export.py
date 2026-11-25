@@ -14,6 +14,11 @@ from datetime import timedelta
 
 import psycopg
 
+from sports_edge_tennis.live.oddspapi_identity_cache import identity_invalidation_reason
+from sports_edge_tennis.live.oddspapi_identity_history import (
+    IdentityHistoryUnavailable,
+    identity_at_cutoff,
+)
 from sports_edge_tennis.validation.odds_identity_market_funnel import audit, stamp, keys, BOOKS
 from sports_edge_tennis.validation.preissue_odds_full_slate_dryrun import load_candidates
 from sports_edge_tennis.validation.pit_bookmaker_model_picks_benchmark import source_sql
@@ -151,6 +156,23 @@ def extract_one(conn, mid, cutoff, report_at):
     counts["cache_current_row_warm_at_cutoff"]+=int(warm)
     if cache and cache[1] and cache[1]>cutoff:
         counts["cache_updated_after_cutoff_history_unavailable"]+=1
+    # Immutable history replaces the mutable cache row where it exists. Same
+    # rule set, same tolerances; only the storage is append-only.
+    try:
+        history_state=identity_at_cutoff(conn,match_id=mid,as_of=cutoff)
+    except IdentityHistoryUnavailable:
+        counts["identity_history_unavailable"]+=1
+    else:
+        history_warm=bool(
+            history_state.identity is not None
+            and identity_invalidation_reason(
+                history_state.identity,
+                sportradar_event_id=src.get("SPORTRADAR"),
+                scheduled_start=start,
+                now=cutoff,
+            ) is None
+        )
+        counts["identity_history_warm_at_cutoff"]+=int(history_warm)
     normalized=dict(keys(src))
     raw=conn.execute(RAW_SQL,(cutoff,cutoff,cutoff-timedelta(hours=24),
         [normalized["ODDSPAPI"]] if "ODDSPAPI" in normalized else [],
@@ -280,7 +302,11 @@ def run(conn, *, as_of, mode, horizon_days=3, match_ids=None):
             for book,states in result["book_states"].items():
                 books[book].update(states)
             qualified+=result["qualified_any_book"]
-            if result["identity_counts"].get("VERIFIED_IDENTITY") and not counts["cache_current_row_warm_at_cutoff"]:
+            history_available = counts["identity_history_unavailable"] == 0
+            warm_at_cutoff = (counts["identity_history_warm_at_cutoff"]
+                              if history_available
+                              else counts["cache_current_row_warm_at_cutoff"])
+            if result["identity_counts"].get("VERIFIED_IDENTITY") and not warm_at_cutoff:
                 candidates.append(mid)
         summary={"mode":mode,"report_as_of":iso(as_of),"cohort_count":len(cohort),
                  "input_unique_candidates":input_candidates,
@@ -290,6 +316,9 @@ def run(conn, *, as_of, mode, horizon_days=3, match_ids=None):
                  "qualified_any_book":qualified,"diagnostic_counters":dict(counters),
                  "nonwarm_verified_candidates":len(candidates),
                  "nonwarm_verified_candidate_sha256":digest(candidates),
+                 "identity_warm_method":("append_only_history_v1"
+                     if counters["identity_history_unavailable"]==0
+                     else "mutable_cache_current_row_fallback"),
                  "provider_calls":0,"database_writes":False,
                  "historical_cache_reconstruction":False,"research_only":True}
         return summary,exports

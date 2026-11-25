@@ -16,9 +16,12 @@ CREATE TABLE oddspapi_event_identity_history (
     sportradar_event_id TEXT,
     oddspapi_event_id TEXT NOT NULL CHECK (btrim(oddspapi_event_id) <> ''),
     betradar_id TEXT,
-    oddspapi_tournament_id INTEGER NOT NULL,
-    player_orientation TEXT NOT NULL,
-    resolution_status TEXT NOT NULL,
+    oddspapi_tournament_id INTEGER NOT NULL
+        CHECK (oddspapi_tournament_id > 0),
+    player_orientation TEXT NOT NULL
+        CHECK (player_orientation IN ('DIRECT', 'REVERSED', 'UNKNOWN')),
+    resolution_status TEXT NOT NULL
+        CHECK (resolution_status IN ('EXACT', 'CONFLICT')),
     scheduled_start TIMESTAMPTZ,
     resolved_at TIMESTAMPTZ NOT NULL,
     last_verified_at TIMESTAMPTZ NOT NULL,
