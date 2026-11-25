@@ -75,6 +75,61 @@ def test_missing_evidence_is_distinct_from_late_evidence():
     ).status == "IDENTITY_MISSING+PRICE_PRE_CUTOFF"
 
 
+def test_run_audit_reports_complete_pre_cutoff_capture(db):
+    """Isolated rehearsal of the safe order: identity -> price -> lock."""
+    match_id = insert_match(db)
+    run_id = insert_run(db, as_of=utc(minute=10))
+    insert_target(db, run_id=run_id, match_id=match_id)
+    configs = seed_agent_configs(db)
+    # Record the archived identity row with an explicit pre-cutoff timestamp.
+    # The live writer stamps recorded_at at transaction time; this rehearsal
+    # pins the archived clock so the classification is testable.
+    db.execute(
+        """
+        INSERT INTO oddspapi_event_identity_history (
+            canonical_match_id, sportradar_event_id, oddspapi_event_id,
+            betradar_id, oddspapi_tournament_id, player_orientation,
+            resolution_status, scheduled_start, resolved_at, last_verified_at,
+            event_type, recorded_at
+        )
+        VALUES (%s, NULL, 'op-early', NULL, 47624, 'DIRECT', 'EXACT',
+                %s, %s, %s, 'UPSERTED', %s)
+        """,
+        (match_id, utc(hour=12), utc(minute=1), utc(minute=1), utc(minute=5)),
+    )
+    db.execute(
+        """
+        INSERT INTO odds_snapshots (
+            match_id, source_system, bookmaker_code, market_type,
+            selection_type, decimal_price, source_snapshot_id,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, 'ODDSPAPI', 'pinnacle+30', 'MATCH_WINNER', 'PLAYER_1',
+                1.85, 'snap-early', %s, %s, %s)
+        """,
+        (match_id, utc(), utc(), utc()),
+    )
+    finalize_matrix(
+        db,
+        run_id=run_id,
+        match_id=match_id,
+        configs=configs,
+        results=[
+            make_result(code, utc(minute=10), status="PREDICTED", side=1,
+                        probability="0.6")
+            for code in (A1, A2, A3)
+        ],
+        finalized_at=utc(minute=15),
+    )
+
+    report = audit_run_capture(db, prediction_run_id=run_id)
+    assert report["fixtures"] == 1
+    assert report["safe_fixtures"] == 1
+    assert report["status_counts"] == {STATUS_COMPLETE: 1}
+    assert report["database_writes"] is False
+    assert report["provider_calls"] == 0
+
+
 def test_run_audit_reports_late_same_cycle_capture(db):
     match_id = insert_match(db)
     run_id = insert_run(db, as_of=utc())
