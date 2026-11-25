@@ -236,6 +236,14 @@ Rollback:
   authoritative full-suite result above.
 
 ## 6. Remaining blockers
+
+**Update (2026-11-26):** the production ledger was subsequently verified through
+an authorised read-only SSH-tunnel session. Highest contiguous migration is
+`0022_defaulted_outcome`; 0023/0024 are absent. See
+`OFFSEASON_EVIDENCE_FOUNDATION_PRODUCTION_READINESS_20261126.md` for the probe
+result, production volumes, backup/restore evidence and the controlled release
+checklist. The blockers below remain unless that document says otherwise.
+
 1. Production ledger unverified: private-network-only database, exited
    service. Owner must run the probe or grant read-only access.
 2. Independent OddsPapi tournament mappings and edition end dates still do not
