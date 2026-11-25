@@ -531,8 +531,78 @@ def execute(
             ) if original_rows else None,
         }
 
+    def _blend_comparison(rows: list[dict]) -> dict:
+        """One bounded equal-weight A1/A2 vs A1/A2/A3 comparison.
+
+        Main draw only, identical intersection, identical coverage and no fitted
+        weights. A3 contributes one third of the arithmetic mean. This is a
+        comparison, not a new Agent 3 architecture.
+        """
+        main_draw = [
+            r for r in rows
+            if not r["qualifying"]
+            and r["a1_p"] is not None
+            and r["a2_p"] is not None
+            and r["p1"] is not None
+        ]
+        a12 = [((r["a1_p"] + r["a2_p"]) / 2.0, r["y"]) for r in main_draw]
+        a123 = [((r["a1_p"] + r["a2_p"] + r["p1"]) / 3.0, r["y"]) for r in main_draw]
+        baseline = _metrics(a12)
+        with_a3 = _metrics(a123)
+        delta = (
+            round(with_a3["brier"] - baseline["brier"], 8)
+            if baseline.get("n") and with_a3.get("n") else None
+        )
+        by_day: dict[str, list[dict]] = defaultdict(list)
+        for row in main_draw:
+            by_day[row["day_utc"]].append(row)
+        days = sorted(by_day)
+        bootstrap = {"status": "INSUFFICIENT_DAYS", "days": len(days)}
+        if len(days) >= 2:
+            rng = random.Random(20261125)
+            deltas = []
+            for _ in range(1000):
+                picked = [by_day[rng.choice(days)] for _ in days]
+                flat = [r for group in picked for r in group]
+                b12 = _metrics([
+                    ((r["a1_p"] + r["a2_p"]) / 2.0, r["y"]) for r in flat
+                ])
+                b123 = _metrics([
+                    ((r["a1_p"] + r["a2_p"] + r["p1"]) / 3.0, r["y"]) for r in flat
+                ])
+                if b12.get("n") and b123.get("n"):
+                    deltas.append(b123["brier"] - b12["brier"])
+            deltas.sort()
+            if deltas:
+                bootstrap = {
+                    "status": "OK",
+                    "days": len(days),
+                    "point": delta,
+                    "p025": round(deltas[int(0.025 * (len(deltas) - 1))], 8),
+                    "p975": round(deltas[int(0.975 * (len(deltas) - 1))], 8),
+                }
+        return {
+            "scope": "MAIN_DRAW_EQUAL_WEIGHT_INTERSECTION",
+            "main_draw_settled_targets": sum(
+                1 for r in rows if not r["qualifying"]
+            ),
+            "a1_a2": baseline,
+            "a1_a2_a3": with_a3,
+            "a1_a2_a3_minus_a1_a2_brier": delta,
+            "a1_a2_a3_minus_a1_a2_log_loss": (
+                round(with_a3["log_loss"] - baseline["log_loss"], 8)
+                if baseline.get("n") and with_a3.get("n") else None
+            ),
+            "paired_day_block_bootstrap_brier_delta": bootstrap,
+            "weights_fitted": False,
+            "a3_weight": 1 / 3,
+        }
+
     report = {
         "version": VERSION,
+        "main_draw_blend_comparison": _blend_comparison(
+            profile_rows["original_edge_threshold_diagnostic"]
+        ),
         "window_start_utc": start.isoformat(),
         "window_end_utc": end.isoformat(),
         "cohort_rows": len(cohort),
