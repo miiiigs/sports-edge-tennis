@@ -153,7 +153,10 @@ reported instead.
 - Only A1 changes. A2/A3 stored inputs, Manager rule, cutoffs, thresholds,
   calibration and settlement are identical.
 - Identity resolution is invariant across the sampled cutoffs but remains an
-  alias-uniqueness bridge, not a verified provider census.
+  alias-uniqueness bridge, not a verified provider census. Bridged history is
+  resolved at the historical as-of, target IDs at the latest original cutoff;
+  production has one activated bridge event, so the residual risk is a bridge
+  activated in the final ~22 hours.
 - Marginal membership changes with the arm because the definition depends on
   each arm's broad/narrow selection.
 - The registered prospective evaluation remains the only independent
