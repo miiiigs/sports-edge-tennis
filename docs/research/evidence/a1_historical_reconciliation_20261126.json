@@ -1,6 +1,6 @@
 {
   "version": "A1_HISTORICAL_POPULATION_RECONCILIATION_V1",
-  "generated_at": "2026-11-26T06:08:34.847939+00:00",
+  "generated_at": "2026-11-26T06:12:27.886243+00:00",
   "classification": "HISTORICAL_DEVELOPMENT_REUSE_NOT_UNTOUCHED_VALIDATION",
   "can_promote": false,
   "production_changed": false,
@@ -14366,7 +14366,16 @@
       "AMBIGUOUS": 98,
       "PERSISTED_BRIDGE": 1
     },
-    "itf_transition": "UNRESOLVED: no ITF results are ingested; ITF transition and genuine debut are a union, not separable."
+    "itf_transition": "UNRESOLVED: no ITF results are ingested; ITF transition and genuine debut are a union, not separable.",
+    "classification": {
+      "genuine_newcomer_both_sides_zero": 1,
+      "disconnected_experienced_recovered_ge5": 3021,
+      "fully_disconnected_experienced_recovered_ge5": 0,
+      "limited_surface_history_lt5": 1133,
+      "newcomer_or_itf_union": 1,
+      "indirect_established_a_ge20_no_target_id_change": 6,
+      "note": "Classes overlap and are flags, not a partition. ITF transition cannot be separated from genuine debut because no ITF results are ingested."
+    }
   },
   "phase5_cross_experiment_top800": {
     "E2_original": {

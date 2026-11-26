@@ -167,6 +167,17 @@ limited-surface histories are reported only where the evidence separates them.
 
 - ITF: UNRESOLVED: no ITF results are ingested; ITF transition and genuine debut are a union, not separable.
 
+| Supported classification flag (overlapping) | Targets |
+|---|---:|
+| Genuine newcomer, both sides zero matches | 1 |
+| Disconnected experienced player recovered (>=5 matches) | 3,021 |
+| Fully disconnected (0 -> >=5 matches) | 0 |
+| Limited surface history (<5 surface matches) | 1,133 |
+| Newcomer/ITF union (no ITF data to separate) | 1 |
+| Indirectly affected established player (>=20 matches, target id unchanged) | 6 |
+
+Classes overlap and are flags, not a partition. ITF transition cannot be separated from genuine debut because no ITF results are ingested.
+
 ## Phase 5 — cross-experiment explanation and provenance
 
 | Top-800 comparison | Wins | Accuracy |

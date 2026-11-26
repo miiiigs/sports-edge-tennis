@@ -396,6 +396,33 @@ def main(argv=None):
         )
         (direct if changed and recovered > 0 else indirect).append(r)
 
+    def player_counts(r, key):
+        return (r[key]["player_1_overall_matches"], r[key]["player_2_overall_matches"])
+
+    def surface_counts(r, key):
+        return (r[key]["player_1_surface_matches"], r[key]["player_2_surface_matches"])
+
+    genuine_newcomers = [
+        r for r in e3 if max(*player_counts(r, "A"), *player_counts(r, "B")) == 0
+    ]
+    disconnected_recovered = []
+    fully_disconnected_recovered = []
+    for r in e3:
+        a = player_counts(r, "A")
+        b = player_counts(r, "B")
+        if any(b[i] - a[i] >= 5 and b[i] >= 5 for i in range(2)):
+            disconnected_recovered.append(r)
+        if any(a[i] == 0 and b[i] >= 5 for i in range(2)):
+            fully_disconnected_recovered.append(r)
+    limited_surface = [
+        r for r in e3 if min(*surface_counts(r, "A"), *surface_counts(r, "B")) < 5
+    ]
+    indirect_established = [
+        r for r in affected
+        if min(*player_counts(r, "A")) >= 20
+        and not ((r["p1_resolution"] or {}).get("bridged") or (r["p2_resolution"] or {}).get("bridged"))
+    ]
+
     def summarize(group):
         if not group:
             return {"n": 0}
@@ -641,6 +668,15 @@ def main(argv=None):
                 (r["p1_resolution"] or {}).get("method") for r in e3
             )),
             "itf_transition": "UNRESOLVED: no ITF results are ingested; ITF transition and genuine debut are a union, not separable.",
+            "classification": {
+                "genuine_newcomer_both_sides_zero": len(genuine_newcomers),
+                "disconnected_experienced_recovered_ge5": len(disconnected_recovered),
+                "fully_disconnected_experienced_recovered_ge5": len(fully_disconnected_recovered),
+                "limited_surface_history_lt5": len(limited_surface),
+                "newcomer_or_itf_union": len(genuine_newcomers),
+                "indirect_established_a_ge20_no_target_id_change": len(indirect_established),
+                "note": "Classes overlap and are flags, not a partition. ITF transition cannot be separated from genuine debut because no ITF results are ingested.",
+            },
         },
         "phase5_cross_experiment_top800": p5,
         "validation": {
