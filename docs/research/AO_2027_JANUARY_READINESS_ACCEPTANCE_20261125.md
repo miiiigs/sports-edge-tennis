@@ -14,6 +14,30 @@ November 2026 observation/run clock for a January 2027 fixture, with no guard
 relaxed. See
 [`AO_2027_TEST_CLOCK_RECONCILIATION_20261125.md`](AO_2027_TEST_CLOCK_RECONCILIATION_20261125.md).
 
+## 26 November 2026 reconciliation
+
+Brian's Phase 2 acceptance questions are reconciled against the existing
+rehearsals. No new forecast or provider call was made.
+
+| Item | Reconciled result | Evidence |
+|---|---|---|
+| Isolated BO5 rehearsal | PASS (synthetic). One AO 2027 `R128` fixture persisted as `GRAND_SLAM`/`HARD`/BO5, crossed Agent 2, Manager handoff, publication and settlement. | `ao_january_pipeline_rehearsal_20261125.json` |
+| Realistic Agent 2 support | PASS as a support condition only. 58,179 stored observations; 356/356 stored AO main-draw pairings above the support gates; synthetic 2027 pairing `PREDICTED`, cold start `ABSTAINED`. | `ao_2027_a2_support_rehearsal_20261125.json` |
+| Qualifying exclusion | PASS. `Q1`–`Q3` parse as BO3/qualifying; Agent 2 returns no scoring rule; future stripped-label qualifying is rejected fail-closed. | `test_qualifying_classified_separately_but_not_enabled_for_agent2`, `test_qualifying_draw_with_main_draw_round_label_is_rejected_generically` |
+| United Cup exclusion | PASS. United Cup remains `ATP_TOUR`/BO3 and never resolves the AO BO5 rule. | `test_united_cup_is_not_ao_2027_scope` |
+| Fixture rescheduling | PASS (isolated). Append-only second version; original start and PIT retained; target guard still excludes inside the original 30-minute deadline. | `ao_2027_reschedule_rehearsal_20261125.json` |
+| Manager | PASS for plumbing only. The real synthetic-slate Manager result is `NO_BET`/`TWO_OR_MORE_ABSTENTIONS`; the forced consensus is explicitly labelled and is not a Manager decision. | rehearsal JSON `forced_consensus_for_downstream_rehearsal` |
+| Publication | PASS (synthetic). A BET decision publishes only with the required consensus parent and publication control. | rehearsal JSON |
+| Settlement | PASS (synthetic). One completed synthetic AO result settles one `WON` decision. | rehearsal JSON |
+| Official 2027 regulations | **CONDITIONAL.** General Slam/AO format is verified from the official AO scoring guide; the edition-specific 2027 rulebook was not located. | `AO_2027_REGULATION_VERIFICATION_20261125.md` |
+| Simple set-probability regression | PASS. At set-win probability 0.60, BO3 = 0.648 and BO5 = 0.68256. | `test_simple_independent_set_probability_reference_at_sixty_percent` |
+| Serve-based Markov verification | PASS (mathematical). Independent point-to-match reference, deciding-set TB10 vs advantage, first-server marginalisation and player symmetry. | `test_existing_markov_against_independent_point_to_match_reference`, `test_serve_based_markov_deciding_set_tiebreak_is_effective_and_symmetric` |
+
+**Release status is unchanged: conditional, not released.** The missing
+edition-specific 2027 rulebook and owner approval remain blockers. The
+best-of-three historical defect and its dependency analysis are recorded in
+[`AO_ROOT_CAUSE_AND_DEPENDENCY_20261126.md`](AO_ROOT_CAUSE_AND_DEPENDENCY_20261126.md).
+
 ## Acceptance matrix
 
 | Area | Evidence | Result |

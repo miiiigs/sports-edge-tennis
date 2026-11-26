@@ -39,6 +39,8 @@ owner confirmation.
   regulations were not located. The 2026 rulebook is the latest published
   edition found. Carrying the 2026 format forward is a reasonable candidate, but
   it is not the same as confirming the 2027 edition.
+  Rechecked 26 November 2026: a public search still returned only the 2026 Grand
+  Slam Rule Book and the 2026 ATP Official Rulebook; no 2027 edition was found.
 - Any 2027 change to draw size, qualifying format, seedings, byes or the
   deciding-set rule is unknown and must not be assumed.
 - The exact official 2027 main-draw entry list and draw are not available before
