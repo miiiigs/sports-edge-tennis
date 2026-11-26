@@ -1,7 +1,7 @@
 {
   "version": "A1_CANDIDATE_FREEZE_MANIFEST_V1",
-  "generated_at": "2026-11-26T06:09:43.829925+00:00",
-  "source_commit": "25b858ea0c79fda81ed85dc179840006ecf86fbf",
+  "generated_at": "2026-11-26T06:13:27.013307+00:00",
+  "source_commit": "6f92cceeaa3b3d76b4a1ad459b13d739230d26bc",
   "branch": "research/a1-identity-bridge-forward-shadow-20261124",
   "pr": 388,
   "pr392_reconciled_head": "af6e09bef019ef3a5cc67273ad08094ee0b8a8a0",
@@ -150,10 +150,10 @@
     "a1_identity_replay_mismatch_20261125.json": "e12c24e6d0a44f97a53f969fe2a0bc357be505da2f6db1d1fc32ed8aeec99170",
     "a1_identity_replay_mismatch_cases_20261126.json": "622c879b3e6f53cffa80165b434a9a533df8ede08d600a1825ce09f60aadc1f8",
     "a1_identity_manager_interaction_20261125.json": "fa877c434dbe61c636a6204ebeb74b230d324fd04c8b5d22e8dbad904f7526f1",
-    "a1_identity_bridge_readiness_20261126.json": "7e9b5ebccaf0f94769f87e14671ee39df59679cbb7576d5e8a9b89706c2ad0be",
+    "a1_identity_bridge_readiness_20261126.json": "18b2b9a849e153e1a248785b1af5fc49bf501ebf149530e858c3cb1692fa3022",
     "legacy_75pct_claim_audit_20261125.json": "bedb746b7a172e5f9ffbe511167b58cef7ffbb5a878e2cbd8b070eba5f06c83c",
     "a1_forward_quarantine_manifest_20261126.json": "d7e32114b3d35083b875cb730dfdb8574a1d2fda45aae40dfa6e683e1f858af7",
-    "a1_historical_reconciliation_20261126.json": "c06a329c0e615cfdef2498c60b994881a2ccbfc8a1473a7ea5cec99ebd6ddd1a",
+    "a1_historical_reconciliation_20261126.json": "261687b6387687149fa7e6fca58258e88214b83811e2d48846f60c0b735b760f",
     "a1_top800_sets_20261126.json": "76b3f5380a265c7a079ff50f573b6d3dc24849c6c60d6eefb9b519f0f4eb0763"
   },
   "scientific_freeze_recommendation": "NOT_READY_FOR_ACTIVATION_FREEZE; READY_FOR_REVIEW_OF_HISTORICAL_EXPLANATION_ONLY",
