@@ -111,3 +111,14 @@ modules. It opens no database connection and calls no provider.
 - The independent-set values are a reference, not a model result.
 - The separate NULL-surface metadata defect remains open and is not re-scored
   here as a format effect.
+
+## Evidence hash
+
+SHA-256 of the committed Git blob (LF-normalised):
+
+```text
+docs/research/evidence/ao_match_format_dependency_matrix_20261126.json
+SHA256 C076D870B04C227781B120B6E978C1E5F034992ED3E1B7A9AA3DC00534B7C218
+blob bytes 2194
+```
+
