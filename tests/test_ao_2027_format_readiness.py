@@ -292,6 +292,170 @@ def test_future_final_supplies_an_evidence_based_edition_end_date():
     assert _edition_end_date(_parse(event_date="2026-01-31", round="F")) is None
 
 
+def _agent_prediction(agent_code: str, probability: str):
+    from sports_edge_tennis.agents.contracts import AGENT_PROBABILITY_REPRESENTATIONS
+    from sports_edge_tennis.data.prediction_persistence import (
+        PersistedPredictiveAgentPrediction,
+    )
+
+    return PersistedPredictiveAgentPrediction(
+        prediction_id=1,
+        prediction_run_id=1,
+        match_id=1,
+        agent_code=agent_code,
+        prediction_status="PREDICTED",
+        selection_side=1,
+        win_probability=Decimal(probability),
+        probability_representation=AGENT_PROBABILITY_REPRESENTATIONS[agent_code],
+        model_version="test_model",
+        feature_version="test_features",
+        config_version="test_config",
+        parameter_schema_version="test_params",
+        agent_config_version_id=1,
+        as_of=datetime(2027, 1, 19, tzinfo=UTC),
+    )
+
+
+def _manager_policy():
+    from sports_edge_tennis.manager.contracts import (
+        AGENT3_ABSTENTION_MAX_PROBABILITY_SPREAD,
+        MANAGER_POLICY_KEY,
+        MIN_ACTIVE_AGENT_PROBABILITY,
+        THREE_AGENT_MAX_PROBABILITY_SPREAD,
+        ManagerPolicyV1,
+    )
+
+    return ManagerPolicyV1(
+        manager_policy_version_id=1,
+        policy_key=MANAGER_POLICY_KEY,
+        policy_version="v1",
+        three_agent_max_probability_spread=THREE_AGENT_MAX_PROBABILITY_SPREAD,
+        agent3_abstention_max_probability_spread=(
+            AGENT3_ABSTENTION_MAX_PROBABILITY_SPREAD
+        ),
+        min_active_agent_probability=MIN_ACTIVE_AGENT_PROBABILITY,
+        allow_agent3_abstention=True,
+    )
+
+
+def test_agent2_is_format_sensitive_through_exactly_one_markov_conversion():
+    """Same serve/return inputs, only match length changes.
+
+    The serve-based engine already resolves the match from point level. This
+    asserts the expected directional effect and that the BO5 result is not a
+    second independent-set conversion applied on top of the BO3 result.
+    """
+    from sports_edge_tennis.agents.agent2_hierarchical_markov import (
+        match_probability,
+    )
+
+    def average(rule):
+        return sum(
+            match_probability(
+                player_1_serve_probability=Decimal("0.65"),
+                player_2_serve_probability=Decimal("0.62"),
+                scoring_rule_version=rule,
+                first_server=server,
+            )
+            for server in (1, 2)
+        ) / 2
+
+    bo3 = average(ScoringRuleVersion.BO3_TB7_ALL_SETS)
+    bo5 = average(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6)
+    assert bo5 > bo3
+    # A duplicate adjustment would push BO5 far above the point-level
+    # reference; the calibrated engine stays in the narrow format effect.
+    assert Decimal("0.02") < bo5 - bo3 < Decimal("0.05")
+    # Swapping the players complements each result (no hidden format bias).
+    def swapped(rule):
+        return sum(
+            match_probability(
+                player_1_serve_probability=Decimal("0.62"),
+                player_2_serve_probability=Decimal("0.65"),
+                scoring_rule_version=rule,
+                first_server=server,
+            )
+            for server in (1, 2)
+        ) / 2
+
+    assert abs(bo3 + swapped(ScoringRuleVersion.BO3_TB7_ALL_SETS) - 1) < Decimal(
+        "0.00001"
+    )
+    assert abs(bo5 + swapped(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6) - 1) < Decimal(
+        "0.00001"
+    )
+
+
+def test_manager_adds_no_second_match_format_adjustment():
+    """Manager consumes agent probabilities; it must not re-apply BO3/BO5.
+
+    Controlled counterfactual: identical players, ratings, history, surface,
+    cutoff and configuration. Only Agent 2's match length changes. Agent 1 is
+    format-invariant. Manager must move by exactly one third of the Agent 2
+    delta (the arithmetic mean of the three active agents), not by a further
+    set-to-match conversion.
+    """
+    from sports_edge_tennis.agents.agent2_hierarchical_markov import (
+        match_probability,
+    )
+    from sports_edge_tennis.manager.consensus import evaluate_consensus
+    from sports_edge_tennis.manager.contracts import consensus_mean
+
+    def agent2_average(rule):
+        return sum(
+            match_probability(
+                player_1_serve_probability=Decimal("0.65"),
+                player_2_serve_probability=Decimal("0.62"),
+                scoring_rule_version=rule,
+                first_server=server,
+            )
+            for server in (1, 2)
+        ) / 2
+
+    agent2_bo3 = agent2_average(ScoringRuleVersion.BO3_TB7_ALL_SETS)
+    agent2_bo5 = agent2_average(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6)
+    agent1 = Decimal("0.660000")
+    agent3 = Decimal("0.670000")
+
+    def manager_result(agent2_probability):
+        return evaluate_consensus(
+            [
+                _agent_prediction("AGENT_1_SURFACE_ELO", str(agent1)),
+                _agent_prediction(
+                    "AGENT_2_HIERARCHICAL_MARKOV", str(agent2_probability)
+                ),
+                _agent_prediction("AGENT_3_INTRANSITIVITY", str(agent3)),
+            ],
+            match_id=1,
+            prediction_run_id=1,
+            policy=_manager_policy(),
+            as_of=datetime(2027, 1, 19, tzinfo=UTC),
+        )
+
+    bo3_result = manager_result(agent2_bo3)
+    bo5_result = manager_result(agent2_bo5)
+    assert bo3_result.manager_status == "CONSENSUS"
+    assert bo5_result.manager_status == "CONSENSUS"
+    assert bo3_result.selected_side == bo5_result.selected_side == 1
+    assert bo3_result.consensus_probability == consensus_mean(
+        (agent1, agent2_bo3, agent3)
+    )
+    assert bo5_result.consensus_probability == consensus_mean(
+        (agent1, agent2_bo5, agent3)
+    )
+    expected_delta = consensus_mean(
+        (agent1, agent2_bo5, agent3)
+    ) - consensus_mean((agent1, agent2_bo3, agent3))
+    actual_delta = (
+        bo5_result.consensus_probability - bo3_result.consensus_probability
+    )
+    # Exactly the mean effect, not a second set-to-match transformation.
+    assert actual_delta == expected_delta
+    assert abs(actual_delta - (agent2_bo5 - agent2_bo3) / Decimal(3)) < Decimal(
+        "0.000001"
+    )
+
+
 @pytest.mark.parametrize("p1,p2,expected_bo3,expected_bo5", [
     ("0.65", "0.65", "0.5", "0.5"),
     ("0.68", "0.61", "0.8072855395475537", "0.8618903566595986"),
@@ -307,14 +471,14 @@ def test_existing_markov_against_independent_point_to_match_reference(p1, p2, ex
         (ScoringRuleVersion.BO3_TB7_ALL_SETS, expected_bo3),
         (ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6, expected_bo5),
     ):
-        def average(a, b):
+        def average(a, b, scoring_rule=rule):
             return sum(match_probability(
                 player_1_serve_probability=Decimal(a),
                 player_2_serve_probability=Decimal(b),
-                scoring_rule_version=rule,
+                scoring_rule_version=scoring_rule,
                 first_server=server,
             ) for server in (1, 2)) / 2
 
         actual = average(p1, p2)
         assert abs(actual - Decimal(expected)) < Decimal("0.00001")
-        assert abs(actual + average(p2, p1) - Decimal("1")) < Decimal("0.00001")
+        assert abs(actual + average(p2, p1) - Decimal(1)) < Decimal("0.00001")

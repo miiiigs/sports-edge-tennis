@@ -32,6 +32,10 @@ rehearsals. No new forecast or provider call was made.
 | Official 2027 regulations | **CONDITIONAL.** General Slam/AO format is verified from the official AO scoring guide; the edition-specific 2027 rulebook was not located. | `AO_2027_REGULATION_VERIFICATION_20261125.md` |
 | Simple set-probability regression | PASS. At set-win probability 0.60, BO3 = 0.648 and BO5 = 0.68256. | `test_simple_independent_set_probability_reference_at_sixty_percent` |
 | Serve-based Markov verification | PASS (mathematical). Independent point-to-match reference, deciding-set TB10 vs advantage, first-server marginalisation and player symmetry. | `test_existing_markov_against_independent_point_to_match_reference`, `test_serve_based_markov_deciding_set_tiebreak_is_effective_and_symmetric` |
+| Agent 1/2/Manager format dependency | PASS (controlled). A1 delta 0; A2 one Markov conversion (+0.0349056986...); Manager exactly one third of the A2 delta and no second adjustment. | [`AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md`](AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md) |
+| API-Tennis request timezone | PASS (code/test). Every fixture window requests explicit UTC; the draw request now does too; non-UTC is rejected before the call. | `tests/test_api_tennis_timezone.py` (PR #391) |
+| Australian local time and European DST | PASS (unit conversion). AO final 19:30 AEDT = 08:30Z; Berlin spring/fall transitions are represented explicitly. | `tests/test_api_tennis_timezone.py` (PR #391) |
+| `get_draw` + `include_qualification` entitlement | **UNVERIFIED.** Request path and offline summariser exist; no live call was made. | [`API_TENNIS_TIMEZONE_AND_DRAW_AUDIT_20261126.md`](../API_TENNIS_TIMEZONE_AND_DRAW_AUDIT_20261126.md) (PR #391) |
 
 **Release status is unchanged: conditional, not released.** The missing
 edition-specific 2027 rulebook and owner approval remain blockers. The
@@ -42,7 +46,12 @@ best-of-three historical defect and its dependency analysis are recorded in
 
 | Area | Evidence | Result |
 |---|---|---|
-| AO 2027 main draw is best-of-five | Official AO scoring guide; `resolve_scoring_rule` for every `R128`–`F` round | **PASS** |
+| AO 2027 main draw is best-of-five | Official AO scoring guide; `resolve_scoring_rule` for every `R128`-`F` round | **PASS** |
+| Agent 1/2/Manager format effect is understood and single-counted | Controlled offline counterfactual; A1 invariant, A2 one conversion, Manager mean only | **PASS** |
+| API-Tennis request timezone is explicit UTC | Transport tests for fixtures, history window and draw; non-UTC rejected | **PASS (code/test)** |
+| Tournament-local and DST conversions are explicit | Melbourne AEDT and Berlin CET/CEST unit tests | **PASS (unit)** |
+| First-issue cutoff is exactly start - 30 min | Boundary test: 30:00 eligible, 29:59 excluded | **PASS** |
+| `get_draw` qualification entitlement | No live call; public docs only | **BLOCKED / UNVERIFIED** |
 | Deciding set uses a 10-point tiebreak at 6–6 | AO official guide (AO 2019 onward, uniform from 2022); `BO5_DECIDER_TB10_AT_6_6`; independent Markov reference | **PASS** |
 | AO 2027 edition-specific rulebook | No 2027 rulebook located; 2026 is the latest found | **BLOCKED** |
 | Qualifying is best-of-three and not enabled for Agent 2 | `Q1`–`Q3` parse as BO3/qualifying; resolver returns no scoring rule | **PASS** |

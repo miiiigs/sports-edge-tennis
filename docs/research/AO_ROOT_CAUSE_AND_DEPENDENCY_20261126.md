@@ -234,6 +234,8 @@ original issued forecasts.
 - Agent 1 validates `best_of_sets > 0` but never uses the value in rating updates
   or prediction. The regression
   `test_best_of_sets_does_not_change_v1_probability` asserts equality.
+- The controlled three-path counterfactual, including Agent 2 and Manager, is in
+  [`AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md`](AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md).
 - The surface is NULL on all 229 rows, so they update overall Elo only. This is a
   separate surface-metadata effect.
 - The 5 cancelled phantom rows are skipped by the A1 cancelled policy.
@@ -357,6 +359,11 @@ Brian's requested independent-set regression:
 
 The regression is in
 `tests/test_ao_2027_format_readiness.py::test_simple_independent_set_probability_reference_at_sixty_percent`.
+The controlled Agent 1 / Agent 2 / Manager counterfactual is in
+[`AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md`](AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md):
+Agent 1 delta 0.000000, Agent 2 delta 0.0349056986…, Manager delta
+0.0116352328… (exactly one third of the Agent 2 delta, with no second format
+adjustment).
 The serve-based Markov engine is verified separately by
 `test_existing_markov_against_independent_point_to_match_reference`,
 `test_markov_uses_different_match_length_and_symmetric_equal_players` and
