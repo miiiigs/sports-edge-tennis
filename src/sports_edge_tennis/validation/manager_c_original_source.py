@@ -156,22 +156,40 @@ def summarize(rows, data):
                 "max_player_rating_uncertainty","surface_elo_gap","serve_return_depth"]}
 
 
-def historical(data):
+def select_cohorts(data, *, validation_end=TRAIN_END):
+    """Reproduce the registered narrow/broad/marginal/rejected populations.
+
+    Thresholds are frozen on the earlier validation window only and applied
+    unchanged to the later evaluation window. The marginal group is exact
+    match-ID nesting (broad MINUS narrow), never a separate model. This is the
+    single implementation used by both ``historical()`` and later research so
+    the cohorts cannot silently diverge.
+    """
     rows = data["records"]
-    report = analyze(rows,validation_end=TRAIN_END,original_agents=data["agents"],
-                     dataset_sha256=data["source_sha256"])
-    early = [r for r in rows if r["start_at"]<TRAIN_END]
-    later = [r for r in rows if r["start_at"]>=TRAIN_END]
+    early = [r for r in rows if r["start_at"]<validation_end]
+    later = [r for r in rows if r["start_at"]>=validation_end]
     selected = {}
+    thresholds = {}
     for name,target in (("narrow",.2),("broad",.4)):
-        cutoff = freeze_threshold(early,policy=POLICY,coverage_target=target)["threshold"]
+        lock = freeze_threshold(early,policy=POLICY,coverage_target=target)
+        cutoff = lock["threshold"]
         if cutoff is None:
             raise ValueError("cannot reproduce historical cutoff")
+        thresholds[name] = lock
         _,selected[name] = evaluate_selected(later,policy=POLICY,cutoff=cutoff)
     n,b = ({r["match_id"] for r in selected[k]} for k in ("narrow","broad"))
     groups = {"narrow":selected["narrow"],"broad":selected["broad"],
               "marginal":[r for r in later if r["match_id"] in b-n],
               "rejected":[r for r in later if r["match_id"] not in b]}
+    return {"thresholds":thresholds,"groups":groups,"early":early,"later":later}
+
+
+def historical(data):
+    rows = data["records"]
+    report = analyze(rows,validation_end=TRAIN_END,original_agents=data["agents"],
+                     dataset_sha256=data["source_sha256"])
+    cohorts = select_cohorts(data)
+    groups = cohorts["groups"]
     report["feature_census"] = {name:{"all":summarize(rs,data),
         **{tour:summarize([r for r in rs if r["tour"]==tour],data)
            for tour in ("ATP_MAIN","CHALLENGER")}} for name,rs in groups.items()}

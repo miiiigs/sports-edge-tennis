@@ -1,0 +1,148 @@
+{
+  "application_settings": {
+    "default_transaction_read_only": "on",
+    "server_version_num": "180006"
+  },
+  "constraint_prerequisites": {
+    "agent_code_labels": [
+      "AGENT_1_SURFACE_ELO",
+      "AGENT_2_HIERARCHICAL_MARKOV",
+      "AGENT_3_INTRANSITIVITY"
+    ],
+    "match_versions_orientation_duplicates": 0,
+    "predictions_lineage_duplicates": 0,
+    "predictions_without_run": 0,
+    "raise_append_only_mutation_present": true,
+    "uq_predictions_lineage_identity_columns": [
+      "prediction_id",
+      "prediction_run_id",
+      "match_id",
+      "agent_code"
+    ],
+    "uq_predictions_lineage_identity_present": true
+  },
+  "dsn_variable": "TENNIS_DATABASE_URL",
+  "match_versions_locks": {
+    "dependent_triggers": 1,
+    "dependent_views": 0,
+    "existing_indexes": [
+      "idx_match_versions_match_as_of",
+      "idx_match_versions_match_start",
+      "match_versions_match_id_as_of_source_observed_at_key",
+      "match_versions_pkey"
+    ],
+    "foreign_keys_referencing": 2,
+    "row_count": 233634
+  },
+  "migration_lock_state": {
+    "blocking_locks": 0,
+    "longest_active_transaction_seconds": 0,
+    "other_sessions": 0,
+    "replication_slots": 0,
+    "sessions_in_transaction": 0
+  },
+  "predictions_by_agent": {
+    "AGENT_1_SURFACE_ELO": 57219,
+    "AGENT_2_HIERARCHICAL_MARKOV": 57219,
+    "AGENT_3_INTRANSITIVITY": 57219
+  },
+  "relation_sizes": {
+    "manager_consensus_results": {
+      "heap_bytes": 6094848,
+      "index_bytes": "4194304",
+      "planner_estimate_rows": 56383,
+      "total_bytes": 10321920,
+      "total_pretty": "10080 kB"
+    },
+    "match_result_observations": {
+      "heap_bytes": 16777216,
+      "index_bytes": "12935168",
+      "planner_estimate_rows": 130065,
+      "total_bytes": 29753344,
+      "total_pretty": "28 MB"
+    },
+    "match_versions": {
+      "heap_bytes": 31563776,
+      "index_bytes": "27140096",
+      "planner_estimate_rows": 223332,
+      "total_bytes": 58744832,
+      "total_pretty": "56 MB"
+    },
+    "prediction_runs": {
+      "heap_bytes": 360448,
+      "index_bytes": "581632",
+      "planner_estimate_rows": 2583,
+      "total_bytes": 983040,
+      "total_pretty": "960 kB"
+    },
+    "predictions": {
+      "heap_bytes": 33357824,
+      "index_bytes": "26763264",
+      "planner_estimate_rows": 166242,
+      "total_bytes": 60170240,
+      "total_pretty": "57 MB"
+    },
+    "rating_snapshots": {
+      "heap_bytes": 0,
+      "index_bytes": "24576",
+      "planner_estimate_rows": -1,
+      "total_bytes": 32768,
+      "total_pretty": "32 kB"
+    },
+    "raw_odds_observations": {
+      "heap_bytes": 81321984,
+      "index_bytes": "23298048",
+      "planner_estimate_rows": 74859,
+      "total_bytes": 211607552,
+      "total_pretty": "202 MB"
+    }
+  },
+  "row_counts": {
+    "agent_config_versions": 3,
+    "manager_consensus_results": 57219,
+    "match_result_observations": 134719,
+    "match_source_ids": 136453,
+    "match_version_sources": 233634,
+    "match_versions": 233634,
+    "matches": 134393,
+    "oddspapi_event_identity_cache": 135,
+    "oddspapi_request_ledger": 2074,
+    "players": 6256,
+    "prediction_run_targets": 57942,
+    "prediction_runs": 2631,
+    "predictions": 171657,
+    "rating_snapshots": 0,
+    "tournament_editions": 2579,
+    "tournament_source_ids": 2665
+  },
+  "server": {
+    "current_user": "postgres",
+    "current_user_can_create_in_public": true,
+    "database_size_bytes": 857470655,
+    "session_user_is_superuser": true,
+    "version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "version_num": "180006"
+  },
+  "session_settings": {
+    "idle_in_transaction_session_timeout": "0",
+    "lock_timeout": "0",
+    "maintenance_work_mem": "64MB",
+    "max_locks_per_transaction": "64",
+    "max_parallel_maintenance_workers": "2",
+    "statement_timeout": "1min",
+    "work_mem": "4MB"
+  },
+  "tables_present": {
+    "agent_config_versions": true,
+    "match_version_sources": true,
+    "oddspapi_event_identity_cache": true,
+    "oddspapi_event_identity_history": false,
+    "prediction_feature_snapshots": false
+  },
+  "tournament_editions_missing_end_date": 360,
+  "tournament_source_ids_by_provider": {
+    "API_TENNIS": 310,
+    "SACKMANN": 2289,
+    "SPORTRADAR": 66
+  }
+}
