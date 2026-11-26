@@ -122,3 +122,9 @@ SHA256 C076D870B04C227781B120B6E978C1E5F034992ED3E1B7A9AA3DC00534B7C218
 blob bytes 2194
 ```
 
+## Exact-head CI
+
+PostgreSQL Foundation run `45815474944` passed at code head
+`d8eb9312758c487b0e5648236a79fbb07754ec0e` (PR #389). This documentation-only
+hash/CI note is a later commit and changes no tested code.
+
