@@ -119,8 +119,9 @@ Evidence: `docs/research/ODDSPAPI_ACQUISITION_FUNNEL_20261126.md`,
 - New pure suites: 24 passed; commercial quote-state suite: 4 passed; the two
   explicit rollback-guard tests: 2 passed.
 - Local full-suite PostgreSQL run was not repeated; CI `postgres-foundation` is
-  the authoritative full-suite result. Latest prior CI was 2,469 passed; the
-  continuation CI run is recorded on PR #392.
+  the authoritative full-suite result. On head `7ff99af` it passed **2,499
+  tests in 196.46 s** (run 45758947102); GitGuardian passed. The prior baseline
+  was 2,469 passed, so the continuation added 30 passing tests.
 
 ## Remaining release blockers
 
