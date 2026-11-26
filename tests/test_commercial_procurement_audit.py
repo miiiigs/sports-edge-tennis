@@ -61,3 +61,22 @@ def test_request_planning():
 def test_later_mapping_or_bookmaker_failure_does_not_resurrect():
     for change in ({"identity_status": "INCORRECT"}, {"bookmaker_verified": False}):
         assert cell([quote(), quote(received_at="2026-01-01T11:55:00Z", **change)])["valid_fresh_pair_rate"] == 0
+
+
+def test_raw_inventory_zeros_dates_and_scope():
+    from sports_edge_tennis.validation.commercial_procurement_audit import raw_fixture_inventory
+    f = {"event_key": "test", "event_type_type": "Challenger Men Singles",
+         "event_date": "2025-01-01", "first_player_key": "1", "second_player_key": "2",
+         "event_qualification": False, "statistics": [
+             {"player_key": p, "stat_period": "match", "stat_name": "Aces",
+              "stat_won": 0, "stat_total": 3} for p in ("1", "2")]}
+    row = {"fixture": f, "received_at": "2026-01-01T12:00:00Z"}
+    result = raw_fixture_inventory([row, {"fixture": {"event_type_type": "WTA Singles"}}])
+    group = result["groups"][0]
+    assert group["year"] == "2025" and group["n"] == 1
+    assert group["field_filled"]["event_qualification"] == 1
+    assert group["field_filled"]["provider_observed_at"] == 0
+    assert group["two_player_stat_count_presence"] == {"aces": 1}
+    assert result["original_pit_verified"] is False
+    with pytest.raises(ValueError):
+        raw_fixture_inventory([row, row])

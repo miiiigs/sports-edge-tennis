@@ -119,3 +119,69 @@ def audit(roster, observations, *, freshness_seconds=3600):
     return {"status": "OFFLINE_EXPORT_EVALUATION", "cohort_size": len(ids),
             "balanced_target_met": all(sum(r["tour"] == tour for r in roster) == 80 for tour in TOURS),
             "freshness_seconds": freshness_seconds, "by_tour": result}
+
+
+def raw_fixture_inventory(rows):
+    """Inspect local raw API-Tennis envelopes, not provider entitlement.
+
+    Each row contains fixture (raw object), received_at, and optionally
+    provider_observed_at. Duplicate versions must be resolved explicitly
+    upstream; this audit refuses duplicates, and never interprets a date as
+    an original observation timestamp.
+    """
+    from datetime import date
+    fields = ("first_player_key", "second_player_key", "tournament_key",
+              "tournament_round", "tournament_season", "event_qualification",
+              "event_date", "event_time", "tournament_surface", "event_winner",
+              "scores", "pointbypoint", "statistics")
+    groups = {}
+    seen = set()
+    rejected = Counter()
+    def filled(v):
+        return v is not None and v not in ("", "-", [], {})
+    for row in rows:
+        f = row["fixture"]
+        kind = str(f.get("event_type_type", "")).casefold()
+        tour = {"atp singles": "ATP", "challenger men singles": "CHALLENGER",
+                "itf men singles": "ITF_FEATURE_ONLY"}.get(kind)
+        if tour is None:
+            rejected["out_of_scope"] += 1
+            continue
+        key = str(f.get("event_key") or "")
+        if not key or key in seen:
+            raise ValueError("missing or duplicate provider match key")
+        seen.add(key)
+        try:
+            day = date.fromisoformat(f.get("event_date", ""))
+            year = str(day.year)
+        except (TypeError, ValueError):
+            year = "UNKNOWN"
+        group = groups.setdefault((tour, year), {"n": 0, "filled": Counter(),
+                                                "stat_fields": Counter()})
+        group["n"] += 1
+        for field in fields:
+            if filled(f.get(field)):
+                group["filled"][field] += 1
+        for field in ("received_at", "provider_observed_at"):
+            if clock(row.get(field)):
+                group["filled"][field] += 1
+        if str(f.get("event_status", "")).casefold() == "finished":
+            group["filled"]["finished"] += 1
+        ids = {str(f.get("first_player_key") or ""), str(f.get("second_player_key") or "")}
+        stats = {}
+        for item in f.get("statistics") or []:
+            if str(item.get("stat_period", "")).casefold() != "match":
+                continue
+            p = str(item.get("player_key") or "")
+            name = str(item.get("stat_name") or "").strip().casefold()
+            if p and p in ids and name and filled(item.get("stat_won")) and filled(item.get("stat_total")):
+                stats.setdefault(name, set()).add(p)
+        for name, players in stats.items():
+            if len(ids) == 2 and "" not in ids and players == ids:
+                group["stat_fields"][name] += 1
+    return {"status": "RAW_FIELD_PRESENCE_ONLY", "excluded": dict(rejected),
+            "groups": [{"tour": tour, "year": year, "n": g["n"],
+                        "field_filled": {f: g["filled"][f] for f in (*fields, "received_at", "provider_observed_at", "finished")},
+                        "two_player_stat_count_presence": dict(g["stat_fields"])}
+                       for (tour, year), g in sorted(groups.items())],
+            "original_pit_verified": False, "commercial_rights_verified": False}
