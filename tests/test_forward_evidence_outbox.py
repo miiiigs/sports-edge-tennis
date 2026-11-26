@@ -65,3 +65,72 @@ def test_telegram_published_then_response_lost(db):
     confirm_delivery(db, "A-v1", match, "TELEGRAM",
                      state="RECONCILED", evidence=published[0])
     assert claim_delivery(db, "A-v1", match, "TELEGRAM") is None
+
+
+def test_runtime_freeze_rejects_wrong_candidate_and_nested_commit(db):
+    import json
+    from dataclasses import replace
+    from sports_edge_tennis.validation.forward_evidence_outbox import (
+        build_rehearsal_freeze, run_with_originals,
+    )
+    from tests.test_full_slate_runner import _request, _seed_configs
+
+    _seed_configs(db)
+    request = replace(_request(db, match_ids=[]), experiment_id="A-v1",
+                      persist_identity_resolutions=True)
+    freeze = build_rehearsal_freeze(db, request)
+    altered = json.loads(freeze)
+    altered["candidate"] = "B"
+    with pytest.raises(EvidenceConflict, match="freeze"):
+        run_with_originals(db, request, freeze_bytes=json.dumps(
+            altered, sort_keys=True, separators=(",", ":")).encode())
+    assert db.execute("SELECT count(*) FROM prediction_runs").fetchone()[0] == 0
+    with db.transaction():
+        with pytest.raises(ValueError, match="idle"):
+            run_with_originals(db, request, freeze_bytes=freeze)
+    assert db.execute("SELECT count(*) FROM forward_experiment_freezes").fetchone()[0] == 0
+
+
+def test_real_runner_atomic_original_and_rollback(db, monkeypatch):
+    import json
+    from dataclasses import replace
+    from datetime import timedelta
+    from sports_edge_tennis.validation import forward_evidence_outbox as outbox
+    from tests.test_full_slate_runner import (
+        _insert_scheduled_target, _request, _seed_configs,
+    )
+
+    _seed_configs(db)
+    now = datetime.now(UTC)
+    observed = now - timedelta(minutes=5)
+    target = _insert_scheduled_target(db, as_of=observed, ingested_at=observed)
+    request = replace(_request(db, match_ids=[target["match_id"]],
+                              as_of=now-timedelta(minutes=1)),
+                      experiment_id="A-v1", persist_identity_resolutions=True)
+    freeze = outbox.build_rehearsal_freeze(db, request)
+    original = outbox._original
+
+    def write_then_fail(*args):
+        original(*args)
+        raise RuntimeError("simulated crash before outer commit")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(outbox, "_original", write_then_fail)
+        with pytest.raises(RuntimeError, match="simulated crash"):
+            outbox.run_with_originals(db, request, freeze_bytes=freeze)
+    for table in ("prediction_runs", "predictions", "prediction_feature_snapshots",
+                  "identity_resolution_provenance", "manager_consensus_results",
+                  "forward_experiment_freezes", "forward_originals", "forward_delivery_events"):
+        assert db.execute(f"SELECT count(*) FROM {table}").fetchone()[0] == 0
+    result = outbox.run_with_originals(db, request, freeze_bytes=freeze)
+    assert result.runner_status == "COMPLETED"
+    row = db.execute("SELECT payload,payload_sha256 FROM forward_originals").fetchone()
+    record = json.loads(bytes(row[0]))
+    assert record["canonical_match_id"] == target["match_id"]
+    assert len(record["agents_json"]) == 3
+    assert len(record["identity_provenance_json"]) == 2
+    assert outbox.digest(bytes(row[0])) == row[1]
+    assert outbox.claim_delivery(db, "A-v1", target["match_id"], "ARCHIVE") == (bytes(row[0]), row[1])
+    with pytest.raises(EvidenceConflict):
+        outbox.run_with_originals(db, request, freeze_bytes=freeze)
+    assert db.execute("SELECT count(*) FROM prediction_runs").fetchone()[0] == 1
