@@ -69,6 +69,34 @@ best-of-three historical defect and its dependency analysis are recorded in
 | Original AO forecast cohort | Zero original AO prediction targets in stored runs | **BLOCKED** |
 | Owner approval and deployment | Not requested | **BLOCKED** |
 
+## Operational event and settlement matrix (January 2027)
+
+| January item | Current implementation / evidence | Acceptance status |
+|---|---|---|
+| Tournament classification | AO 2027 parser enforces `GRAND_SLAM`; other January events retain their own tier | **PASS (parser)** |
+| Men's singles eligibility | `ATP_MAIN` men's singles is the only AO scope; women/doubles/ITF/junior tokens are rejected | **PASS** |
+| Qualifying draw | `Q1`-`Q3` parse as BO3/qualifying; Agent 2 has no scoring rule; A2 scope not enabled | **PASS (classification), NOT ENABLED (forecast)** |
+| Main draw | `R128`-`F` parse as BO5/`GRAND_SLAM`/`HARD` | **PASS** |
+| BO3 and BO5 formats | Explicit scoring rules; no missing-format BO3 default for AO | **PASS** |
+| Deciding-set tiebreak | BO5 decider TB10 at 6-6 for AO 2027 | **PASS** |
+| Withdrawals | Provider status map covers `Cancelled`/`Postponed`; no dedicated withdrawal event type; unknown status fails closed | **PARTIAL / UNVERIFIED** |
+| Lucky losers | Draw may expose `seed="LL"`, but entitlement is unverified and no two-snapshot diff is implemented | **BLOCKED** |
+| Late replacements | Requires a draw diff/change feed; not implemented in this branch | **BLOCKED** |
+| Rescheduling | Append-only version; original start and PIT retained; target guard excludes inside the deadline | **PASS** |
+| Walkovers | Parsed as `WALKOVER`; provider-neutral settlement is `VOID` | **PASS (policy), bookmaker-specific grading NOT MODELLED** |
+| Retirements | Parsed as `RETIRED`; provider-neutral settlement is `VOID` | **PASS (policy), bookmaker-specific grading NOT MODELLED** |
+| Official sporting settlement | Synthetic completed-result settlement only; no independent 2027 official result feed | **CONDITIONAL** |
+| Bookmaker-specific market settlement | `settlement/service.py` deliberately uses one provider-neutral rule: COMPLETED settles WON/LOST; RETIRED/WALKOVER/DEFAULTED are VOID; CANCELLED is CANCELLED. No bookmaker rule table or per-book grading exists | **BLOCKED / NOT IMPLEMENTED** |
+| Result corrections | Result observations are append-only. An equivalent result preserves the committed settlement; a genuinely different derived status fails closed rather than rewriting history. No automatic official correction application | **PARTIAL** |
+| Opening Week vs qualifying | Opening Week public activity is not treated as the qualifying schedule; qualifying remains a separate draw/scope | **PASS (scope document)** |
+| Official 2027 regulations | General Slam/AO format verified; edition-specific 2027 rulebook not located | **CONDITIONAL** |
+| Owner approval and deployment | Not requested | **BLOCKED** |
+
+The bookmaker-specific settlement gap is material for any claim that a
+particular bookmaker's retirement or walkover rule is reproduced. The current
+policy is intentionally conservative and provider-neutral; it must not be
+described as bookmaker-specific.
+
 ## January pipeline evidence
 
 | Stage | Result |
