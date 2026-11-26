@@ -1,0 +1,68 @@
+{
+  "status": "DERIVED_FROM_EXISTING_COMMITTED_REAL_AGGREGATES_NOT_NEW_SAMPLE",
+  "source_commit": "949c88bb6445eec556e3a2553a18d92f888153c7",
+  "as_of_utc": "2026-11-23T11:50:00+00:00",
+  "by_tour": {
+    "ATP_MAIN": {
+      "essential_complete": 37520,
+      "essential_coverage_pct": 88.56994476181484,
+      "extended_complete": 36572,
+      "recorded_matches": 42362,
+      "two_sided": 38970,
+      "essential_missing": 4842,
+      "extended_missing": 5790,
+      "two_sided_missing": 3392
+    },
+    "CHALLENGER": {
+      "essential_complete": 83169,
+      "essential_coverage_pct": 90.47189104516578,
+      "extended_complete": 79792,
+      "recorded_matches": 91928,
+      "two_sided": 83754,
+      "essential_missing": 8759,
+      "extended_missing": 12136,
+      "two_sided_missing": 8174
+    }
+  },
+  "api_tennis_attributed_cohorts": {
+    "ATP_MAIN": {
+      "attributed_essential": 948,
+      "attributed_extended": 0,
+      "unknown_surface": 284
+    },
+    "CHALLENGER": {
+      "attributed_essential": 3377,
+      "attributed_extended": 0,
+      "unknown_surface": 723
+    }
+  },
+  "source_inventory": [
+    {
+      "distinct_matches": 117713,
+      "observation_kind": "RAW_SOURCE",
+      "rows": 235426,
+      "source_system": "SACKMANN"
+    },
+    {
+      "distinct_matches": 4715,
+      "observation_kind": "RAW_SOURCE",
+      "rows": 9433,
+      "source_system": "API_TENNIS"
+    },
+    {
+      "distinct_matches": 686,
+      "observation_kind": "RAW_SOURCE",
+      "rows": 1372,
+      "source_system": "SPORTRADAR"
+    }
+  ],
+  "source_partition_essential_complete": {
+    "sackmann": 115678,
+    "other_sources": 5011
+  },
+  "missing_per_field": null,
+  "provider_historical_depth": null,
+  "original_pit_verified": false,
+  "commercial_rights_verified": false,
+  "provider_calls_this_audit": 0
+}

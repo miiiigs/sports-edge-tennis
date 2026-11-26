@@ -88,12 +88,11 @@ def audit(roster, observations, *, freshness_seconds=3600):
                     continue
                 counts["correct_mapping"] += 1
                 books = {}
-                for row in mapped:
-                    if row.get("bookmaker_verified") is not True or not row.get("bookmaker") or row.get("market") != "MATCH_WINNER":
+                for row in known:
+                    if not row.get("bookmaker") or row.get("market") != "MATCH_WINNER":
                         continue
                     books.setdefault(row["bookmaker"], []).append(row)
-                if books:
-                    counts["verified_bookmaker"] += 1
+                verified = False
                 valid = False
                 for entries in books.values():
                     latest_time = max(clock(x["received_at"]) for x in entries)
@@ -101,12 +100,17 @@ def audit(roster, observations, *, freshness_seconds=3600):
                     if len(latest) != 1:
                         continue
                     x = latest[0]
+                    if x not in mapped or x.get("bookmaker_verified") is not True:
+                        continue
+                    verified = True
                     quote = clock(x.get("quote_at"))
                     if not quote or quote > latest_time or x.get("active") is not True or not price(x.get("p1")) or not price(x.get("p2")):
                         continue
                     if (cutoff-quote).total_seconds() > freshness_seconds:
                         continue
                     valid = True
+                if verified:
+                    counts["verified_bookmaker"] += 1
                 counts["valid_fresh_pair" if valid else "missing_valid_market"] += 1
             n = counts["eligible"]
             cells[cp] = {**dict(counts), "correct_mapping_rate": counts["correct_mapping"]/n if n else None,

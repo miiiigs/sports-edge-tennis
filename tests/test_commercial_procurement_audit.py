@@ -56,3 +56,8 @@ def test_request_planning():
     assert budget(160, 4, 20)["historical_calls"] == 320
     assert budget(160, 4, 20)["tournament_calls"] == 80
     assert budget()["historical_min_spacing_seconds"] == 795
+
+
+def test_later_mapping_or_bookmaker_failure_does_not_resurrect():
+    for change in ({"identity_status": "INCORRECT"}, {"bookmaker_verified": False}):
+        assert cell([quote(), quote(received_at="2026-01-01T11:55:00Z", **change)])["valid_fresh_pair_rate"] == 0
