@@ -176,6 +176,13 @@
       "up": "db/migrations/0025_identity_provenance_v2.up.sql",
       "down": "db/migrations/0025_identity_provenance_v2.down.sql",
       "schema_snapshot": "db/schema/0025_identity_provenance_v2.sql"
+    },
+    {
+      "version": "0026",
+      "name": "forward_evidence_outbox",
+      "up": "db/migrations/0026_forward_evidence_outbox.up.sql",
+      "down": "db/migrations/0026_forward_evidence_outbox.down.sql",
+      "schema_snapshot": "db/schema/0026_forward_evidence_outbox.sql"
     }
   ]
 }

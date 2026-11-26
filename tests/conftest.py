@@ -57,6 +57,9 @@ def _reset_db(conn: psycopg.Connection) -> None:
     conn.execute(
         """
         TRUNCATE TABLE
+            forward_delivery_events,
+            forward_originals,
+            forward_experiment_freezes,
             model_identity_bridge_events,
             publication_control_events,
             data_health_checks,
