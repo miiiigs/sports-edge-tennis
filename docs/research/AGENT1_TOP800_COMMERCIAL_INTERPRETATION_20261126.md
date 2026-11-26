@@ -61,8 +61,9 @@ blocker is not a small sample; it is a sequencing failure.
 | latest800 settled, Challenger | 244 | **0** | 244 | 0 | 556 |
 
 Every stored quote is later than the original A1 prediction lock. There are no
-backfilled-only cases in these populations; the problem is that the quote is
-observed/received after the lock, not that old history was substituted.
+backfilled-only or stale-only cases in these populations; the problem is that
+the quote is observed/received after the lock, not that old history was
+substituted.
 
 Because the priced set is empty, the following are **not estimated**:
 

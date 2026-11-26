@@ -41,6 +41,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 556
       },
       "definition": "most recent scheduled start, all tours",
@@ -89,6 +90,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 317
       },
       "definition": "most recent scheduled start, ATP main",
@@ -137,6 +139,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 556
       },
       "definition": "most recent scheduled start, Challenger",
@@ -185,6 +188,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 417
       },
       "definition": "highest stored A1 confidence, all tours",
@@ -233,6 +237,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 317
       },
       "definition": "highest stored A1 confidence, ATP main",
@@ -281,6 +286,7 @@
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
+        "stale_only": 0,
         "unmatched": 419
       },
       "definition": "highest stored A1 confidence, Challenger",

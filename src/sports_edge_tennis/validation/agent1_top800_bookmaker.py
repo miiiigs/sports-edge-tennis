@@ -169,9 +169,11 @@ def _quote_state(quote: dict) -> str:
     if lock is None:
         return "UNMATCHED"
     observed, as_of, ingested = quote["observed"], quote["as_of"], quote["ingested"]
-    if max(observed, as_of, ingested) <= lock and observed >= lock - FRESHNESS:
-        return "PREISSUE"
-    if observed < lock - FRESHNESS and ingested > lock:
+    if max(observed, as_of, ingested) <= lock:
+        if observed >= lock - FRESHNESS:
+            return "PREISSUE"
+        return "STALE"
+    if observed < lock - FRESHNESS:
         return "BACKFILLED"
     return "LATE"
 
@@ -216,7 +218,10 @@ def coverage(row: dict, quotes: list[dict]) -> dict:
         "late_only": bool(quotes) and states.get("PREISSUE", 0) == 0
         and states.get("LATE", 0) > 0,
         "backfilled_only": bool(quotes) and states.get("PREISSUE", 0) == 0
-        and states.get("BACKFILLED", 0) > 0,
+        and states.get("LATE", 0) == 0 and states.get("BACKFILLED", 0) > 0,
+        "stale_only": bool(quotes) and states.get("PREISSUE", 0) == 0
+        and states.get("LATE", 0) == 0 and states.get("BACKFILLED", 0) == 0
+        and states.get("STALE", 0) > 0,
         "unmatched": not quotes,
         "quotes_observed_before_issue": sum(
             1 for q in quotes if q["locked_at"] and q["observed"] <= q["locked_at"]),
@@ -317,6 +322,7 @@ def summarize(name: str, definition: str, rows: list[dict],
             "preissue_two_sided": len(priced),
             "late_only": sum(c["late_only"] for _, c in coverage_rows),
             "backfilled_only": sum(c["backfilled_only"] for _, c in coverage_rows),
+            "stale_only": sum(c["stale_only"] for _, c in coverage_rows),
             "unmatched": sum(c["unmatched"] for _, c in coverage_rows),
             "quotes_observed_before_issue": sum(
                 c["quotes_observed_before_issue"] for _, c in coverage_rows),
