@@ -31,7 +31,7 @@ No forecasting uplift has been measured. Do not promote on CI alone.
 | Required verification | Status | Evidence |
 |---|---|---|
 | Official AO 2027 format and qualifying rules | **Partially verified** — general Slam format confirmed; 2027 edition-specific rulebook not located | [`AO_2027_REGULATION_VERIFICATION_20261125.md`](AO_2027_REGULATION_VERIFICATION_20261125.md) |
-| Full PostgreSQL CI at the exact head | Pending the pushed head | PR #389 checks |
+| Full PostgreSQL CI at the exact head | **PASS** — `postgres-foundation` run `45759084910` at code head `4b5d669`; this docs-only follow-up does not change the tested code | PR #389 checks |
 | Read-only real fixture audit | Measured for stored AO 2016–2026 and January discovery; exact IDs, root cause and dependency analysis in [`AO_ROOT_CAUSE_AND_DEPENDENCY_20261126.md`](AO_ROOT_CAUSE_AND_DEPENDENCY_20261126.md); no official 2027 draw | [`AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md`](AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md) |
 | Chronological historical AO rehearsal | **Blocked** — zero original AO pre-match forecasts | [`AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md`](AO_HISTORICAL_FORMAT_CENSUS_EXECUTION_20261125.md) |
 | Realistic Agent 2 support | Real stored-history support rehearsal executed; synthetic 2027 pairing, not a forecast | [`AO_2026_DEFECT_RESOLUTION_AND_2027_REHEARSAL_20261125.md`](AO_2026_DEFECT_RESOLUTION_AND_2027_REHEARSAL_20261125.md) |
