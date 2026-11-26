@@ -691,7 +691,8 @@ def main(argv=None):
                  "prediction_run_id": r["prediction_run_id"], "match_version_id": r["match_version_id"],
                  "match_start_at": r["match_start_at"], "tour": r["tour"],
                  "selection_side": p1_side(r["pA"]), "p1": r["pA"], "confidence": conf(r["pA"]),
-                 "winner_side": r["winner_side"], "won": bool(won(r["pA"], r["y"]))}
+                 "winner_side": r["winner_side"], "won": bool(won(r["pA"], r["y"])),
+                 "decomposition_group": "shared" if set_key(r) in shared else "original_only"}
                 for r in sorted(e3_a_top, key=lambda r: conf(r["pA"]), reverse=True)
             ],
             "E3_B_top800": [
@@ -699,9 +700,17 @@ def main(argv=None):
                  "prediction_run_id": r["prediction_run_id"], "match_version_id": r["match_version_id"],
                  "match_start_at": r["match_start_at"], "tour": r["tour"],
                  "selection_side": p1_side(r["pB"]), "p1": r["pB"], "confidence": conf(r["pB"]),
-                 "winner_side": r["winner_side"], "won": bool(won(r["pB"], r["y"]))}
+                 "winner_side": r["winner_side"], "won": bool(won(r["pB"], r["y"])),
+                 "decomposition_group": "shared" if set_key(r) in shared else "bridge_only"}
                 for r in sorted(e3_b_top, key=lambda r: conf(r["pB"]), reverse=True)
             ],
+        },
+        "decomposition": {
+            "shared": len(shared), "original_only": len(a_only_keys), "bridge_only": len(b_only_keys),
+            "shared_wins_A": shared_wins_A, "shared_wins_B": shared_wins_B,
+            "original_only_wins": a_only_wins, "original_only_losses": len(a_only_keys) - a_only_wins,
+            "bridge_only_wins": b_only_wins, "bridge_only_losses": len(b_only_keys) - b_only_wins,
+            "identity": report["phase2_top800_decomposition"]["identity"],
         },
     }
     Path(args.sets_out).write_text(json.dumps(sanitised, indent=2, default=str), encoding="utf-8")

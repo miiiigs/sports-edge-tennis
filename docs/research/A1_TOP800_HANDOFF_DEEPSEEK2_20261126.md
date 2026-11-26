@@ -6,7 +6,7 @@
 The exact latest top-800 fixture sets are in:
 
 - `docs/research/evidence/a1_top800_sets_20261126.json`
-- File SHA-256: `deade4e7be8db49608bbb39cf92080268e2c4204ad0f54e4765787da6e98a962`
+- File SHA-256: `76b3f5380a265c7a079ff50f573b6d3dc24849c6c60d6eefb9b519f0f4eb0763`
 
 ## Sets
 

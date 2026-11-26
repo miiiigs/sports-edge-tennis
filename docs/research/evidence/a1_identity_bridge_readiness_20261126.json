@@ -1,6 +1,6 @@
 {
   "version": "A1_IDENTITY_BRIDGE_PROSPECTIVE_READINESS_V1",
-  "generated_at": "2026-11-26T06:04:06.947973+00:00",
+  "generated_at": "2026-11-26T06:09:36.580587+00:00",
   "pr": 388,
   "mission": "December off-season identity-correction completion",
   "can_promote": false,
@@ -153,7 +153,7 @@
       },
       "top800_accounting_identity": "655 = 413 + 242; 596 = 413 + 183; difference = 59",
       "evidence": "docs/research/evidence/a1_historical_reconciliation_20261126.json",
-      "sha256": "18dd92829a225badd6a251f41efb0e6edc3b955b13de00647be4591513d9d7c7",
+      "sha256": "c06a329c0e615cfdef2498c60b994881a2ccbfc8a1473a7ea5cec99ebd6ddd1a",
       "limitation": "Historical outcomes have been inspected repeatedly. This is development reuse, not untouched validation."
     }
   },
