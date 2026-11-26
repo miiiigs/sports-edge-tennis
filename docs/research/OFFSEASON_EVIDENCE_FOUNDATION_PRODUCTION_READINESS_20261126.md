@@ -202,8 +202,10 @@ cold-start handling, and frozen Manager manifest/weights/boundary parity.
    exactly one snapshot; run status `COMPLETED`; Manager counts reconcile;
    `audit_run_capture` reports the expected (currently late) sequence; no
    prediction field changed.
-8. **Rollback.** Code first. Then `0024` down, then `0023` down. Do not attempt
-   below 0022. Export identity history before dropping it.
+8. **Rollback.** Code first. Then `0024` down, then `0023` down. Both down
+   migrations refuse to drop a non-empty evidence table, so an ordinary
+   application rollback cannot destroy collected evidence. Export identity
+   history before an intentional schema drop.
 
 ## 10. Remaining blockers (unchanged)
 

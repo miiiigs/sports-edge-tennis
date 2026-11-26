@@ -7,7 +7,7 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from tests.abstention_helpers import utc
+from tests.abstention_helpers import insert_match, utc
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / "db/migrations/manifest.json").read_text())["migrations"]
@@ -208,3 +208,25 @@ def test_history_table_rejects_invalid_orientation_and_resolution(db):
                 """,
                 (match_id, orientation, resolution, utc(), utc()),
             )
+
+
+def test_0024_down_migration_refuses_to_drop_collected_history(db):
+    match_id = insert_match(db)
+    db.execute(
+        """
+        INSERT INTO oddspapi_event_identity_history (
+            canonical_match_id, oddspapi_event_id, oddspapi_tournament_id,
+            player_orientation, resolution_status, resolved_at,
+            last_verified_at, event_type)
+        VALUES (%s, 'op-guard', 47624, 'DIRECT', 'EXACT', %s, %s, 'UPSERTED')
+        """,
+        (match_id, utc(), utc()),
+    )
+    down = (ROOT / MANIFEST[23]["down"]).read_text(encoding="utf-8")
+    assert "refusing to drop oddspapi_event_identity_history" in down
+    with pytest.raises(psycopg.errors.RaiseException):
+        _apply(db, MANIFEST[23]["down"])
+    db.rollback()
+    assert "oddspapi_event_identity_history" in _tables(db)
+    assert db.execute(
+        "SELECT count(*) FROM oddspapi_event_identity_history").fetchone()[0] == 1

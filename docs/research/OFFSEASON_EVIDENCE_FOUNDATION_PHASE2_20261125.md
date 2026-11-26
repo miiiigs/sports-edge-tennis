@@ -210,13 +210,17 @@ Rollback:
 
 1. Roll back code first (to the pre-integration image). Predictions then stop
    writing snapshots; nothing else changes.
-2. `0024_oddspapi_identity_history.down.sql` drops the history table.
+2. `0024_oddspapi_identity_history.down.sql` drops the history table only if it
+   is empty; a populated table raises an evidence-preserving guard.
 3. `0023_prediction_feature_snapshots.down.sql` drops the snapshot table and
-   `uq_match_versions_id_orientation`.
+   `uq_match_versions_id_orientation` only if it is empty; a populated table
+   raises the same guard.
 4. Do **not** attempt to roll back below 0022: its down migration refuses by
-   design. No migration in this release mutates existing rows, so a schema
-   rollback loses only the new evidence tables (forward-only history is not
-   reconstructible afterwards; export first if it matters).
+   design. No migration in this release mutates existing rows, so a deliberate
+   schema rollback loses only the new evidence tables (forward-only history is
+   not reconstructible afterwards; export first if it matters). An ordinary
+   application rollback does not run either down migration and therefore does
+   not drop collected evidence.
 
 ## 5. Validation evidence
 
