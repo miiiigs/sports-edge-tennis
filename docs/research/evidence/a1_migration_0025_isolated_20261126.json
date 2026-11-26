@@ -1,0 +1,244 @@
+{
+  "after_down": {
+    "identity_resolution_provenance": false,
+    "player_alias_versions": false,
+    "player_name_versions": false
+  },
+  "after_up": {
+    "identity_resolution_provenance": true,
+    "player_alias_versions": true,
+    "player_name_versions": true
+  },
+  "before": {
+    "identity_resolution_provenance": true,
+    "player_alias_versions": true,
+    "player_name_versions": true
+  },
+  "can_promote": false,
+  "checks": {
+    "append_only_version_triggers_present": true,
+    "tables_absent_after_down": true,
+    "tables_present_after_up": true,
+    "tables_present_before": true,
+    "trigger_removed_on_down": true,
+    "trigger_restored_on_up": true,
+    "unique_provenance_key_present": true
+  },
+  "constraints": [
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_bridge_event_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_candidate_count_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_capture_source_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_evidence_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_match_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_match_version_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_model_player_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_name_source_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_original_player_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_pkey",
+      "p"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_prediction_run_id_fkey",
+      "f"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_record_sha256_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_reference_policy_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_reference_sha256_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_resolution_method_check",
+      "c"
+    ],
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_source_record_sha256_check",
+      "c"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_actor_check",
+      "c"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_alias_check",
+      "c"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_ingest_run_id_fkey",
+      "f"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_normalized_alias_check",
+      "c"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_pkey",
+      "p"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_player_id_fkey",
+      "f"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_reason_check",
+      "c"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_source_system_check",
+      "c"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_actor_check",
+      "c"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_canonical_name_check",
+      "c"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_ingest_run_id_fkey",
+      "f"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_pkey",
+      "p"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_player_id_fkey",
+      "f"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_reason_check",
+      "c"
+    ]
+  ],
+  "environment": "ephemeral Docker postgres:16; database tennis_test; no production connection",
+  "generated_at": "2026-11-26T12:34:21.167450+00:00",
+  "indexes": [
+    [
+      "identity_resolution_provenance",
+      "identity_resolution_provenance_pkey"
+    ],
+    [
+      "identity_resolution_provenance",
+      "idx_identity_resolution_provenance_match"
+    ],
+    [
+      "identity_resolution_provenance",
+      "idx_identity_resolution_provenance_model"
+    ],
+    [
+      "identity_resolution_provenance",
+      "uq_identity_resolution_provenance_key"
+    ],
+    [
+      "player_alias_versions",
+      "idx_player_alias_versions_pit"
+    ],
+    [
+      "player_alias_versions",
+      "idx_player_alias_versions_player"
+    ],
+    [
+      "player_alias_versions",
+      "player_alias_versions_pkey"
+    ],
+    [
+      "player_alias_versions",
+      "uq_player_alias_versions_alias_valid_from"
+    ],
+    [
+      "player_name_versions",
+      "idx_player_name_versions_lookup"
+    ],
+    [
+      "player_name_versions",
+      "player_name_versions_pkey"
+    ],
+    [
+      "player_name_versions",
+      "uq_player_name_versions_player_valid_from"
+    ]
+  ],
+  "migration": "0025_identity_provenance_v2",
+  "note": "This validates the migration in isolation only. Production remains at 0022; 0023/0024/0025 are not applied. The strict v3 policy has not been re-measured on the production schema.",
+  "production_applied": false,
+  "trigger_present_after_down": false,
+  "trigger_present_after_up": true,
+  "trigger_present_before": true,
+  "version": "A1_MIGRATION_0025_ISOLATED_VALIDATION_V1",
+  "version_triggers": [
+    "trg_player_name_versions_append_only_mutation",
+    "trg_player_alias_versions_append_only_mutation",
+    "trg_identity_resolution_provenance_append_only_mutation"
+  ]
+}
