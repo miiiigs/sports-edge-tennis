@@ -1,0 +1,136 @@
+{
+  "definitions": {
+    "count_relationship": "Normalized quotes are necessary but not sufficient for a strict original-time comparison. A zero strict count does not imply a zero normalized count.",
+    "normalized_snapshot": "A quote exists in odds_snapshots and is linked to a raw provider observation. It may still be late.",
+    "strict_original_time_comparison": "The quote's provider/observed and ingest times are both at or before the original prediction issue time, the provider identity is independently mapped, and the tournament edition window and participant orientation are verified."
+  },
+  "ingest_outcomes": {
+    "ingest_status": {
+      "COMPLETED": 11020,
+      "FAILED": 99
+    },
+    "normalization_error_reasons": {
+      "match_not_prematch": 198
+    }
+  },
+  "limitations": [
+    "No provider request, purchase or quota consumption.",
+    "The census describes the current production database, not an earlier snapshot of it.",
+    "A normalized quote is not proof of original-time availability.",
+    "Provider startTime and canonical start can differ; the normalizer uses the canonical start."
+  ],
+  "no_snapshot_payloads": {
+    "examples": {
+      "licensed": {
+        "books": [
+          "pinnacle+30"
+        ],
+        "fixtureId": "id1205202274753114",
+        "provider_start": "2026-09-25T13:05:00+00:00",
+        "received_at": "2026-09-25T13:09:42.658709+00:00"
+      },
+      "unlicensed": {
+        "books": [],
+        "fixtureId": "id1205202274753114",
+        "provider_start": "2026-09-25T13:05:00+00:00",
+        "received_at": "2026-09-25T13:09:42.658709+00:00"
+      }
+    },
+    "note": "Failures are failed ingest runs, not a missing market 121. The unlicensed-book bucket overlaps the time buckets and is not additive. Of the 99, 74 were post-provider-start and 25 were pre-start by provider but rejected because the canonical start had passed.",
+    "provider_start_buckets": {
+      "post_provider_start": 74,
+      "prestart_more_than_5_minutes": 15,
+      "prestart_within_5_minutes": 10,
+      "unlicensed_book_only": 13
+    },
+    "raw_without_snapshot": 99,
+    "run_error_reasons": {
+      "match_not_prematch": 198
+    }
+  },
+  "normalization_lineage": {
+    "attribution_finding": "odds_snapshots has no provider_code column and its source_snapshot_id uses a generic SE_LIVE_ODDS_SNAPSHOT_V1 prefix. Filtering it for an ODDSPAPI prefix returns zero even though the raw-observation lineage contains the OddsPapi quotes. Provider attribution must join raw_odds_observation_id.",
+    "by_bookmaker_source_status": [
+      {
+        "bookmaker": "PINNACLE",
+        "market_status": "OPEN",
+        "quotes": 7252,
+        "source_system": "SHARP"
+      },
+      {
+        "bookmaker": "BET365",
+        "market_status": "OPEN",
+        "quotes": 5840,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "1XBET",
+        "market_status": "OPEN",
+        "quotes": 5652,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "UNIBET",
+        "market_status": "OPEN",
+        "quotes": 2528,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "BET365",
+        "market_status": "SUSPENDED",
+        "quotes": 396,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "1XBET",
+        "market_status": "SUSPENDED",
+        "quotes": 370,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "UNIBET",
+        "market_status": "SUSPENDED",
+        "quotes": 2,
+        "source_system": "OFFERED"
+      }
+    ],
+    "distinct_fixtures": 513,
+    "distinct_matches": 513,
+    "snapshots_joined_to_oddspapi_raw": 22040,
+    "snapshots_with_oddspapi_source_prefix": 0
+  },
+  "original_time_timing": {
+    "first_issued_a1_predictions": 1706,
+    "identity_before_issue": 4,
+    "max_lag_seconds": 277225.278837,
+    "median_identity_lag_hours": 10.00278834361111,
+    "median_identity_lag_seconds": 36010.038037,
+    "min_lag_seconds": -6936.993959,
+    "strict_original_time_comparisons": 0,
+    "strict_reason": "An identity before issue is only a candidate. Strict evidence also needs an independent OddsPapi tournament mapping and a verified edition window. The prior census measured 0 independent mappings, so the strict count remains zero even though a few identities arrived before issue.",
+    "window_end": "2026-11-21T00:00:00+00:00",
+    "window_start": "2026-10-15T00:00:00+00:00",
+    "with_an_oddspapi_identity_ever": 319
+  },
+  "payload_catalogue": {
+    "bookmakers_in_payloads": {
+      "1xbet": 3028,
+      "bet365": 3153,
+      "pinnacle+30": 3660,
+      "unibet": 1278
+    },
+    "catalogue_sources": [
+      "https://oddspapi-v4.mintlify.site/en/docs/markets",
+      "https://oddspapi.io/en/docs/get-markets",
+      "https://oddspapi.io/blog/json-odds-feed-format-parsing/"
+    ],
+    "finding": "Actual sportId=12 tennis payloads use market 121 and outcomes 121/122. Market 171 is absent from every stored tennis payload and is Counter-Strike moneyline in the published catalogue. The 171 tutorial assumption is therefore not the root cause here.",
+    "raw_observations": 11119,
+    "with_current_bookmakerOdds_key": 11119,
+    "with_historical_bookmakers_key": 0,
+    "with_market_121": 11119,
+    "with_market_171": 0
+  },
+  "status": "READ_ONLY_DESCRIPTIVE_AUDIT",
+  "version": "ODDSPAPI_NORMALIZATION_ROOT_CAUSE_V1"
+}

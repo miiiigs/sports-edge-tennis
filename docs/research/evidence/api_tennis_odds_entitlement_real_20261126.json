@@ -1,0 +1,218 @@
+{
+  "conclusion": "Direct API-Tennis bookmaker acquisition is already proven: 22,515 normalized offered observations across 13 bookmakers were persisted before the OddsPapi cutover. It is therefore a legitimate second provider, not an untested hypothesis. Current quota and plan entitlement remain unproven without an approved call. The stored corpus contains zero canonical matches priced by both providers, so an identical-fixture comparison cannot be produced from existing data; it requires a prospective overlap capture.",
+  "identical_match_comparison_provider_consensus": {
+    "available": false,
+    "n": 0
+  },
+  "identical_match_comparison_same_book": {
+    "available": false,
+    "n": 0
+  },
+  "limitations": [
+    "No live API-Tennis request was made.",
+    "Historical acquisition stopped on 2026-10-10 when production switched odds provider.",
+    "The comparison uses stored quotes at different poll times, not simultaneous prices."
+  ],
+  "method": {
+    "account_key_present_in_runner": true,
+    "adapter": "API_TENNIS_OFFERED_ODDS_V1",
+    "billable_calls_made_by_this_audit": 0,
+    "blocker": "Current plan name, remaining quota and whether get_odds is still entitled cannot be proven from the database. Establishing that requires an owner-approved billable call or the provider account page. No call was made here.",
+    "documented_method": "get_odds",
+    "entitlement_established_from_persisted_rows": true,
+    "existing_client": "sports_edge_tennis.live.transport.fetch_api_tennis_odds",
+    "orientation": "Home is mapped to the fixture's first player source id and Away to the second; reconciliation then maps each provider player id to the canonical player.",
+    "quota_established": false,
+    "request_parameters": [
+      "method=get_odds",
+      "APIkey",
+      "date_start",
+      "date_stop"
+    ],
+    "response_shape": "object keyed by API-Tennis event key; match winner under Home/Away"
+  },
+  "persisted_access": {
+    "ingest_runs": [
+      {
+        "dataset": "LIVE_ODDS",
+        "rows_inserted": 121655,
+        "rows_seen": 20483,
+        "runs": 20483,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_scheduled_fixtures",
+        "rows_inserted": 112462,
+        "rows_seen": 706103,
+        "runs": 2723,
+        "status": "PARTIAL"
+      },
+      {
+        "dataset": "LIVE_ODDS",
+        "rows_inserted": 2032,
+        "rows_seen": 2032,
+        "runs": 2032,
+        "status": "FAILED"
+      },
+      {
+        "dataset": "api_tennis_scheduled_fixtures",
+        "rows_inserted": 0,
+        "rows_seen": 97352,
+        "runs": 1532,
+        "status": "FAILED"
+      },
+      {
+        "dataset": "api_tennis_completed_result_refresh",
+        "rows_inserted": 15393,
+        "rows_seen": 21013,
+        "runs": 1443,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_scheduled_fixtures",
+        "rows_inserted": 1384,
+        "rows_seen": 1384,
+        "runs": 1311,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_completed_match_stats",
+        "rows_inserted": 9809,
+        "rows_seen": 41738,
+        "runs": 383,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_completed_result_refresh",
+        "rows_inserted": 818,
+        "rows_seen": 896,
+        "runs": 4,
+        "status": "PARTIAL"
+      },
+      {
+        "dataset": "api_tennis_scheduled_fixtures",
+        "rows_inserted": 0,
+        "rows_seen": 0,
+        "runs": 3,
+        "status": "RUNNING"
+      },
+      {
+        "dataset": "api_tennis_history_reconciliation",
+        "rows_inserted": 5,
+        "rows_seen": 5,
+        "runs": 3,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_defaulted_result_repair",
+        "rows_inserted": 1,
+        "rows_seen": 1,
+        "runs": 1,
+        "status": "COMPLETED"
+      },
+      {
+        "dataset": "api_tennis_completed_result_refresh",
+        "rows_inserted": 0,
+        "rows_seen": 0,
+        "runs": 1,
+        "status": "RUNNING"
+      }
+    ],
+    "normalization_errors": {
+      "duplicate_player_source_id": 2,
+      "event_identity_conflict:player_1": 91,
+      "event_identity_conflict:player_2": 77,
+      "event_identity_conflict:tournament": 1652,
+      "match_not_prematch": 16994,
+      "missing_required_field:event_status": 1037,
+      "missing_terminal_winner": 4,
+      "out_of_scope_event_type": 633601,
+      "unsupported_event_status": 48797,
+      "unsupported_event_type": 5736
+    },
+    "normalized_by_bookmaker": [
+      {
+        "bookmaker": "1XBET",
+        "quotes": 19800,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "BETANO",
+        "quotes": 14166,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "BETVICTOR",
+        "quotes": 13326,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "MARATHON",
+        "quotes": 12550,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "BETFAIR",
+        "quotes": 11112,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "SBO",
+        "quotes": 10776,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "BET365",
+        "quotes": 10402,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "PNCL",
+        "quotes": 4132,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "WILLIAMHILL",
+        "quotes": 2354,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "SUPERBET",
+        "quotes": 1280,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "888SPORT",
+        "quotes": 766,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "UNIBET",
+        "quotes": 506,
+        "source_system": "OFFERED"
+      },
+      {
+        "bookmaker": "10BET",
+        "quotes": 2,
+        "source_system": "OFFERED"
+      }
+    ],
+    "priced_matches": {
+      "api_tennis": 1327,
+      "oddspapi": 513,
+      "overlap": 0
+    },
+    "raw_adapters": [
+      {
+        "adapter": "API_TENNIS_OFFERED_ODDS_V1",
+        "events": 1335,
+        "first_received": "2026-09-09 11:32:16.108528+00:00",
+        "last_received": "2026-10-10 21:00:45.748812+00:00",
+        "raw_observations": 22515
+      }
+    ]
+  },
+  "provider_call_made": false,
+  "status": "READ_ONLY_DESCRIPTIVE_AUDIT",
+  "version": "API_TENNIS_ODDS_ENTITLEMENT_V1"
+}
