@@ -1,0 +1,4123 @@
+{
+  "all_tour_context": {
+    "band_notes": {
+      "55_60_empty_by_construction": "The registered broad 40% cutoff is 0.6213299999999999, so no marginal selection can have confidence below 0.62133. The [0.55,0.60) band is reported as a measured zero, not omitted.",
+      "70_plus_sparse_by_construction": "The registered narrow 20% cutoff is 0.7070145 and narrow picks are removed from marginal, so values above 0.7070145 cannot appear. The 0.70-0.75 band contains only 0.70-0.7070."
+    },
+    "bands": {
+      "BELOW_0.55": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.55,0.60)": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.60,0.65)": {
+        "accuracy": 0.509090909090909,
+        "accuracy_wilson95": [
+          0.380762598469722,
+          0.6362322215099672
+        ],
+        "brier": 0.26684181849263183,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.36538461538461536,
+            0.6491228070175439
+          ],
+          "available": true,
+          "brier95": [
+            0.22769989535891227,
+            0.30634516589361765
+          ],
+          "clusters": 47,
+          "iterations": 2000,
+          "log_loss95": [
+            0.6478442248548392,
+            0.8096338159020319
+          ],
+          "residual95": [
+            -5.24034,
+            11.592224000000002
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 34.9870545,
+        "independent_variance": 12.72707748290525,
+        "log_loss": 0.7283021351564061,
+        "losses": 27,
+        "mean_selected_probability": 0.6361282636363637,
+        "residual": -6.987054499999999,
+        "residual_z": -1.9585280088739176,
+        "settled": 55,
+        "wins": 28
+      },
+      "[0.65,0.70)": {
+        "accuracy": 0.7471264367816092,
+        "accuracy_wilson95": [
+          0.6466842633310181,
+          0.8266678884092442
+        ],
+        "brier": 0.194601676198796,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.6470588235294118,
+            0.8433734939759037
+          ],
+          "available": true,
+          "brier95": [
+            0.16122479969414044,
+            0.22937977093514414
+          ],
+          "clusters": 72,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5091209912917508,
+            0.6517458720020839
+          ],
+          "residual95": [
+            11.277994499999998,
+            32.7713885
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 58.6452085,
+        "independent_variance": 19.09621367070475,
+        "log_loss": 0.5788753108756689,
+        "losses": 22,
+        "mean_selected_probability": 0.6740828563218391,
+        "residual": 6.3547914999999975,
+        "residual_z": 1.4542118298558389,
+        "settled": 87,
+        "wins": 65
+      },
+      "[0.70,0.75)": {
+        "accuracy": 0.42857142857142855,
+        "accuracy_wilson95": [
+          0.15821985525146975,
+          0.7495416354723428
+        ],
+        "brier": 0.32110989841925,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.14285714285714285,
+            0.7142857142857143
+          ],
+          "available": true,
+          "brier95": [
+            0.20358463596289283,
+            0.49396343369439283
+          ],
+          "clusters": 7,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5970787775722509,
+            1.2134376399729914
+          ],
+          "residual95": [
+            -3.7086345,
+            2.508222
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 4.9242305,
+        "independent_variance": 1.4602032110652499,
+        "log_loss": 0.8469174493217356,
+        "losses": 4,
+        "mean_selected_probability": 0.7034615000000001,
+        "residual": -1.9242305000000002,
+        "residual_z": -1.59239367750073,
+        "settled": 7,
+        "wins": 3
+      },
+      "[0.75,0.80)": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.80,1.00]": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      }
+    },
+    "class_census": {
+      "flag_counts": {
+        "FAVOURITE_UNDER_20": 16,
+        "IDENTITY_GAP_RECOVERED": 15,
+        "IDENTITY_LINK_UNRESOLVED": 1,
+        "SHORT_CAREER_ITF_OR_DEBUT": 1,
+        "START_DATE_INCOMPLETE": 141
+      },
+      "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+      "overlap_combinations": {
+        "": 7,
+        "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 15,
+        "FAVOURITE_UNDER_20+IDENTITY_LINK_UNRESOLVED+SHORT_CAREER_ITF_OR_DEBUT": 1,
+        "START_DATE_INCOMPLETE": 126
+      },
+      "primary_counts": {
+        "HISTORY_AT_LEAST_20": 133,
+        "IDENTITY_GAP_RECOVERED": 15,
+        "SHORT_CAREER_ITF_OR_DEBUT": 1
+      },
+      "selections": 149,
+      "start_date_incomplete": 141
+    },
+    "control_by_probability_band": {
+      "[0.55,0.60)": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      },
+      "[0.60,0.65)": {
+        "all": {
+          "accuracy": 0.509090909090909,
+          "accuracy_wilson95": [
+            0.380762598469722,
+            0.6362322215099672
+          ],
+          "brier": 0.26684181849263183,
+          "expected_wins": 34.9870545,
+          "independent_variance": 12.72707748290525,
+          "log_loss": 0.7283021351564061,
+          "losses": 27,
+          "mean_selected_probability": 0.6361282636363637,
+          "residual": -6.987054499999999,
+          "residual_z": -1.9585280088739176,
+          "settled": 55,
+          "wins": 28
+        },
+        "by_subgroup": {
+          "CORRECTED_HISTORY_HEALTHY": {
+            "accuracy": 0.5102040816326531,
+            "accuracy_wilson95": [
+              0.37467563740468035,
+              0.6442488968969421
+            ],
+            "brier": 0.2668179203165714,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                0.35555555555555557,
+                0.660377358490566
+              ],
+              "available": true,
+              "brier95": [
+                0.2258329642180441,
+                0.3092656996530851
+              ],
+              "clusters": 43,
+              "iterations": 2000,
+              "log_loss95": [
+                0.6440999882063263,
+                0.8156317032159345
+              ],
+              "residual95": [
+                -5.157130500000001,
+                10.620418
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 31.16367,
+            "independent_variance": 11.340449904488,
+            "log_loss": 0.7282893021485508,
+            "losses": 24,
+            "mean_selected_probability": 0.6359932653061224,
+            "residual": -6.16367,
+            "residual_z": -1.8303082468041982,
+            "settled": 49,
+            "wins": 25
+          },
+          "SURFACE_EXPERIENCE_UNDER_5": {
+            "accuracy": 0.5,
+            "accuracy_wilson95": [
+              0.18761630648265054,
+              0.8123836935173494
+            ],
+            "brier": 0.26703698693045835,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                0.16666666666666666,
+                0.8333333333333334
+              ],
+              "available": true,
+              "brier95": [
+                0.17270813370675,
+                0.3613658401541667
+              ],
+              "clusters": 6,
+              "iterations": 2000,
+              "log_loss95": [
+                0.5344452030925554,
+                0.9223686730152268
+              ],
+              "residual95": [
+                -2.0148035,
+                2.5973224999999998
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 3.8233845,
+            "independent_variance": 1.38662757841725,
+            "log_loss": 0.7284069380538911,
+            "losses": 3,
+            "mean_selected_probability": 0.63723075,
+            "residual": -0.8233845,
+            "residual_z": -0.6992343750184536,
+            "settled": 6,
+            "wins": 3
+          }
+        }
+      },
+      "[0.65,0.70)": {
+        "all": {
+          "accuracy": 0.7471264367816092,
+          "accuracy_wilson95": [
+            0.6466842633310181,
+            0.8266678884092442
+          ],
+          "brier": 0.194601676198796,
+          "expected_wins": 58.6452085,
+          "independent_variance": 19.09621367070475,
+          "log_loss": 0.5788753108756689,
+          "losses": 22,
+          "mean_selected_probability": 0.6740828563218391,
+          "residual": 6.3547914999999975,
+          "residual_z": 1.4542118298558389,
+          "settled": 87,
+          "wins": 65
+        },
+        "by_subgroup": {
+          "CORRECTED_HISTORY_HEALTHY": {
+            "accuracy": 0.7407407407407407,
+            "accuracy_wilson95": [
+              0.6359565111747224,
+              0.8237244106541145
+            ],
+            "brier": 0.1965361903760926,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                0.6352941176470588,
+                0.8314606741573034
+              ],
+              "available": true,
+              "brier95": [
+                0.16477800355373332,
+                0.23319182106819278
+              ],
+              "clusters": 68,
+              "iterations": 2000,
+              "log_loss95": [
+                0.5164753244926412,
+                0.6593319348411351
+              ],
+              "residual95": [
+                9.439180499999999,
+                28.427796999999998
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 54.62182,
+            "independent_variance": 17.7722715795365,
+            "log_loss": 0.5828756231564983,
+            "losses": 21,
+            "mean_selected_probability": 0.6743434567901234,
+            "residual": 5.37818,
+            "residual_z": 1.2757449644713896,
+            "settled": 81,
+            "wins": 60
+          },
+          "FAVOURITE_BRIDGED_UNDER_20": {
+            "accuracy": 0.0,
+            "accuracy_wilson95": [
+              0,
+              0.7934506856227626
+            ],
+            "brier": 0.46120737000624995,
+            "clustered_bootstrap": {
+              "available": false,
+              "clusters": 1
+            },
+            "expected_wins": 0.6791225,
+            "independent_variance": 0.21791512999375,
+            "log_loss": 1.136695848625235,
+            "losses": 1,
+            "mean_selected_probability": 0.6791225,
+            "residual": -0.6791225,
+            "residual_z": -1.4548038006984638,
+            "settled": 1,
+            "wins": 0
+          },
+          "SURFACE_EXPERIENCE_UNDER_5": {
+            "accuracy": 1.0,
+            "accuracy_wilson95": [
+              0.5655175352168251,
+              1
+            ],
+            "brier": 0.10994140776510002,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                1.0,
+                1.0
+              ],
+              "available": true,
+              "brier95": [
+                0.10002475688095,
+                0.11942165848475002
+              ],
+              "clusters": 5,
+              "iterations": 2000,
+              "log_loss95": [
+                0.37999845935431126,
+                0.4239429819956319
+              ],
+              "residual95": [
+                3.2725005,
+                3.4198735
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 3.344266,
+            "independent_variance": 1.1060269611745,
+            "log_loss": 0.40250614437631943,
+            "losses": 0,
+            "mean_selected_probability": 0.6688532,
+            "residual": 1.6557339999999998,
+            "residual_z": 1.5743732790821168,
+            "settled": 5,
+            "wins": 5
+          }
+        }
+      },
+      "[0.70,0.75)": {
+        "all": {
+          "accuracy": 0.42857142857142855,
+          "accuracy_wilson95": [
+            0.15821985525146975,
+            0.7495416354723428
+          ],
+          "brier": 0.32110989841925,
+          "expected_wins": 4.9242305,
+          "independent_variance": 1.4602032110652499,
+          "log_loss": 0.8469174493217356,
+          "losses": 4,
+          "mean_selected_probability": 0.7034615000000001,
+          "residual": -1.9242305000000002,
+          "residual_z": -1.59239367750073,
+          "settled": 7,
+          "wins": 3
+        },
+        "by_subgroup": {
+          "CORRECTED_HISTORY_HEALTHY": {
+            "accuracy": 0.42857142857142855,
+            "accuracy_wilson95": [
+              0.15821985525146975,
+              0.7495416354723428
+            ],
+            "brier": 0.32110989841925,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                0.14285714285714285,
+                0.7142857142857143
+              ],
+              "available": true,
+              "brier95": [
+                0.20358463596289283,
+                0.49396343369439283
+              ],
+              "clusters": 7,
+              "iterations": 2000,
+              "log_loss95": [
+                0.5970787775722509,
+                1.2134376399729914
+              ],
+              "residual95": [
+                -3.7086345,
+                2.508222
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 4.9242305,
+            "independent_variance": 1.4602032110652499,
+            "log_loss": 0.8469174493217356,
+            "losses": 4,
+            "mean_selected_probability": 0.7034615000000001,
+            "residual": -1.9242305000000002,
+            "residual_z": -1.59239367750073,
+            "settled": 7,
+            "wins": 3
+          }
+        }
+      },
+      "[0.75,0.80)": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      },
+      "[0.80,1.00]": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      }
+    },
+    "control_by_qualifying": {
+      "MAIN_DRAW": {
+        "accuracy": 0.6617647058823529,
+        "accuracy_wilson95": [
+          0.5787816046337965,
+          0.7358604219229857
+        ],
+        "brier": 0.22124941865758824,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5734265734265734,
+            0.7430555555555556
+          ],
+          "available": true,
+          "brier95": [
+            0.19536449157997202,
+            0.2498128071789198
+          ],
+          "clusters": 100,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5801407451195637,
+            0.6933261433478338
+          ],
+          "residual95": [
+            11.9296315,
+            38.4757605
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 89.97868,
+        "independent_variance": 30.372219062568,
+        "log_loss": 0.6341909381134668,
+        "losses": 46,
+        "mean_selected_probability": 0.6616079411764706,
+        "residual": 0.021320000000002892,
+        "residual_z": 0.0038685564507381226,
+        "settled": 136,
+        "wins": 90
+      },
+      "QUALIFYING": {
+        "accuracy": 0.46153846153846156,
+        "accuracy_wilson95": [
+          0.23206067809538303,
+          0.7085620428549398
+        ],
+        "brier": 0.28957647676098075,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.23076923076923078,
+            0.7692307692307693
+          ],
+          "available": true,
+          "brier95": [
+            0.20400396683126923,
+            0.3774186244044808
+          ],
+          "clusters": 13,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5969661839646532,
+            0.9614057292617019
+          ],
+          "residual95": [
+            -5.213070999999999,
+            2.7876060000000003
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 8.5778135,
+        "independent_variance": 2.91127530210725,
+        "log_loss": 0.7767095416620149,
+        "losses": 7,
+        "mean_selected_probability": 0.6598318076923076,
+        "residual": -2.5778134999999995,
+        "residual_z": -1.5108100173604408,
+        "settled": 13,
+        "wins": 6
+      }
+    },
+    "control_by_surface": {
+      "CLAY": {
+        "accuracy": 0.625,
+        "accuracy_wilson95": [
+          0.4525440735307745,
+          0.7706611269054578
+        ],
+        "brier": 0.22996813272339844,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.4411764705882353,
+            0.7941176470588235
+          ],
+          "available": true,
+          "brier95": [
+            0.17671600929385292,
+            0.28743574491777
+          ],
+          "clusters": 24,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5412054306261206,
+            0.7705237249050242
+          ],
+          "residual95": [
+            -0.8192135,
+            11.71151
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 21.2087635,
+        "independent_variance": 7.12951525285125,
+        "log_loss": 0.6518425360353288,
+        "losses": 12,
+        "mean_selected_probability": 0.662773859375,
+        "residual": -1.2087634999999999,
+        "residual_z": -0.4527008774497885,
+        "settled": 32,
+        "wins": 20
+      },
+      "HARD": {
+        "accuracy": 0.6355140186915887,
+        "accuracy_wilson95": [
+          0.5410961319079854,
+          0.7205388222738489
+        ],
+        "brier": 0.23119170644923365,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5398230088495575,
+            0.7297297297297297
+          ],
+          "available": true,
+          "brier95": [
+            0.20064893787720833,
+            0.2622986493339615
+          ],
+          "clusters": 82,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5918234847730386,
+            0.71987520911239
+          ],
+          "residual95": [
+            3.278397499999997,
+            27.013360499999997
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 70.807779,
+        "independent_variance": 23.895017409932,
+        "log_loss": 0.6550776829607816,
+        "losses": 39,
+        "mean_selected_probability": 0.6617549439252336,
+        "residual": -2.8077789999999965,
+        "residual_z": -0.5743931418744033,
+        "settled": 107,
+        "wins": 68
+      },
+      "UNKNOWN": {
+        "accuracy": 0.8,
+        "accuracy_wilson95": [
+          0.49016247153664183,
+          0.9433178485456247
+        ],
+        "brier": 0.1757922298108,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.1137953678099,
+            0.26050201154142505
+          ],
+          "clusters": 10,
+          "iterations": 2000,
+          "log_loss95": [
+            0.4108154508762942,
+            0.7137679681654543
+          ],
+          "residual95": [
+            0.8520570000000003,
+            6.5777865
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 6.539951,
+        "independent_variance": 2.258961701892,
+        "log_loss": 0.539491839510353,
+        "losses": 2,
+        "mean_selected_probability": 0.6539951,
+        "residual": 1.4600489999999997,
+        "residual_z": 0.9714333234614722,
+        "settled": 10,
+        "wins": 8
+      }
+    },
+    "corrected_low_history_subgroup": {
+      "expected_wins": 0.6791225,
+      "flags": {
+        "FAVOURITE_UNDER_20": 1,
+        "IDENTITY_LINK_UNRESOLVED": 1,
+        "SHORT_CAREER_ITF_OR_DEBUT": 1
+      },
+      "ids_sha256": "7fce7ecc1264470e06c7e94123bda274513c234b1dc9cabe28cc52518275a4c5",
+      "settled": 1,
+      "wins": 0
+    },
+    "expected_winner_variance": {
+      "cluster_bootstrap": {
+        "available": true,
+        "design_effect": 2.243887577551063,
+        "interpretation": "A design effect above 1 means the naive independent SD understates the uncertainty of the winner count.",
+        "iterations": 4000,
+        "residual_variance": 40.010156820436585,
+        "residual_z": -0.40416580443394773,
+        "seed": 20261137,
+        "wins_sd": 8.64201478489742,
+        "wins_variance": 74.6844195423856
+      },
+      "clusters": 111,
+      "independent_sd": 5.769184896038196,
+      "independent_variance": 33.28349436467525,
+      "largest_cluster": 4,
+      "limitation": "sum p(1-p) is exact only for independent Bernoulli selections. Selections share favourites, opponents and tournament conditions; the cluster bootstrap is the dependence-aware estimate and still cannot capture unobserved shared shocks.",
+      "settled": 149
+    },
+    "historical_evaluation_previously_inspected": true,
+    "history_depth_bridged": {
+      "10-19": {
+        "accuracy": 0.0,
+        "accuracy_wilson95": [
+          0,
+          0.7934506856227626
+        ],
+        "brier": 0.46120737000624995,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 1
+        },
+        "expected_wins": 0.6791225,
+        "independent_variance": 0.21791512999375,
+        "log_loss": 1.136695848625235,
+        "losses": 1,
+        "mean_selected_probability": 0.6791225,
+        "residual": -0.6791225,
+        "residual_z": -1.4548038006984638,
+        "settled": 1,
+        "wins": 0
+      },
+      "100+": {
+        "accuracy": 0.6495726495726496,
+        "accuracy_wilson95": [
+          0.5596196597083499,
+          0.7300160360335676
+        ],
+        "brier": 0.22554768003048503,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5565217391304348,
+            0.7394957983193278
+          ],
+          "available": true,
+          "brier95": [
+            0.19658289772459053,
+            0.2554424716635344
+          ],
+          "clusters": 83,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5826587198159658,
+            0.7055628657653643
+          ],
+          "residual95": [
+            6.607454500000003,
+            32.033771
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 77.4630235,
+        "independent_variance": 26.11104793643325,
+        "log_loss": 0.6432581996940111,
+        "losses": 41,
+        "mean_selected_probability": 0.662077123931624,
+        "residual": -1.4630235000000056,
+        "residual_z": -0.28631173653556974,
+        "settled": 117,
+        "wins": 76
+      },
+      "20-49": {
+        "accuracy": 0.75,
+        "accuracy_wilson95": [
+          0.5050168346449122,
+          0.8981793250878696
+        ],
+        "brier": 0.1957657051256875,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.47368421052631576,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.12150407698075,
+            0.2790353335792031
+          ],
+          "clusters": 14,
+          "iterations": 2000,
+          "log_loss95": [
+            0.42787471972900126,
+            0.753666985594424
+          ],
+          "residual95": [
+            -1.0779859999999992,
+            8.927464
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 10.517903,
+        "independent_variance": 3.593755717989,
+        "log_loss": 0.5812225398198452,
+        "losses": 4,
+        "mean_selected_probability": 0.6573689375,
+        "residual": 1.4820969999999996,
+        "residual_z": 0.7818120352153592,
+        "settled": 16,
+        "wins": 12
+      },
+      "50-99": {
+        "accuracy": 0.5333333333333333,
+        "accuracy_wilson95": [
+          0.30116980025498397,
+          0.7519046463426261
+        ],
+        "brier": 0.2581251946493833,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.29411764705882354,
+            0.7857142857142857
+          ],
+          "available": true,
+          "brier95": [
+            0.18030619224531666,
+            0.33078574745833333
+          ],
+          "clusters": 13,
+          "iterations": 2000,
+          "log_loss95": [
+            0.548497905435304,
+            0.859601700015842
+          ],
+          "residual95": [
+            -2.4036334999999998,
+            5.4944305
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 9.8964445,
+        "independent_variance": 3.36077558025925,
+        "log_loss": 0.7099817183397084,
+        "losses": 7,
+        "mean_selected_probability": 0.6597629666666667,
+        "residual": -1.8964444999999994,
+        "residual_z": -1.0344759085158934,
+        "settled": 15,
+        "wins": 8
+      }
+    },
+    "history_depth_raw": {
+      "1-9": {
+        "accuracy": 1.0,
+        "accuracy_wilson95": [
+          0.5101091635454027,
+          1
+        ],
+        "brier": 0.12244174146793753,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            1.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10922711906162502,
+            0.13565636387425
+          ],
+          "clusters": 4,
+          "iterations": 2000,
+          "log_loss95": [
+            0.4012170288332212,
+            0.4593365736695595
+          ],
+          "residual95": [
+            1.7912235,
+            2.678019
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 2.6024655,
+        "independent_variance": 0.9077675341282501,
+        "log_loss": 0.43027680125139034,
+        "losses": 0,
+        "mean_selected_probability": 0.650616375,
+        "residual": 1.3975345,
+        "residual_z": 1.4668145681676321,
+        "settled": 4,
+        "wins": 4
+      },
+      "10-19": {
+        "accuracy": 0.5833333333333334,
+        "accuracy_wilson95": [
+          0.31951131254954973,
+          0.8067396863412435
+        ],
+        "brier": 0.2436719586531458,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3076923076923077,
+            0.9090909090909091
+          ],
+          "available": true,
+          "brier95": [
+            0.14273245252097724,
+            0.3345458714561071
+          ],
+          "clusters": 11,
+          "iterations": 2000,
+          "log_loss95": [
+            0.4709953514346422,
+            0.8675847934227127
+          ],
+          "residual95": [
+            -4.229514499999999,
+            4.591551
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 7.8984214999999995,
+        "independent_variance": 2.6942509961622503,
+        "log_loss": 0.6801346006464386,
+        "losses": 5,
+        "mean_selected_probability": 0.6582017916666666,
+        "residual": -0.8984214999999995,
+        "residual_z": -0.5473449435522848,
+        "settled": 12,
+        "wins": 7
+      },
+      "20-49": {
+        "accuracy": 0.5609756097560976,
+        "accuracy_wilson95": [
+          0.4104052722210608,
+          0.7010986826344964
+        ],
+        "brier": 0.24711044695362197,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.39473684210526316,
+            0.7272727272727273
+          ],
+          "available": true,
+          "brier95": [
+            0.1967278161739716,
+            0.2979569392495256
+          ],
+          "clusters": 37,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5824476226700624,
+            0.79200723063213
+          ],
+          "residual95": [
+            -2.5346270000000004,
+            12.590235499999999
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 26.969114,
+        "independent_variance": 9.204014674901499,
+        "log_loss": 0.6868491473220969,
+        "losses": 18,
+        "mean_selected_probability": 0.657783268292683,
+        "residual": -3.969114000000001,
+        "residual_z": -1.3082927103893516,
+        "settled": 41,
+        "wins": 23
+      },
+      "50-99": {
+        "accuracy": 0.6739130434782609,
+        "accuracy_wilson95": [
+          0.5728326114575908,
+          0.761052122703932
+        ],
+        "brier": 0.2207506123969212,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5714285714285714,
+            0.7710843373493976
+          ],
+          "available": true,
+          "brier95": [
+            0.1896366161415887,
+            0.2552240550244
+          ],
+          "clusters": 60,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5685315855022277,
+            0.7056774358341639
+          ],
+          "residual95": [
+            5.704743499999999,
+            27.8299595
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 61.0864925,
+        "independent_variance": 20.47746115948325,
+        "log_loss": 0.6337353714355313,
+        "losses": 30,
+        "mean_selected_probability": 0.6639836141304347,
+        "residual": 0.9135075000000015,
+        "residual_z": 0.201871059268025,
+        "settled": 92,
+        "wins": 62
+      }
+    },
+    "identity": {
+      "complete_bridged": 149,
+      "complete_raw": 148,
+      "favourite_historical_identity_present": 0,
+      "favourite_identity_mapped": 141,
+      "favourite_under_20_bridged": 1,
+      "favourite_under_20_raw": 16,
+      "mean_bridged_count_under_20_raw": 133.625,
+      "mean_raw_count_under_20": 13.0,
+      "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+      "recovered_to_at_least_20": 15,
+      "selections": 149,
+      "unresolved_link": 1
+    },
+    "inactivity": {
+      "0-30": {
+        "accuracy": 0.5,
+        "accuracy_wilson95": [
+          0.21521606221387757,
+          0.7847839377861224
+        ],
+        "brier": 0.2904923388205,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.14285714285714285,
+            0.8
+          ],
+          "available": true,
+          "brier95": [
+            0.19164872176455,
+            0.4072592121349166
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5746345433941991,
+            1.024392080266442
+          ],
+          "residual95": [
+            -3.0055205000000003,
+            4.1615345
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 5.313409,
+        "independent_variance": 1.779936289436,
+        "log_loss": 0.7802589867241917,
+        "losses": 4,
+        "mean_selected_probability": 0.664176125,
+        "residual": -1.313409,
+        "residual_z": -0.9844592843757032,
+        "settled": 8,
+        "wins": 4
+      },
+      "UNKNOWN_START_DATE_INCOMPLETE": {
+        "accuracy": 0.6524822695035462,
+        "accuracy_wilson95": [
+          0.5707840917341394,
+          0.7260922332497983
+        ],
+        "brier": 0.22362040017560816,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5648854961832062,
+            0.7368421052631579
+          ],
+          "available": true,
+          "brier95": [
+            0.19649706234557446,
+            0.25218645974880494
+          ],
+          "clusters": 105,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5827654950706608,
+            0.6982597917322259
+          ],
+          "residual95": [
+            9.861618000000007,
+            37.754665
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 93.2430845,
+        "independent_variance": 31.50355807523925,
+        "log_loss": 0.6390434023492493,
+        "losses": 49,
+        "mean_selected_probability": 0.6612984716312056,
+        "residual": -1.2430844999999948,
+        "residual_z": -0.22147303031703994,
+        "settled": 141,
+        "wins": 92
+      }
+    },
+    "independent_forward_validation": false,
+    "limitations": [
+      "November window previously inspected; not independent validation.",
+      "Expected wins and residuals use the original selected-side probability, not a new calibration.",
+      "Only ATP main and Challenger results are ingested; ITF transition cannot be separated from debut.",
+      "Career and inactivity are not inferred when match_start_at is missing.",
+      "History counts are research-derived from PIT-visible rows, not persisted original-run features.",
+      "The identity bridge is an alias-uniqueness resolver, not a verified provider census.",
+      "Selections are not independent; the cluster bootstrap is partial and does not model shared opponents."
+    ],
+    "policy": "C_uncalibrated_mean_floor60",
+    "reconciliation": {
+      "actual_wins": 96,
+      "brier": 0.2272108398343943,
+      "expected_wins": 98.5564935,
+      "log_loss": 0.6466254471479039,
+      "mean_selected_probability": 0.6614529765100672,
+      "residual": -2.556493500000002
+    },
+    "selected": 158,
+    "selected_class_census": {
+      "flag_counts": {
+        "FAVOURITE_UNDER_20": 16,
+        "IDENTITY_GAP_RECOVERED": 15,
+        "IDENTITY_LINK_UNRESOLVED": 1,
+        "SHORT_CAREER_ITF_OR_DEBUT": 1,
+        "START_DATE_INCOMPLETE": 149
+      },
+      "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+      "overlap_combinations": {
+        "": 8,
+        "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 15,
+        "FAVOURITE_UNDER_20+IDENTITY_LINK_UNRESOLVED+SHORT_CAREER_ITF_OR_DEBUT": 1,
+        "START_DATE_INCOMPLETE": 134
+      },
+      "primary_counts": {
+        "HISTORY_AT_LEAST_20": 142,
+        "IDENTITY_GAP_RECOVERED": 15,
+        "SHORT_CAREER_ITF_OR_DEBUT": 1
+      },
+      "selections": 158,
+      "start_date_incomplete": 149
+    },
+    "selected_identity": {
+      "complete_bridged": 158,
+      "complete_raw": 157,
+      "favourite_historical_identity_present": 0,
+      "favourite_identity_mapped": 149,
+      "favourite_under_20_bridged": 1,
+      "favourite_under_20_raw": 16,
+      "mean_bridged_count_under_20_raw": 133.625,
+      "mean_raw_count_under_20": 13.0,
+      "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+      "recovered_to_at_least_20": 15,
+      "selections": 158,
+      "unresolved_link": 1
+    },
+    "settled": 149,
+    "status": "DESCRIPTIVE_HISTORICAL_RESEARCH_ONLY",
+    "surface_experience_bridged": {
+      "0": {
+        "accuracy": 0.8,
+        "accuracy_wilson95": [
+          0.49016247153664183,
+          0.9433178485456247
+        ],
+        "brier": 0.1757922298108,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.1137953678099,
+            0.26050201154142505
+          ],
+          "clusters": 10,
+          "iterations": 2000,
+          "log_loss95": [
+            0.4108154508762942,
+            0.7137679681654543
+          ],
+          "residual95": [
+            0.8520570000000003,
+            6.5777865
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 6.539951,
+        "independent_variance": 2.258961701892,
+        "log_loss": 0.539491839510353,
+        "losses": 2,
+        "mean_selected_probability": 0.6539951,
+        "residual": 1.4600489999999997,
+        "residual_z": 0.9714333234614722,
+        "settled": 10,
+        "wins": 8
+      },
+      "1-4": {
+        "accuracy": 0.0,
+        "accuracy_wilson95": [
+          0,
+          0.7934506856227626
+        ],
+        "brier": 0.3940066623002501,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 1
+        },
+        "expected_wins": 0.6276995000000001,
+        "independent_variance": 0.23369283769974997,
+        "log_loss": 0.9880539551014133,
+        "losses": 1,
+        "mean_selected_probability": 0.6276995000000001,
+        "residual": -0.6276995000000001,
+        "residual_z": -1.2984615134473465,
+        "settled": 1,
+        "wins": 0
+      },
+      "10-19": {
+        "accuracy": 0.7777777777777778,
+        "accuracy_wilson95": [
+          0.5478541568378739,
+          0.9099907189139831
+        ],
+        "brier": 0.19268191075476387,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5333333333333333,
+            0.95
+          ],
+          "available": true,
+          "brier95": [
+            0.137589129025975,
+            0.2719791712803333
+          ],
+          "clusters": 13,
+          "iterations": 2000,
+          "log_loss95": [
+            0.4615953185164379,
+            0.7406034904580999
+          ],
+          "residual95": [
+            0.8715409999999997,
+            10.607002
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 11.8164195,
+        "independent_variance": 4.05029410641425,
+        "log_loss": 0.5758418736426338,
+        "losses": 4,
+        "mean_selected_probability": 0.65646775,
+        "residual": 2.1835804999999997,
+        "residual_z": 1.0849904791791412,
+        "settled": 18,
+        "wins": 14
+      },
+      "20+": {
+        "accuracy": 0.6206896551724138,
+        "accuracy_wilson95": [
+          0.5298630447498485,
+          0.7037789709226525
+        ],
+        "brier": 0.23400126814133837,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5283018867924528,
+            0.7094017094017094
+          ],
+          "available": true,
+          "brier95": [
+            0.20494928729145126,
+            0.2635647014910199
+          ],
+          "clusters": 89,
+          "iterations": 2000,
+          "log_loss95": [
+            0.6003129782952956,
+            0.7218782593958896
+          ],
+          "residual95": [
+            3.5223525000000038,
+            27.357363499999998
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 76.82454249999999,
+        "independent_variance": 25.88112039560475,
+        "log_loss": 0.6606937066941588,
+        "losses": 44,
+        "mean_selected_probability": 0.6622805387931033,
+        "residual": -4.824542499999993,
+        "residual_z": -0.9483411594017808,
+        "settled": 116,
+        "wins": 72
+      },
+      "5-9": {
+        "accuracy": 0.5,
+        "accuracy_wilson95": [
+          0.15003898915214947,
+          0.8499610108478506
+        ],
+        "brier": 0.272516169233875,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.09027134798012498,
+            0.45476099048762497
+          ],
+          "clusters": 4,
+          "iterations": 2000,
+          "log_loss95": [
+            0.35728023299230427,
+            1.1220175533791497
+          ],
+          "residual95": [
+            -2.697371,
+            1.978151
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 2.747881,
+        "independent_variance": 0.8594253230644999,
+        "log_loss": 0.7396488931857269,
+        "losses": 2,
+        "mean_selected_probability": 0.68697025,
+        "residual": -0.747881,
+        "residual_z": -0.8067304079300931,
+        "settled": 4,
+        "wins": 2
+      }
+    },
+    "surface_experience_raw": {
+      "0": {
+        "accuracy": 0.75,
+        "accuracy_wilson95": [
+          0.5050168346449122,
+          0.8981793250878696
+        ],
+        "brier": 0.18955320596260938,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5,
+            0.9375
+          ],
+          "available": true,
+          "brier95": [
+            0.13342863199845315,
+            0.2588343879298125
+          ],
+          "clusters": 16,
+          "iterations": 2000,
+          "log_loss95": [
+            0.45178577170562123,
+            0.7102529355047825
+          ],
+          "residual95": [
+            0.8713984999999997,
+            8.614873
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 10.4385935,
+        "independent_variance": 3.62291520459825,
+        "log_loss": 0.567852258703262,
+        "losses": 4,
+        "mean_selected_probability": 0.65241209375,
+        "residual": 1.5614065000000004,
+        "residual_z": 0.820326796483766,
+        "settled": 16,
+        "wins": 12
+      },
+      "1-4": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.47824760507320074,
+          0.8135673850128435
+        ],
+        "brier": 0.2160128692648426,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.4444444444444444,
+            0.84
+          ],
+          "available": true,
+          "brier95": [
+            0.16037240412780998,
+            0.28373313038924997
+          ],
+          "clusters": 25,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5067747413329077,
+            0.7629778042840764
+          ],
+          "residual95": [
+            -0.7937785000000002,
+            10.6049195
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 17.958938500000002,
+        "independent_variance": 5.9987310298492496,
+        "log_loss": 0.6227257181582101,
+        "losses": 9,
+        "mean_selected_probability": 0.6651458703703704,
+        "residual": 0.041061499999997864,
+        "residual_z": 0.01676506013603625,
+        "settled": 27,
+        "wins": 18
+      },
+      "10-19": {
+        "accuracy": 0.6142857142857143,
+        "accuracy_wilson95": [
+          0.4971573558930424,
+          0.7195230869846111
+        ],
+        "brier": 0.24105041588322856,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.5,
+            0.7272727272727273
+          ],
+          "available": true,
+          "brier95": [
+            0.20428853604688513,
+            0.2781694609895846
+          ],
+          "clusters": 51,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5988521310811562,
+            0.7536955974060544
+          ],
+          "residual95": [
+            -0.10192200000000184,
+            17.490232
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 46.353372,
+        "independent_variance": 15.618403888174,
+        "log_loss": 0.676110134915985,
+        "losses": 27,
+        "mean_selected_probability": 0.6621910285714285,
+        "residual": -3.3533720000000002,
+        "residual_z": -0.8485225902493441,
+        "settled": 70,
+        "wins": 43
+      },
+      "20+": {
+        "accuracy": 1.0,
+        "accuracy_wilson95": [
+          0.5655175352168251,
+          1
+        ],
+        "brier": 0.10112563338240002,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            1.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.09389500812945002,
+            0.11043410909150002
+          ],
+          "clusters": 5,
+          "iterations": 2000,
+          "log_loss95": [
+            0.3658856414811728,
+            0.40363592153363526
+          ],
+          "residual95": [
+            2.259415,
+            3.4402725
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.411715,
+        "independent_variance": 1.082656833088,
+        "log_loss": 0.38246192148183955,
+        "losses": 0,
+        "mean_selected_probability": 0.682343,
+        "residual": 1.588285,
+        "residual_z": 1.5264515483405396,
+        "settled": 5,
+        "wins": 5
+      },
+      "5-9": {
+        "accuracy": 0.5806451612903226,
+        "accuracy_wilson95": [
+          0.4076626249536972,
+          0.7358445693268778
+        ],
+        "brier": 0.2454857771301371,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.4,
+            0.75
+          ],
+          "available": true,
+          "brier95": [
+            0.1911013605345,
+            0.3033677496021
+          ],
+          "clusters": 26,
+          "iterations": 2000,
+          "log_loss95": [
+            0.5710113965163652,
+            0.8049330254247946
+          ],
+          "residual95": [
+            -3.61252,
+            8.801031
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 20.3938745,
+        "independent_variance": 6.96078740896575,
+        "log_loss": 0.6841271627092153,
+        "losses": 13,
+        "mean_selected_probability": 0.6578669193548387,
+        "residual": -2.393874499999999,
+        "residual_z": -0.9073444634485228,
+        "settled": 31,
+        "wins": 18
+      }
+    },
+    "version": "MANAGER_C_MARGINAL_CALIBRATION_V1"
+  },
+  "as_of": "2026-11-21T03:30:00+00:00",
+  "atp_main_context": {
+    "band_notes": {
+      "55_60_empty_by_construction": "The registered broad 40% cutoff is 0.6213299999999999, so no marginal selection can have confidence below 0.62133. The [0.55,0.60) band is reported as a measured zero, not omitted.",
+      "70_plus_sparse_by_construction": "The registered narrow 20% cutoff is 0.7070145 and narrow picks are removed from marginal, so values above 0.7070145 cannot appear. The 0.70-0.75 band contains only 0.70-0.7070."
+    },
+    "bands": {
+      "BELOW_0.55": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.55,0.60)": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.60,0.65)": {
+        "accuracy": 0.0,
+        "accuracy_wilson95": [
+          0,
+          0.7934506856227626
+        ],
+        "brier": 0.3919717838522499,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 1
+        },
+        "expected_wins": 0.6260764999999999,
+        "independent_variance": 0.23410471614775002,
+        "log_loss": 0.9837040479444249,
+        "losses": 1,
+        "mean_selected_probability": 0.6260764999999999,
+        "residual": -0.6260764999999999,
+        "residual_z": -1.2939643798479805,
+        "settled": 1,
+        "wins": 0
+      },
+      "[0.65,0.70)": {
+        "accuracy": 0.8,
+        "accuracy_wilson95": [
+          0.37553462976252533,
+          0.9637758913675698
+        ],
+        "brier": 0.1835024005076,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.4,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.1041235928566,
+            0.33309058411840003
+          ],
+          "clusters": 5,
+          "iterations": 2000,
+          "log_loss95": [
+            0.38959539256710435,
+            0.8717417803220991
+          ],
+          "residual95": [
+            -1.0492080000000001,
+            3.386713
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.371066,
+        "independent_variance": 1.097241997462,
+        "log_loss": 0.5571839472373888,
+        "losses": 1,
+        "mean_selected_probability": 0.6742132,
+        "residual": 0.6289340000000001,
+        "residual_z": 0.6004182193135267,
+        "settled": 5,
+        "wins": 4
+      },
+      "[0.70,0.75)": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.75,0.80)": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "[0.80,1.00]": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 0
+        },
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      }
+    },
+    "class_census": {
+      "flag_counts": {
+        "FAVOURITE_UNDER_20": 1,
+        "IDENTITY_GAP_RECOVERED": 1,
+        "START_DATE_INCOMPLETE": 6
+      },
+      "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+      "overlap_combinations": {
+        "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 1,
+        "START_DATE_INCOMPLETE": 5
+      },
+      "primary_counts": {
+        "HISTORY_AT_LEAST_20": 5,
+        "IDENTITY_GAP_RECOVERED": 1
+      },
+      "selections": 6,
+      "start_date_incomplete": 6
+    },
+    "control_by_probability_band": {
+      "[0.55,0.60)": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      },
+      "[0.60,0.65)": {
+        "all": {
+          "accuracy": 0.0,
+          "accuracy_wilson95": [
+            0,
+            0.7934506856227626
+          ],
+          "brier": 0.3919717838522499,
+          "expected_wins": 0.6260764999999999,
+          "independent_variance": 0.23410471614775002,
+          "log_loss": 0.9837040479444249,
+          "losses": 1,
+          "mean_selected_probability": 0.6260764999999999,
+          "residual": -0.6260764999999999,
+          "residual_z": -1.2939643798479805,
+          "settled": 1,
+          "wins": 0
+        },
+        "by_subgroup": {
+          "CORRECTED_HISTORY_HEALTHY": {
+            "accuracy": 0.0,
+            "accuracy_wilson95": [
+              0,
+              0.7934506856227626
+            ],
+            "brier": 0.3919717838522499,
+            "clustered_bootstrap": {
+              "available": false,
+              "clusters": 1
+            },
+            "expected_wins": 0.6260764999999999,
+            "independent_variance": 0.23410471614775002,
+            "log_loss": 0.9837040479444249,
+            "losses": 1,
+            "mean_selected_probability": 0.6260764999999999,
+            "residual": -0.6260764999999999,
+            "residual_z": -1.2939643798479805,
+            "settled": 1,
+            "wins": 0
+          }
+        }
+      },
+      "[0.65,0.70)": {
+        "all": {
+          "accuracy": 0.8,
+          "accuracy_wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ],
+          "brier": 0.1835024005076,
+          "expected_wins": 3.371066,
+          "independent_variance": 1.097241997462,
+          "log_loss": 0.5571839472373888,
+          "losses": 1,
+          "mean_selected_probability": 0.6742132,
+          "residual": 0.6289340000000001,
+          "residual_z": 0.6004182193135267,
+          "settled": 5,
+          "wins": 4
+        },
+        "by_subgroup": {
+          "CORRECTED_HISTORY_HEALTHY": {
+            "accuracy": 0.8,
+            "accuracy_wilson95": [
+              0.37553462976252533,
+              0.9637758913675698
+            ],
+            "brier": 0.1835024005076,
+            "clustered_bootstrap": {
+              "accuracy95": [
+                0.4,
+                1.0
+              ],
+              "available": true,
+              "brier95": [
+                0.1041235928566,
+                0.33309058411840003
+              ],
+              "clusters": 5,
+              "iterations": 2000,
+              "log_loss95": [
+                0.38959539256710435,
+                0.8717417803220991
+              ],
+              "residual95": [
+                -1.0492080000000001,
+                3.386713
+              ],
+              "seed": 20261126
+            },
+            "expected_wins": 3.371066,
+            "independent_variance": 1.097241997462,
+            "log_loss": 0.5571839472373888,
+            "losses": 1,
+            "mean_selected_probability": 0.6742132,
+            "residual": 0.6289340000000001,
+            "residual_z": 0.6004182193135267,
+            "settled": 5,
+            "wins": 4
+          }
+        }
+      },
+      "[0.70,0.75)": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      },
+      "[0.75,0.80)": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      },
+      "[0.80,1.00]": {
+        "all": {
+          "accuracy": null,
+          "accuracy_wilson95": null,
+          "brier": null,
+          "expected_wins": 0.0,
+          "independent_variance": 0.0,
+          "log_loss": null,
+          "losses": 0,
+          "mean_selected_probability": null,
+          "residual": 0.0,
+          "residual_z": null,
+          "settled": 0,
+          "wins": 0
+        },
+        "by_subgroup": {}
+      }
+    },
+    "control_by_qualifying": {
+      "MAIN_DRAW": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3333333333333333,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10615380907300002,
+            0.344011313984875
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.39419934713417065,
+            0.8929237768446429
+          ],
+          "residual95": [
+            -1.4237125000000002,
+            3.746824
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.9971425,
+        "independent_variance": 1.33134671360975,
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "residual_z": 0.0024765132378240335,
+        "settled": 6,
+        "wins": 4
+      }
+    },
+    "control_by_surface": {
+      "HARD": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3333333333333333,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10615380907300002,
+            0.344011313984875
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.39419934713417065,
+            0.8929237768446429
+          ],
+          "residual95": [
+            -1.4237125000000002,
+            3.746824
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.9971425,
+        "independent_variance": 1.33134671360975,
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "residual_z": 0.0024765132378240335,
+        "settled": 6,
+        "wins": 4
+      }
+    },
+    "corrected_low_history_subgroup": {
+      "expected_wins": 0,
+      "flags": {},
+      "ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+      "settled": 0,
+      "wins": 0
+    },
+    "expected_winner_variance": {
+      "cluster_bootstrap": {
+        "available": true,
+        "design_effect": 1.037111463617896,
+        "interpretation": "A design effect above 1 means the naive independent SD understates the uncertainty of the winner count.",
+        "iterations": 4000,
+        "residual_variance": 1.3583242358892524,
+        "residual_z": 0.0024517970278303304,
+        "seed": 20261137,
+        "wins_sd": 1.1750552917776609,
+        "wins_variance": 1.3807549387346838
+      },
+      "clusters": 6,
+      "independent_sd": 1.1538399861374844,
+      "independent_variance": 1.33134671360975,
+      "largest_cluster": 1,
+      "limitation": "sum p(1-p) is exact only for independent Bernoulli selections. Selections share favourites, opponents and tournament conditions; the cluster bootstrap is the dependence-aware estimate and still cannot capture unobserved shared shocks.",
+      "settled": 6
+    },
+    "historical_evaluation_previously_inspected": true,
+    "history_depth_bridged": {
+      "100+": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3333333333333333,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10615380907300002,
+            0.344011313984875
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.39419934713417065,
+            0.8929237768446429
+          ],
+          "residual95": [
+            -1.4237125000000002,
+            3.746824
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.9971425,
+        "independent_variance": 1.33134671360975,
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "residual_z": 0.0024765132378240335,
+        "settled": 6,
+        "wins": 4
+      }
+    },
+    "history_depth_raw": {
+      "1-9": {
+        "accuracy": 1.0,
+        "accuracy_wilson95": [
+          0.20654931437723745,
+          1
+        ],
+        "brier": 0.10928908692100002,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 1
+        },
+        "expected_wins": 0.669411,
+        "independent_variance": 0.22129991307900002,
+        "log_loss": 0.4013570577136925,
+        "losses": 0,
+        "mean_selected_probability": 0.669411,
+        "residual": 0.330589,
+        "residual_z": 0.7027450207242066,
+        "settled": 1,
+        "wins": 1
+      },
+      "20-49": {
+        "accuracy": 0.5,
+        "accuracy_wilson95": [
+          0.09453120573423074,
+          0.9054687942657693
+        ],
+        "brier": 0.24730884565412495,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.102645907456,
+            0.3919717838522499
+          ],
+          "clusters": 2,
+          "iterations": 2000,
+          "log_loss95": [
+            0.3862273462007567,
+            0.9837040479444251
+          ],
+          "residual95": [
+            -0.747847,
+            1.359232
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 1.3056925,
+        "independent_variance": 0.45184280869175003,
+        "log_loss": 0.6849656970725908,
+        "losses": 1,
+        "mean_selected_probability": 0.65284625,
+        "residual": -0.3056924999999999,
+        "residual_z": -0.4547692551361414,
+        "settled": 2,
+        "wins": 1
+      },
+      "50-99": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.2076596008020477,
+          0.9385080552796037
+        ],
+        "brier": 0.23519233605366666,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.103018531225,
+            0.48012426810000003
+          ],
+          "clusters": 3,
+          "iterations": 2000,
+          "log_loss95": [
+            0.38708260636015784,
+            1.1806144147487012
+          ],
+          "residual95": [
+            -2.07873,
+            2.037105
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 2.022039,
+        "independent_variance": 0.658203991839,
+        "log_loss": 0.6661117774241649,
+        "losses": 1,
+        "mean_selected_probability": 0.674013,
+        "residual": -0.02203899999999992,
+        "residual_z": -0.027165120071089253,
+        "settled": 3,
+        "wins": 2
+      }
+    },
+    "identity": {
+      "complete_bridged": 6,
+      "complete_raw": 6,
+      "favourite_historical_identity_present": 0,
+      "favourite_identity_mapped": 6,
+      "favourite_under_20_bridged": 0,
+      "favourite_under_20_raw": 1,
+      "mean_bridged_count_under_20_raw": 375.0,
+      "mean_raw_count_under_20": 9.0,
+      "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+      "recovered_to_at_least_20": 1,
+      "selections": 6,
+      "unresolved_link": 0
+    },
+    "inactivity": {
+      "UNKNOWN_START_DATE_INCOMPLETE": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3333333333333333,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10615380907300002,
+            0.344011313984875
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.39419934713417065,
+            0.8929237768446429
+          ],
+          "residual95": [
+            -1.4237125000000002,
+            3.746824
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.9971425,
+        "independent_variance": 1.33134671360975,
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "residual_z": 0.0024765132378240335,
+        "settled": 6,
+        "wins": 4
+      }
+    },
+    "independent_forward_validation": false,
+    "limitations": [
+      "November window previously inspected; not independent validation.",
+      "Expected wins and residuals use the original selected-side probability, not a new calibration.",
+      "Only ATP main and Challenger results are ingested; ITF transition cannot be separated from debut.",
+      "Career and inactivity are not inferred when match_start_at is missing.",
+      "History counts are research-derived from PIT-visible rows, not persisted original-run features.",
+      "The identity bridge is an alias-uniqueness resolver, not a verified provider census.",
+      "Selections are not independent; the cluster bootstrap is partial and does not model shared opponents."
+    ],
+    "policy": "C_uncalibrated_mean_floor60",
+    "reconciliation": {
+      "actual_wins": 4,
+      "brier": 0.21824729773170834,
+      "expected_wins": 3.9971425,
+      "log_loss": 0.6282706306885615,
+      "mean_selected_probability": 0.6661904166666667,
+      "residual": 0.0028575000000001793
+    },
+    "selected": 6,
+    "selected_class_census": {
+      "flag_counts": {
+        "FAVOURITE_UNDER_20": 1,
+        "IDENTITY_GAP_RECOVERED": 1,
+        "START_DATE_INCOMPLETE": 6
+      },
+      "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+      "overlap_combinations": {
+        "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 1,
+        "START_DATE_INCOMPLETE": 5
+      },
+      "primary_counts": {
+        "HISTORY_AT_LEAST_20": 5,
+        "IDENTITY_GAP_RECOVERED": 1
+      },
+      "selections": 6,
+      "start_date_incomplete": 6
+    },
+    "selected_identity": {
+      "complete_bridged": 6,
+      "complete_raw": 6,
+      "favourite_historical_identity_present": 0,
+      "favourite_identity_mapped": 6,
+      "favourite_under_20_bridged": 0,
+      "favourite_under_20_raw": 1,
+      "mean_bridged_count_under_20_raw": 375.0,
+      "mean_raw_count_under_20": 9.0,
+      "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+      "recovered_to_at_least_20": 1,
+      "selections": 6,
+      "unresolved_link": 0
+    },
+    "settled": 6,
+    "status": "DESCRIPTIVE_HISTORICAL_RESEARCH_ONLY",
+    "surface_experience_bridged": {
+      "20+": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.3333333333333333,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.10615380907300002,
+            0.344011313984875
+          ],
+          "clusters": 6,
+          "iterations": 2000,
+          "log_loss95": [
+            0.39419934713417065,
+            0.8929237768446429
+          ],
+          "residual95": [
+            -1.4237125000000002,
+            3.746824
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 3.9971425,
+        "independent_variance": 1.33134671360975,
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "residual_z": 0.0024765132378240335,
+        "settled": 6,
+        "wins": 4
+      }
+    },
+    "surface_experience_raw": {
+      "1-4": {
+        "accuracy": 1.0,
+        "accuracy_wilson95": [
+          0.20654931437723745,
+          1
+        ],
+        "brier": 0.10301853122499996,
+        "clustered_bootstrap": {
+          "available": false,
+          "clusters": 1
+        },
+        "expected_wins": 0.679035,
+        "independent_variance": 0.21794646877499999,
+        "log_loss": 0.38708260636015784,
+        "losses": 0,
+        "mean_selected_probability": 0.679035,
+        "residual": 0.32096499999999994,
+        "residual_z": 0.6875159189643306,
+        "settled": 1,
+        "wins": 1
+      },
+      "10-19": {
+        "accuracy": 0.5,
+        "accuracy_wilson95": [
+          0.09453120573423074,
+          0.9054687942657693
+        ],
+        "brier": 0.30127923846800003,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.12243420883600004,
+            0.48012426810000003
+          ],
+          "clusters": 2,
+          "iterations": 2000,
+          "log_loss95": [
+            0.43063831116363566,
+            1.1806144147487012
+          ],
+          "residual95": [
+            -1.38582,
+            0.6998120000000001
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 1.343004,
+        "independent_variance": 0.440257523064,
+        "log_loss": 0.8056263629561684,
+        "losses": 1,
+        "mean_selected_probability": 0.671502,
+        "residual": -0.3430040000000001,
+        "residual_z": -0.5169467290955327,
+        "settled": 2,
+        "wins": 1
+      },
+      "5-9": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.2076596008020477,
+          0.9385080552796037
+        ],
+        "brier": 0.20130225940974997,
+        "clustered_bootstrap": {
+          "accuracy95": [
+            0.0,
+            1.0
+          ],
+          "available": true,
+          "brier95": [
+            0.102645907456,
+            0.3919717838522499
+          ],
+          "clusters": 3,
+          "iterations": 2000,
+          "log_loss95": [
+            0.38622734620075666,
+            0.9837040479444251
+          ],
+          "residual95": [
+            -1.1217705,
+            2.0388479999999998
+          ],
+          "seed": 20261126
+        },
+        "expected_wins": 1.9751035,
+        "independent_variance": 0.6731427217707501,
+        "log_loss": 0.590429483952958,
+        "losses": 1,
+        "mean_selected_probability": 0.6583678333333333,
+        "residual": 0.0248965000000001,
+        "residual_z": 0.030344830795518623,
+        "settled": 3,
+        "wins": 2
+      }
+    },
+    "version": "MANAGER_C_MARGINAL_CALIBRATION_V1"
+  },
+  "band_notes": {
+    "55_60_empty_by_construction": "The registered broad 40% cutoff is 0.6213299999999999, so no marginal selection can have confidence below 0.62133. The [0.55,0.60) band is reported as a measured zero, not omitted.",
+    "70_plus_sparse_by_construction": "The registered narrow 20% cutoff is 0.7070145 and narrow picks are removed from marginal, so values above 0.7070145 cannot appear. The 0.70-0.75 band contains only 0.70-0.7070."
+  },
+  "bands": {
+    "BELOW_0.55": {
+      "accuracy": null,
+      "accuracy_wilson95": null,
+      "brier": null,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 0
+      },
+      "expected_wins": 0.0,
+      "independent_variance": 0.0,
+      "log_loss": null,
+      "losses": 0,
+      "mean_selected_probability": null,
+      "residual": 0.0,
+      "residual_z": null,
+      "settled": 0,
+      "wins": 0
+    },
+    "[0.55,0.60)": {
+      "accuracy": null,
+      "accuracy_wilson95": null,
+      "brier": null,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 0
+      },
+      "expected_wins": 0.0,
+      "independent_variance": 0.0,
+      "log_loss": null,
+      "losses": 0,
+      "mean_selected_probability": null,
+      "residual": 0.0,
+      "residual_z": null,
+      "settled": 0,
+      "wins": 0
+    },
+    "[0.60,0.65)": {
+      "accuracy": 0.5185185185185185,
+      "accuracy_wilson95": [
+        0.3885170019812708,
+        0.6460602725338812
+      ],
+      "brier": 0.2645245969118981,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.36363636363636365,
+          0.6666666666666666
+        ],
+        "available": true,
+        "brier95": [
+          0.22411385957310967,
+          0.3071254382353161
+        ],
+        "clusters": 46,
+        "iterations": 2000,
+        "log_loss95": [
+          0.6407803240815106,
+          0.8110508182652532
+        ],
+        "residual95": [
+          -5.6496390000000005,
+          11.9284095
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 34.360978,
+      "independent_variance": 12.4929727667575,
+      "log_loss": 0.7235724701047762,
+      "losses": 26,
+      "mean_selected_probability": 0.6363144074074074,
+      "residual": -6.360978000000003,
+      "residual_z": -1.7996622084719809,
+      "settled": 54,
+      "wins": 28
+    },
+    "[0.65,0.70)": {
+      "accuracy": 0.7439024390243902,
+      "accuracy_wilson95": [
+        0.6400110670496505,
+        0.8259642384673737
+      ],
+      "brier": 0.1952784613019177,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.6375,
+          0.8352941176470589
+        ],
+        "available": true,
+        "brier95": [
+          0.1643388461465981,
+          0.23186105242070393
+        ],
+        "clusters": 67,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5157641688587349,
+          0.6563254700221091
+        ],
+        "residual95": [
+          9.642906000000004,
+          29.7948405
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 55.274142499999996,
+      "independent_variance": 17.99897167324275,
+      "log_loss": 0.5801979549999543,
+      "losses": 21,
+      "mean_selected_probability": 0.6740749085365854,
+      "residual": 5.725857500000004,
+      "residual_z": 1.3496361078621955,
+      "settled": 82,
+      "wins": 61
+    },
+    "[0.70,0.75)": {
+      "accuracy": 0.42857142857142855,
+      "accuracy_wilson95": [
+        0.15821985525146975,
+        0.7495416354723428
+      ],
+      "brier": 0.32110989841925,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.14285714285714285,
+          0.7142857142857143
+        ],
+        "available": true,
+        "brier95": [
+          0.20358463596289283,
+          0.49396343369439283
+        ],
+        "clusters": 7,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5970787775722509,
+          1.2134376399729914
+        ],
+        "residual95": [
+          -3.7086345,
+          2.508222
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 4.9242305,
+      "independent_variance": 1.4602032110652499,
+      "log_loss": 0.8469174493217356,
+      "losses": 4,
+      "mean_selected_probability": 0.7034615000000001,
+      "residual": -1.9242305000000002,
+      "residual_z": -1.59239367750073,
+      "settled": 7,
+      "wins": 3
+    },
+    "[0.75,0.80)": {
+      "accuracy": null,
+      "accuracy_wilson95": null,
+      "brier": null,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 0
+      },
+      "expected_wins": 0.0,
+      "independent_variance": 0.0,
+      "log_loss": null,
+      "losses": 0,
+      "mean_selected_probability": null,
+      "residual": 0.0,
+      "residual_z": null,
+      "settled": 0,
+      "wins": 0
+    },
+    "[0.80,1.00]": {
+      "accuracy": null,
+      "accuracy_wilson95": null,
+      "brier": null,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 0
+      },
+      "expected_wins": 0.0,
+      "independent_variance": 0.0,
+      "log_loss": null,
+      "losses": 0,
+      "mean_selected_probability": null,
+      "residual": 0.0,
+      "residual_z": null,
+      "settled": 0,
+      "wins": 0
+    }
+  },
+  "challenger_selected": 152,
+  "challenger_settled": 143,
+  "class_census": {
+    "flag_counts": {
+      "FAVOURITE_UNDER_20": 15,
+      "IDENTITY_GAP_RECOVERED": 14,
+      "IDENTITY_LINK_UNRESOLVED": 1,
+      "SHORT_CAREER_ITF_OR_DEBUT": 1,
+      "START_DATE_INCOMPLETE": 135
+    },
+    "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+    "overlap_combinations": {
+      "": 7,
+      "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 14,
+      "FAVOURITE_UNDER_20+IDENTITY_LINK_UNRESOLVED+SHORT_CAREER_ITF_OR_DEBUT": 1,
+      "START_DATE_INCOMPLETE": 121
+    },
+    "primary_counts": {
+      "HISTORY_AT_LEAST_20": 128,
+      "IDENTITY_GAP_RECOVERED": 14,
+      "SHORT_CAREER_ITF_OR_DEBUT": 1
+    },
+    "selections": 143,
+    "start_date_incomplete": 135
+  },
+  "cohort_sizes": {
+    "broad": {
+      "challenger": 262,
+      "challenger_settled": 243,
+      "selected": 275
+    },
+    "marginal": {
+      "challenger": 152,
+      "challenger_settled": 143,
+      "selected": 158
+    },
+    "narrow": {
+      "challenger": 110,
+      "challenger_settled": 100,
+      "selected": 117
+    },
+    "rejected": {
+      "challenger": 320,
+      "challenger_settled": 288,
+      "selected": 381
+    }
+  },
+  "cohort_thresholds": {
+    "broad": {
+      "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+      "threshold": 0.6213299999999999,
+      "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+      "validation_policy_candidates": 471,
+      "validation_target_fixtures": 1027
+    },
+    "narrow": {
+      "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+      "threshold": 0.7070145,
+      "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+      "validation_policy_candidates": 471,
+      "validation_target_fixtures": 1027
+    }
+  },
+  "control_by_probability_band": {
+    "[0.55,0.60)": {
+      "all": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "by_subgroup": {}
+    },
+    "[0.60,0.65)": {
+      "all": {
+        "accuracy": 0.5185185185185185,
+        "accuracy_wilson95": [
+          0.3885170019812708,
+          0.6460602725338812
+        ],
+        "brier": 0.2645245969118981,
+        "expected_wins": 34.360978,
+        "independent_variance": 12.4929727667575,
+        "log_loss": 0.7235724701047762,
+        "losses": 26,
+        "mean_selected_probability": 0.6363144074074074,
+        "residual": -6.360978000000003,
+        "residual_z": -1.7996622084719809,
+        "settled": 54,
+        "wins": 28
+      },
+      "by_subgroup": {
+        "CORRECTED_HISTORY_HEALTHY": {
+          "accuracy": 0.5208333333333334,
+          "accuracy_wilson95": [
+            0.3832923230334281,
+            0.6552868382304838
+          ],
+          "brier": 0.2642105481595781,
+          "clustered_bootstrap": {
+            "accuracy95": [
+              0.3695652173913043,
+              0.673469387755102
+            ],
+            "available": true,
+            "brier95": [
+              0.22283463969383333,
+              0.30649816241979894
+            ],
+            "clusters": 42,
+            "iterations": 2000,
+            "log_loss95": [
+              0.6378568616275114,
+              0.8098787205664995
+            ],
+            "residual95": [
+              -4.60521,
+              10.783938
+            ],
+            "seed": 20261126
+          },
+          "expected_wins": 30.5375935,
+          "independent_variance": 11.10634518834025,
+          "log_loss": 0.7229681616111368,
+          "losses": 23,
+          "mean_selected_probability": 0.6361998645833333,
+          "residual": -5.5375935,
+          "residual_z": -1.6616344531888543,
+          "settled": 48,
+          "wins": 25
+        },
+        "SURFACE_EXPERIENCE_UNDER_5": {
+          "accuracy": 0.5,
+          "accuracy_wilson95": [
+            0.18761630648265054,
+            0.8123836935173494
+          ],
+          "brier": 0.26703698693045835,
+          "clustered_bootstrap": {
+            "accuracy95": [
+              0.16666666666666666,
+              0.8333333333333334
+            ],
+            "available": true,
+            "brier95": [
+              0.17270813370675,
+              0.3613658401541667
+            ],
+            "clusters": 6,
+            "iterations": 2000,
+            "log_loss95": [
+              0.5344452030925554,
+              0.9223686730152268
+            ],
+            "residual95": [
+              -2.0148035,
+              2.5973224999999998
+            ],
+            "seed": 20261126
+          },
+          "expected_wins": 3.8233845,
+          "independent_variance": 1.38662757841725,
+          "log_loss": 0.7284069380538911,
+          "losses": 3,
+          "mean_selected_probability": 0.63723075,
+          "residual": -0.8233845,
+          "residual_z": -0.6992343750184536,
+          "settled": 6,
+          "wins": 3
+        }
+      }
+    },
+    "[0.65,0.70)": {
+      "all": {
+        "accuracy": 0.7439024390243902,
+        "accuracy_wilson95": [
+          0.6400110670496505,
+          0.8259642384673737
+        ],
+        "brier": 0.1952784613019177,
+        "expected_wins": 55.274142499999996,
+        "independent_variance": 17.99897167324275,
+        "log_loss": 0.5801979549999543,
+        "losses": 21,
+        "mean_selected_probability": 0.6740749085365854,
+        "residual": 5.725857500000004,
+        "residual_z": 1.3496361078621955,
+        "settled": 82,
+        "wins": 61
+      },
+      "by_subgroup": {
+        "CORRECTED_HISTORY_HEALTHY": {
+          "accuracy": 0.7368421052631579,
+          "accuracy_wilson95": [
+            0.6281875545908703,
+            0.8227060103782752
+          ],
+          "brier": 0.1973936765516513,
+          "clustered_bootstrap": {
+            "accuracy95": [
+              0.6301369863013698,
+              0.8378378378378378
+            ],
+            "available": true,
+            "brier95": [
+              0.1632319444551,
+              0.2341013487736733
+            ],
+            "clusters": 63,
+            "iterations": 2000,
+            "log_loss95": [
+              0.5134418799586703,
+              0.6609428020679402
+            ],
+            "residual95": [
+              8.161996000000002,
+              26.527064000000003
+            ],
+            "seed": 20261126
+          },
+          "expected_wins": 51.250754,
+          "independent_variance": 16.6750295820745,
+          "log_loss": 0.5845658649932819,
+          "losses": 20,
+          "mean_selected_probability": 0.6743520263157895,
+          "residual": 4.749245999999999,
+          "residual_z": 1.1630311829474522,
+          "settled": 76,
+          "wins": 56
+        },
+        "FAVOURITE_BRIDGED_UNDER_20": {
+          "accuracy": 0.0,
+          "accuracy_wilson95": [
+            0,
+            0.7934506856227626
+          ],
+          "brier": 0.46120737000624995,
+          "clustered_bootstrap": {
+            "available": false,
+            "clusters": 1
+          },
+          "expected_wins": 0.6791225,
+          "independent_variance": 0.21791512999375,
+          "log_loss": 1.136695848625235,
+          "losses": 1,
+          "mean_selected_probability": 0.6791225,
+          "residual": -0.6791225,
+          "residual_z": -1.4548038006984638,
+          "settled": 1,
+          "wins": 0
+        },
+        "SURFACE_EXPERIENCE_UNDER_5": {
+          "accuracy": 1.0,
+          "accuracy_wilson95": [
+            0.5655175352168251,
+            1
+          ],
+          "brier": 0.10994140776510002,
+          "clustered_bootstrap": {
+            "accuracy95": [
+              1.0,
+              1.0
+            ],
+            "available": true,
+            "brier95": [
+              0.10002475688095,
+              0.11942165848475002
+            ],
+            "clusters": 5,
+            "iterations": 2000,
+            "log_loss95": [
+              0.37999845935431126,
+              0.4239429819956319
+            ],
+            "residual95": [
+              3.2725005,
+              3.4198735
+            ],
+            "seed": 20261126
+          },
+          "expected_wins": 3.344266,
+          "independent_variance": 1.1060269611745,
+          "log_loss": 0.40250614437631943,
+          "losses": 0,
+          "mean_selected_probability": 0.6688532,
+          "residual": 1.6557339999999998,
+          "residual_z": 1.5743732790821168,
+          "settled": 5,
+          "wins": 5
+        }
+      }
+    },
+    "[0.70,0.75)": {
+      "all": {
+        "accuracy": 0.42857142857142855,
+        "accuracy_wilson95": [
+          0.15821985525146975,
+          0.7495416354723428
+        ],
+        "brier": 0.32110989841925,
+        "expected_wins": 4.9242305,
+        "independent_variance": 1.4602032110652499,
+        "log_loss": 0.8469174493217356,
+        "losses": 4,
+        "mean_selected_probability": 0.7034615000000001,
+        "residual": -1.9242305000000002,
+        "residual_z": -1.59239367750073,
+        "settled": 7,
+        "wins": 3
+      },
+      "by_subgroup": {
+        "CORRECTED_HISTORY_HEALTHY": {
+          "accuracy": 0.42857142857142855,
+          "accuracy_wilson95": [
+            0.15821985525146975,
+            0.7495416354723428
+          ],
+          "brier": 0.32110989841925,
+          "clustered_bootstrap": {
+            "accuracy95": [
+              0.14285714285714285,
+              0.7142857142857143
+            ],
+            "available": true,
+            "brier95": [
+              0.20358463596289283,
+              0.49396343369439283
+            ],
+            "clusters": 7,
+            "iterations": 2000,
+            "log_loss95": [
+              0.5970787775722509,
+              1.2134376399729914
+            ],
+            "residual95": [
+              -3.7086345,
+              2.508222
+            ],
+            "seed": 20261126
+          },
+          "expected_wins": 4.9242305,
+          "independent_variance": 1.4602032110652499,
+          "log_loss": 0.8469174493217356,
+          "losses": 4,
+          "mean_selected_probability": 0.7034615000000001,
+          "residual": -1.9242305000000002,
+          "residual_z": -1.59239367750073,
+          "settled": 7,
+          "wins": 3
+        }
+      }
+    },
+    "[0.75,0.80)": {
+      "all": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "by_subgroup": {}
+    },
+    "[0.80,1.00]": {
+      "all": {
+        "accuracy": null,
+        "accuracy_wilson95": null,
+        "brier": null,
+        "expected_wins": 0.0,
+        "independent_variance": 0.0,
+        "log_loss": null,
+        "losses": 0,
+        "mean_selected_probability": null,
+        "residual": 0.0,
+        "residual_z": null,
+        "settled": 0,
+        "wins": 0
+      },
+      "by_subgroup": {}
+    }
+  },
+  "control_by_qualifying": {
+    "MAIN_DRAW": {
+      "accuracy": 0.6615384615384615,
+      "accuracy_wilson95": [
+        0.5766030601074924,
+        0.7372010508912298
+      ],
+      "brier": 0.22138797808493654,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5703125,
+          0.7481481481481481
+        ],
+        "available": true,
+        "brier95": [
+          0.19431368218753572,
+          0.2511572001901309
+        ],
+        "clusters": 94,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5780553262845359,
+          0.6968751129136099
+        ],
+        "residual95": [
+          10.868821999999994,
+          37.507303
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 85.9815375,
+      "independent_variance": 29.04087234895825,
+      "log_loss": 0.6344641830715394,
+      "losses": 44,
+      "mean_selected_probability": 0.6613964423076923,
+      "residual": 0.018462499999998272,
+      "residual_z": 0.003425986753124,
+      "settled": 130,
+      "wins": 86
+    },
+    "QUALIFYING": {
+      "accuracy": 0.46153846153846156,
+      "accuracy_wilson95": [
+        0.23206067809538303,
+        0.7085620428549398
+      ],
+      "brier": 0.28957647676098075,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.23076923076923078,
+          0.7692307692307693
+        ],
+        "available": true,
+        "brier95": [
+          0.20400396683126923,
+          0.3774186244044808
+        ],
+        "clusters": 13,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5969661839646532,
+          0.9614057292617019
+        ],
+        "residual95": [
+          -5.213070999999999,
+          2.7876060000000003
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 8.5778135,
+      "independent_variance": 2.91127530210725,
+      "log_loss": 0.7767095416620149,
+      "losses": 7,
+      "mean_selected_probability": 0.6598318076923076,
+      "residual": -2.5778134999999995,
+      "residual_z": -1.5108100173604408,
+      "settled": 13,
+      "wins": 6
+    }
+  },
+  "control_by_surface": {
+    "CLAY": {
+      "accuracy": 0.625,
+      "accuracy_wilson95": [
+        0.4525440735307745,
+        0.7706611269054578
+      ],
+      "brier": 0.22996813272339844,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.4411764705882353,
+          0.7941176470588235
+        ],
+        "available": true,
+        "brier95": [
+          0.17671600929385292,
+          0.28743574491777
+        ],
+        "clusters": 24,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5412054306261206,
+          0.7705237249050242
+        ],
+        "residual95": [
+          -0.8192135,
+          11.71151
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 21.2087635,
+      "independent_variance": 7.12951525285125,
+      "log_loss": 0.6518425360353288,
+      "losses": 12,
+      "mean_selected_probability": 0.662773859375,
+      "residual": -1.2087634999999999,
+      "residual_z": -0.4527008774497885,
+      "settled": 32,
+      "wins": 20
+    },
+    "HARD": {
+      "accuracy": 0.6336633663366337,
+      "accuracy_wilson95": [
+        0.5364104035400862,
+        0.7211213048480712
+      ],
+      "brier": 0.2319606812245322,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5306122448979592,
+          0.7289719626168224
+        ],
+        "available": true,
+        "brier95": [
+          0.201062458391197,
+          0.265892803201698
+        ],
+        "clusters": 76,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5923185474219627,
+          0.727099543892183
+        ],
+        "residual95": [
+          1.5599885000000029,
+          24.858710000000002
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 66.8106365,
+      "independent_variance": 22.56367069632225,
+      "log_loss": 0.656670181115567,
+      "losses": 37,
+      "mean_selected_probability": 0.6614914504950495,
+      "residual": -2.810636500000001,
+      "residual_z": -0.5916975969148955,
+      "settled": 101,
+      "wins": 64
+    },
+    "UNKNOWN": {
+      "accuracy": 0.8,
+      "accuracy_wilson95": [
+        0.49016247153664183,
+        0.9433178485456247
+      ],
+      "brier": 0.1757922298108,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.1137953678099,
+          0.26050201154142505
+        ],
+        "clusters": 10,
+        "iterations": 2000,
+        "log_loss95": [
+          0.4108154508762942,
+          0.7137679681654543
+        ],
+        "residual95": [
+          0.8520570000000003,
+          6.5777865
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 6.539951,
+      "independent_variance": 2.258961701892,
+      "log_loss": 0.539491839510353,
+      "losses": 2,
+      "mean_selected_probability": 0.6539951,
+      "residual": 1.4600489999999997,
+      "residual_z": 0.9714333234614722,
+      "settled": 10,
+      "wins": 8
+    }
+  },
+  "corrected_low_history_subgroup": {
+    "expected_wins": 0.6791225,
+    "flags": {
+      "FAVOURITE_UNDER_20": 1,
+      "IDENTITY_LINK_UNRESOLVED": 1,
+      "SHORT_CAREER_ITF_OR_DEBUT": 1
+    },
+    "ids_sha256": "7fce7ecc1264470e06c7e94123bda274513c234b1dc9cabe28cc52518275a4c5",
+    "settled": 1,
+    "wins": 0
+  },
+  "exclusions": {
+    "UNSAFE_OR_LATE_FIRST_PREMATCH_ISSUE": 9,
+    "UNSAFE_RESULT_GRADED_AS_UNRESOLVED": 17
+  },
+  "expected_winner_variance": {
+    "cluster_bootstrap": {
+      "available": true,
+      "design_effect": 2.223218010986127,
+      "interpretation": "A design effect above 1 means the naive independent SD understates the uncertainty of the winner count.",
+      "iterations": 4000,
+      "residual_variance": 37.71564490514884,
+      "residual_z": -0.4167437370366041,
+      "seed": 20261137,
+      "wins_sd": 8.428320719309207,
+      "wins_variance": 71.03659014753688
+    },
+    "clusters": 105,
+    "independent_sd": 5.652623077038261,
+    "independent_variance": 31.9521476510655,
+    "largest_cluster": 4,
+    "limitation": "sum p(1-p) is exact only for independent Bernoulli selections. Selections share favourites, opponents and tournament conditions; the cluster bootstrap is the dependence-aware estimate and still cannot capture unobserved shared shocks.",
+    "settled": 143
+  },
+  "historical_evaluation_previously_inspected": true,
+  "history_depth_bridged": {
+    "10-19": {
+      "accuracy": 0.0,
+      "accuracy_wilson95": [
+        0,
+        0.7934506856227626
+      ],
+      "brier": 0.46120737000624995,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 1
+      },
+      "expected_wins": 0.6791225,
+      "independent_variance": 0.21791512999375,
+      "log_loss": 1.136695848625235,
+      "losses": 1,
+      "mean_selected_probability": 0.6791225,
+      "residual": -0.6791225,
+      "residual_z": -1.4548038006984638,
+      "settled": 1,
+      "wins": 0
+    },
+    "100+": {
+      "accuracy": 0.6486486486486487,
+      "accuracy_wilson95": [
+        0.5562227910850616,
+        0.7311298804925787
+      ],
+      "brier": 0.22594229528987836,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5445544554455446,
+          0.7433628318584071
+        ],
+        "available": true,
+        "brier95": [
+          0.19572282019644593,
+          0.259356102264844
+        ],
+        "clusters": 77,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5809414903400472,
+          0.7133363362116371
+        ],
+        "residual95": [
+          4.643725500000002,
+          30.3481155
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 73.465881,
+      "independent_variance": 24.7797012228235,
+      "log_loss": 0.6440683385591706,
+      "losses": 39,
+      "mean_selected_probability": 0.6618547837837837,
+      "residual": -1.465880999999996,
+      "residual_z": -0.29447652732135804,
+      "settled": 111,
+      "wins": 72
+    },
+    "20-49": {
+      "accuracy": 0.75,
+      "accuracy_wilson95": [
+        0.5050168346449122,
+        0.8981793250878696
+      ],
+      "brier": 0.1957657051256875,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.47368421052631576,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.12150407698075,
+          0.2790353335792031
+        ],
+        "clusters": 14,
+        "iterations": 2000,
+        "log_loss95": [
+          0.42787471972900126,
+          0.753666985594424
+        ],
+        "residual95": [
+          -1.0779859999999992,
+          8.927464
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 10.517903,
+      "independent_variance": 3.593755717989,
+      "log_loss": 0.5812225398198452,
+      "losses": 4,
+      "mean_selected_probability": 0.6573689375,
+      "residual": 1.4820969999999996,
+      "residual_z": 0.7818120352153592,
+      "settled": 16,
+      "wins": 12
+    },
+    "50-99": {
+      "accuracy": 0.5333333333333333,
+      "accuracy_wilson95": [
+        0.30116980025498397,
+        0.7519046463426261
+      ],
+      "brier": 0.2581251946493833,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.29411764705882354,
+          0.7857142857142857
+        ],
+        "available": true,
+        "brier95": [
+          0.18030619224531666,
+          0.33078574745833333
+        ],
+        "clusters": 13,
+        "iterations": 2000,
+        "log_loss95": [
+          0.548497905435304,
+          0.859601700015842
+        ],
+        "residual95": [
+          -2.4036334999999998,
+          5.4944305
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 9.8964445,
+      "independent_variance": 3.36077558025925,
+      "log_loss": 0.7099817183397084,
+      "losses": 7,
+      "mean_selected_probability": 0.6597629666666667,
+      "residual": -1.8964444999999994,
+      "residual_z": -1.0344759085158934,
+      "settled": 15,
+      "wins": 8
+    }
+  },
+  "history_depth_raw": {
+    "1-9": {
+      "accuracy": 1.0,
+      "accuracy_wilson95": [
+        0.4385029682449546,
+        1
+      ],
+      "brier": 0.12682595965025004,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          1.0,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.10916515120225001,
+          0.13982925390625003
+        ],
+        "clusters": 3,
+        "iterations": 2000,
+        "log_loss95": [
+          0.40107699995274987,
+          0.46830507261015414
+        ],
+        "residual95": [
+          1.1218125,
+          2.0087954999999997
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 1.9330545,
+      "independent_variance": 0.68646762104925,
+      "log_loss": 0.4399167157639563,
+      "losses": 0,
+      "mean_selected_probability": 0.6443515,
+      "residual": 1.0669455,
+      "residual_z": 1.2877519236892503,
+      "settled": 3,
+      "wins": 3
+    },
+    "10-19": {
+      "accuracy": 0.5833333333333334,
+      "accuracy_wilson95": [
+        0.31951131254954973,
+        0.8067396863412435
+      ],
+      "brier": 0.2436719586531458,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.3076923076923077,
+          0.9090909090909091
+        ],
+        "available": true,
+        "brier95": [
+          0.14273245252097724,
+          0.3345458714561071
+        ],
+        "clusters": 11,
+        "iterations": 2000,
+        "log_loss95": [
+          0.4709953514346422,
+          0.8675847934227127
+        ],
+        "residual95": [
+          -4.229514499999999,
+          4.591551
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 7.8984214999999995,
+      "independent_variance": 2.6942509961622503,
+      "log_loss": 0.6801346006464386,
+      "losses": 5,
+      "mean_selected_probability": 0.6582017916666666,
+      "residual": -0.8984214999999995,
+      "residual_z": -0.5473449435522848,
+      "settled": 12,
+      "wins": 7
+    },
+    "20-49": {
+      "accuracy": 0.5641025641025641,
+      "accuracy_wilson95": [
+        0.40975691648669477,
+        0.7069524612431037
+      ],
+      "brier": 0.24710027266128848,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.39473684210526316,
+          0.7317073170731707
+        ],
+        "available": true,
+        "brier95": [
+          0.1956270496420375,
+          0.3012706576957697
+        ],
+        "clusters": 35,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5802111915876286,
+          0.7992695339745689
+        ],
+        "residual95": [
+          -2.5706264999999995,
+          11.805181000000001
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 25.663421500000002,
+      "independent_variance": 8.75217186620975,
+      "log_loss": 0.6869457345143793,
+      "losses": 17,
+      "mean_selected_probability": 0.6580364487179488,
+      "residual": -3.663421500000002,
+      "residual_z": -1.2383088342214996,
+      "settled": 39,
+      "wins": 22
+    },
+    "50-99": {
+      "accuracy": 0.6741573033707865,
+      "accuracy_wilson95": [
+        0.5713422761622178,
+        0.7625602754970651
+      ],
+      "brier": 0.2202638127230983,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5714285714285714,
+          0.7777777777777778
+        ],
+        "available": true,
+        "brier95": [
+          0.18643900150528533,
+          0.2541451090373401
+        ],
+        "clusters": 57,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5621922797183228,
+          0.7032352128886967
+        ],
+        "residual95": [
+          5.619594499999998,
+          27.267243999999998
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 59.0644535,
+      "independent_variance": 19.81925716764425,
+      "log_loss": 0.6326440319078246,
+      "losses": 29,
+      "mean_selected_probability": 0.6636455449438202,
+      "residual": 0.935546500000001,
+      "residual_z": 0.21014627290335025,
+      "settled": 89,
+      "wins": 60
+    }
+  },
+  "identity": {
+    "complete_bridged": 143,
+    "complete_raw": 142,
+    "favourite_historical_identity_present": 0,
+    "favourite_identity_mapped": 135,
+    "favourite_under_20_bridged": 1,
+    "favourite_under_20_raw": 15,
+    "mean_bridged_count_under_20_raw": 117.53333333333333,
+    "mean_raw_count_under_20": 13.266666666666667,
+    "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+    "recovered_to_at_least_20": 14,
+    "selections": 143,
+    "unresolved_link": 1
+  },
+  "inactivity": {
+    "0-30": {
+      "accuracy": 0.5,
+      "accuracy_wilson95": [
+        0.21521606221387757,
+        0.7847839377861224
+      ],
+      "brier": 0.2904923388205,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.14285714285714285,
+          0.8
+        ],
+        "available": true,
+        "brier95": [
+          0.19164872176455,
+          0.4072592121349166
+        ],
+        "clusters": 6,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5746345433941991,
+          1.024392080266442
+        ],
+        "residual95": [
+          -3.0055205000000003,
+          4.1615345
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 5.313409,
+      "independent_variance": 1.779936289436,
+      "log_loss": 0.7802589867241917,
+      "losses": 4,
+      "mean_selected_probability": 0.664176125,
+      "residual": -1.313409,
+      "residual_z": -0.9844592843757032,
+      "settled": 8,
+      "wins": 4
+    },
+    "UNKNOWN_START_DATE_INCOMPLETE": {
+      "accuracy": 0.6518518518518519,
+      "accuracy_wilson95": [
+        0.568299019288954,
+        0.7270018249131313
+      ],
+      "brier": 0.22385920472867038,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5648854961832062,
+          0.738255033557047
+        ],
+        "available": true,
+        "brier95": [
+          0.1960155822468816,
+          0.251636523581916
+        ],
+        "clusters": 99,
+        "iterations": 2000,
+        "log_loss95": [
+          0.581741702455068,
+          0.6970867671350054
+        ],
+        "residual95": [
+          9.269502000000003,
+          36.4230885
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 89.245942,
+      "independent_variance": 30.1722113616295,
+      "log_loss": 0.6395221922008354,
+      "losses": 47,
+      "mean_selected_probability": 0.6610810518518518,
+      "residual": -1.2459419999999994,
+      "residual_z": -0.22682674217148815,
+      "settled": 135,
+      "wins": 88
+    }
+  },
+  "independent_forward_validation": false,
+  "limitations": [
+    "November window previously inspected; not independent validation.",
+    "Expected wins and residuals use the original selected-side probability, not a new calibration.",
+    "Only ATP main and Challenger results are ingested; ITF transition cannot be separated from debut.",
+    "Career and inactivity are not inferred when match_start_at is missing.",
+    "History counts are research-derived from PIT-visible rows, not persisted original-run features.",
+    "The identity bridge is an alias-uniqueness resolver, not a verified provider census.",
+    "Selections are not independent; the cluster bootstrap is partial and does not model shared opponents."
+  ],
+  "policy": "C_uncalibrated_mean_floor60",
+  "reconciliation": {
+    "actual_wins": 92,
+    "brier": 0.22758693251003145,
+    "expected_wins": 94.559351,
+    "log_loss": 0.6473955793070372,
+    "mean_selected_probability": 0.6612542027972028,
+    "residual": -2.5593510000000066
+  },
+  "row_ids_sha256": "51ab406bef35a724b567cc8042426385298ccbebe9b61e172887c6b23d5771e9",
+  "scope": "CHALLENGER",
+  "selected": 152,
+  "selected_class_census": {
+    "flag_counts": {
+      "FAVOURITE_UNDER_20": 15,
+      "IDENTITY_GAP_RECOVERED": 14,
+      "IDENTITY_LINK_UNRESOLVED": 1,
+      "SHORT_CAREER_ITF_OR_DEBUT": 1,
+      "START_DATE_INCOMPLETE": 143
+    },
+    "itf_separation": "NOT_POSSIBLE: no ITF/FUT result is ingested. SHORT_CAREER_ITF_OR_DEBUT is a union, not a split.",
+    "overlap_combinations": {
+      "": 8,
+      "FAVOURITE_UNDER_20+IDENTITY_GAP_RECOVERED+START_DATE_INCOMPLETE": 14,
+      "FAVOURITE_UNDER_20+IDENTITY_LINK_UNRESOLVED+SHORT_CAREER_ITF_OR_DEBUT": 1,
+      "START_DATE_INCOMPLETE": 129
+    },
+    "primary_counts": {
+      "HISTORY_AT_LEAST_20": 137,
+      "IDENTITY_GAP_RECOVERED": 14,
+      "SHORT_CAREER_ITF_OR_DEBUT": 1
+    },
+    "selections": 152,
+    "start_date_incomplete": 143
+  },
+  "selected_identity": {
+    "complete_bridged": 152,
+    "complete_raw": 151,
+    "favourite_historical_identity_present": 0,
+    "favourite_identity_mapped": 143,
+    "favourite_under_20_bridged": 1,
+    "favourite_under_20_raw": 15,
+    "mean_bridged_count_under_20_raw": 117.53333333333333,
+    "mean_raw_count_under_20": 13.266666666666667,
+    "note": "The existing bridge resolves live-only IDs through persisted bridges and unique TENNIS_DATA aliases. A zero count for non-live source rows is not evidence of missing identity; the bridge is an alias-uniqueness resolver, not a provider census.",
+    "recovered_to_at_least_20": 14,
+    "selections": 152,
+    "unresolved_link": 1
+  },
+  "settled": 143,
+  "source_hashes": {
+    "dataset_sha256": "e7d70fb821d7c69339adfce51bbd7fe35161adda49c595124d1791fef1b56863",
+    "full_source_sha256": "65b13dc1ccac7aa21e30d2070afbf2585e472a885ea0600d297f3a19cac88887",
+    "registered_baseline_match": true
+  },
+  "status": "DESCRIPTIVE_HISTORICAL_RESEARCH_ONLY",
+  "surface_experience_bridged": {
+    "0": {
+      "accuracy": 0.8,
+      "accuracy_wilson95": [
+        0.49016247153664183,
+        0.9433178485456247
+      ],
+      "brier": 0.1757922298108,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.1137953678099,
+          0.26050201154142505
+        ],
+        "clusters": 10,
+        "iterations": 2000,
+        "log_loss95": [
+          0.4108154508762942,
+          0.7137679681654543
+        ],
+        "residual95": [
+          0.8520570000000003,
+          6.5777865
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 6.539951,
+      "independent_variance": 2.258961701892,
+      "log_loss": 0.539491839510353,
+      "losses": 2,
+      "mean_selected_probability": 0.6539951,
+      "residual": 1.4600489999999997,
+      "residual_z": 0.9714333234614722,
+      "settled": 10,
+      "wins": 8
+    },
+    "1-4": {
+      "accuracy": 0.0,
+      "accuracy_wilson95": [
+        0,
+        0.7934506856227626
+      ],
+      "brier": 0.3940066623002501,
+      "clustered_bootstrap": {
+        "available": false,
+        "clusters": 1
+      },
+      "expected_wins": 0.6276995000000001,
+      "independent_variance": 0.23369283769974997,
+      "log_loss": 0.9880539551014133,
+      "losses": 1,
+      "mean_selected_probability": 0.6276995000000001,
+      "residual": -0.6276995000000001,
+      "residual_z": -1.2984615134473465,
+      "settled": 1,
+      "wins": 0
+    },
+    "10-19": {
+      "accuracy": 0.7777777777777778,
+      "accuracy_wilson95": [
+        0.5478541568378739,
+        0.9099907189139831
+      ],
+      "brier": 0.19268191075476387,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5333333333333333,
+          0.95
+        ],
+        "available": true,
+        "brier95": [
+          0.137589129025975,
+          0.2719791712803333
+        ],
+        "clusters": 13,
+        "iterations": 2000,
+        "log_loss95": [
+          0.4615953185164379,
+          0.7406034904580999
+        ],
+        "residual95": [
+          0.8715409999999997,
+          10.607002
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 11.8164195,
+      "independent_variance": 4.05029410641425,
+      "log_loss": 0.5758418736426338,
+      "losses": 4,
+      "mean_selected_probability": 0.65646775,
+      "residual": 2.1835804999999997,
+      "residual_z": 1.0849904791791412,
+      "settled": 18,
+      "wins": 14
+    },
+    "20+": {
+      "accuracy": 0.6181818181818182,
+      "accuracy_wilson95": [
+        0.5248597632248548,
+        0.7035280338864882
+      ],
+      "brier": 0.23486057561822726,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5242718446601942,
+          0.7142857142857143
+        ],
+        "available": true,
+        "brier95": [
+          0.20378648500640678,
+          0.26407583879789953
+        ],
+        "clusters": 83,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5976907443527905,
+          0.7234192743795844
+        ],
+        "residual95": [
+          2.428339000000001,
+          25.688423999999998
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 72.8274,
+      "independent_variance": 24.549773681995,
+      "log_loss": 0.6624622381126459,
+      "losses": 42,
+      "mean_selected_probability": 0.6620672727272727,
+      "residual": -4.827399999999997,
+      "residual_z": -0.9742929044232103,
+      "settled": 110,
+      "wins": 68
+    },
+    "5-9": {
+      "accuracy": 0.5,
+      "accuracy_wilson95": [
+        0.15003898915214947,
+        0.8499610108478506
+      ],
+      "brier": 0.272516169233875,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.0,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.09027134798012498,
+          0.45476099048762497
+        ],
+        "clusters": 4,
+        "iterations": 2000,
+        "log_loss95": [
+          0.35728023299230427,
+          1.1220175533791497
+        ],
+        "residual95": [
+          -2.697371,
+          1.978151
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 2.747881,
+      "independent_variance": 0.8594253230644999,
+      "log_loss": 0.7396488931857269,
+      "losses": 2,
+      "mean_selected_probability": 0.68697025,
+      "residual": -0.747881,
+      "residual_z": -0.8067304079300931,
+      "settled": 4,
+      "wins": 2
+    }
+  },
+  "surface_experience_raw": {
+    "0": {
+      "accuracy": 0.75,
+      "accuracy_wilson95": [
+        0.5050168346449122,
+        0.8981793250878696
+      ],
+      "brier": 0.18955320596260938,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5,
+          0.9375
+        ],
+        "available": true,
+        "brier95": [
+          0.13342863199845315,
+          0.2588343879298125
+        ],
+        "clusters": 16,
+        "iterations": 2000,
+        "log_loss95": [
+          0.45178577170562123,
+          0.7102529355047825
+        ],
+        "residual95": [
+          0.8713984999999997,
+          8.614873
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 10.4385935,
+      "independent_variance": 3.62291520459825,
+      "log_loss": 0.567852258703262,
+      "losses": 4,
+      "mean_selected_probability": 0.65241209375,
+      "residual": 1.5614065000000004,
+      "residual_z": 0.820326796483766,
+      "settled": 16,
+      "wins": 12
+    },
+    "1-4": {
+      "accuracy": 0.6538461538461539,
+      "accuracy_wilson95": [
+        0.4622057118881081,
+        0.8058776967705948
+      ],
+      "brier": 0.22035880534329808,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.4230769230769231,
+          0.8333333333333334
+        ],
+        "available": true,
+        "brier95": [
+          0.16210872854085714,
+          0.2911572431723646
+        ],
+        "clusters": 24,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5102488350739037,
+          0.7785037300039158
+        ],
+        "residual95": [
+          -1.7372060000000005,
+          9.650362
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 17.2799035,
+      "independent_variance": 5.78078456107425,
+      "log_loss": 0.6317889147658275,
+      "losses": 9,
+      "mean_selected_probability": 0.664611673076923,
+      "residual": -0.27990349999999964,
+      "residual_z": -0.11641660684000504,
+      "settled": 26,
+      "wins": 17
+    },
+    "10-19": {
+      "accuracy": 0.6176470588235294,
+      "accuracy_wilson95": [
+        0.4988071245222142,
+        0.7239055021789457
+      ],
+      "brier": 0.23927897992485292,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.5,
+          0.7297297297297297
+        ],
+        "available": true,
+        "brier95": [
+          0.20290670683903927,
+          0.27624595336138097
+        ],
+        "clusters": 49,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5965104335520841,
+          0.7491857886584167
+        ],
+        "residual95": [
+          -0.011995999999996343,
+          17.185931500000002
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 45.010368,
+      "independent_variance": 15.17814636511,
+      "log_loss": 0.6723008340912737,
+      "losses": 26,
+      "mean_selected_probability": 0.6619171764705882,
+      "residual": -3.0103679999999997,
+      "residual_z": -0.7726987693823519,
+      "settled": 68,
+      "wins": 42
+    },
+    "20+": {
+      "accuracy": 1.0,
+      "accuracy_wilson95": [
+        0.5655175352168251,
+        1
+      ],
+      "brier": 0.10112563338240002,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          1.0,
+          1.0
+        ],
+        "available": true,
+        "brier95": [
+          0.09389500812945002,
+          0.11043410909150002
+        ],
+        "clusters": 5,
+        "iterations": 2000,
+        "log_loss95": [
+          0.3658856414811728,
+          0.40363592153363526
+        ],
+        "residual95": [
+          2.259415,
+          3.4402725
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 3.411715,
+      "independent_variance": 1.082656833088,
+      "log_loss": 0.38246192148183955,
+      "losses": 0,
+      "mean_selected_probability": 0.682343,
+      "residual": 1.588285,
+      "residual_z": 1.5264515483405396,
+      "settled": 5,
+      "wins": 5
+    },
+    "5-9": {
+      "accuracy": 0.5714285714285714,
+      "accuracy_wilson95": [
+        0.3907078562746876,
+        0.734914528758763
+      ],
+      "brier": 0.2502197254573214,
+      "clustered_bootstrap": {
+        "accuracy95": [
+          0.3888888888888889,
+          0.7586206896551724
+        ],
+        "available": true,
+        "brier95": [
+          0.1922988223389,
+          0.30946272520361456
+        ],
+        "clusters": 23,
+        "iterations": 2000,
+        "log_loss95": [
+          0.5740831609328619,
+          0.8177232416384107
+        ],
+        "residual95": [
+          -4.118084,
+          7.859109500000001
+        ],
+        "seed": 20261126
+      },
+      "expected_wins": 18.418771,
+      "independent_variance": 6.287644687195,
+      "log_loss": 0.6941661997188141,
+      "losses": 12,
+      "mean_selected_probability": 0.65781325,
+      "residual": -2.4187709999999996,
+      "residual_z": -0.9646077725423361,
+      "settled": 28,
+      "wins": 16
+    }
+  },
+  "version": "MANAGER_C_MARGINAL_CALIBRATION_V1"
+}

@@ -1,0 +1,1294 @@
+{
+  "a1_replay": {
+    "a_arm_policy_reproduction": {
+      "compared": 656,
+      "exact": true,
+      "mismatches": 0,
+      "note": "The A arm re-evaluates the frozen policy from the stored A1/A2/A3 probabilities. Zero mismatches means it is the original Manager C candidate, not a new rule."
+    },
+    "bridged_replayed": {
+      "failures": {},
+      "full_replays": 1,
+      "replayed": 656,
+      "targets": 656
+    },
+    "current_replayed": {
+      "failures": {},
+      "full_replays": 1,
+      "replayed": 656,
+      "targets": 656
+    },
+    "identity_mapping": {
+      "activated_bridge_note": "The bridge is applied to Agent 1 history and to target IDs. It fails closed on non-unique aliases.",
+      "cutoffs_sampled": [
+        "2026-11-02T23:02:51.230986+00:00",
+        "2026-11-10T04:04:05.696419+00:00",
+        "2026-11-20T05:02:00.941828+00:00"
+      ],
+      "invariant_across_sampled_cutoffs": true,
+      "resolved_players": 416,
+      "target_players": 484
+    },
+    "reproduction_vs_stored": {
+      "compared": 656,
+      "exact_1e-6": 589,
+      "exact_fraction": 0.8978658536585366,
+      "median_abs_difference": 0.0,
+      "within_0.005": 599,
+      "within_0.005_fraction": 0.913109756097561
+    },
+    "stored_a1_available": 656,
+    "targets": 656
+  },
+  "all": {
+    "A_replay": {
+      "broad": {
+        "accuracy": 0.6848249027237354,
+        "accuracy_wilson95": [
+          0.6256572299005864,
+          0.738548676742898
+        ],
+        "brier": 0.21052522341975877,
+        "coverage_of_eligible": 0.42073170731707316,
+        "expected_wins": 182.39665,
+        "ids_sha256": "73cd95813496743fd7cae296ea4fb85cb0ab3c9e8c29ece03dfa7c0fb7fa63bc",
+        "log_loss": 0.6095377649574247,
+        "losses": 81,
+        "mean_selected_probability": 0.7097145914396887,
+        "residual": -6.396649999999994,
+        "selected": 276,
+        "settled": 257,
+        "wins": 176
+      },
+      "marginal": {
+        "accuracy": 0.64,
+        "accuracy_wilson95": [
+          0.5605741640813748,
+          0.7124341674955637
+        ],
+        "brier": 0.22866856776157665,
+        "coverage_of_eligible": 0.2423780487804878,
+        "expected_wins": 99.140058,
+        "ids_sha256": "714bdd8aaa5da409e32424df0be71f225f7934f404e74436d833327e78ab8de4",
+        "log_loss": 0.6496539852541278,
+        "losses": 54,
+        "mean_selected_probability": 0.66093372,
+        "residual": -3.1400579999999962,
+        "selected": 159,
+        "settled": 150,
+        "wins": 96
+      },
+      "narrow": {
+        "accuracy": 0.7476635514018691,
+        "accuracy_wilson95": [
+          0.6577647569908553,
+          0.8203956765138767
+        ],
+        "brier": 0.1850906285480514,
+        "coverage_of_eligible": 0.17835365853658536,
+        "expected_wins": 83.256592,
+        "ids_sha256": "3ee22e7807bb1145c4179daf9a41138bebd7d98650365e3f7049f9d1e265564e",
+        "log_loss": 0.5533000729527008,
+        "losses": 27,
+        "mean_selected_probability": 0.7780989906542056,
+        "residual": -3.2565919999999977,
+        "selected": 117,
+        "settled": 107,
+        "wins": 80
+      }
+    },
+    "B": {
+      "broad": {
+        "accuracy": 0.7109004739336493,
+        "accuracy_wilson95": [
+          0.6463921359207366,
+          0.767866827356361
+        ],
+        "brier": 0.19384960570684598,
+        "coverage_of_eligible": 0.34603658536585363,
+        "expected_wins": 150.430562,
+        "ids_sha256": "a9e36363211cd665130af609da819c7c02a218987e464f8ac29cca4c31cf63b6",
+        "log_loss": 0.5707898041215087,
+        "losses": 61,
+        "mean_selected_probability": 0.7129410521327014,
+        "residual": -0.430562000000009,
+        "selected": 227,
+        "settled": 211,
+        "wins": 150
+      },
+      "marginal": {
+        "accuracy": 0.628099173553719,
+        "accuracy_wilson95": [
+          0.5392853166249622,
+          0.7090296285289898
+        ],
+        "brier": 0.23055708705685535,
+        "coverage_of_eligible": 0.19664634146341464,
+        "expected_wins": 80.283766,
+        "ids_sha256": "bf811874bd4efe8f5254197ea7f6779ba26c44bdc58e02da19e6c54c37c08089",
+        "log_loss": 0.6531409195339746,
+        "losses": 45,
+        "mean_selected_probability": 0.6635021983471074,
+        "residual": -4.283766,
+        "selected": 129,
+        "settled": 121,
+        "wins": 76
+      },
+      "narrow": {
+        "accuracy": 0.8222222222222222,
+        "accuracy_wilson95": [
+          0.7305610795529596,
+          0.8875026284166965
+        ],
+        "brier": 0.14449843633627776,
+        "coverage_of_eligible": 0.14939024390243902,
+        "expected_wins": 70.146796,
+        "ids_sha256": "993a51ba2dcab0c5786bf7a662aab0cc6b023721af9b6a83d9de131580dc8a46",
+        "log_loss": 0.4600733045114156,
+        "losses": 16,
+        "mean_selected_probability": 0.7794088444444444,
+        "residual": 3.853204000000005,
+        "selected": 98,
+        "settled": 90,
+        "wins": 74
+      }
+    },
+    "C_uncalibrated_mean_floor60": {
+      "broad": {
+        "accuracy": 0.6875,
+        "accuracy_wilson95": [
+          0.62830194262617,
+          0.7411541112141282
+        ],
+        "brier": 0.20935853090271778,
+        "coverage_of_eligible": 0.4192073170731707,
+        "expected_wins": 181.8307505,
+        "ids_sha256": "17b1b6b8e26fdd0d3d26537dc98705a32c31feed86d68e5207e4d78cf4e3b2fa",
+        "log_loss": 0.6069342948933631,
+        "losses": 80,
+        "mean_selected_probability": 0.710276369140625,
+        "residual": -5.8307504999999935,
+        "selected": 275,
+        "settled": 256,
+        "wins": 176
+      },
+      "marginal": {
+        "accuracy": 0.6442953020134228,
+        "accuracy_wilson95": [
+          0.5646867548642904,
+          0.7166505232000691
+        ],
+        "brier": 0.2272108398343943,
+        "coverage_of_eligible": 0.24085365853658536,
+        "expected_wins": 98.5564935,
+        "ids_sha256": "c8f33227e131dacdf43a546ebba7c2c1c4a739d1c0c88ff33a2336ccc79743c8",
+        "log_loss": 0.6466254471479039,
+        "losses": 53,
+        "mean_selected_probability": 0.6614529765100672,
+        "residual": -2.556493500000002,
+        "selected": 158,
+        "settled": 149,
+        "wins": 96
+      },
+      "narrow": {
+        "accuracy": 0.7476635514018691,
+        "accuracy_wilson95": [
+          0.6577647569908553,
+          0.8203956765138767
+        ],
+        "brier": 0.18449877360533645,
+        "coverage_of_eligible": 0.17835365853658536,
+        "expected_wins": 83.274257,
+        "ids_sha256": "3ee22e7807bb1145c4179daf9a41138bebd7d98650365e3f7049f9d1e265564e",
+        "log_loss": 0.5516634380155446,
+        "losses": 27,
+        "mean_selected_probability": 0.7782640841121495,
+        "residual": -3.2742570000000057,
+        "selected": 117,
+        "settled": 107,
+        "wins": 80
+      }
+    },
+    "equal_count_20pct": {
+      "A": {
+        "accuracy": 0.7377049180327869,
+        "accuracy_wilson95": [
+          0.6532518201317449,
+          0.8076455704702
+        ],
+        "brier": 0.18954540509889753,
+        "coverage_of_eligible": 0.20121951219512196,
+        "expected_wins": 93.771551,
+        "ids_sha256": "9a063aaeb2218285634fc3e0285240bf9a4595237416ea240d5a98b1b4535320",
+        "log_loss": 0.5630622181523298,
+        "losses": 32,
+        "mean_selected_probability": 0.7686192704918033,
+        "residual": -3.7715510000000023,
+        "selected": 132,
+        "settled": 122,
+        "wins": 90
+      },
+      "B": {
+        "accuracy": 0.8099173553719008,
+        "accuracy_wilson95": [
+          0.7308962405459443,
+          0.8698657235361973
+        ],
+        "brier": 0.15336154000326033,
+        "coverage_of_eligible": 0.20121951219512196,
+        "expected_wins": 91.763488,
+        "ids_sha256": "b98094cedf4cc3b8320afea007d68ba894a966e5cad680a3a3ffc1a6b824bb8d",
+        "log_loss": 0.481853123890886,
+        "losses": 23,
+        "mean_selected_probability": 0.7583759338842975,
+        "residual": 6.236512000000005,
+        "selected": 132,
+        "settled": 121,
+        "wins": 98
+      },
+      "k": 132
+    },
+    "equal_count_40pct": {
+      "A": {
+        "accuracy": 0.6938775510204082,
+        "accuracy_wilson95": [
+          0.6335432125827195,
+          0.7482259686872451
+        ],
+        "brier": 0.20735310565443574,
+        "coverage_of_eligible": 0.4009146341463415,
+        "expected_wins": 174.9622205,
+        "ids_sha256": "af7dd8cd56c023af5980d3ca4271c59274bf674f87eaf21b837206fcd6a32100",
+        "log_loss": 0.6026798288303347,
+        "losses": 75,
+        "mean_selected_probability": 0.714131512244898,
+        "residual": -4.962220500000001,
+        "selected": 263,
+        "settled": 245,
+        "wins": 170
+      },
+      "B": {
+        "accuracy": 0.7037037037037037,
+        "accuracy_wilson95": [
+          0.6434818777067886,
+          0.7575852707089632
+        ],
+        "brier": 0.19832823944448869,
+        "coverage_of_eligible": 0.4009146341463415,
+        "expected_wins": 170.0749985,
+        "ids_sha256": "bb53496fda8045ce7777b2a04d646a5b5c864c7fc2646ac0d10a4d1b450b23e2",
+        "log_loss": 0.5810023378024812,
+        "losses": 72,
+        "mean_selected_probability": 0.6998971131687243,
+        "residual": 0.9250015000000076,
+        "selected": 263,
+        "settled": 243,
+        "wins": 171
+      },
+      "k": 263
+    },
+    "fixtures": 656,
+    "paired": {
+      "broad_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.014563106796116505,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.002832492329787623,
+          0.017637228792145635
+        ],
+        "cluster_key": "match_id",
+        "clusters": 206,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 206,
+        "residual_improvement_a_minus_b_95": [
+          -0.03318177427184467,
+          -0.009285356796116499
+        ],
+        "seed": 20261133
+      },
+      "broad_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.015463917525773196,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.0028383013483110568,
+          0.017865998297521318
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 133,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 206,
+        "residual_improvement_a_minus_b_95": [
+          -0.03391902631578949,
+          -0.008188752252252251
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.02912621359223301,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.002966339297303414,
+          0.014236636781233
+        ],
+        "cluster_key": "match_id",
+        "clusters": 103,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 103,
+        "residual_improvement_a_minus_b_95": [
+          -0.035877043689320376,
+          0.005439407766990305
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.030303030303030304,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.0035042320521857235,
+          0.01467290889069643
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 84,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 103,
+        "residual_improvement_a_minus_b_95": [
+          -0.03514909905660376,
+          0.00635509000000001
+        ],
+        "seed": 20261133
+      },
+      "replay_only_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.014492753623188406,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.0031377781451872025,
+          0.017856110733764488
+        ],
+        "cluster_key": "match_id",
+        "clusters": 207,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 207,
+        "residual_improvement_a_minus_b_95": [
+          -0.03190664975845412,
+          -0.009034499999999994
+        ],
+        "seed": 20261133
+      }
+    },
+    "sets": {
+      "broad": {
+        "a_selected": 275,
+        "added": 29,
+        "added_ids_sha256": "486e8ca94434921d6138dec2c3498f4b633974cea9b2951dd8d72d4c09104e48",
+        "b_selected": 227,
+        "corrected_ids_sha256": "10db2509cfd580e2768582194b53945b0df977138aa3588785b9fa83aaa25370",
+        "corrected_winner_predictions": 1,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 77,
+        "removed_ids_sha256": "76e604dd09e241f019f711211dd94acf5e02a1e132c585fda6a7a67c0bd310b5",
+        "shared": 198,
+        "shared_side_flips": 1
+      },
+      "marginal": {
+        "a_selected": 158,
+        "added": 61,
+        "added_ids_sha256": "26203e8582e173a0d9be72c22e4aa21654c8a3b96a6019f0993d90947413dba9",
+        "b_selected": 129,
+        "corrected_ids_sha256": "10db2509cfd580e2768582194b53945b0df977138aa3588785b9fa83aaa25370",
+        "corrected_winner_predictions": 1,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 90,
+        "removed_ids_sha256": "574bb8d9e77c4ec06b738e64e6b0fcabe13180f5d0318eddbd74b3b8c4361071",
+        "shared": 68,
+        "shared_side_flips": 1
+      },
+      "narrow": {
+        "a_selected": 117,
+        "added": 23,
+        "added_ids_sha256": "21f238fb7f442330637daf13cd41aee1b4088c95bc2d07f61366a666c87da868",
+        "b_selected": 98,
+        "corrected_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "corrected_winner_predictions": 0,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 42,
+        "removed_ids_sha256": "37fa609e7334990961568ec530efa973c5de54b744025c52e9210ba5068ea9f4",
+        "shared": 75,
+        "shared_side_flips": 0
+      }
+    },
+    "settled": 599
+  },
+  "as_of": "2026-11-21T03:30:00+00:00",
+  "atp_main": {
+    "A_replay": {
+      "broad": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.41713547738519763,
+          0.8482367556028527
+        ],
+        "brier": 0.20378248943660002,
+        "coverage_of_eligible": 0.20270270270270271,
+        "expected_wins": 10.80399,
+        "ids_sha256": "ac31b56d1eb0dd2f570b93175271a8bc37dbfc2b03e2f42306a921fa4d1b7fbe",
+        "log_loss": 0.5831591629955333,
+        "losses": 5,
+        "mean_selected_probability": 0.7202660000000001,
+        "residual": -0.8039900000000006,
+        "selected": 15,
+        "settled": 15,
+        "wins": 10
+      },
+      "marginal": {
+        "accuracy": 0.625,
+        "accuracy_wilson95": [
+          0.30574239460262737,
+          0.8631557141764026
+        ],
+        "brier": 0.23025904111528128,
+        "coverage_of_eligible": 0.10810810810810811,
+        "expected_wins": 5.2499125,
+        "ids_sha256": "703973f88211d8a54f1abaa47f3cae5b7675b1042b0722d79fba02484d368c51",
+        "log_loss": 0.6529144283589858,
+        "losses": 3,
+        "mean_selected_probability": 0.6562390625,
+        "residual": -0.24991249999999976,
+        "selected": 8,
+        "settled": 8,
+        "wins": 5
+      },
+      "narrow": {
+        "accuracy": 0.7142857142857143,
+        "accuracy_wilson95": [
+          0.35893445183261935,
+          0.9177810759959433
+        ],
+        "brier": 0.17352357323239284,
+        "coverage_of_eligible": 0.0945945945945946,
+        "expected_wins": 5.5540775,
+        "ids_sha256": "d409e80689a19731f2e910a739ec0b4c9ee9c8c0e593ef14ba9030107a2267c7",
+        "log_loss": 0.5034388597230159,
+        "losses": 2,
+        "mean_selected_probability": 0.7934396428571429,
+        "residual": -0.5540775,
+        "selected": 7,
+        "settled": 7,
+        "wins": 5
+      }
+    },
+    "B": {
+      "broad": {
+        "accuracy": 0.7692307692307693,
+        "accuracy_wilson95": [
+          0.49743624053272495,
+          0.9182047128150143
+        ],
+        "brier": 0.1825512294244616,
+        "coverage_of_eligible": 0.17567567567567569,
+        "expected_wins": 9.340956,
+        "ids_sha256": "befba3217c416e31caf3b23d1e8d7dfae48cc9b3a826a7d5343dc73c4a6e8953",
+        "log_loss": 0.541986057588279,
+        "losses": 3,
+        "mean_selected_probability": 0.7185350769230769,
+        "residual": 0.6590439999999997,
+        "selected": 13,
+        "settled": 13,
+        "wins": 10
+      },
+      "marginal": {
+        "accuracy": 0.8333333333333334,
+        "accuracy_wilson95": [
+          0.43649717781352987,
+          0.9699466302516935
+        ],
+        "brier": 0.17888998249225,
+        "coverage_of_eligible": 0.08108108108108109,
+        "expected_wins": 3.911862,
+        "ids_sha256": "12a74ba415e9f5a1111a4a27d3286eff4e0afcc97dfe26750ea4f9b1633609c8",
+        "log_loss": 0.5477298138014278,
+        "losses": 1,
+        "mean_selected_probability": 0.651977,
+        "residual": 1.0881379999999998,
+        "selected": 6,
+        "settled": 6,
+        "wins": 5
+      },
+      "narrow": {
+        "accuracy": 0.7142857142857143,
+        "accuracy_wilson95": [
+          0.35893445183261935,
+          0.9177810759959433
+        ],
+        "brier": 0.1856894410806429,
+        "coverage_of_eligible": 0.0945945945945946,
+        "expected_wins": 5.429094,
+        "ids_sha256": "9111531d2e31594e9dc33676f3d36a512e31df96026901a0bffa2dde1e3eca0a",
+        "log_loss": 0.5370628379770087,
+        "losses": 2,
+        "mean_selected_probability": 0.7755848571428572,
+        "residual": -0.4290940000000001,
+        "selected": 7,
+        "settled": 7,
+        "wins": 5
+      }
+    },
+    "C_uncalibrated_mean_floor60": {
+      "broad": {
+        "accuracy": 0.6923076923076923,
+        "accuracy_wilson95": [
+          0.42369343180549035,
+          0.8731929634428948
+        ],
+        "brier": 0.1940741967756923,
+        "coverage_of_eligible": 0.17567567567567569,
+        "expected_wins": 9.554639,
+        "ids_sha256": "fc54bff1173d478c3a7c27c0af7f422257dd9a052c9515801824c51e726ba35a",
+        "log_loss": 0.5607354348419672,
+        "losses": 4,
+        "mean_selected_probability": 0.7349722307692308,
+        "residual": -0.5546389999999999,
+        "selected": 13,
+        "settled": 13,
+        "wins": 9
+      },
+      "marginal": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "brier": 0.21824729773170834,
+        "coverage_of_eligible": 0.08108108108108109,
+        "expected_wins": 3.9971425,
+        "ids_sha256": "0da87b8279d1d608b108e3d878d291955ce4adc8773dd11311dc801e4ef2cf2e",
+        "log_loss": 0.6282706306885615,
+        "losses": 2,
+        "mean_selected_probability": 0.6661904166666667,
+        "residual": 0.0028575000000001793,
+        "selected": 6,
+        "settled": 6,
+        "wins": 4
+      },
+      "narrow": {
+        "accuracy": 0.7142857142857143,
+        "accuracy_wilson95": [
+          0.35893445183261935,
+          0.9177810759959433
+        ],
+        "brier": 0.17335439595625,
+        "coverage_of_eligible": 0.0945945945945946,
+        "expected_wins": 5.5574965,
+        "ids_sha256": "d409e80689a19731f2e910a739ec0b4c9ee9c8c0e593ef14ba9030107a2267c7",
+        "log_loss": 0.5028481241163149,
+        "losses": 2,
+        "mean_selected_probability": 0.7939280714285715,
+        "residual": -0.5574965000000001,
+        "selected": 7,
+        "settled": 7,
+        "wins": 5
+      }
+    },
+    "equal_count_20pct": {
+      "A": {
+        "accuracy": 0.6666666666666666,
+        "accuracy_wilson95": [
+          0.41713547738519763,
+          0.8482367556028527
+        ],
+        "brier": 0.20341956862061666,
+        "coverage_of_eligible": 0.20270270270270271,
+        "expected_wins": 10.7905345,
+        "ids_sha256": "b6564ee53c289168fd72c552776b567892164c46f67ad404ae27d6de72254cb9",
+        "log_loss": 0.5822787200720275,
+        "losses": 5,
+        "mean_selected_probability": 0.7193689666666666,
+        "residual": -0.7905344999999997,
+        "selected": 15,
+        "settled": 15,
+        "wins": 10
+      },
+      "B": {
+        "accuracy": 0.7333333333333333,
+        "accuracy_wilson95": [
+          0.4804956594401943,
+          0.8910254667430761
+        ],
+        "brier": 0.19388699597593334,
+        "coverage_of_eligible": 0.20270270270270271,
+        "expected_wins": 10.575567,
+        "ids_sha256": "fd673a032023f9fc72011a94737d40986002077acf1d54edaf3c9062c42f7888",
+        "log_loss": 0.5669905863124513,
+        "losses": 4,
+        "mean_selected_probability": 0.7050377999999999,
+        "residual": 0.4244330000000005,
+        "selected": 15,
+        "settled": 15,
+        "wins": 11
+      },
+      "k": 15
+    },
+    "equal_count_40pct": {
+      "A": {
+        "accuracy": 0.6875,
+        "accuracy_wilson95": [
+          0.44404355834740666,
+          0.8583535614521796
+        ],
+        "brier": 0.20037488030839062,
+        "coverage_of_eligible": 0.21621621621621623,
+        "expected_wins": 11.3972095,
+        "ids_sha256": "40c6d51735c037fd72625bbd0cb5adf18f56d590ec52d6503ce89888b5001963",
+        "log_loss": 0.5771214282806515,
+        "losses": 5,
+        "mean_selected_probability": 0.71232559375,
+        "residual": -0.39720950000000066,
+        "selected": 16,
+        "settled": 16,
+        "wins": 11
+      },
+      "B": {
+        "accuracy": 0.75,
+        "accuracy_wilson95": [
+          0.5050168346449122,
+          0.8981793250878696
+        ],
+        "brier": 0.19150167044343752,
+        "coverage_of_eligible": 0.21621621621621623,
+        "expected_wins": 11.180951,
+        "ids_sha256": "ce75dd29be26f4371d98bd22a516e88202dce445a26b31a5a5c98a6e3eefb1ec",
+        "log_loss": 0.562921944139871,
+        "losses": 4,
+        "mean_selected_probability": 0.6988094375,
+        "residual": 0.8190489999999997,
+        "selected": 16,
+        "settled": 16,
+        "wins": 12
+      },
+      "k": 30
+    },
+    "fixtures": 74,
+    "paired": {
+      "broad_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          0.0,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.02517851723701925,
+          0.006805395548673058
+        ],
+        "cluster_key": "match_id",
+        "clusters": 13,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 13,
+        "residual_improvement_a_minus_b_95": [
+          -0.0432533076923077,
+          0.0025189230769230896
+        ],
+        "seed": 20261133
+      },
+      "broad_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          0.0,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.026666806180109387,
+          0.011131291425541671
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 10,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 13,
+        "residual_improvement_a_minus_b_95": [
+          -0.04414019999999999,
+          0.009003250000000018
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          0.0,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.04049964765600003,
+          0.0004846515967499923
+        ],
+        "cluster_key": "match_id",
+        "clusters": 6,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 6,
+        "residual_improvement_a_minus_b_95": [
+          -0.039272583333333354,
+          0.017334499999999975
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          0.0,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.04049964765600003,
+          0.0004846515967499923
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 6,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 6,
+        "residual_improvement_a_minus_b_95": [
+          -0.039960916666666714,
+          0.01629833333333336
+        ],
+        "seed": 20261133
+      },
+      "replay_only_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          0.0,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.023687961774357138,
+          0.0068885230664999944
+        ],
+        "cluster_key": "match_id",
+        "clusters": 14,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 14,
+        "residual_improvement_a_minus_b_95": [
+          -0.03934503571428572,
+          0.0035119999999999835
+        ],
+        "seed": 20261133
+      }
+    },
+    "sets": {
+      "broad": {
+        "a_selected": 13,
+        "added": 2,
+        "added_ids_sha256": "8d7c6fea5059cac3bfbe423fbd00efe0123dce0e4c99144d0dbb01f50c643584",
+        "b_selected": 13,
+        "corrected_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "corrected_winner_predictions": 0,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 2,
+        "removed_ids_sha256": "6847321c598a2de604c7e6596d5f09104676895e7caa44b74822917bb183f993",
+        "shared": 11,
+        "shared_side_flips": 0
+      },
+      "marginal": {
+        "a_selected": 6,
+        "added": 3,
+        "added_ids_sha256": "6699150943c71078d1d08242e672cef14906975589a093420619397931ed2b03",
+        "b_selected": 6,
+        "corrected_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "corrected_winner_predictions": 0,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 3,
+        "removed_ids_sha256": "261bf576f7471c3efabf33456a22b193c903275433c76f1f439b0cf1410bbb01",
+        "shared": 3,
+        "shared_side_flips": 0
+      },
+      "narrow": {
+        "a_selected": 7,
+        "added": 1,
+        "added_ids_sha256": "60e8c0e261f39478f20800935e7086ce78bbb0b20c9300742d310ad4a080e783",
+        "b_selected": 7,
+        "corrected_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "corrected_winner_predictions": 0,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 1,
+        "removed_ids_sha256": "de0583aabcf1c7afa65c51169817a9617cccc096c05d61e417e020aa54132bc6",
+        "shared": 6,
+        "shared_side_flips": 0
+      }
+    },
+    "settled": 68
+  },
+  "bookmaker": {
+    "A_replay": {
+      "blocker": "NO_ORIGINAL_TIME_TWO_SIDED_QUOTE",
+      "settled_priced": 0
+    },
+    "B": {
+      "blocker": "NO_ORIGINAL_TIME_TWO_SIDED_QUOTE",
+      "settled_priced": 0
+    },
+    "C_uncalibrated_mean_floor60": {
+      "blocker": "NO_ORIGINAL_TIME_TWO_SIDED_QUOTE",
+      "settled_priced": 0
+    },
+    "by_bookmaker": {},
+    "coverage": 0.0,
+    "eligible_fixtures": 0,
+    "fixtures": 656
+  },
+  "challenger": {
+    "A_replay": {
+      "broad": {
+        "accuracy": 0.6859504132231405,
+        "accuracy_wilson95": [
+          0.6249536508466995,
+          0.7411359437714402
+        ],
+        "brier": 0.2109431614765661,
+        "coverage_of_eligible": 0.4484536082474227,
+        "expected_wins": 171.59266,
+        "ids_sha256": "1e623c4ac61f6e49b5a26946138770397fbc62e6e16da92ddb23d7b1d80f6b4b",
+        "log_loss": 0.6111728022691122,
+        "losses": 76,
+        "mean_selected_probability": 0.7090605785123967,
+        "residual": -5.592659999999995,
+        "selected": 261,
+        "settled": 242,
+        "wins": 166
+      },
+      "marginal": {
+        "accuracy": 0.6408450704225352,
+        "accuracy_wilson95": [
+          0.5591849794122724,
+          0.7150854531756127
+        ],
+        "brier": 0.2285789636289736,
+        "coverage_of_eligible": 0.25945017182130586,
+        "expected_wins": 93.8901455,
+        "ids_sha256": "96f484bc2e2b6e6536be92bb2c42b48f6d5b426b1e0a9086ca6197626c18249c",
+        "log_loss": 0.6494702983186428,
+        "losses": 51,
+        "mean_selected_probability": 0.6611982077464789,
+        "residual": -2.8901455000000027,
+        "selected": 151,
+        "settled": 142,
+        "wins": 91
+      },
+      "narrow": {
+        "accuracy": 0.75,
+        "accuracy_wilson95": [
+          0.656955364519384,
+          0.8245478863771232
+        ],
+        "brier": 0.1859003224201475,
+        "coverage_of_eligible": 0.18900343642611683,
+        "expected_wins": 77.7025145,
+        "ids_sha256": "d383ce404b1497ec26629a8567b8621752999fe694f780d80ced215d200b5e7f",
+        "log_loss": 0.5567903578787787,
+        "losses": 25,
+        "mean_selected_probability": 0.7770251450000001,
+        "residual": -2.7025145000000066,
+        "selected": 110,
+        "settled": 100,
+        "wins": 75
+      }
+    },
+    "B": {
+      "broad": {
+        "accuracy": 0.7070707070707071,
+        "accuracy_wilson95": [
+          0.6402211844928404,
+          0.7660382652708709
+        ],
+        "brier": 0.19459141829104293,
+        "coverage_of_eligible": 0.36769759450171824,
+        "expected_wins": 141.089606,
+        "ids_sha256": "2293eca23221fcb95f0ed5ff461763c4041bd142001c47415cfc6ae51607a763",
+        "log_loss": 0.5726809591969227,
+        "losses": 58,
+        "mean_selected_probability": 0.7125737676767677,
+        "residual": -1.0896060000000034,
+        "selected": 214,
+        "settled": 198,
+        "wins": 140
+      },
+      "marginal": {
+        "accuracy": 0.6173913043478261,
+        "accuracy_wilson95": [
+          0.5261324102277726,
+          0.7010610310841278
+        ],
+        "brier": 0.2332527620776174,
+        "coverage_of_eligible": 0.211340206185567,
+        "expected_wins": 76.371904,
+        "ids_sha256": "17faab2ab80831b74e5a20b2cac03354173435fbccea06ee182b1d2ec60c82f6",
+        "log_loss": 0.6586406293982815,
+        "losses": 44,
+        "mean_selected_probability": 0.6641035130434783,
+        "residual": -5.371904000000001,
+        "selected": 123,
+        "settled": 115,
+        "wins": 71
+      },
+      "narrow": {
+        "accuracy": 0.8313253012048193,
+        "accuracy_wilson95": [
+          0.736558859848702,
+          0.8967791879789059
+        ],
+        "brier": 0.14102449617711446,
+        "coverage_of_eligible": 0.1563573883161512,
+        "expected_wins": 64.717702,
+        "ids_sha256": "73eb0e576114f474aa1ec475b316511191717e547ed62e4e2d62c9e41289f235",
+        "log_loss": 0.45358021132757037,
+        "losses": 14,
+        "mean_selected_probability": 0.7797313493975904,
+        "residual": 4.282297999999997,
+        "selected": 91,
+        "settled": 83,
+        "wins": 69
+      }
+    },
+    "C_uncalibrated_mean_floor60": {
+      "broad": {
+        "accuracy": 0.6872427983539094,
+        "accuracy_wilson95": [
+          0.6264195404831394,
+          0.7422381413939656
+        ],
+        "brier": 0.21017621132926648,
+        "coverage_of_eligible": 0.45017182130584193,
+        "expected_wins": 172.2761115,
+        "ids_sha256": "5c5a6e8ed714ca97d5b188fe364523df6cb6b3bc0a0a5610ffed1e918257a146",
+        "log_loss": 0.60940583884673,
+        "losses": 76,
+        "mean_selected_probability": 0.7089551913580248,
+        "residual": -5.276111500000013,
+        "selected": 262,
+        "settled": 243,
+        "wins": 167
+      },
+      "marginal": {
+        "accuracy": 0.6433566433566433,
+        "accuracy_wilson95": [
+          0.5620397199259571,
+          0.717172978785137
+        ],
+        "brier": 0.22758693251003145,
+        "coverage_of_eligible": 0.2611683848797251,
+        "expected_wins": 94.559351,
+        "ids_sha256": "51ab406bef35a724b567cc8042426385298ccbebe9b61e172887c6b23d5771e9",
+        "log_loss": 0.6473955793070372,
+        "losses": 51,
+        "mean_selected_probability": 0.6612542027972028,
+        "residual": -2.5593510000000066,
+        "selected": 152,
+        "settled": 143,
+        "wins": 92
+      },
+      "narrow": {
+        "accuracy": 0.75,
+        "accuracy_wilson95": [
+          0.656955364519384,
+          0.8245478863771232
+        ],
+        "brier": 0.1852788800407725,
+        "coverage_of_eligible": 0.18900343642611683,
+        "expected_wins": 77.7167605,
+        "ids_sha256": "d383ce404b1497ec26629a8567b8621752999fe694f780d80ced215d200b5e7f",
+        "log_loss": 0.5550805099884907,
+        "losses": 25,
+        "mean_selected_probability": 0.777167605,
+        "residual": -2.7167605000000066,
+        "selected": 110,
+        "settled": 100,
+        "wins": 75
+      }
+    },
+    "equal_count_20pct": {
+      "A": {
+        "accuracy": 0.7289719626168224,
+        "accuracy_wilson95": [
+          0.6379084109244534,
+          0.804164442693129
+        ],
+        "brier": 0.19416502143001868,
+        "coverage_of_eligible": 0.20103092783505155,
+        "expected_wins": 82.640991,
+        "ids_sha256": "305510973bdba4310b1452c4d13f09dc85d015640d5ba0a41e449615cf1656e8",
+        "log_loss": 0.5741726462065535,
+        "losses": 29,
+        "mean_selected_probability": 0.7723457102803738,
+        "residual": -4.640991,
+        "selected": 117,
+        "settled": 107,
+        "wins": 78
+      },
+      "B": {
+        "accuracy": 0.839622641509434,
+        "accuracy_wilson95": [
+          0.7581004033908071,
+          0.8973897983328721
+        ],
+        "brier": 0.14128134920758018,
+        "coverage_of_eligible": 0.20103092783505155,
+        "expected_wins": 80.819067,
+        "ids_sha256": "86e4449843d9825a8ab03faf2acdf5cab32ce3dfa78ac66372cd75e1f48cb637",
+        "log_loss": 0.45654524148888476,
+        "losses": 17,
+        "mean_selected_probability": 0.7624440283018868,
+        "residual": 8.180932999999996,
+        "selected": 117,
+        "settled": 106,
+        "wins": 89
+      },
+      "k": 117
+    },
+    "equal_count_40pct": {
+      "A": {
+        "accuracy": 0.7023255813953488,
+        "accuracy_wilson95": [
+          0.6380908517170735,
+          0.7594572201557369
+        ],
+        "brier": 0.2052234656654186,
+        "coverage_of_eligible": 0.40034364261168387,
+        "expected_wins": 154.644948,
+        "ids_sha256": "805d6a9445995f0bee615eb1a4b37ba7fa963f3d8371d3504aae82ee35a2bc24",
+        "log_loss": 0.5989265946441131,
+        "losses": 64,
+        "mean_selected_probability": 0.7192788279069767,
+        "residual": -3.6449479999999994,
+        "selected": 233,
+        "settled": 215,
+        "wins": 151
+      },
+      "B": {
+        "accuracy": 0.7009345794392523,
+        "accuracy_wilson95": [
+          0.6364886449965323,
+          0.7582938746651029
+        ],
+        "brier": 0.1975276220243598,
+        "coverage_of_eligible": 0.40034364261168387,
+        "expected_wins": 150.94531,
+        "ids_sha256": "7069d517e47ea0acb18923e5cda04824fd309fbcb02b36922eea0af71047effe",
+        "log_loss": 0.5792452732535708,
+        "losses": 64,
+        "mean_selected_probability": 0.7053519158878505,
+        "residual": -0.9453100000000063,
+        "selected": 233,
+        "settled": 214,
+        "wins": 150
+      },
+      "k": 233
+    },
+    "fixtures": 582,
+    "paired": {
+      "broad_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.015544041450777202,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.003565537165348452,
+          0.019204126460676152
+        ],
+        "cluster_key": "match_id",
+        "clusters": 193,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 193,
+        "residual_improvement_a_minus_b_95": [
+          -0.033337580310880834,
+          -0.008617865284974095
+        ],
+        "seed": 20261133
+      },
+      "broad_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.01639344262295082,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.003787197918606975,
+          0.019386076702552827
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 124,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 193,
+        "residual_improvement_a_minus_b_95": [
+          -0.034846206030150755,
+          -0.00777215402843602
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.030927835051546393,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.0018973575255335185,
+          0.016339926464533513
+        ],
+        "cluster_key": "match_id",
+        "clusters": 97,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 97,
+        "residual_improvement_a_minus_b_95": [
+          -0.0371733092783505,
+          0.005931855670103107
+        ],
+        "seed": 20261133
+      },
+      "marginal_brier_accuracy_residual_favourite_cluster": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.031578947368421054,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          -0.0024541907839416665,
+          0.016179618442760512
+        ],
+        "cluster_key": "favourite_player_id",
+        "clusters": 78,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 97,
+        "residual_improvement_a_minus_b_95": [
+          -0.036411523584905674,
+          0.0067362378640776705
+        ],
+        "seed": 20261133
+      },
+      "replay_only_brier_accuracy_residual": {
+        "accuracy_improvement_a_minus_b_95": [
+          -0.015544041450777202,
+          0.0
+        ],
+        "available": true,
+        "brier_improvement_a_minus_b_95": [
+          0.003846513414007767,
+          0.019656263504984447
+        ],
+        "cluster_key": "match_id",
+        "clusters": 193,
+        "interpretation": "Positive Brier improvement means A scored worse than B. Accuracy improvement is A minus B. The cluster resamples matches; selections sharing a favourite are not independent and are also reported clustered by favourite.",
+        "iterations": 4000,
+        "paired_settled": 193,
+        "residual_improvement_a_minus_b_95": [
+          -0.03343560103626945,
+          -0.00838339119170984
+        ],
+        "seed": 20261133
+      }
+    },
+    "sets": {
+      "broad": {
+        "a_selected": 262,
+        "added": 27,
+        "added_ids_sha256": "b15cd583170d993090554e45ceff4db46d7ef1aa6d0e59cf5c14f3e5a97714d9",
+        "b_selected": 214,
+        "corrected_ids_sha256": "10db2509cfd580e2768582194b53945b0df977138aa3588785b9fa83aaa25370",
+        "corrected_winner_predictions": 1,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 75,
+        "removed_ids_sha256": "9c5a361077793c71a649a3c05146d97351b0e91b2fd3417bfa584e089d08bc97",
+        "shared": 187,
+        "shared_side_flips": 1
+      },
+      "marginal": {
+        "a_selected": 152,
+        "added": 58,
+        "added_ids_sha256": "4832f4c700375ba5d3be9e038a085b099f0e81039cdd43fb66001f44336fad71",
+        "b_selected": 123,
+        "corrected_ids_sha256": "10db2509cfd580e2768582194b53945b0df977138aa3588785b9fa83aaa25370",
+        "corrected_winner_predictions": 1,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 87,
+        "removed_ids_sha256": "fcf8472e11ed3b85bb4a2bf5eae11492a5ad713e5f71c3d33c0362adb09eca62",
+        "shared": 65,
+        "shared_side_flips": 1
+      },
+      "narrow": {
+        "a_selected": 110,
+        "added": 22,
+        "added_ids_sha256": "e0fbc5dda9e17168b6496f6ef0ffec39861de6bcfe9e19ee4efcdbf4504ccc48",
+        "b_selected": 91,
+        "corrected_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "corrected_winner_predictions": 0,
+        "newly_incorrect_ids_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "newly_incorrect_winner_predictions": 0,
+        "removed": 41,
+        "removed_ids_sha256": "0af92751716ff23a325be5c8eef0afbab8195f52b678afb426d0af868772999f",
+        "shared": 69,
+        "shared_side_flips": 0
+      }
+    },
+    "settled": 531
+  },
+  "cohort_thresholds": {
+    "broad": {
+      "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+      "threshold": 0.6213299999999999,
+      "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+      "validation_policy_candidates": 471,
+      "validation_target_fixtures": 1027
+    },
+    "narrow": {
+      "status": "VALIDATION_CONFIDENCE_CUTOFF_FROZEN",
+      "threshold": 0.7070145,
+      "validation_policy_candidate_maximum_coverage": 0.45861733203505356,
+      "validation_policy_candidates": 471,
+      "validation_target_fixtures": 1027
+    }
+  },
+  "eligible_fixtures": 656,
+  "historical_evaluation_previously_inspected": true,
+  "independent_forward_validation": false,
+  "limitations": [
+    "The November window was previously inspected; not independent forward validation.",
+    "B requires a local A1 replay; reproduction against stored A1 is reported, and A' versus B isolates the identity change.",
+    "Only A1 changes between A and B. A2/A3 stored inputs, Manager rule, cutoffs, thresholds, calibration and settlement are identical.",
+    "Identity resolution is invariant across the sampled cutoffs but is an alias-uniqueness bridge, not a verified provider census.",
+    "Bookmaker comparisons are reported only for strict original-time two-sided quotes; no quote is fabricated."
+  ],
+  "policy": "C_uncalibrated_mean_floor60",
+  "status": "DESCRIPTIVE_HISTORICAL_RESEARCH_ONLY",
+  "version": "MANAGER_C_IDENTITY_COMPARISON_V1"
+}

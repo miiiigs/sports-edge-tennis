@@ -1,5 +1,11 @@
 # OddsPapi capture evidence and pre-issue sequencing (2026-11-26)
 
+**Update (later 2026-11-26):** the live cron advanced the corpus to 509
+identities and 505 raw-price fixtures across 3,905 predictions; the conclusion
+is unchanged (0 before issue). The complete cohort-specific reconciliation is
+in `ODDSPAPI_ACQUISITION_FUNNEL_20261126.md`. This document remains the
+measurement record for the earlier 500/496 snapshot.
+
 Research-only, read-only production session. No migration, deployment, provider
 request, purchase or matching-threshold change. Probe commit: `ac85f34`
 (integration PR #392). Probe:

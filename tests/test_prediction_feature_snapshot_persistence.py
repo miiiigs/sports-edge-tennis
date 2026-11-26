@@ -1,7 +1,9 @@
 """Runtime wiring: prediction and Agent 1 feature snapshot commit atomically."""
 from __future__ import annotations
 
+from datetime import UTC
 from decimal import Decimal
+from pathlib import Path
 
 import psycopg
 import pytest
@@ -322,11 +324,11 @@ def test_uncertainty_requires_named_source_at_database_level(db):
 
 
 def test_request_time_state_survives_a_later_replay_advance():
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     from sports_edge_tennis.agents.agent1_surface_elo import PredictionRequest
 
-    base = datetime(2026, 11, 20, 8, 0, tzinfo=timezone.utc)
+    base = datetime(2026, 11, 20, 8, 0, tzinfo=UTC)
 
     def observation(match_id: int, offset_hours: int) -> HistoricalMatchObservation:
         observed = base + timedelta(hours=offset_hours)
@@ -381,3 +383,30 @@ def test_request_time_state_survives_a_later_replay_advance():
     assert captured.player_1.overall_match_count == 1
     advanced_rating = advanced.player_states[101].overall_rating
     assert captured.player_1.overall_rating != advanced_rating
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_down_migration_refuses_to_drop_collected_snapshot_evidence(db):
+    match_id, match_version_id, run_id, configs = _setup(db)
+    persist_and_finalize_prediction_matrix(
+        db,
+        prediction_run_id=run_id,
+        rows=_rows(match_id, match_version_id, configs, db=db),
+        prediction_finalized_at=utc(minute=5),
+        ended_at=utc(minute=5),
+    )
+    assert db.execute(
+        "SELECT count(*) FROM prediction_feature_snapshots").fetchone()[0] == 1
+    down = (
+        ROOT / "db/migrations/0023_prediction_feature_snapshots.down.sql"
+    ).read_text(encoding="utf-8")
+    with pytest.raises(psycopg.errors.RaiseException):
+        db.execute(down)
+    db.rollback()
+    assert db.execute(
+        "SELECT count(*) FROM prediction_feature_snapshots").fetchone()[0] == 1
+    assert db.execute(
+        "SELECT to_regclass('public.prediction_feature_snapshots')"
+    ).fetchone()[0] is not None
