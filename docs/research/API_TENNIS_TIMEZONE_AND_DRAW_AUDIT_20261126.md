@@ -125,3 +125,10 @@ explicit diff, which this branch does not perform.
    reconciliation.
 4. Official ATP/Challenger fixture denominator remains unavailable; this does
    not change the timezone conclusion.
+
+## 9. Exact-head CI
+
+PostgreSQL Foundation run `45816299032` passed at code head
+`fbe2dc5bca426eb489a9572bb731b0b713ebebad` (PR #391). This documentation-only
+CI note is a later commit and changes no tested code.
+
