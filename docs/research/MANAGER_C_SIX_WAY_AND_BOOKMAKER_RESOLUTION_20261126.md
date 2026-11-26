@@ -473,8 +473,10 @@ residual `-35.875`, z `-2.81`, Brier `0.22755`.
 - `tests/test_oddspapi_historical_reconstruction.py`: 14 passed.
 - `tests/test_oddspapi_tennis_provider.py`: 6 passed.
 - `tests/test_agent1_top800_bookmaker.py`: 6 passed.
-- Full suite and PostgreSQL CI are reported on the pushed commit; see the PR
-  checks for the authoritative result.
+- Targeted combined set: 43 passed.
+- PostgreSQL CI on commit `2b83b68`: **2,526 passed in 176.29 s**
+  (`postgres-foundation`, run `45817221001`). The prior baseline was 2,499
+  passed, so this change adds 27 passing tests. GitGuardian passed.
 
 ## Reproduction commands
 
