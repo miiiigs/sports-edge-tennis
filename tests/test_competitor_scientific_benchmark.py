@@ -89,3 +89,29 @@ def test_reverse_probability(inputs):
     own = next(x["own"] for x in report if x["tour"]=="ALL" and x["source"]=="pronocast"
                and x["market_class"]=="market_assisted")
     assert own["brier"] == pytest.approx(.09)
+
+
+def test_aggregate_rounding():
+    out = m.reconcile_bands([(2242,54.4),(1844,64.3),(1378,73.9),(1199,89.7)],2)
+    assert out["total"] == 6663 and out["selected"] == 2577
+    assert out["weighted_rate_pct"] == pytest.approx(81.25126115638339)
+    assert out["possible_rate_max_pct"] < 81.6
+
+
+def test_equal_coverage_and_probability_subset(inputs):
+    store, f, g, r = inputs
+    store.receive(raw(r), f, g)
+    baseline = dict(r, source="sports_edge_original", market_class="market_independent",
+                    p_player1=.4)
+    store.receive(raw(baseline), f, dict(g, source="sports_edge_original"))
+    result = dict(status="COMPLETED", winner_id="a", official_evidence_ref="synthetic",
+                  actual_start_utc="2026-12-01T12:00:00Z", result_observed_at_utc="2026-12-01T14:00:00Z")
+    out = m.score([f],store.first(),{"1":result},as_of="2026-12-02T00:00:00Z")
+    own = next(x for x in out["reports"] if x["tour"]=="ALL" and x["source"]=="pronocast"
+               and x["market_class"]=="market_assisted")
+    assert own["common_probability_source"]["probability_n"] == 1
+    assert own["paired_baseline_classes"] == {"market_independent":1}
+    equal = next(x for x in out["equal_coverage"] if x["tour"]=="ALL" and x["source"]=="pronocast"
+                 and x["market_class"]=="market_assisted" and x["baseline_class"]=="market_independent"
+                 and x["target_fraction"]==1)
+    assert equal["feasible"] and equal["source_selected"] == equal["baseline_selected"] == 1

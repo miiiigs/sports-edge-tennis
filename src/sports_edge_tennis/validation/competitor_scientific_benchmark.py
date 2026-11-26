@@ -6,6 +6,7 @@ fixture census. Receipt clock and rights are assertions, not independent proof.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -13,6 +14,7 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from fractions import Fraction
 from urllib.parse import urlsplit
 
 from sports_edge_tennis.validation.competitor_forward_audit import utc, _mean, _logloss
@@ -193,10 +195,9 @@ class ObservationStore:
 def _metrics(points):
     probs = [(p, y) for _, p, y in points if p is not None]
     calibration = []
-    for low in (0, .1, .2, .3, .4, .5, .6, .7, .8, .9):
-        band = [(p, y) for p, y in probs if round(p * 10, 12) >= low * 10
-                and round(p * 10, 12) < (low + .1) * 10]
-        calibration.append({"lower": low, "n": len(band), "mean_p": _mean([p for p,y in band]),
+    for i in range(10):
+        band = [(p, y) for p, y in probs if i / 10 <= p < (i + 1) / 10]
+        calibration.append({"lower": i / 10, "n": len(band), "mean_p": _mean([p for p,y in band]),
                             "observed": _mean([y for p,y in band])})
     return {"settled": len(points), "correct": sum(hit for hit,_,_ in points),
             "accuracy": _mean([hit for hit,_,_ in points]), "probability_n": len(probs),
@@ -260,6 +261,7 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                 int(winner == universe[mid]["player1_id"]))
 
     reports = []
+    equal_coverage = []
     for tier in ("ALL", "ATP_TOUR", "CHALLENGER"):
         ids = {mid for mid,f in universe.items() if tier == "ALL" or f["tour"] == tier}
         for source in sources:
@@ -272,7 +274,8 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                         p = point(r,mid)
                         if p is not None:
                             values[mid] = p
-                common, base_values = [], []
+                common, base_values, probability_common, probability_base = [], [], [], []
+                paired_classes = {}
                 for mid,p in sorted(values.items()):
                     other = observed.get((baseline,mid))
                     if source != baseline and other:
@@ -280,12 +283,107 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                         if bp is not None:
                             common.append(p)
                             base_values.append(bp)
+                            bc = other["forecast"]["market_class"]
+                            paired_classes[bc] = paired_classes.get(bc, 0) + 1
+                            if p[1] is not None and bp[1] is not None:
+                                probability_common.append(p)
+                                probability_base.append(bp)
                 reports.append({"tour":tier,"source":source,"market_class":cls,
                                 "eligible":len(ids),"captured":len(selected),
                                 "missing":len(ids)-len(selected),
                                 "coverage":len(selected)/len(ids) if ids else None,
                                 "own":_metrics(list(values.values())),
-                                "common_source":_metrics(common),"common_baseline":_metrics(base_values)})
-    return {"reports":reports,"independent_clock_verified":False,
+                                "actual_start_late":sum(1 for mid,r in selected.items() if mid in settled and point(r,mid) is None),
+                                "common_source":_metrics(common),"common_baseline":_metrics(base_values),
+                                "common_probability_source":_metrics(probability_common),
+                                "common_probability_baseline":_metrics(probability_base),
+                                "paired_baseline_classes":paired_classes,
+                                "average_verified_odds":None})
+                if source == baseline:
+                    continue
+                # Equal absolute volumes on the same pre-result census. Rank only
+                # genuine probabilities, never outcomes or trust scores. The
+                # top-k exercise is descriptive, not a live threshold claim.
+                candidates = {mid:r for mid,r in selected.items()
+                              if r["forecast"].get("p_player1") is not None}
+                for base_class in CLASSES:
+                    b_candidates = {mid:r for (src,mid),r in observed.items()
+                                    if src == baseline and mid in ids
+                                    and r["forecast"]["market_class"] == base_class
+                                    and r["forecast"].get("p_player1") is not None}
+                    def rank(rows):
+                        return sorted(rows, key=lambda mid: (-max(rows[mid]["forecast"]["p_player1"],
+                                                                 1-rows[mid]["forecast"]["p_player1"]),mid))
+                    for fraction in (0.25, 0.4, 0.5, 1.0):
+                        k = int(len(ids)*fraction)
+                        feasible = k > 0 and len(candidates) >= k and len(b_candidates) >= k
+                        a_ids = rank(candidates)[:k] if feasible else []
+                        b_ids = rank(b_candidates)[:k] if feasible else []
+                        def points(chosen, rows):
+                            return [p for mid in chosen if mid in settled
+                                    for p in [point(rows[mid],mid)] if p is not None]
+                        equal_coverage.append({"tour":tier,"source":source,"market_class":cls,
+                                               "baseline_class":base_class,"target_fraction":fraction,
+                                               "eligible":len(ids),"requested_k":k,"feasible":feasible,
+                                               "source_selected":len(a_ids),"baseline_selected":len(b_ids),
+                                               "selection_overlap":len(set(a_ids)&set(b_ids)),
+                                               "source_own":_metrics(points(a_ids,candidates)),
+                                               "baseline_own":_metrics(points(b_ids,b_candidates)),
+                                               "descriptive_rank_only":True})
+    return {"reports":reports,"equal_coverage":equal_coverage,"independent_clock_verified":False,
             "official_settlement_authenticity_verified":False,
             "activation_eligible":False}
+
+
+def reconcile_bands(bands, threshold_index):
+    """Arithmetic only: input rates are displayed percentages, rounded to .1."""
+    if not 0 <= threshold_index < len(bands):
+        raise ValueError("invalid band index")
+    total = sum(n for n, rate in bands)
+    selected = bands[threshold_index:]
+    high = sum(n for n, rate in selected)
+    if any(type(n) is not int or n <= 0 or not 0 <= rate <= 100 for n, rate in bands):
+        raise ValueError("invalid band")
+    counts = []
+    for n, rate in selected:
+        center = Fraction(str(rate))
+        lower, upper = center - Fraction(1,20), center + Fraction(1,20)
+        possible = [k for k in range(n+1) if lower <= Fraction(100*k,n) <= upper]
+        if not possible:
+            raise ValueError("displayed percentage impossible")
+        counts.append((min(possible),max(possible)))
+    return {"total":total,"selected":high,"share":high/total,
+            "weighted_rate_pct":sum(n*rate for n,rate in selected)/high,
+            "possible_rate_min_pct":100*sum(x[0] for x in counts)/high,
+            "possible_rate_max_pct":100*sum(x[1] for x in counts)/high}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    actions = parser.add_subparsers(dest="action", required=True)
+    capture = actions.add_parser("receive", help="Authorized local original observation only")
+    capture.add_argument("--db", type=Path, required=True)
+    for name in ("record","fixture","grant"):
+        capture.add_argument("--"+name,type=Path,required=True)
+    report = actions.add_parser("score")
+    report.add_argument("--db",type=Path,required=True)
+    report.add_argument("--fixtures",type=Path,required=True)
+    report.add_argument("--settlements",type=Path,required=True)
+    report.add_argument("--as-of",required=True)
+    actions.add_parser("pronocast-aggregate")
+    args = parser.parse_args(argv)
+    if args.action == "pronocast-aggregate":
+        result = reconcile_bands([(2242,54.4),(1844,64.3),(1378,73.9),(1199,89.7)],2)
+    elif args.action == "receive":
+        result = ObservationStore(args.db).receive(args.record.read_bytes(),
+                                                   _decode(args.fixture.read_bytes()),
+                                                   _decode(args.grant.read_bytes()))
+    else:
+        result = score(json.loads(args.fixtures.read_bytes()), ObservationStore(args.db).first(),
+                       _decode(args.settlements.read_bytes()), as_of=args.as_of)
+    print(json.dumps(result, sort_keys=True, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
