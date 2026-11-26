@@ -45,20 +45,55 @@ the live runner and adds an independent monitor:
 | Duplicate notification is suppressed | `test_incident_notification_is_sent_once_and_recovery_is_sent_once` | PASS |
 | Recovery notification is sent once | same test | PASS |
 | State survives process restart | `test_state_round_trip_suppresses_duplicate_notifications` | PASS |
-| Notifier delivery failure is surfaced, not swallowed | `test_webhook_failure_returns_distinct_exit_code` (exit code 2) | PASS |
+| Notifier delivery failure is surfaced, not swallowed | `test_webhook_failure_returns_distinct_exit_code` (exit code 2); failure does not advance deduplication state, so the next run retries | PASS |
+| Failed delivery cannot silently lose an incident | `test_notifier_failure_does_not_advance_an_existing_incident`; recovery is retried, not suppressed | PASS |
+| Monitoring survives a prediction-runner outage | `test_prediction_runner_outage_does_not_stop_other_monitoring`; other streams still measured | PASS |
+| A restart after an outage cannot backdate a started fixture | `test_recovery_after_outage_never_backdates_a_started_fixture`; only the future fixture is eligible | PASS |
 | Duplicate prediction target is rejected before a run | `tests/test_full_slate_runner.py::test_duplicate_target_rejected_without_run` | PASS (PostgreSQL CI) |
 | Runner refuses an incomplete full-slate outcome | `tests/test_full_slate_runner.py` failure-state regressions | PASS (PostgreSQL CI) |
 
-Commands executed locally:
+Commands executed locally (26 November 2026):
 
 ```text
 python -m pytest tests/test_capture_health_watchdog.py tests/test_fixture_lifecycle.py -q
-26 passed
+30 passed in 2.02s
 ```
 
 The PostgreSQL foundation workflow remains the release gate for the
 `select_prematch_targets` integration and the full-slate runner. The workflow
 must be green at the exact pushed head before release.
+
+## Independent scheduling readiness (26 November 2026)
+
+The monitoring code is operationally rehearsable without paid infrastructure,
+without a live notifier and without touching the runner. The owner-ready
+runbook is
+[`docs/operations/CAPTURE_WATCHDOG_OWNER_CHECKLIST_20261126.md`](../operations/CAPTURE_WATCHDOG_OWNER_CHECKLIST_20261126.md).
+
+What is verified in isolation:
+
+- missing execution (95-slot gap) and duplicate execution in one slot;
+- a prediction-runner outage (zero `completed_prediction_runs`) while the
+  fixture and live-batch streams are still measured;
+- persistent incident state and duplicate-alert suppression across a process
+  restart;
+- one-time recovery and silence after recovery;
+- notifier failure returns exit code 2 and does not advance deduplication state,
+  so the next run retries the alert;
+- a post-outage restart cannot turn a started fixture into a retrospective
+  target.
+
+What remains an owner action, not a code defect:
+
+- schedule the watchdog **outside** `tennis-live-runner`;
+- provide a writable persistent state path;
+- name and authorise the notifier destination and on-call route;
+- confirm `--window-hours` / `--expected-minutes` against the deployed
+  `0 * * * *` cron;
+- rehearse one test alert on the authorised endpoint.
+
+The watchdog cannot repair the Railway trigger. It makes a recurrence
+detectable and gives the owner an exact missed-slot report.
 
 ## Release gates
 
