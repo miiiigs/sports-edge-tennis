@@ -17,6 +17,13 @@ It queries the production PostgreSQL database for three independent streams:
 | `fixture_ingestion` | `ingest_runs` (`API_TENNIS` scheduled fixtures, `COMPLETED`/`PARTIAL`) | discovery stopped or the provider adapter stopped persisting |
 | `live_batch_health` | `data_health_checks` (`LIVE_BATCH_RUNTIME`) | the live batch is not running or not writing its heartbeat |
 | `completed_prediction_runs` | `prediction_runs` (`COMPLETED`, non-experiment) | the prediction runner is down or not finalising runs |
+| `overdue_predictions` | `match_versions` + `prediction_run_targets` + `prediction_runs` | a scheduled fixture reached (or passed) its `start − 30 min` deadline without an on-time completed target |
+
+The first three are execution streams. The fourth checks the **work product**,
+not service uptime: a run can be heartbeating and still leave an upcoming
+fixture unforecast. It reports `OVERDUE` fixtures (start still future but the
+deadline has passed) and `MISSED` fixtures (start already passed) separately.
+It is read-only, never inserts a target and never backdates a capture.
 
 It derives the expected hourly slots from the schedule, not from observed rows,
 so the 13–16 November 2026 gap is reported as **95 missed hourly executions**
@@ -31,14 +38,16 @@ Run from the PR #391 worktree:
 
 ```powershell
 python -m pytest tests/test_capture_health_watchdog.py tests/test_fixture_lifecycle.py -q
-# 30 passed
+# 35 passed
 ```
 
 | Scenario | How it is isolated | Expected result |
 |---|---|---|
-| Missing execution | synthetic heartbeat list skips the 13 Nov 00:00–16 Nov 22:00 slots | `GAP`, 95 missing, exit 1 |
+| Missing execution | synthetic heartbeat list skips the 13 Nov 00:00-16 Nov 22:00 slots | `GAP`, 95 missing, exit 1 |
 | Duplicate execution | two heartbeats in one hourly slot | one matched slot, one duplicate slot, not two runs |
 | Runner outage | zero rows in `completed_prediction_runs` while the other streams are present | report still built; `completed_prediction_runs=NO_HEARTBEAT`; other datasets measured |
+| Overdue prediction | healthy run heartbeats but one scheduled fixture inside `start - 30 min` has no on-time completed target | `overdue_predictions=FAILED`, `overdue_count=1`, exit 1 |
+| Missed prediction | fixture start already passed with no on-time target | reported as `MISSED`; `backdated=false`; never inserted as a forecast |
 | Notifier failure | `_post_webhook` raises | distinct exit code **2**; state records the failure but does **not** advance the incident fingerprint, so the next run retries the alert |
 | Duplicate alert | same failing dataset set on the next run with persisted state | `NONE` / `DUPLICATE_INCIDENT_SUPPRESSED` |
 | Recovery alert | failing set becomes empty | one `RECOVERY`; next healthy run is `HEALTHY_NO_CHANGE` |
@@ -57,6 +66,8 @@ $env:TENNIS_DATABASE_URL = <authorised read-only DSN>
 python ops/validation/capture_health_watchdog.py `
   --window-hours 2 `
   --expected-minutes 60 `
+  --prediction-lead-minutes 30 `
+  --missed-lookback-minutes 120 `
   --state-path .\watchdog-state.rehearsal.json `
   --out-json .\watchdog-report.json `
   --no-notify

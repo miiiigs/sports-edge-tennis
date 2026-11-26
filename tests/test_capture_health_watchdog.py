@@ -1,6 +1,8 @@
 """Regression tests for the independent capture-health watchdog."""
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from ops.validation import capture_health_watchdog as watchdog
 from sports_edge_tennis.validation.fixture_lifecycle import (
     NOTIFY_INCIDENT,
@@ -143,6 +145,8 @@ class _FakeConnection:
         self._rows = rows_by_dataset
 
     def execute(self, sql, params=None):
+        if "WITH candidate_matches" in sql:
+            return _FakeResult([])
         for dataset, rows in self._rows.items():
             if dataset in sql:
                 return _FakeResult([(row,) for row in rows])
@@ -316,3 +320,109 @@ def test_successful_delivery_advances_deduplication_state():
         _failure_report("live_batch_health"), state, observed_at=now
     )
     assert duplicate.action == NOTIFY_NONE
+
+
+def test_overdue_bounds_use_the_prediction_deadline_and_lookback():
+    as_of = datetime(2026, 11, 17, 12, 0, tzinfo=UTC)
+    missed_start, overdue_end = watchdog.overdue_bounds(
+        as_of,
+        prediction_lead=timedelta(minutes=30),
+        missed_lookback=timedelta(hours=2),
+    )
+    assert missed_start == datetime(2026, 11, 17, 10, 0, tzinfo=UTC)
+    assert overdue_end == datetime(2026, 11, 17, 12, 30, tzinfo=UTC)
+    with pytest.raises(ValueError):
+        watchdog.overdue_bounds(
+            as_of,
+            prediction_lead=timedelta(0),
+            missed_lookback=timedelta(hours=2),
+        )
+
+
+class _OverdueConnection:
+    def __init__(self, overdue_rows):
+        self._overdue_rows = overdue_rows
+
+    def execute(self, sql, params=None):
+        if "WITH candidate_matches" in sql:
+            return _FakeResult(self._overdue_rows)
+        return _FakeResult([])
+
+
+def test_overdue_upcoming_fixture_without_an_on_time_target_fails_monitoring():
+    as_of = datetime(2026, 11, 17, 12, 0, tzinfo=UTC)
+    conn = _OverdueConnection(
+        [
+            (9001, datetime(2026, 11, 17, 12, 20, tzinfo=UTC), "OVERDUE"),
+            (9002, datetime(2026, 11, 17, 11, 30, tzinfo=UTC), "MISSED"),
+        ]
+    )
+    report = watchdog.build_overdue_report(
+        conn,
+        as_of=as_of,
+        prediction_lead=timedelta(minutes=30),
+        missed_lookback=timedelta(hours=2),
+    )
+    assert report["status"] == "FAILED"
+    assert report["overdue_count"] == 1
+    assert report["missed_count"] == 1
+    assert report["overdue"][0]["match_id"] == 9001
+    assert report["missed"][0]["classification"] == "MISSED"
+    assert report["backdated"] is False
+
+
+def test_overdue_report_is_healthy_when_every_upcoming_fixture_has_a_target():
+    report = watchdog.build_overdue_report(
+        _OverdueConnection([]),
+        as_of=datetime(2026, 11, 17, 12, 0, tzinfo=UTC),
+    )
+    assert report["status"] == "HEALTHY"
+    assert report["overdue_count"] == 0
+    assert report["missed_count"] == 0
+
+
+class _MixedConnection:
+    def __init__(self, heartbeat, overdue_rows):
+        self._heartbeat = heartbeat
+        self._overdue_rows = overdue_rows
+
+    def execute(self, sql, params=None):
+        if "WITH candidate_matches" in sql:
+            return _FakeResult(self._overdue_rows)
+        return _FakeResult([(self._heartbeat,)])
+
+
+def test_build_report_fails_on_overdue_predictions_even_when_runs_are_healthy():
+    """Service uptime is not enough: the work product itself is checked."""
+    now = datetime(2026, 11, 17, 12, 0, tzinfo=UTC)
+    conn = _MixedConnection(
+        now - timedelta(minutes=5),
+        [(9001, now + timedelta(minutes=20), "OVERDUE")],
+    )
+    report = watchdog.build_report(
+        conn,
+        window_start=now - timedelta(hours=1),
+        window_end=now,
+        expected_interval=timedelta(hours=1),
+    )
+    assert report["status"] == "FAILED"
+    assert "overdue_predictions" in report["failed_datasets"]
+    assert report["overdue_predictions"]["overdue_count"] == 1
+
+
+def test_overdue_prediction_alert_is_deduplicated_and_recovers():
+    now = datetime(2026, 11, 17, 12, 0, tzinfo=UTC)
+    first = decide_monitoring_notification(
+        _failure_report("overdue_predictions"), None, observed_at=now
+    )
+    assert first.action == NOTIFY_INCIDENT
+    duplicate = decide_monitoring_notification(
+        _failure_report("overdue_predictions"), first.state, observed_at=now
+    )
+    assert duplicate.action == NOTIFY_NONE
+    recovered = decide_monitoring_notification(
+        {"status": "HEALTHY", "failed_datasets": []},
+        first.state,
+        observed_at=now,
+    )
+    assert recovered.action == NOTIFY_RECOVERY

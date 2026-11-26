@@ -39,6 +39,7 @@ import psycopg
 
 from sports_edge_tennis.validation.fixture_lifecycle import (
     NOTIFY_NONE,
+    PIT_LEAD,
     decide_monitoring_notification,
     detect_capture_gaps,
     expected_execution_slots,
@@ -71,12 +72,144 @@ DATASETS = {
     ),
 }
 
+# A run row can be healthy while an individual fixture still has no forecast.
+# This read-only query checks the work product, not only service uptime:
+#   * OVERDUE: still scheduled, deadline (start - lead) already passed, but no
+#     completed prediction run targeted it on time. It can still be saved only
+#     if a run happens before the start. It must never be backdated.
+#   * MISSED: the scheduled start already passed with no on-time completed
+#     target. It is reported for the record and never converted into a forecast.
+OVERDUE_PREDICTION_SQL = """
+WITH candidate_matches AS (
+    SELECT DISTINCT mv.match_id
+    FROM match_versions mv
+    WHERE mv.match_start_at >= %(missed_start)s
+      AND mv.match_start_at <= %(overdue_end)s
+)
+SELECT
+    latest.match_id,
+    latest.match_start_at,
+    CASE WHEN latest.match_start_at > %(as_of)s THEN 'OVERDUE' ELSE 'MISSED' END
+        AS bucket
+FROM candidate_matches c
+CROSS JOIN LATERAL (
+    SELECT
+        mv.match_id,
+        mv.match_start_at,
+        mv.match_status::text AS match_status,
+        mv.qualifying_flag,
+        mv.tour_scope::text AS tour_scope
+    FROM match_versions mv
+    WHERE mv.match_id = c.match_id
+    ORDER BY mv.as_of DESC, mv.source_observed_at DESC, mv.match_version_id DESC
+    LIMIT 1
+) latest
+WHERE latest.match_status = 'SCHEDULED'
+  AND latest.qualifying_flag = false
+  AND latest.tour_scope IN ('ATP_MAIN', 'CHALLENGER')
+  AND latest.match_start_at >= %(missed_start)s
+  AND latest.match_start_at <= %(overdue_end)s
+  AND NOT EXISTS (
+      SELECT 1
+      FROM prediction_run_targets t
+      JOIN prediction_runs r ON r.prediction_run_id = t.prediction_run_id
+      JOIN predictions p
+        ON p.prediction_run_id = t.prediction_run_id
+       AND p.match_id = t.match_id
+      WHERE t.match_id = latest.match_id
+        AND r.run_status = 'COMPLETED'
+        AND r.experiment_id IS NULL
+        AND p.experiment_id IS NULL
+        AND p.prediction_locked_at <= latest.match_start_at - %(lead)s::interval
+  )
+ORDER BY latest.match_start_at, latest.match_id
+"""
+
 MAX_REPORTED_SLOTS = 48
+MAX_REPORTED_FIXTURES = 48
+
 
 
 def _timestamps(conn: psycopg.Connection, sql: str, start: datetime, end: datetime):
     rows = conn.execute(sql, {"start": start, "end": end}).fetchall()
     return [row[0] for row in rows if row[0] is not None]
+
+
+def overdue_bounds(
+    as_of: datetime,
+    *,
+    prediction_lead: timedelta,
+    missed_lookback: timedelta,
+) -> tuple[datetime, datetime]:
+    """Return the missed lookback start and the upcoming overdue horizon end."""
+    if as_of.tzinfo is None or as_of.utcoffset() is None:
+        raise ValueError("as_of must be timezone-aware")
+    if prediction_lead <= timedelta(0):
+        raise ValueError("prediction_lead must be positive")
+    if missed_lookback < timedelta(0):
+        raise ValueError("missed_lookback must not be negative")
+    return as_of - missed_lookback, as_of + prediction_lead
+
+
+def build_overdue_report(
+    conn: psycopg.Connection,
+    *,
+    as_of: datetime,
+    prediction_lead: timedelta = PIT_LEAD,
+    missed_lookback: timedelta = timedelta(hours=2),
+) -> dict[str, object]:
+    """Report fixtures whose on-time forecast is overdue or already missed.
+
+    Read-only. The query proves whether a completed prediction run actually
+    targeted the fixture before its ``start - lead`` deadline. A missing row is
+    reported as missed or overdue; it is never inserted, backdated or inferred.
+    """
+    missed_start, overdue_end = overdue_bounds(
+        as_of,
+        prediction_lead=prediction_lead,
+        missed_lookback=missed_lookback,
+    )
+    rows = conn.execute(
+        OVERDUE_PREDICTION_SQL,
+        {
+            "as_of": as_of,
+            "missed_start": missed_start,
+            "overdue_end": overdue_end,
+            "lead": f"{int(prediction_lead.total_seconds())} seconds",
+        },
+    ).fetchall()
+    overdue = [
+        {
+            "match_id": int(row[0]),
+            "match_start_at": row[1].isoformat(),
+            "classification": "OVERDUE",
+        }
+        for row in rows
+        if str(row[2]) == "OVERDUE"
+    ]
+    missed = [
+        {
+            "match_id": int(row[0]),
+            "match_start_at": row[1].isoformat(),
+            "classification": "MISSED",
+        }
+        for row in rows
+        if str(row[2]) != "OVERDUE"
+    ]
+    report: dict[str, object] = {
+        "status": "HEALTHY" if not rows else "FAILED",
+        "as_of": as_of.isoformat(),
+        "prediction_lead_minutes": prediction_lead.total_seconds() / 60,
+        "missed_lookback_minutes": missed_lookback.total_seconds() / 60,
+        "overdue_count": len(overdue),
+        "missed_count": len(missed),
+        "overdue": overdue[:MAX_REPORTED_FIXTURES],
+        "missed": missed[:MAX_REPORTED_FIXTURES],
+        "truncated": len(overdue) > MAX_REPORTED_FIXTURES
+        or len(missed) > MAX_REPORTED_FIXTURES,
+        "backdated": False,
+    }
+    return report
 
 
 def _load_state(path: str | None) -> dict[str, object] | None:
@@ -115,9 +248,11 @@ def build_report(
     window_start: datetime,
     window_end: datetime,
     expected_interval: timedelta,
+    prediction_lead: timedelta = PIT_LEAD,
+    missed_lookback: timedelta = timedelta(hours=2),
 ) -> dict[str, object]:
     report: dict[str, object] = {
-        "version": "TENNIS_CAPTURE_HEALTH_WATCHDOG_20261125_V2",
+        "version": "TENNIS_CAPTURE_HEALTH_WATCHDOG_20261125_V3",
         "read_only": True,
         "window_start": window_start.isoformat(),
         "window_end": window_end.isoformat(),
@@ -175,6 +310,16 @@ def build_report(
         if health.status != "HEALTHY":
             failures.append(name)
 
+    overdue = build_overdue_report(
+        conn,
+        as_of=window_end,
+        prediction_lead=prediction_lead,
+        missed_lookback=missed_lookback,
+    )
+    report["overdue_predictions"] = overdue
+    if overdue["status"] != "HEALTHY":
+        failures.append("overdue_predictions")
+
     report["status"] = "HEALTHY" if not failures else "FAILED"
     report["failed_datasets"] = failures
     report["total_missing_execution_slots"] = total_missing
@@ -206,6 +351,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--window-hours", type=int, default=6)
     parser.add_argument("--expected-minutes", type=int, default=60)
+    parser.add_argument(
+        "--prediction-lead-minutes",
+        type=int,
+        default=30,
+        help="on-time forecast deadline before scheduled start",
+    )
+    parser.add_argument(
+        "--missed-lookback-minutes",
+        type=int,
+        default=120,
+        help="how far back to report fixtures whose on-time forecast was missed",
+    )
     parser.add_argument("--as-of", help="ISO-8601 UTC cutoff; defaults to now")
     parser.add_argument("--out-json")
     parser.add_argument(
@@ -233,6 +390,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--as-of must be timezone-aware")
     window_start = window_end - timedelta(hours=args.window_hours)
     expected = timedelta(minutes=args.expected_minutes)
+    prediction_lead = timedelta(minutes=args.prediction_lead_minutes)
+    missed_lookback = timedelta(minutes=args.missed_lookback_minutes)
+    if prediction_lead <= timedelta(0):
+        parser.error("--prediction-lead-minutes must be positive")
+    if missed_lookback < timedelta(0):
+        parser.error("--missed-lookback-minutes must not be negative")
 
     with psycopg.connect(dsn, autocommit=True, connect_timeout=20) as conn:
         conn.execute("SET default_transaction_read_only=on")
@@ -242,6 +405,8 @@ def main(argv: list[str] | None = None) -> int:
             window_start=window_start,
             window_end=window_end,
             expected_interval=expected,
+            prediction_lead=prediction_lead,
+            missed_lookback=missed_lookback,
         )
 
     previous_state = _load_state(args.state_path)
@@ -258,6 +423,7 @@ def main(argv: list[str] | None = None) -> int:
 
     notification_failed = False
     if decision.action != NOTIFY_NONE and args.webhook_url and not args.no_notify:
+        overdue = report.get("overdue_predictions") or {}
         payload = {
             "version": report["version"],
             "action": decision.action,
@@ -267,6 +433,11 @@ def main(argv: list[str] | None = None) -> int:
             "total_missing_execution_slots": report[
                 "total_missing_execution_slots"
             ],
+            "overdue_predictions": {
+                "status": overdue.get("status"),
+                "overdue_count": overdue.get("overdue_count", 0),
+                "missed_count": overdue.get("missed_count", 0),
+            },
             "window_start": report["window_start"],
             "window_end": report["window_end"],
             "observed_at": window_end.isoformat(),

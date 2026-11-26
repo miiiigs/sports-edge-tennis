@@ -260,6 +260,38 @@ Therefore:
 
 The internal coverage waterfall is now executed with real stored records. It shows a clear 14-16 November PIT/deadline gap, near-complete targeting from 17 November, zero A3 predictions across the window, material A2 abstention (200/486), 80 Manager consensus decisions, 161 on-time aligned picks, and 527 settled results at the first snapshot. The 57 archived targets reconcile exactly by identity and agent/Manager status; 36 were rescheduled at that snapshot and none disappeared. The later as-of refresh shows 582 settled results and 48 rescheduled archive targets, with no identity or status mismatch. This is **internal fixture coverage**, not an independent official census. The official denominator remains a documented blocker.
 
+## 26 November continuation — requested stage vocabulary
+
+No new provider call, entitlement or official export was added on 26 November.
+The 25 November as-of refresh therefore remains the latest measured internal
+waterfall. The requested daily stages map to measured fields as follows; the
+official total is never inferred from an internal count.
+
+| Requested stage | Internal measured proxy | Official status |
+|---|---|---|
+| Eligible | In-scope stored ATP/Challenger main-draw fixtures | **UNKNOWN** — no official denominator |
+| Discovered | Stored fixture with a provider source id | Measured internally |
+| Mapped | Canonical match/player identity resolved | Measured; cross-provider certificate incomplete |
+| Forecasted | A1/A2/A3 `PREDICTED` rows | Measured |
+| Selected | Manager `CONSENSUS` rows | Measured |
+| Market-qualified | Value-qualified decisions and aligned picks | Measured |
+| Published | Aligned Model Picks issued before `start - 30 min` | Measured |
+| Settled | Terminal result and settlement status | Measured |
+
+The 14-16 November acquisition failure is a discovery/deadline gap, not a
+provider-fixture shortage: the fixtures exist in storage but no version was
+PIT-visible before the deadline. The scheduler execution ledger in
+[`FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md`](FIXTURE_DISCOVERY_DEADLINE_ROOT_CAUSE_20261125.md)
+now shows that Railway created no cron execution records for the 95 missed
+slots and that no process was running (zero CPU throughout). The watchdog now
+also checks the work product (overdue and missed forecasts), so a future run
+that is healthy but leaves an upcoming fixture unforecast is detectable.
+
+Independent official coverage remains **UNKNOWN, not zero**. No licensed
+complete ATP/Challenger export, no permitted official feed call and no
+restricted-site scrape were performed.
+
+
 ## Evidence hashes
 
 ```text

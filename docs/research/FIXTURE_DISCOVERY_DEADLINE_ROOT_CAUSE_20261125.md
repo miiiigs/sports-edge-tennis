@@ -4,6 +4,7 @@
 **Verified starting head:** `4fc8d8352eea8d65dd1a27a0a82303cc097ca7af`
 **Execution mode:** authorised read-only PostgreSQL (`default_transaction_read_only=on`), no provider calls, no scraping, no writes, no migrations, no deployment.
 **Evidence JSON:** `docs/research/evidence/fixture_discovery_deadline_root_cause_20261125.json`
+**Execution ledger:** `docs/research/evidence/railway_cron_execution_ledger_20261126.json`
 **Execution script:** `ops/validation/fixture_discovery_deadline_root_cause_20261125.py`
 **Watchdog:** `ops/validation/capture_health_watchdog.py`
 **Lifecycle library:** `src/sports_edge_tennis/validation/fixture_lifecycle.py`
@@ -114,6 +115,43 @@ application logs, and no platform incident record was available to this
 read-only session; that residual platform question is recorded as unresolved,
 not guessed.
 
+### Execution-level recheck (26 November 2026)
+
+`railway cron list --service tennis-live-runner --limit 500 --json` adds the
+execution record itself, which the earlier heartbeat-only read could not show:
+
+| Boundary | Execution | Status | Evidence |
+|---|---|---|---|
+| Last healthy scheduled execution | 2026-11-12T22:04:21Z → 22:06:34Z (22:00Z slot) | `EXITED` | 133 s |
+| Last attempted execution before gap | 2026-11-12T23:01:09Z → 23:01:24Z (23:00Z slot) | `CRASHED` | 15 s; all three slates `SLATE_UNAVAILABLE`; `LIVE_BATCH_FAILED_NO_SUCCESSFUL_SLATES`; lock released 23:01:21Z; application returned 2 |
+| First missed slot | 2026-11-13T00:00Z | — | no execution record |
+| Gap | 2026-11-13T00:00Z – 2026-11-16T22:00Z | — | **0 execution records** for 95 slots |
+| Recovery deployment | 2026-11-16T23:03:11Z | redeploy | deployment `0ec94e4d…`, same commit `5a7ec89` |
+| First attempt after recovery | 2026-11-16T23:05:12Z → 23:05:43Z | `CRASHED` | 30 s; provider still failing |
+| First healthy execution after recovery | 2026-11-17T00:01:21Z → 00:03:37Z | `EXITED` | 136 s |
+
+The `CRASHED` status on the 23:00 run is a **non-zero application exit**, not a
+hang, OOM or uncaught traceback: the log shows complete failure handling and a
+clean production-lock release before the process returned 2.
+
+Raw CPU metrics settle the lingering-process question:
+
+- non-zero CPU at 2026-11-12T20:00, 21:00, 22:00 and 23:00Z;
+- **exactly zero** CPU at every hourly point from 2026-11-13T00:00Z through
+  2026-11-16T22:00Z;
+- non-zero again from 2026-11-16T23:00Z.
+
+No container was running during the gap. Railway documents that it skips a new
+cron execution only when the **previous execution is still running**. The
+previous execution here had terminated at 23:01:24Z, 107 minutes before the
+first missed slot, and CPU stayed zero. **The documented skipped-execution
+behaviour therefore does not explain this incident.** The observable pattern is
+that Railway stopped creating execution records after a non-zero run and only a
+redeploy restored the trigger; the platform-side reason remains unexposed. The
+public status page reports only significant widespread incidents, so its 100%
+November availability for Amsterdam compute does not contradict an isolated
+cron-trigger fault.
+
 The first post-recovery hourly run at 07:01Z fetched a normal 408-row slate.
 The 1,025-row run at **08:16Z** is not on an hourly slot boundary and the 08:01Z
 hourly cycle had already fetched 406 rows, so 08:16Z is an out-of-band catch-up
@@ -124,21 +162,28 @@ already-terminal events and could not restore pre-match coverage.
 
 1. **Primary:** Railway cron executions stopped after the
    2026-11-12T23:00Z cycle and did not fire for 95 expected hourly slots
-   (2026-11-13T00:00Z – 2026-11-16T22:00Z). No deployment, config change or
+   (2026-11-13T00:00Z - 2026-11-16T22:00Z). No deployment, config change or
    restart occurred at the start of the gap, and the runner wrote no logs, so
    this was scheduler non-execution rather than an application crash or hang.
+   The 23:00Z execution itself completed its failure handling and returned a
+   non-zero application exit at 23:01:24Z; CPU was zero for every hourly point
+   during the gap. The documented "skip only when the previous execution is
+   still running" condition was therefore not met.
 2. **Recovery:** a manual redeploy at 2026-11-16T23:03:11Z started the
    2026-11-16T23:00Z slot; the first healthy heartbeat is 2026-11-17T00:03Z.
 3. **Secondary:** the first post-recovery observations were fetch-time
-   observations of already-terminal events, so the 14–16 November fixtures
+   observations of already-terminal events, so the 14-16 November fixtures
    could not become pre-match targets. The out-of-band 08:16Z catch-up did not
    restore pre-match coverage.
 4. **Not the cause:** a provider outage with recorded request failures, a late
    hourly refresh, missing provider fixture IDs or canonical matches, a
-   deployment/cron-config change during the gap, or an application crash loop.
-5. **Unresolved:** why Railway's cron trigger stopped is not exposed by the
-   read-only CLI evidence available here. It is recorded as an external
-   scheduler failure, not attributed to the application.
+   deployment/cron-config change during the gap, an application crash loop, or
+   a lingering/Active previous execution.
+5. **Unresolved:** why Railway stopped creating execution records after the
+   non-zero run is not exposed by the read-only CLI evidence available here. It
+   is recorded as an external scheduler-trigger failure, not attributed to the
+   application. The public status page reports only widespread incidents and
+   does not disprove an isolated cron fault.
 
 
 ## 3. Safeguards implemented
