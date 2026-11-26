@@ -184,6 +184,37 @@ def test_build_report_reconciles_missing_slots_and_preserves_datasets():
     assert dataset["missing_execution_slots_truncated"] is True
 
 
+def test_prediction_runner_outage_does_not_stop_other_monitoring():
+    """The watchdog is independent: missing prediction-run rows are data, not a crash."""
+    conn = _FakeConnection(
+        {
+            "api_tennis_scheduled_fixtures": [
+                LAST_BEFORE_GAP,
+                FIRST_AFTER_GAP,
+            ],
+            "LIVE_BATCH_RUNTIME": [
+                LAST_BEFORE_GAP,
+                FIRST_AFTER_GAP,
+            ],
+            # The prediction runner is unavailable: zero rows in its stream.
+            "prediction_runs": [],
+        }
+    )
+    report = watchdog.build_report(
+        conn,
+        window_start=WINDOW_START,
+        window_end=WINDOW_END,
+        expected_interval=timedelta(hours=1),
+    )
+    assert report["status"] == "FAILED"
+    assert "completed_prediction_runs" in report["failed_datasets"]
+    assert report["datasets"]["completed_prediction_runs"]["status"] == "NO_HEARTBEAT"
+    # The other streams were still measured and reconciled.
+    assert report["datasets"]["live_batch_health"]["heartbeat_count"] == 2
+    assert report["datasets"]["fixture_ingestion"]["heartbeat_count"] == 2
+    assert report["total_missing_execution_slots"] > 0
+
+
 def test_state_round_trip_suppresses_duplicate_notifications(tmp_path):
     state_path = tmp_path / "watchdog-state.json"
     now = datetime(2026, 11, 16, 23, 5, tzinfo=UTC)
@@ -236,6 +267,52 @@ def test_webhook_failure_returns_distinct_exit_code(monkeypatch, tmp_path):
         ]
     )
     assert exit_code == 2
-    assert watchdog._load_state(str(tmp_path / "state.json"))["active_fingerprint"] == (
-        "live_batch_health"
+    state = watchdog._load_state(str(tmp_path / "state.json"))
+    # A failed delivery must not suppress the retry.
+    assert state["active_fingerprint"] is None
+    assert state["last_action"] == "DELIVERY_FAILED"
+    assert state["last_delivery_error"] == "notifier unavailable"
+
+
+def test_notifier_failure_does_not_advance_an_existing_incident():
+    now = datetime(2026, 11, 16, 23, 5, tzinfo=UTC)
+    first = decide_monitoring_notification(
+        _failure_report("live_batch_health"), None, observed_at=now
     )
+    # Simulate a prior delivered incident, then a failed recovery delivery.
+    previous = dict(first.state)
+    recovery = decide_monitoring_notification(
+        {"status": "HEALTHY", "failed_datasets": []}, previous, observed_at=now
+    )
+    assert recovery.action == NOTIFY_RECOVERY
+    failed_state = watchdog._next_state(
+        previous,
+        recovery,
+        notification_failed=True,
+        observed_at=now,
+        error="notifier unavailable",
+    )
+    assert failed_state["active_fingerprint"] == "live_batch_health"
+    retry = decide_monitoring_notification(
+        {"status": "HEALTHY", "failed_datasets": []}, failed_state, observed_at=now
+    )
+    assert retry.action == NOTIFY_RECOVERY  # not silently suppressed
+
+
+def test_successful_delivery_advances_deduplication_state():
+    now = datetime(2026, 11, 16, 23, 5, tzinfo=UTC)
+    decision = decide_monitoring_notification(
+        _failure_report("live_batch_health"), None, observed_at=now
+    )
+    state = watchdog._next_state(
+        None,
+        decision,
+        notification_failed=False,
+        observed_at=now,
+        error=None,
+    )
+    assert state["active_fingerprint"] == "live_batch_health"
+    duplicate = decide_monitoring_notification(
+        _failure_report("live_batch_health"), state, observed_at=now
+    )
+    assert duplicate.action == NOTIFY_NONE

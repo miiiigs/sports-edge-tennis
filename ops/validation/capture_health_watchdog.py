@@ -21,7 +21,9 @@ Notification behaviour:
 * a recovery notification is sent once when the failing set becomes empty;
 * state is persisted in ``--state-path`` so duplicate suppression survives
   process restarts. Without a state path, notifications are still emitted but
-  cannot be de-duplicated across runs.
+  cannot be de-duplicated across runs;
+* a failed webhook delivery does not advance the deduplication state, so the
+  next run retries instead of silently treating the alert as delivered.
 """
 from __future__ import annotations
 
@@ -179,6 +181,27 @@ def build_report(
     return report
 
 
+def _next_state(
+    previous_state: dict[str, object] | None,
+    decision,
+    *,
+    notification_failed: bool,
+    observed_at: datetime,
+    error: str | None,
+) -> dict[str, object]:
+    """Advance deduplication state only after successful notification delivery."""
+    if not notification_failed:
+        return decision.state
+    state = dict(previous_state or {})
+    state.setdefault("active_fingerprint", None)
+    state["last_delivery_error"] = error
+    state["last_delivery_failed_at"] = observed_at.isoformat()
+    state["last_action"] = "DELIVERY_FAILED"
+    state["last_detail"] = decision.detail
+    state["last_observed_at"] = observed_at.isoformat()
+    return state
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--window-hours", type=int, default=6)
@@ -256,7 +279,19 @@ def main(argv: list[str] | None = None) -> int:
         else:
             report["notification"]["sent"] = True
 
-    _write_state(args.state_path, decision.state)
+    # Only advance the deduplication state after a successful delivery (or when
+    # no delivery was required). A failed notifier must not suppress the retry:
+    # otherwise exit code 2 is the only trace of an alert the owner never saw.
+    _write_state(
+        args.state_path,
+        _next_state(
+            previous_state,
+            decision,
+            notification_failed=notification_failed,
+            observed_at=window_end,
+            error=report["notification"].get("error"),
+        ),
+    )
 
     payload = json.dumps(report, indent=2, sort_keys=True)
     print(payload)

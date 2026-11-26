@@ -244,6 +244,26 @@ def test_prematch_target_selection_fails_closed():
     assert reasons[4] == "NOT_SCHEDULED"
 
 
+def test_recovery_after_outage_never_backdates_a_started_fixture():
+    """A runner restart may only capture fixtures still outside the deadline."""
+    recovery_as_of = datetime(2026, 11, 17, 0, 0, tzinfo=UTC)
+    matches = [
+        # Scheduled during the outage and already started when the runner returns.
+        _Match(10, recovery_as_of - timedelta(hours=5)),
+        # Started just inside the 30-minute deadline.
+        _Match(11, recovery_as_of + timedelta(minutes=20)),
+        # Still comfortably in the future: capture once, normally.
+        _Match(12, recovery_as_of + timedelta(hours=3)),
+    ]
+    eligible, excluded = select_prematch_targets(matches, as_of=recovery_as_of)
+    assert eligible == [12]
+    reasons = {row["match_id"]: row["reason"] for row in excluded}
+    assert reasons[10] == "START_INSIDE_OR_AFTER_DEADLINE"
+    assert reasons[11] == "START_INSIDE_OR_AFTER_DEADLINE"
+    # No exclusion is converted into a retrospective target or a void.
+    assert all(row["reason"] != "VOID" for row in excluded)
+
+
 def test_capture_gap_detects_silent_scheduler_stop():
     heartbeats = [
         datetime(2026, 11, 11, 0, tzinfo=UTC),
