@@ -5,9 +5,11 @@ BEGIN;
 -- deliberately. Empty tables still roll back for clean-room tests.
 DO $$
 BEGIN
-    IF EXISTS (SELECT 1 FROM prediction_feature_snapshots) THEN
-        RAISE EXCEPTION
-            'refusing to drop prediction_feature_snapshots: evidence rows present; export or archive first';
+    IF to_regclass('public.prediction_feature_snapshots') IS NOT NULL THEN
+        IF EXISTS (SELECT 1 FROM prediction_feature_snapshots) THEN
+            RAISE EXCEPTION
+                'refusing to drop prediction_feature_snapshots: evidence rows present; export or archive first';
+        END IF;
     END IF;
 END
 $$;
