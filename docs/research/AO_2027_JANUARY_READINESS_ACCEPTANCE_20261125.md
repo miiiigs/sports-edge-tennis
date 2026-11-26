@@ -35,7 +35,7 @@ rehearsals. No new forecast or provider call was made.
 | Agent 1/2/Manager format dependency | PASS (controlled). A1 delta 0; A2 one Markov conversion (+0.0349056986...); Manager exactly one third of the A2 delta and no second adjustment. | [`AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md`](AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126.md) |
 | API-Tennis request timezone | PASS (code/test). Every fixture window requests explicit UTC; the draw request now does too; non-UTC is rejected before the call. | `tests/test_api_tennis_timezone.py` (PR #391) |
 | Australian local time and European DST | PASS (unit conversion). AO final 19:30 AEDT = 08:30Z; Berlin spring/fall transitions are represented explicitly. | `tests/test_api_tennis_timezone.py` (PR #391) |
-| `get_draw` + `include_qualification` entitlement | **UNVERIFIED.** Request path and offline summariser exist; no live call was made. | [`API_TENNIS_TIMEZONE_AND_DRAW_AUDIT_20261126.md`](../API_TENNIS_TIMEZONE_AND_DRAW_AUDIT_20261126.md) (PR #391) |
+| `get_draw` + `include_qualification` entitlement | **UNVERIFIED.** Request path and offline summariser exist; no live call was made. | [API-Tennis timezone/draw audit (PR #391)](https://github.com/miiiigs/sports-edge-tennis/blob/research/official-census-daily-waterfall-20261125/docs/research/API_TENNIS_TIMEZONE_AND_DRAW_AUDIT_20261126.md) |
 
 **Release status is unchanged: conditional, not released.** The missing
 edition-specific 2027 rulebook and owner approval remain blockers. The
