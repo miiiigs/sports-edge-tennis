@@ -473,7 +473,11 @@ def parse_sackmann_csv(document: SourceDocument) -> SackmannParseOutcome:
                 tier = _competition_tier(level, row)
                 tournament_end_date = _conservative_tournament_end_date(tourney_date, tier)
                 round_code = collapse_whitespace(row["round"])
-                qualifying_flag = round_code.startswith("Q")
+                # ``QF`` is the main-draw quarter-final, not a qualifying round.
+                # The old startswith("Q") test mislabelled all 40 AO main-draw
+                # quarter-finals (2016-2025). Only the qualifying round codes
+                # Q1/Q2/Q3 are qualifying.
+                qualifying_flag = round_code.strip().upper() in {"Q1", "Q2", "Q3"}
                 winner_name = collapse_whitespace(row["winner_name"])
                 loser_name = collapse_whitespace(row["loser_name"])
                 if not winner_name or not loser_name:

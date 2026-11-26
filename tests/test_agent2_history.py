@@ -563,7 +563,7 @@ def test_resolver_covers_reviewed_2026_grand_slam_matrix_and_fails_closed_after(
 
     # Unsupported future seasons still fail closed.
     for name, round_code, best_of, qualifying in (
-        ("Australian Open", "R32", 5, False),
+        ("Australian Open", "Q1", 3, True),
         ("Roland Garros", "Q1", 3, True),
         ("Wimbledon", "SF", 5, False),
         ("US Open", "Q1", 3, True),

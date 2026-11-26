@@ -1,0 +1,43 @@
+{
+  "isolated_local_database": true,
+  "match_id": 1,
+  "no_historical_rewrite": true,
+  "note": "The append-only second version is an isolated rehearsal row. No production historical row was rewritten.",
+  "original": {
+    "first_ingested_at": "2026-11-25T17:27:27.051955+00:00",
+    "first_source_observed_at": "2026-11-25T00:00:00+00:00",
+    "match_start_at": "2027-01-18T10:00:00+00:00",
+    "status": "SCHEDULED"
+  },
+  "prematch_guard": {
+    "exclusion_reason": "START_INSIDE_OR_AFTER_DEADLINE",
+    "inside_original_deadline_excluded": true,
+    "with_two_hour_lead_eligible": true
+  },
+  "read_only_production": true,
+  "rescheduled": {
+    "match_start_at": "2027-01-19T10:00:00+00:00",
+    "observed_at": "2026-11-26T00:00:00+00:00",
+    "status": "SCHEDULED"
+  },
+  "synthetic_fixture": true,
+  "timeline": {
+    "changes": [
+      {
+        "from_start": "2027-01-18T10:00:00+00:00",
+        "from_status": "SCHEDULED",
+        "observed_at": "2026-11-26T00:00:00+00:00",
+        "to_start": "2027-01-19T10:00:00+00:00",
+        "to_status": "SCHEDULED"
+      }
+    ],
+    "classification": "RESCHEDULED",
+    "distinct_start_count": 2,
+    "pit_visible_by_original_deadline": true,
+    "retrospective_discovery": false,
+    "start_change_count": 1,
+    "status_change_count": 0,
+    "version_count": 2
+  },
+  "version": "AO_2027_RESCHEDULE_REHEARSAL_20261125_V1"
+}

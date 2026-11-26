@@ -61,8 +61,10 @@ class Manifest:
     def validate(self)->None:
         if not self.source_system or not self.export_version or not self.licence_reference:
             raise ValueError("source, export version and licence reference required")
-        if not self.owner_approved_commercial_validation:
+        if self.owner_approved_commercial_validation is not True:
             raise ValueError("commercial data rights not approved; no import allowed")
+        if type(self.provider_declares_complete_window) is not bool:
+            raise ValueError("source completeness must be a boolean")
         start,end,asof=map(lambda q:_utc(q[1],q[0]),[
             ("requested_window_start",self.requested_window_start),
             ("requested_window_end",self.requested_window_end),
@@ -192,7 +194,7 @@ def source_matching(conn:psycopg.Connection, *,manifest:Manifest,
     if str(v[2])!=ref.tour_scope:
         return {"identity":"EXACT_ID_BUT_TOUR_MISMATCH",
                 "canonical_match_id":mid}
-    if abs((_utc(v[1],"internal_scheduled_start")-ref.scheduled_start).total_seconds())>86400:
+    if _utc(v[1],"internal_scheduled_start") != ref.scheduled_start:
         return {"identity":"EXACT_ID_BUT_SCHEDULE_MISMATCH",
                 "canonical_match_id":mid}
     run=conn.execute(
@@ -240,6 +242,7 @@ def source_matching(conn:psycopg.Connection, *,manifest:Manifest,
         "original_agent_statuses":pred_counts,
         "original_manager_status":manager_status,
         "internal_pit_match_status":str(v[3]),
+        "match_version_id":int(v[0]),
     }
 
 
@@ -329,9 +332,9 @@ def audit(manifest:Manifest,refs:list[Reference],
         "counts":dict(sorted(counts.items())),
         "per_fixture_exceptions":details,
         "official_eligible_singles_total_if_source_complete":(
-            denom if manifest.provider_declares_complete_window else None),
+            denom if manifest.provider_declares_complete_window and not counts["unknown_original_source_publication_time"] else None),
         "exact_provider_match_coverage_lower_bound_conditional_on_export":(
-            exact_lower_bound if manifest.provider_declares_complete_window else None),
+            exact_lower_bound if manifest.provider_declares_complete_window and not counts["unknown_original_source_publication_time"] else None),
         "true_official_match_discovery_rate_verified":False,
         "unmatched_provider_ids_may_exist_in_internal_db_under_other_ids":True,
         "original_feature_data_qualified_threshold_explicit":False,
@@ -339,6 +342,8 @@ def audit(manifest:Manifest,refs:list[Reference],
         "no_web_scraping":True,"no_api_calls":True,
         "no_database_writes":True,"no_prediction_policy_changes":True,
     }
+    from sports_edge_tennis.validation.official_census_waterfall import daily_waterfall
+    report["daily_waterfall"] = daily_waterfall(manifest, refs, internal, aligned_picks)
     return report
 
 

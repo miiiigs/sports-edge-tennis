@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace as NS
 
@@ -33,7 +33,14 @@ def _ingest_outcome(match_ids, *, rejected_rows=()):
         rows_ingested=len(match_ids),
         rows_rejected=len(rejected_rows),
         status="COMPLETED",
-        matches=tuple(NS(match_id=m, match_status="SCHEDULED") for m in match_ids),
+        matches=tuple(
+            NS(
+                match_id=m,
+                match_status="SCHEDULED",
+                match_start_at=FIXED + timedelta(days=1),
+            )
+            for m in match_ids
+        ),
         rejected_rows=tuple(rejected_rows),
     )
 
@@ -412,6 +419,40 @@ def test_empty_slate_makes_zero_pinnapi_requests():
     )
     assert result2.status == "LIVE_MVP_SUCCESS_EMPTY_SLATE"
     assert result2.pinnapi_requests == 0
+
+
+def test_retrospective_scheduled_fixture_is_not_a_new_target(capsys):
+    retrospective = NS(
+        match_id=4101,
+        match_status="SCHEDULED",
+        match_start_at=FIXED - timedelta(hours=2),
+    )
+    outcome = NS(
+        rows_seen=1,
+        rows_ingested=1,
+        rows_rejected=0,
+        status="COMPLETED",
+        matches=(retrospective,),
+        rejected_rows=(),
+    )
+    calls = []
+    result = run_live_mvp(
+        None,
+        slate_date=SLATE,
+        api_tennis_key="APIKEY",
+        pinnapi_key="K",
+        preflight=lambda conn: None,
+        fetch_fixtures=lambda key, slate: (FIXED, [{"event_key": "e1"}]),
+        ingest_fixtures=lambda conn, fixtures, received_at: outcome,
+        run_slate=lambda conn, ids, as_of: calls.append(tuple(ids)) or _run_outcome(),
+        load_consensus=lambda conn, rid: [],
+        build_match_entries=lambda *a, **k: [],
+        write_summary=lambda summary, **k: "p",
+        clock=lambda: FIXED,
+    )
+    assert calls == []
+    assert result.status == "LIVE_MVP_SUCCESS_EMPTY_SLATE"
+    assert "LIVE_TARGET_EXCLUDED match_id=4101" in capsys.readouterr().out
 
 
 # --- database integration (real reconcile + normalize) ----------------------

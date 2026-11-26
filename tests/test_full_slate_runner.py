@@ -202,6 +202,95 @@ def test_valid_one_target_full_slate(db: psycopg.Connection):
     assert run[1] is not None
 
 
+def _insert_bo5_australian_open_target(conn: psycopg.Connection) -> dict:
+    p1 = _insert_player(conn, "AO Player One")
+    p2 = _insert_player(conn, "AO Player Two")
+    tournament_id = _fetchval(
+        conn,
+        "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) "
+        "VALUES ('Australian Open', 'ATP_MAIN', 'GRAND_SLAM') RETURNING tournament_id",
+    )
+    edition_id = _fetchval(
+        conn,
+        "INSERT INTO tournament_editions (tournament_id, season_year, edition_name, surface, start_date) "
+        "VALUES (%s, 2027, 'Australian Open 2027', 'HARD', '2027-01-18') "
+        "RETURNING tournament_edition_id",
+        (tournament_id,),
+    )
+    match_id = _fetchval(
+        conn,
+        "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
+        (edition_id,),
+    )
+    # The fixture is a January 2027 event observed in November 2026. The run is
+    # a genuine real-clock pre-match run, not a future-dated simulation, so the
+    # production `created_at >= as_of` guard stays fully enforced.
+    version_as_of = datetime(2026, 11, 20, 8, 0, tzinfo=timezone.utc)
+    match_version_id = _fetchval(
+        conn,
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
+            surface, round_code, best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'GRAND_SLAM', 'HARD', 'R128', 5, FALSE,
+                'SCHEDULED', %s, %s, %s)
+        RETURNING match_version_id
+        """,
+        (
+            match_id,
+            p1,
+            p2,
+            datetime(2027, 1, 18, 10, 0, tzinfo=timezone.utc),
+            version_as_of,
+            version_as_of,
+            version_as_of,
+        ),
+    )
+    return {"match_id": match_id, "match_version_id": match_version_id}
+
+
+def test_bo5_australian_open_target_runs_full_slate_and_keeps_format(
+    db: psycopg.Connection,
+):
+    from sports_edge_tennis.agents.agent2_hierarchical_markov import ScoringRuleVersion
+    from sports_edge_tennis.data.agent2_history import resolve_scoring_rule
+
+    _seed_configs(db)
+    target = _insert_bo5_australian_open_target(db)
+    outcome = run_full_slate(
+        db,
+        _request(
+            db,
+            match_ids=[target["match_id"]],
+            as_of=datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc),
+        ),
+        # Deterministic clock, still in the real past; no future-date bypass.
+        clock=lambda: datetime(2026, 11, 20, 9, 1, tzinfo=timezone.utc),
+    )
+    assert outcome.runner_status == "COMPLETED"
+    assert outcome.target_count == 1
+    assert outcome.manager_result_count == 1
+
+    format_row = db.execute(
+        "SELECT best_of_sets, round_code, qualifying_flag FROM match_versions "
+        "WHERE match_version_id=%s",
+        (target["match_version_id"],),
+    ).fetchone()
+    assert format_row == (5, "R128", False)
+    resolved = resolve_scoring_rule(
+        canonical_tournament_name="Australian Open",
+        season_year=2027,
+        tour_scope="ATP_MAIN",
+        competition_tier="GRAND_SLAM",
+        round_code="R128",
+        best_of_sets=5,
+        qualifying_flag=False,
+    )
+    assert resolved.scoring_rule_version is ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
+
+
 def test_multi_target_full_slate(db: psycopg.Connection):
     _seed_configs(db)
     t1 = _insert_scheduled_target(db)

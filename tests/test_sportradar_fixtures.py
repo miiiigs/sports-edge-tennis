@@ -217,3 +217,18 @@ def test_terminal_winning_reason_overrides_closed_status_conservatively() -> Non
     defaulted = _summary(status="ended")
     defaulted["sport_event_status"]["winning_reason"] = "defaulted"
     assert parse_summary(defaulted, received_at=RECEIVED).match_status == "RETIRED"
+
+
+@pytest.mark.parametrize("mode,phase,reason", [
+    ({}, "regular_season", "ao_2027_unverified_match_format"),
+    ({"best_of": 3}, "regular_season", "ao_2027_match_format_conflict"),
+    ({"best_of": 5}, "qualifying", "ao_2027_match_format_conflict"),
+])
+def test_ao_2027_sportradar_format_conflicts_quarantined(mode, phase, reason):
+    row = _summary(level="grand_slam", competition_name="Australian Open", category_name="ATP")
+    row["sport_event"]["start_time"] = "2027-01-18T01:00:00Z"
+    context = row["sport_event"]["sport_event_context"]
+    context["mode"] = mode
+    context["stage"]["phase"] = phase
+    with pytest.raises(SportradarFixtureError, match=reason):
+        parse_summary(row, received_at=RECEIVED)
