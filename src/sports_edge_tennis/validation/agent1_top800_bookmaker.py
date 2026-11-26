@@ -208,6 +208,124 @@ def _preissue_pair(quotes: list[dict]) -> dict | None:
     return min(eligible, key=lambda item: item["observed"])
 
 
+def _retrospective_pair(row: dict, quotes: list[dict]) -> dict | None:
+    """Latest two-sided post-issue, pre-start quote, explicitly classified.
+
+    This is never called original-time evidence. It exists so a retrospective
+    market benchmark can be reported without promoting late data.
+    """
+    books: dict[tuple, dict] = defaultdict(dict)
+    for quote in quotes:
+        if quote["status"] != "OPEN":
+            continue
+        state = _quote_state(quote)
+        if state not in ("LATE", "BACKFILLED", "STALE"):
+            continue
+        if quote["observed"] >= row["start_at"]:
+            continue
+        books[(quote["source"], quote["bookmaker"])][quote["side"]] = quote
+    eligible = []
+    for (source, book), sides in books.items():
+        if set(sides) != {"PLAYER_1", "PLAYER_2"}:
+            continue
+        q1, q2 = sides["PLAYER_1"], sides["PLAYER_2"]
+        if abs(q1["observed"] - q2["observed"]) > SPAN:
+            continue
+        if not (1 < q1["price"] < 100 and 1 < q2["price"] < 100):
+            continue
+        implied = [1 / q1["price"], 1 / q2["price"]]
+        total = sum(implied)
+        if not .95 <= total <= 1.25:
+            continue
+        eligible.append({
+            "source": source, "bookmaker": book,
+            "p1": implied[0] / total, "prices": (q1["price"], q2["price"]),
+            "observed": max(q1["observed"], q2["observed"]),
+            "classification": sorted({_quote_state(q1), _quote_state(q2)}),
+        })
+    if not eligible:
+        return None
+    return max(eligible, key=lambda item: item["observed"])
+
+
+def _fit_logistic(rows: list[tuple[list[float], int]]) -> dict:
+    """Small in-sample logistic fit, used only for a market/model comparison."""
+    if len(rows) < 10:
+        return {"available": False, "n": len(rows)}
+    k = len(rows[0][0]) + 1
+    beta = [0.0] * k
+    for _ in range(80):
+        grad = [0.0] * k
+        hess = [[0.0] * k for _ in range(k)]
+        for features, y in rows:
+            x = [1.0] + features
+            z = sum(b * v for b, v in zip(beta, x))
+            q = 1 / (1 + math.exp(-max(-35.0, min(35.0, z))))
+            w = max(q * (1 - q), 1e-12)
+            for i in range(k):
+                grad[i] += (y - q) * x[i]
+                for j in range(k):
+                    hess[i][j] += w * x[i] * x[j]
+        # Gaussian elimination with a tiny ridge for numerical stability.
+        matrix = [row[:] + [grad[i]] for i, row in enumerate(hess)]
+        for i in range(k):
+            matrix[i][i] += 1e-9
+        for col in range(k):
+            pivot = max(range(col, k), key=lambda r: abs(matrix[r][col]))
+            matrix[col], matrix[pivot] = matrix[pivot], matrix[col]
+            if abs(matrix[col][col]) < 1e-12:
+                return {"available": False, "n": len(rows), "reason": "singular"}
+            for r in range(col + 1, k):
+                factor = matrix[r][col] / matrix[col][col]
+                for c in range(col, k + 1):
+                    matrix[r][c] -= factor * matrix[col][c]
+        solution = [0.0] * k
+        for i in range(k - 1, -1, -1):
+            solution[i] = (matrix[i][k] - sum(
+                matrix[i][j] * solution[j] for j in range(i + 1, k)
+            )) / matrix[i][i]
+        step = max(abs(solution[i] - beta[i]) for i in range(k))
+        beta = solution
+        if step < 1e-9:
+            break
+    return {"available": True, "n": len(rows), "coefficients": beta}
+
+
+def _market_vs_model(priced: list[tuple[dict, dict]]) -> dict:
+    """In-sample test of whether A1 adds anything over the market probability."""
+    if len(priced) < 20:
+        return {"available": False, "n": len(priced)}
+    rows = []
+    for row, cov in priced:
+        market = cov["p1"]
+        model = row["p1"]
+        rows.append(([math.log(min(max(market, 1e-6), 1 - 1e-6)
+                               / (1 - min(max(market, 1e-6), 1 - 1e-6)))],
+                     int(row["winner"] == 1)))
+    market_fit = _fit_logistic(rows)
+    combined_rows = []
+    for row, cov in priced:
+        market = min(max(cov["p1"], 1e-6), 1 - 1e-6)
+        model = min(max(row["p1"], 1e-6), 1 - 1e-6)
+        combined_rows.append((
+            [math.log(market / (1 - market)), math.log(model / (1 - model))],
+            int(row["winner"] == 1)))
+    combined_fit = _fit_logistic(combined_rows)
+    return {
+        "available": bool(market_fit.get("available") and combined_fit.get("available")),
+        "n": len(priced),
+        "market_only_coefficients": market_fit.get("coefficients"),
+        "market_plus_model_coefficients": combined_fit.get("coefficients"),
+        "model_increment_coefficient": (
+            combined_fit.get("coefficients", [None, None, None])[2]
+            if combined_fit.get("available") else None),
+        "interpretation": (
+            "Intercept, market logit, then model logit. A model coefficient "
+            "near zero means Agent 1 adds little beyond the market probability. "
+            "This is an in-sample diagnostic, not a forward test."),
+    }
+
+
 def coverage(row: dict, quotes: list[dict]) -> dict:
     states = Counter(_quote_state(q) for q in quotes)
     pair = _preissue_pair(quotes)
@@ -242,6 +360,21 @@ def _logloss(pairs):
                 for p, y in pairs) / len(pairs)
 
 
+def _ece(pairs: list[tuple[float, int]], bins: int = 10) -> float | None:
+    if not pairs:
+        return None
+    grouped = [[] for _ in range(bins)]
+    for p, y in pairs:
+        grouped[min(bins - 1, max(0, int(p * bins)))].append((p, y))
+    total = len(pairs)
+    return sum(
+        len(group) / total * abs(
+            sum(p for p, _ in group) / len(group)
+            - sum(y for _, y in group) / len(group))
+        for group in grouped if group
+    )
+
+
 def summarize(name: str, definition: str, rows: list[dict],
               quotes: dict[int, list[dict]]) -> dict[str, Any]:
     settled = [r for r in rows if r["settled"]]
@@ -262,6 +395,18 @@ def summarize(name: str, definition: str, rows: list[dict],
     favourite_agreement = sum(
         (r["selected_side"] == (1 if c["pair"]["p1"] >= .5 else 2))
         for r, c in priced)
+    retrospective = [
+        (r, _retrospective_pair(r, quotes.get(r["match_id"], [])))
+        for r in settled]
+    retrospective = [(r, pair) for r, pair in retrospective if pair is not None]
+    retro_market = [(c["p1"], int(r["winner"] == 1)) for r, c in retrospective]
+    retro_model = [(r["p1"], int(r["winner"] == 1)) for r, _ in retrospective]
+    retro_prices = [p for _, c in retrospective for p in c["prices"]]
+    retro_favourite = sum(
+        r["selected_side"] == (1 if c["p1"] >= .5 else 2)
+        for r, c in retrospective)
+    retro_states = Counter(
+        state for _, c in retrospective for state in c["classification"])
     return {
         "population": name,
         "definition": definition,
@@ -317,6 +462,42 @@ def summarize(name: str, definition: str, rows: list[dict],
                 "Bookmaker metrics use only the priced subset. They are not "
                 "projected to the unpriced remainder."),
         },
+        "retrospective_bookmaker": {
+            "definition": (
+                "Latest two-sided post-issue, pre-start quote per book, "
+                "explicitly classified LATE/BACKFILLED/STALE. Never treated "
+                "as original-time evidence."),
+            "priced": len(retrospective),
+            "coverage": len(retrospective) / len(settled) if settled else None,
+            "state_counts": dict(sorted(retro_states.items())),
+            "actual_wins_on_priced": sum(
+                r["selected_side"] == r["winner"] for r, _ in retrospective),
+            "model_brier": _brier(retro_model),
+            "market_brier": _brier(retro_market),
+            "model_log_loss": _logloss(retro_model),
+            "market_log_loss": _logloss(retro_market),
+            "model_ece": _ece(retro_model),
+            "market_ece": _ece(retro_market),
+            "favourite_agreement_rate": (
+                retro_favourite / len(retrospective) if retrospective else None),
+            "mean_market_probability_of_selected_side": (
+                sum(c["p1"] if r["selected_side"] == 1 else 1 - c["p1"]
+                    for r, c in retrospective) / len(retrospective)
+                if retrospective else None),
+            "odds_distribution": {
+                "count": len(retro_prices),
+                "mean": (sum(retro_prices) / len(retro_prices)
+                         if retro_prices else None),
+                "median": (sorted(retro_prices)[len(retro_prices) // 2]
+                           if retro_prices else None),
+                "min": min(retro_prices) if retro_prices else None,
+                "max": max(retro_prices) if retro_prices else None,
+            },
+            "by_bookmaker": dict(sorted(Counter(
+                c["bookmaker"] for _, c in retrospective).items())),
+            "missing_coverage": len(settled) - len(retrospective),
+        },
+        "market_vs_model": _market_vs_model(retrospective),
         "coverage": {
             "any_quote": sum(c["any_quote"] for _, c in coverage_rows),
             "preissue_two_sided": len(priced),

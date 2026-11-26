@@ -1,0 +1,29 @@
+{
+  "can_promote": false,
+  "census_csv": "a1_target_census_20261126.csv",
+  "census_csv_sha256": "b29e19a9e2f97d8e860eaee584ea1c2cdb1e9cf61ddc9c8b58a1a7384b501939",
+  "database_writes": false,
+  "e3_cutoff": "2026-11-25T07:20:00+00:00",
+  "e3_targets": 3776,
+  "excluded_targets": 553,
+  "exclusion_counts": {
+    "OUTCOME_CANCELLED": 135,
+    "OUTCOME_DEFAULTED": 1,
+    "OUTCOME_NOT_OBSERVED_AT_FREEZE": 278,
+    "OUTCOME_RETIRED": 125,
+    "OUTCOME_WALKOVER": 14
+  },
+  "generated_at": "2026-11-26T11:52:34.093988+00:00",
+  "market_benchmark_rule": "latest pre-issue MATCH_WINNER quote at or before the original prediction as_of; devigged across PLAYER_1/PLAYER_2; median across bookmakers",
+  "note": "No names, aliases, contact details, account ids or provider payloads are exported. The bookmaker benchmark is retained only where a legitimate pre-issue quote existed.",
+  "population_csv": "a1_selective_population_20261126.csv",
+  "population_csv_sha256": "f354c53ea236360a45f7fe114578985aa9bb5320ef297dc9123eb0f17d349b18",
+  "production_changed": false,
+  "rows_with_market_benchmark": 1610,
+  "rows_with_round_code": 3052,
+  "settled_population": 3223,
+  "source_ledger": "ledger_full.jsonl",
+  "source_ledger_rows": 7501,
+  "source_ledger_sha256": "3ff85bcdeb399a4d24b265d00bc82d69afd99700762dc3cb371b5382499aa31b",
+  "version": "A1_SELECTIVE_POPULATION_EXPORT_V1"
+}

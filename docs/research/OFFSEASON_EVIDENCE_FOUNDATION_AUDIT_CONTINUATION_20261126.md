@@ -136,3 +136,12 @@ Evidence: `docs/research/ODDSPAPI_ACQUISITION_FUNNEL_20261126.md`,
 6. Historical cache state before 0024 cannot be reconstructed.
 7. The high-confidence top-800 A1 slice is overconfident on the inspected
    window; no original-time market benchmark exists.
+
+## Follow-up: six-way evaluation and bookmaker resolution
+
+`docs/research/MANAGER_C_SIX_WAY_AND_BOOKMAKER_RESOLUTION_20261126.md` extends
+this record without changing its findings. It adds the six-way comparison,
+corrects the `171` market assumption (actual tennis payloads use `121`), shows
+21,976 normalized OddsPapi quotes already exist (the earlier zero was an
+attribution query), verifies ten isolated fixtures, and records the API-Tennis
+and top-800 retrospective benchmarks.

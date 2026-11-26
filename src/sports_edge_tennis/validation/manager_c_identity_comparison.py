@@ -400,12 +400,23 @@ def _bookmaker(conn: psycopg.Connection, rows: list[dict]) -> dict[str, Any]:
     return result
 
 
-def run(conn: psycopg.Connection, *, start=TRAIN_START, end=VALIDATION_END,
-        as_of=HISTORICAL_AS_OF) -> dict[str, Any]:
+def build_rows(conn: psycopg.Connection, *, start=TRAIN_START, end=VALIDATION_END,
+               as_of=HISTORICAL_AS_OF, include_early: bool = False) -> dict[str, Any]:
+    """Build the per-fixture evidence used by both the A/B report and the
+    six-way comparison.
+
+    ``include_early`` adds the pre-``TRAIN_END`` cohort so a weighting rule can
+    be fitted exclusively on earlier data. It does not change any threshold,
+    policy or stored probability; it only adds more replayed A1 targets.
+    """
     data = read_source(conn, start=start, end=end, as_of=as_of)
     cohorts = select_cohorts(data)
     evaluation = cohorts["later"]
-    by_id = {r["match_id"]: r for r in evaluation}
+    records = list(evaluation)
+    if include_early:
+        records += list(cohorts["early"])
+    by_id = {r["match_id"]: r for r in records}
+    early_ids = {r["match_id"] for r in cohorts["early"]}
     raw_by_match: dict[int, dict[str, tuple[int, float, datetime]]] = defaultdict(dict)
     for row in data["raw"]:
         if row[6] is None or int(row[0]) not in by_id:
@@ -482,9 +493,14 @@ def run(conn: psycopg.Connection, *, start=TRAIN_START, end=VALIDATION_END,
         }
         rows.append({
             **record,
+            "cohort": "early" if mid in early_ids else "later",
             "a1_stored_p1": target["stored_a1_p1"],
             "a1_current_replay_p1": current.get(mid),
             "a1_bridged_replay_p1": bridged.get(mid),
+            "agents_p1": {
+                code: value[1] for code, value in active.items()
+            },
+            "active_agents": sorted(active),
             "candidates": candidates,
             "favourite_player_id": (
                 target["player_1_id"]
@@ -495,6 +511,35 @@ def run(conn: psycopg.Connection, *, start=TRAIN_START, end=VALIDATION_END,
                 if (candidates[POLICY] or (1, .5))[0] == 1
                 else target["player_2_id"]),
         })
+    return {
+        "data": data, "cohorts": cohorts, "rows": rows, "targets": targets,
+        "current": current, "bridged": bridged, "stored": stored,
+        "current_diag": current_diag, "bridged_diag": bridged_diag,
+        "mapping": mapping, "target_players": target_players,
+        "sampled": sampled, "mapping_invariant": mapping_invariant,
+        "reproduction": reproduction, "policy_mismatch": policy_mismatch,
+        "include_early": include_early,
+    }
+
+
+def run(conn: psycopg.Connection, *, start=TRAIN_START, end=VALIDATION_END,
+        as_of=HISTORICAL_AS_OF) -> dict[str, Any]:
+    built = build_rows(conn, start=start, end=end, as_of=as_of)
+    data = built["data"]
+    cohorts = built["cohorts"]
+    rows = built["rows"]
+    targets = built["targets"]
+    current = built["current"]
+    bridged = built["bridged"]
+    stored = built["stored"]
+    current_diag = built["current_diag"]
+    bridged_diag = built["bridged_diag"]
+    mapping = built["mapping"]
+    target_players = built["target_players"]
+    sampled = built["sampled"]
+    mapping_invariant = built["mapping_invariant"]
+    reproduction = built["reproduction"]
+    policy_mismatch = built["policy_mismatch"]
     narrow_cutoff = float(cohorts["thresholds"]["narrow"]["threshold"])
     broad_cutoff = float(cohorts["thresholds"]["broad"]["threshold"])
 

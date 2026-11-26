@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sports_edge_tennis.validation.agent1_top800_bookmaker import (
     _preissue_pair,
     _quote_state,
+    _retrospective_pair,
     coverage,
     summarize,
 )
@@ -29,7 +30,7 @@ def _row(match_id: int, side: int, confidence: float, winner: int) -> dict:
     return {
         "match_id": match_id, "selected_side": side, "confidence": confidence,
         "p1": p1, "winner": winner, "settled": True, "tour": "CHALLENGER",
-        "start_at": LOCK, "tournament_id": 1,
+        "start_at": LOCK + timedelta(hours=1), "tournament_id": 1,
     }
 
 
@@ -62,6 +63,33 @@ def test_coverage_marks_unmatched_and_late_only():
                     [_quote(observed=LOCK + timedelta(hours=1))])
     assert late["late_only"] is True
     assert late["preissue_two_sided"] is False
+
+
+def test_retrospective_pair_is_classified_and_never_marked_preissue():
+    pair = _retrospective_pair(_row(1, 1, .7, 1), [
+        _quote(side="PLAYER_1", price=1.8, observed=LOCK + timedelta(minutes=5)),
+        _quote(side="PLAYER_2", price=2.0, observed=LOCK + timedelta(minutes=5)),
+    ])
+    assert pair is not None
+    assert pair["classification"] == ["LATE"]
+    assert _retrospective_pair(_row(1, 1, .7, 1), [
+        _quote(side="PLAYER_1", price=1.8),
+        _quote(side="PLAYER_2", price=2.0),
+    ]) is None
+
+
+def test_summarize_reports_retrospective_separately_from_original_time():
+    rows = [_row(i, 1, .70, 1 if i % 2 == 0 else 2) for i in range(25)]
+    quotes = {
+        i: [_quote(side="PLAYER_1", price=1.8, observed=LOCK + timedelta(minutes=5)),
+            _quote(side="PLAYER_2", price=2.0, observed=LOCK + timedelta(minutes=5))]
+        for i in range(25)
+    }
+    report = summarize("test", "synthetic", rows, quotes)
+    assert report["bookmaker"]["priced"] == 0
+    assert report["retrospective_bookmaker"]["priced"] == 25
+    assert report["retrospective_bookmaker"]["state_counts"] == {"LATE": 25}
+    assert report["market_vs_model"]["n"] == 25
 
 
 def test_summarize_does_not_extrapolate_the_priced_subset():

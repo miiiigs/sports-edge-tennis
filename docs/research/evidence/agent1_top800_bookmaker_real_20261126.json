@@ -1,5 +1,5 @@
 {
-  "available_settled_first_issue_a1": 3270,
+  "available_settled_first_issue_a1": 3011,
   "database_writes": false,
   "limitations": [
     "Original-time coverage is strict; late and backfilled quotes are separated.",
@@ -9,8 +9,8 @@
   ],
   "populations": {
     "latest800_settled_all": {
-      "actual_rate": 0.63625,
-      "actual_wins": 509,
+      "actual_rate": 0.6375,
+      "actual_wins": 510,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -35,31 +35,76 @@
         "priced": 0
       },
       "coverage": {
-        "any_quote": 244,
+        "any_quote": 98,
         "backfilled_only": 0,
-        "late_only": 244,
+        "late_only": 98,
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 556
+        "unmatched": 702
       },
       "definition": "most recent scheduled start, all tours",
-      "ids_sha256": "660eb6e234b6ed7cef1ed770993cef980d32a559019568604b4496f28037a553",
-      "mean_predicted_confidence": 0.6686606387499999,
-      "model_brier": 0.23219905246474626,
-      "model_expected_variance_independent": 167.282785028203,
-      "model_expected_wins": 534.928511,
-      "model_log_loss": 0.6599142587651347,
-      "model_residual": -25.928510999999958,
-      "model_residual_z_independent": -2.004711824754907,
+      "ids_sha256": "5553175bf8ff414ea11663282709a27bbcb779c5cd2fdfdfcaf810b67fe32982",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          -0.2143932419884483,
+          0.6354512551463936
+        ],
+        "market_plus_model_coefficients": [
+          -0.21940761684423438,
+          0.561084048538609,
+          0.09447249064613077
+        ],
+        "model_increment_coefficient": 0.09447249064613077,
+        "n": 88
+      },
+      "mean_predicted_confidence": 0.68234332875,
+      "model_brier": 0.22754674742768874,
+      "model_expected_variance_independent": 162.709641057849,
+      "model_expected_wins": 545.874663,
+      "model_log_loss": 0.6490397487183135,
+      "model_residual": -35.874663000000055,
+      "model_residual_z_independent": -2.812426533437722,
       "n": 800,
       "population": "latest800_settled_all",
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 63,
+        "by_bookmaker": {
+          "1XBET": 53,
+          "BET365": 27,
+          "PINNACLE": 8
+        },
+        "coverage": 0.11,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.8522727272727273,
+        "market_brier": 0.1831085000906021,
+        "market_ece": 0.1052263021262085,
+        "market_log_loss": 0.5485438712730389,
+        "mean_market_probability_of_selected_side": 0.6443524647573752,
+        "missing_coverage": 712,
+        "model_brier": 0.20285834689657953,
+        "model_ece": 0.16038705681818183,
+        "model_log_loss": 0.5926161415621797,
+        "odds_distribution": {
+          "count": 176,
+          "max": 8.6,
+          "mean": 2.3315,
+          "median": 1.82,
+          "min": 1.03
+        },
+        "priced": 88,
+        "state_counts": {
+          "LATE": 88
+        }
+      },
       "settled": 800
     },
     "latest800_settled_atp": {
-      "actual_rate": 0.6730103806228374,
-      "actual_wins": 389,
+      "actual_rate": 0.670753064798599,
+      "actual_wins": 383,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -91,24 +136,77 @@
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 317
+        "unmatched": 310
       },
       "definition": "most recent scheduled start, ATP main",
-      "ids_sha256": "02dec524f2fe03896945163b15733ab455e50dfc96afa83c2b2c5b0c08fa4399",
-      "mean_predicted_confidence": 0.7118937750865052,
-      "model_brier": 0.21099131840452942,
-      "model_expected_variance_independent": 108.919493962182,
-      "model_expected_wins": 411.474602,
-      "model_log_loss": 0.6151292217503084,
-      "model_residual": -22.474602000000004,
-      "model_residual_z_independent": -2.1534718651493394,
-      "n": 578,
+      "ids_sha256": "bc36a3da030d52f2987c21839e7e83d818500dc0655748a5190ffec5beb42e18",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          0.11819884937618941,
+          0.5784989652736036
+        ],
+        "market_plus_model_coefficients": [
+          0.10361888739071948,
+          0.4748728612333543,
+          0.12132861714282821
+        ],
+        "model_increment_coefficient": 0.12132861714282821,
+        "n": 254
+      },
+      "mean_predicted_confidence": 0.7113509124343258,
+      "model_brier": 0.21231873660646408,
+      "model_expected_variance_independent": 107.739670397709,
+      "model_expected_wins": 406.181371,
+      "model_log_loss": 0.6183830561859249,
+      "model_residual": -23.181371000000013,
+      "model_residual_z_independent": -2.2333217540754045,
+      "n": 571,
       "population": "latest800_settled_atp",
-      "settled": 578
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 181,
+        "by_bookmaker": {
+          "1XBET": 58,
+          "BET365": 15,
+          "BETANO": 28,
+          "BETFAIR": 7,
+          "BETVICTOR": 7,
+          "MARATHON": 11,
+          "PINNACLE": 28,
+          "PNCL": 69,
+          "SBO": 26,
+          "UNIBET": 2,
+          "WILLIAMHILL": 3
+        },
+        "coverage": 0.4448336252189142,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.8070866141732284,
+        "market_brier": 0.1752959460980192,
+        "market_ece": 0.06582179518369138,
+        "market_log_loss": 0.5227851476498694,
+        "mean_market_probability_of_selected_side": 0.6422170277388372,
+        "missing_coverage": 317,
+        "model_brier": 0.19129008924688187,
+        "model_ece": 0.050415118110236225,
+        "model_log_loss": 0.5626818747936567,
+        "odds_distribution": {
+          "count": 508,
+          "max": 42.36,
+          "mean": 2.7951614173228347,
+          "median": 1.91,
+          "min": 1.006
+        },
+        "priced": 254,
+        "state_counts": {
+          "LATE": 254
+        }
+      },
+      "settled": 571
     },
     "latest800_settled_challenger": {
-      "actual_rate": 0.6225,
-      "actual_wins": 498,
+      "actual_rate": 0.6275,
+      "actual_wins": 502,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -133,31 +231,76 @@
         "priced": 0
       },
       "coverage": {
-        "any_quote": 244,
+        "any_quote": 98,
         "backfilled_only": 0,
-        "late_only": 244,
+        "late_only": 98,
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 556
+        "unmatched": 702
       },
       "definition": "most recent scheduled start, Challenger",
-      "ids_sha256": "dcf7634de57149a3bb7da6ee75dfa14b8b58233973fedf4174fec4a1778cde26",
-      "mean_predicted_confidence": 0.6669427287499999,
-      "model_brier": 0.23617705676262876,
-      "model_expected_variance_independent": 168.288699589897,
-      "model_expected_wins": 533.554183,
-      "model_log_loss": 0.6692434585660533,
-      "model_residual": -35.554182999999966,
-      "model_residual_z_independent": -2.7407108946172296,
+      "ids_sha256": "c11f8f41b86a5e290cfa22c0284f6164382b0071233e2792f0e94616dde6148b",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          -0.2143932419884483,
+          0.6354512551463936
+        ],
+        "market_plus_model_coefficients": [
+          -0.21940761684423438,
+          0.561084048538609,
+          0.09447249064613077
+        ],
+        "model_increment_coefficient": 0.09447249064613077,
+        "n": 88
+      },
+      "mean_predicted_confidence": 0.681210435,
+      "model_brier": 0.2342287850218625,
+      "model_expected_variance_independent": 163.34045398251,
+      "model_expected_wins": 544.968348,
+      "model_log_loss": 0.6679133320783376,
+      "model_residual": -42.96834799999999,
+      "model_residual_z_independent": -3.362031495315124,
       "n": 800,
       "population": "latest800_settled_challenger",
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 63,
+        "by_bookmaker": {
+          "1XBET": 53,
+          "BET365": 27,
+          "PINNACLE": 8
+        },
+        "coverage": 0.11,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.8522727272727273,
+        "market_brier": 0.1831085000906021,
+        "market_ece": 0.1052263021262085,
+        "market_log_loss": 0.5485438712730389,
+        "mean_market_probability_of_selected_side": 0.6443524647573752,
+        "missing_coverage": 712,
+        "model_brier": 0.20285834689657953,
+        "model_ece": 0.16038705681818183,
+        "model_log_loss": 0.5926161415621797,
+        "odds_distribution": {
+          "count": 176,
+          "max": 8.6,
+          "mean": 2.3315,
+          "median": 1.82,
+          "min": 1.03
+        },
+        "priced": 88,
+        "state_counts": {
+          "LATE": 88
+        }
+      },
       "settled": 800
     },
     "top800_by_confidence_all": {
-      "actual_rate": 0.74375,
-      "actual_wins": 595,
+      "actual_rate": 0.74875,
+      "actual_wins": 599,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -182,31 +325,85 @@
         "priced": 0
       },
       "coverage": {
-        "any_quote": 383,
+        "any_quote": 382,
         "backfilled_only": 0,
-        "late_only": 383,
+        "late_only": 382,
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 417
+        "unmatched": 418
       },
       "definition": "highest stored A1 confidence, all tours",
-      "ids_sha256": "e855dc2e45fefc09158f79433ceccec00a8a1ed33b13213917654e2df7a8425a",
-      "mean_predicted_confidence": 0.84606040625,
-      "model_brier": 0.20074599749571626,
-      "model_expected_variance_independent": 102.026661003427,
-      "model_expected_wins": 676.848325,
-      "model_log_loss": 0.6099823162797278,
-      "model_residual": -81.84832500000005,
-      "model_residual_z_independent": -8.103132850641636,
+      "ids_sha256": "1e10aaea4f59aca6916a80ab295efa7d423b9d9adde18bce734d738369fde6d4",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          0.03101676106802656,
+          0.5895776368029991
+        ],
+        "market_plus_model_coefficients": [
+          0.03090844747620898,
+          0.5519074882509762,
+          0.029968424905698784
+        ],
+        "model_increment_coefficient": 0.029968424905698784,
+        "n": 366
+      },
+      "mean_predicted_confidence": 0.84263383125,
+      "model_brier": 0.19707032020458626,
+      "model_expected_variance_independent": 103.776472836331,
+      "model_expected_wins": 674.107065,
+      "model_log_loss": 0.6005104674494092,
+      "model_residual": -75.10706500000003,
+      "model_residual_z_independent": -7.372781074471476,
       "n": 800,
       "population": "top800_by_confidence_all",
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 285,
+        "by_bookmaker": {
+          "1XBET": 115,
+          "BET365": 49,
+          "BETANO": 22,
+          "BETFAIR": 12,
+          "BETVICTOR": 11,
+          "MARATHON": 10,
+          "PINNACLE": 37,
+          "PNCL": 42,
+          "SBO": 51,
+          "SUPERBET": 1,
+          "UNIBET": 5,
+          "WILLIAMHILL": 11
+        },
+        "coverage": 0.4575,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.9098360655737705,
+        "market_brier": 0.14668773706673602,
+        "market_ece": 0.07654364925414364,
+        "market_log_loss": 0.4590600294338729,
+        "mean_market_probability_of_selected_side": 0.7148078757442292,
+        "missing_coverage": 434,
+        "model_brier": 0.17609085699573773,
+        "model_ece": 0.07618709836065572,
+        "model_log_loss": 0.5438320851970518,
+        "odds_distribution": {
+          "count": 732,
+          "max": 42.36,
+          "mean": 3.008053825136612,
+          "median": 1.84,
+          "min": 1.006
+        },
+        "priced": 366,
+        "state_counts": {
+          "LATE": 366
+        }
+      },
       "settled": 800
     },
     "top800_by_confidence_atp": {
-      "actual_rate": 0.6730103806228374,
-      "actual_wins": 389,
+      "actual_rate": 0.670753064798599,
+      "actual_wins": 383,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -238,24 +435,77 @@
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 317
+        "unmatched": 310
       },
       "definition": "highest stored A1 confidence, ATP main",
-      "ids_sha256": "02dec524f2fe03896945163b15733ab455e50dfc96afa83c2b2c5b0c08fa4399",
-      "mean_predicted_confidence": 0.7118937750865052,
-      "model_brier": 0.21099131840452942,
-      "model_expected_variance_independent": 108.919493962182,
-      "model_expected_wins": 411.474602,
-      "model_log_loss": 0.6151292217503084,
-      "model_residual": -22.474602000000004,
-      "model_residual_z_independent": -2.1534718651493394,
-      "n": 578,
+      "ids_sha256": "bc36a3da030d52f2987c21839e7e83d818500dc0655748a5190ffec5beb42e18",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          0.1181988493761898,
+          0.5784989652736038
+        ],
+        "market_plus_model_coefficients": [
+          0.10361888739071916,
+          0.4748728612333517,
+          0.12132861714283083
+        ],
+        "model_increment_coefficient": 0.12132861714283083,
+        "n": 254
+      },
+      "mean_predicted_confidence": 0.7113509124343258,
+      "model_brier": 0.21231873660646408,
+      "model_expected_variance_independent": 107.739670397709,
+      "model_expected_wins": 406.181371,
+      "model_log_loss": 0.6183830561859249,
+      "model_residual": -23.181371000000013,
+      "model_residual_z_independent": -2.2333217540754045,
+      "n": 571,
       "population": "top800_by_confidence_atp",
-      "settled": 578
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 181,
+        "by_bookmaker": {
+          "1XBET": 58,
+          "BET365": 15,
+          "BETANO": 28,
+          "BETFAIR": 7,
+          "BETVICTOR": 7,
+          "MARATHON": 11,
+          "PINNACLE": 28,
+          "PNCL": 69,
+          "SBO": 26,
+          "UNIBET": 2,
+          "WILLIAMHILL": 3
+        },
+        "coverage": 0.4448336252189142,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.8070866141732284,
+        "market_brier": 0.1752959460980192,
+        "market_ece": 0.06582179518369138,
+        "market_log_loss": 0.5227851476498694,
+        "mean_market_probability_of_selected_side": 0.6422170277388372,
+        "missing_coverage": 317,
+        "model_brier": 0.19129008924688187,
+        "model_ece": 0.050415118110236225,
+        "model_log_loss": 0.5626818747936567,
+        "odds_distribution": {
+          "count": 508,
+          "max": 42.36,
+          "mean": 2.7951614173228347,
+          "median": 1.91,
+          "min": 1.006
+        },
+        "priced": 254,
+        "state_counts": {
+          "LATE": 254
+        }
+      },
+      "settled": 571
     },
     "top800_by_confidence_challenger": {
-      "actual_rate": 0.72375,
-      "actual_wins": 579,
+      "actual_rate": 0.7325,
+      "actual_wins": 586,
       "bookmaker": {
         "actual_wins_on_priced": 0,
         "by_bookmaker": {},
@@ -280,31 +530,85 @@
         "priced": 0
       },
       "coverage": {
-        "any_quote": 381,
+        "any_quote": 385,
         "backfilled_only": 0,
-        "late_only": 381,
+        "late_only": 385,
         "preissue_two_sided": 0,
         "quotes_observed_before_issue": 0,
         "quotes_received_before_issue": 0,
         "stale_only": 0,
-        "unmatched": 419
+        "unmatched": 415
       },
       "definition": "highest stored A1 confidence, Challenger",
-      "ids_sha256": "6c6163d0122233e95c9ee17e321fe442bb56c2b37c1fa3d16e4de00783d49475",
-      "mean_predicted_confidence": 0.8201845900000001,
-      "model_brier": 0.21111881172173,
-      "model_expected_variance_independent": 115.433918622616,
-      "model_expected_wins": 656.1476720000001,
-      "model_log_loss": 0.630384284080099,
-      "model_residual": -77.14767200000006,
-      "model_residual_z_independent": -7.180523468100311,
+      "ids_sha256": "38d3e3a92c4d120c3881c8f0bdef8d87f6d2d1fdb65c67cb2c65563e8887652b",
+      "market_vs_model": {
+        "available": true,
+        "interpretation": "Intercept, market logit, then model logit. A model coefficient near zero means Agent 1 adds little beyond the market probability. This is an in-sample diagnostic, not a forward test.",
+        "market_only_coefficients": [
+          -0.030653070337095738,
+          0.5948760591852461
+        ],
+        "market_plus_model_coefficients": [
+          -0.0284485809266218,
+          0.5731034725011069,
+          0.0182501426931223
+        ],
+        "model_increment_coefficient": 0.0182501426931223,
+        "n": 366
+      },
+      "mean_predicted_confidence": 0.8155127675,
+      "model_brier": 0.2054192213787125,
+      "model_expected_variance_independent": 117.63187289703001,
+      "model_expected_wins": 652.410214,
+      "model_log_loss": 0.6162708893371619,
+      "model_residual": -66.410214,
+      "model_residual_z_independent": -6.123114403619331,
       "n": 800,
       "population": "top800_by_confidence_challenger",
+      "retrospective_bookmaker": {
+        "actual_wins_on_priced": 274,
+        "by_bookmaker": {
+          "1XBET": 124,
+          "BET365": 56,
+          "BETANO": 12,
+          "BETFAIR": 13,
+          "BETVICTOR": 13,
+          "MARATHON": 8,
+          "PINNACLE": 30,
+          "PNCL": 28,
+          "SBO": 62,
+          "SUPERBET": 1,
+          "UNIBET": 3,
+          "WILLIAMHILL": 16
+        },
+        "coverage": 0.4575,
+        "definition": "Latest two-sided post-issue, pre-start quote per book, explicitly classified LATE/BACKFILLED/STALE. Never treated as original-time evidence.",
+        "favourite_agreement_rate": 0.8770491803278688,
+        "market_brier": 0.16308535388694229,
+        "market_ece": 0.06037161485991177,
+        "market_log_loss": 0.4992426793119318,
+        "mean_market_probability_of_selected_side": 0.6892311881452353,
+        "missing_coverage": 434,
+        "model_brier": 0.19465505276973769,
+        "model_ece": 0.06812331693989067,
+        "model_log_loss": 0.589104918943842,
+        "odds_distribution": {
+          "count": 732,
+          "max": 15.25,
+          "mean": 2.683395901639344,
+          "median": 1.86,
+          "min": 1.01
+        },
+        "priced": 366,
+        "state_counts": {
+          "LATE": 366
+        }
+      },
       "settled": 800
     }
   },
   "provider_calls": 0,
-  "report_as_of_utc": "2026-11-26T00:00:00+00:00",
+  "report_as_of_utc": "2026-11-21T00:00:00+00:00",
   "top_n": 800,
   "version": "AGENT1_TOP800_BOOKMAKER_V1",
   "window": [
