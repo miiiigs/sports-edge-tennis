@@ -60,6 +60,7 @@ def _insert_scheduled_target(
     match_status: str = "SCHEDULED",
     source_observed_at: datetime | None = None,
     as_of: datetime | None = None,
+    ingested_at: datetime | None = None,
 ) -> dict:
     version_as_of = as_of or _utc(8, 0)
     version_source = source_observed_at or version_as_of
@@ -85,9 +86,9 @@ def _insert_scheduled_target(
         INSERT INTO match_versions (
             match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
             surface, round_code, best_of_sets, qualifying_flag, match_status,
-            source_observed_at, as_of
+            source_observed_at, as_of, ingested_at
         )
-        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, now()))
         RETURNING match_version_id
         """,
         (
@@ -102,6 +103,7 @@ def _insert_scheduled_target(
             match_status,
             version_source,
             version_as_of,
+            ingested_at,
         ),
     )
     return {"match_id": match_id, "match_version_id": match_version_id, "player_1_id": p1, "player_2_id": p2}
@@ -766,3 +768,48 @@ def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psyco
     assert outcome.prediction_run_id > 0
     assert outcome.target_count == 1
     assert outcome.prediction_result_count == 3
+
+
+def test_opt_in_identity_resolution_persistence_matches_predictions(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db, ingested_at=_utc(8, 0))
+    base = _request(db, match_ids=[target["match_id"]])
+    request = base.__class__(
+        match_ids=base.match_ids,
+        as_of=base.as_of,
+        agent_config_refs=base.agent_config_refs,
+        manager_policy_version_id=base.manager_policy_version_id,
+        persist_identity_resolutions=True,
+    )
+    outcome = run_full_slate(db, request)
+
+    assert outcome.runner_status == "COMPLETED"
+    rows = db.execute(
+        """
+        SELECT match_id, match_version_id, original_player_id, model_player_id,
+               resolution_method, reference_policy, capture_source
+        FROM identity_resolution_provenance
+        WHERE prediction_run_id = %s
+        ORDER BY original_player_id
+        """,
+        (outcome.prediction_run_id,),
+    ).fetchall()
+    assert len(rows) == 2
+    assert {row[2] for row in rows} == {target["player_1_id"], target["player_2_id"]}
+    assert all(row[5] == "identity_reference_pit_v3" for row in rows)
+    assert all(row[6] == "LIVE_RUNTIME" for row in rows)
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 3
+
+
+def test_default_full_slate_writes_no_identity_resolution_rows(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+    assert outcome.runner_status == "COMPLETED"
+    assert db.execute(
+        "SELECT count(*) FROM identity_resolution_provenance WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 0

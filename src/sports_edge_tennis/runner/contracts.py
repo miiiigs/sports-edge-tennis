@@ -64,6 +64,9 @@ class FullSlateRunRequestV1:
     experiment_id: str | None = None
     parent_prediction_run_id: int | None = None
     parent_relation_type: ParentRelationType | None = None
+    #: Opt-in: persist the exact run-time player-resolution decisions in the same
+    #: transaction as the predictions. Default False keeps live behaviour unchanged.
+    persist_identity_resolutions: bool = False
 
 
 @dataclass(frozen=True)

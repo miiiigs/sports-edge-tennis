@@ -19,6 +19,10 @@ from sports_edge_tennis.data.feature_snapshots import (
     Agent1FeatureContext,
     persist_feature_snapshot,
 )
+from sports_edge_tennis.data.identity_runtime import (
+    IdentityResolutionObservation,
+    persist_identity_resolutions,
+)
 
 
 @dataclass(frozen=True)
@@ -161,7 +165,15 @@ def persist_and_finalize_prediction_matrix(
     prediction_finalized_at: datetime,
     ended_at: datetime,
     require_agent1_features: bool = False,
+    identity_resolution_observations: Sequence[IdentityResolutionObservation] = (),
 ) -> list[int]:
+    """Persist a finalized prediction matrix.
+
+    ``identity_resolution_observations`` is opt-in. When supplied, the exact
+    run-time player-resolution decisions are written inside the same transaction as
+    the predictions, so neither can commit without the other. The default is empty,
+    which preserves the live runner's current behaviour byte-for-byte.
+    """
     inserted_ids: list[int] = []
     with conn.transaction():
         conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
@@ -228,6 +240,9 @@ def persist_and_finalize_prediction_matrix(
                         prediction_locked_at=prediction_finalized_at,
                     ),
                 )
+
+        if identity_resolution_observations:
+            persist_identity_resolutions(conn, identity_resolution_observations)
 
         conn.execute(
             """

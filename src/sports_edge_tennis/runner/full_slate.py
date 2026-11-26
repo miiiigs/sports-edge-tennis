@@ -28,6 +28,10 @@ from sports_edge_tennis.data.a3_support_diagnostics import (
     record_a3_support_diagnostic,
 )
 from sports_edge_tennis.data.feature_snapshots import Agent1FeatureContext
+from sports_edge_tennis.data.identity_runtime import (
+    CAPTURE_SOURCE_LIVE,
+    IdentityResolutionObservation,
+)
 from sports_edge_tennis.data.prediction_persistence import (
     PredictiveAgentMatrixPrediction,
     persist_and_finalize_prediction_matrix,
@@ -68,7 +72,10 @@ from sports_edge_tennis.runner.persistence import (
     persisted_counts,
     resolve_agent_config,
 )
-from sports_edge_tennis.runner.targets import resolve_targets
+from sports_edge_tennis.runner.targets import (
+    resolve_target_with_identity_provenance,
+    resolve_targets,
+)
 
 
 DEFAULT_CONFIGS = {
@@ -80,6 +87,41 @@ DEFAULT_CONFIGS = {
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _identity_resolution_observations(
+    *,
+    prediction_run_id: int,
+    as_of: datetime,
+    provenance: dict[int, tuple[ResolvedTargetV1, dict]],
+) -> list[IdentityResolutionObservation]:
+    """Build exact runtime observations from the opt-in provenance pass."""
+    observations: list[IdentityResolutionObservation] = []
+    for match_id in sorted(provenance):
+        target, resolved = provenance[match_id]
+        for live_player_id, resolved_identity in sorted(resolved.items()):
+            resolution = resolved_identity.resolution
+            observations.append(
+                IdentityResolutionObservation(
+                    prediction_run_id=prediction_run_id,
+                    match_id=match_id,
+                    match_version_id=target.match_version_id,
+                    predicted_at=as_of,
+                    original_player_id=int(live_player_id),
+                    model_player_id=int(resolution.resolved_player_id),
+                    method=resolution.method,
+                    evidence=resolution.evidence,
+                    name_source=resolution.name_source,
+                    candidate_count=int(resolution.candidate_count),
+                    matched_alias=resolution.matched_alias,
+                    bridge_event_id=resolution.bridge_event_id,
+                    visible_from=resolution.visible_from,
+                    reference_policy=resolved_identity.reference.policy_version,
+                    reference_sha256=resolved_identity.reference.sha256,
+                    capture_source=CAPTURE_SOURCE_LIVE,
+                )
+            )
+    return observations
 
 
 def _diagnostic_value(result, key: str) -> str:
@@ -134,7 +176,7 @@ def run_full_slate(
     clock = clock or _utc_now
     execution_now = clock()
 
-    targets, configs = _preflight(conn, request, execution_now)
+    targets, configs, identity_provenance = _preflight(conn, request, execution_now)
 
     run_id = create_prediction_run(conn, request=request, started_at=execution_now)
 
@@ -158,6 +200,11 @@ def run_full_slate(
             prediction_finalized_at=finalized_at,
             ended_at=ended_at,
             require_agent1_features=True,
+            identity_resolution_observations=_identity_resolution_observations(
+                prediction_run_id=run_id,
+                as_of=request.as_of,
+                provenance=identity_provenance,
+            ),
         )
     except Exception as exc:
         try:
@@ -183,7 +230,11 @@ def _preflight(
     conn: psycopg.Connection,
     request: FullSlateRunRequestV1,
     execution_now: datetime,
-) -> tuple[list[ResolvedTargetV1], dict[str, ResolvedAgentConfigV1]]:
+) -> tuple[
+    list[ResolvedTargetV1],
+    dict[str, ResolvedAgentConfigV1],
+    dict[int, tuple[ResolvedTargetV1, dict]],
+]:
     if not isinstance(request.as_of, datetime) or request.as_of.tzinfo is None:
         raise RunnerRequestError("request.as_of must be timezone-aware")
     if request.as_of > execution_now:
@@ -202,6 +253,16 @@ def _preflight(
         )
 
     targets = resolve_targets(conn, match_ids=request.match_ids, as_of=request.as_of)
+    identity_provenance: dict[int, tuple[ResolvedTargetV1, dict]] = {}
+    if request.persist_identity_resolutions:
+        identity_provenance = {}
+        targets = []
+        for match_id in request.match_ids:
+            target, resolved = resolve_target_with_identity_provenance(
+                conn, match_id=match_id, as_of=request.as_of
+            )
+            targets.append(target)
+            identity_provenance[match_id] = (target, resolved)
 
     configs: dict[str, ResolvedAgentConfigV1] = {}
     for ref in request.agent_config_refs:
@@ -226,7 +287,7 @@ def _preflight(
 
     _validate_lineage(conn, request)
 
-    return targets, configs
+    return targets, configs, identity_provenance
 
 
 def _validate_lineage(conn: psycopg.Connection, request: FullSlateRunRequestV1) -> None:
