@@ -60,8 +60,9 @@ python -m pytest tests/test_capture_health_watchdog.py tests/test_fixture_lifecy
 ```
 
 The PostgreSQL foundation workflow remains the release gate for the
-`select_prematch_targets` integration and the full-slate runner. The workflow
-must be green at the exact pushed head before release.
+`select_prematch_targets` integration and the full-slate runner. It passed at
+code head `41147c7` (run `45759049197`, 3m31s); the docs-only follow-up does not
+change the tested code.
 
 ## Independent scheduling readiness (26 November 2026)
 
