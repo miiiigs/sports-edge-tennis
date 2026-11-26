@@ -1,6 +1,6 @@
 {
   "version": "A1_IDENTITY_BRIDGE_PROSPECTIVE_READINESS_V1",
-  "generated_at": "2026-11-26T00:00:00+00:00",
+  "generated_at": "2026-11-26T06:04:06.947973+00:00",
   "pr": 388,
   "mission": "December off-season identity-correction completion",
   "can_promote": false,
@@ -33,7 +33,7 @@
       "limitation": "0025 requires 0023/0024 from integration PR #392 to be applied first. No production migration was run."
     },
     "runtime_resolution_persistence": {
-      "status": "IMPLEMENTED_TESTED_INACTIVE",
+      "status": "IMPLEMENTED_TESTED_INACTIVE_TRANSACTIONAL",
       "writer": "sports_edge_tennis.data.identity_runtime.persist_identity_resolutions",
       "reader": "sports_edge_tennis.data.identity_runtime.load_identity_resolutions",
       "captured_fields": [
@@ -57,7 +57,10 @@
         "capture_source"
       ],
       "default_runtime_behaviour": "unchanged; no observer or runner passes observations yet",
-      "limitation": "Requires owner-approved activation wiring before live rows are written."
+      "limitation": "The opt-in path resolves provenance and writes it in the same transaction as predictions. It is default-off; no live rollout is claimed.",
+      "transactional_with_predictions": true,
+      "opt_in_field": "FullSlateRunRequestV1.persist_identity_resolutions",
+      "default_enabled": false
     },
     "replay_discrepancy": {
       "status": "EXPLAINED_REMAINDER_FAIL_CLOSED",
@@ -134,6 +137,24 @@
       "largest_reproducible_accuracy": 0.6252,
       "shortfall_vs_75pct": 0.1248,
       "evidence": "docs/research/evidence/legacy_75pct_claim_audit_20261125.json"
+    },
+    "historical_population_reconciliation": {
+      "status": "COMPLETE_EXPLANATORY",
+      "classification": "HISTORICAL_DEVELOPMENT_REUSE_NOT_UNTOUCHED_VALIDATION",
+      "freeze": {
+        "E1_cutoff": "2026-11-24T08:10:00Z",
+        "E2_cutoff": "2026-11-24T09:00:00Z",
+        "E3_cutoff": "2026-11-25T07:20:00Z",
+        "E2_targets": 3725,
+        "E2_settled": 3201,
+        "E3_targets": 3776,
+        "E3_settled": 3223,
+        "E1_reconstructed": 3152
+      },
+      "top800_accounting_identity": "655 = 413 + 242; 596 = 413 + 183; difference = 59",
+      "evidence": "docs/research/evidence/a1_historical_reconciliation_20261126.json",
+      "sha256": "18dd92829a225badd6a251f41efb0e6edc3b955b13de00647be4591513d9d7c7",
+      "limitation": "Historical outcomes have been inspected repeatedly. This is development reuse, not untouched validation."
     }
   },
   "activation_gates": [
@@ -194,5 +215,23 @@
     "Report equal-count and frozen-coverage Model Picks comparisons with overlap and ATP safety.",
     "Create a new Agent 1 configuration version; do not reuse agent1_surface_elo_v1.",
     "Record owner approval and a rollback plan before activation."
-  ]
+  ],
+  "pr392_reconciled": true,
+  "pr392_head": "af6e09bef019ef3a5cc67273ad08094ee0b8a8a0",
+  "merge_commit": "2a44627",
+  "migration_chain_0023_0025": {
+    "verified": true,
+    "applied_to_production": false,
+    "evidence": "docs/research/evidence/a1_combined_migration_order_20261126.json",
+    "sha256": "7f8ec9704a039402a55397be35c927b247867184297c1c656278b53e90ba59c6"
+  },
+  "forward_quarantine": {
+    "manifest": "docs/research/evidence/a1_forward_quarantine_manifest_20261126.json",
+    "sha256": "d7e32114b3d35083b875cb730dfdb8574a1d2fda45aae40dfa6e683e1f858af7",
+    "quarantined_reissued_targets": 52,
+    "pre_outcome_records_not_independently_receipted": 17,
+    "admissible_records_with_independent_receipt": 0
+  },
+  "candidate_freeze_manifest": "docs/research/evidence/a1_candidate_freeze_manifest_20261126.json",
+  "scientific_freeze_recommendation": "NOT_READY_FOR_ACTIVATION_FREEZE; READY_FOR_REVIEW_OF_HISTORICAL_EXPLANATION_ONLY"
 }

@@ -703,3 +703,25 @@ activation gate. The candidate is **NOT_ELIGIBLE**: 2/200 settled first-issued s
 version and no owner approval.
 
 
+
+## 12. 2026-11-26 historical population reconciliation
+
+`A1_HISTORICAL_POPULATION_RECONCILIATION_20261126.md` and
+`docs/research/evidence/a1_historical_reconciliation_20261126.json` reconcile the three
+historical populations that were previously quoted without a common freeze.
+
+- E1 (3,152) is the 2026-11-24T08:10Z settlement snapshot. E2 (3,201) adds exactly the
+  49 COMPLETED results from the 08:14Z batch; the same batch also carried 2 CANCELLED and
+  1 RETIRED observation.
+- At fixture level E1 ⊂ E2 ⊂ E3, +49 then +22, no removals. At prediction-target level the
+  sets are not nested: E3 adds 51 and removes 29 because re-issued matches move the selected
+  `prediction_id`/`run_id` while the fixture is unchanged. The net +71 is therefore two
+  settlement additions, not 71 new model targets.
+- The earlier 575/594 top-800 result ranks **Model Picks** (A1/A2 same side, A3 abstained,
+  mean ≥60%). The latest 596/655 result ranks **all Agent 1 targets by confidence**. They
+  are different ranking universes, not a like-for-like 61-win improvement.
+- Within the latest experiment the 59-win A→B difference decomposes into shared,
+  original-only and bridge-only selections; the exact fixture sets and the accounting
+  identity are in the evidence above.
+- The historical population remains **development-reused**, not untouched validation.
+  No production activation, migration or deployment is implied.

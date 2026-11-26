@@ -187,3 +187,32 @@ All contrasts are candidate minus baseline on the same frozen forward fixtures.
 
 All production analysis commands are read-only except the explicit `--apply` capture
 integration, which writes only `identity_resolution_provenance`.
+
+## 12. 2026-11-26 reconciliation update
+
+- PR #392 head `af6e09bef019ef3a5cc67273ad08094ee0b8a8a0` is merged into this branch in
+  `2a44627` with no conflicts; its 0023/0024 migrations and Manager-C/OddsPapi evidence
+  are preserved byte-for-byte.
+- The combined migration chain is contiguous through `0023` → `0024` → `0025` and was
+  verified on an isolated PostgreSQL database (cumulative snapshot equality plus
+  downgrade/re-upgrade). None of 0023/0024/0025 is applied to production; production
+  remains at `0022_defaulted_outcome`.
+- Runtime identity-resolution persistence is now transactionally integrated with the
+  prediction matrix behind `FullSlateRunRequestV1.persist_identity_resolutions`. The
+  default is off. A provenance validation failure rolls the prediction matrix back, so
+  a partial prediction/provenance commit is impossible.
+- The three historical populations are reconciled in
+  `A1_HISTORICAL_POPULATION_RECONCILIATION_20261126.md` and
+  `docs/research/evidence/a1_historical_reconciliation_20261126.json`. All validation
+  checks pass: 3,152 / 3,201 / 3,223; 575 / 594; 596 / 655; 59-win identity.
+- The earlier 575/594 is a **Model Picks** ranking; the latest 596/655 is an **all-Agent-1**
+  ranking. Under the same Model Pick rule the latest replay gives 575/593, so the
+  apparent cross-experiment gain is a ranking-universe difference, not a deployable
+  61-win improvement.
+- The 52 run-2548 re-issued targets remain quarantined. The 17 run-2535 and 2 run-2603
+  records are not independent receipts. Admissible independent receipts: **0**.
+- Candidate-freeze manifest:
+  `docs/research/evidence/a1_candidate_freeze_manifest_20261126.json`.
+
+Decision unchanged: **NOT_ELIGIBLE** for activation. The historical explanation is
+complete; the prospective gates are not.
