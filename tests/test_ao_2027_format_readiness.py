@@ -182,6 +182,46 @@ def test_direct_resolver_rejects_bo3_main_draw_and_flag_conflict():
         assert resolved.scoring_rule_version is None
 
 
+def test_simple_independent_set_probability_reference_at_sixty_percent():
+    """Brian's requested set-level regression, independent of the serve engine."""
+    from ops.validation.ao_root_cause_and_dependency_20261126 import (
+        independent_set_match_probability,
+    )
+
+    assert independent_set_match_probability(0.60, 3) == pytest.approx(0.648)
+    assert independent_set_match_probability(0.60, 5) == pytest.approx(0.68256)
+    # Sanity: a fair set is a fair match, and a match is never shorter than a set.
+    assert independent_set_match_probability(0.50, 3) == pytest.approx(0.5)
+    assert independent_set_match_probability(0.50, 5) == pytest.approx(0.5)
+    assert independent_set_match_probability(0.60, 5) > independent_set_match_probability(0.60, 3)
+
+
+def test_serve_based_markov_deciding_set_tiebreak_is_effective_and_symmetric():
+    """Separate engine check: the deciding-set rule changes the result."""
+    from sports_edge_tennis.agents.agent2_hierarchical_markov import match_probability
+
+    def average(rule, p1, p2):
+        return sum(
+            match_probability(
+                player_1_serve_probability=Decimal(p1),
+                player_2_serve_probability=Decimal(p2),
+                scoring_rule_version=rule,
+                first_server=server,
+            )
+            for server in (1, 2)
+        ) / 2
+
+    tb10 = average(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6, "0.68", "0.61")
+    advantage = average(ScoringRuleVersion.BO5_DECIDER_ADVANTAGE, "0.68", "0.61")
+    assert tb10 != advantage
+    # Player symmetry: swapping both players complements the probability.
+    assert abs(
+        average(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6, "0.68", "0.61")
+        + average(ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6, "0.61", "0.68")
+        - Decimal(1)
+    ) < Decimal("0.00001")
+
+
 def test_markov_uses_different_match_length_and_symmetric_equal_players():
     bo5 = _rule(_parse()).scoring_rule_version
     assert bo5 is not None
