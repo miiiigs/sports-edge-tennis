@@ -1,11 +1,12 @@
 """PostgreSQL integration for the database-backed work-product receipt.
 
-Creates only the forward-evidence tables the publisher reads, so the test is
-independent of PR #394's migration history. Every count comes from real rows.
+Uses the actual integrated forward-evidence schema and authenticated local
+receipt store. Every count comes from isolated synthetic test rows.
 """
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import timedelta
 
 import psycopg
@@ -105,46 +106,6 @@ def _request(conn, match_id, as_of):
     )
 
 
-def _forward_tables(conn):
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS forward_originals (
-          experiment_version TEXT NOT NULL,
-          match_id BIGINT NOT NULL,
-          first_prediction_run_id BIGINT NOT NULL,
-          payload BYTEA NOT NULL,
-          payload_sha256 TEXT NOT NULL,
-          issued_at TIMESTAMPTZ NOT NULL,
-          PRIMARY KEY (experiment_version, match_id)
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS forward_delivery_events (
-          event_id BIGSERIAL PRIMARY KEY,
-          experiment_version TEXT NOT NULL,
-          match_id BIGINT NOT NULL,
-          channel TEXT NOT NULL,
-          state TEXT NOT NULL,
-          evidence TEXT
-        )
-        """
-    )
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS forward_fixture_expectations (
-          experiment_version TEXT NOT NULL,
-          match_id BIGINT NOT NULL,
-          expected_at TIMESTAMPTZ NOT NULL,
-          source_evidence BYTEA NOT NULL,
-          source_sha256 TEXT NOT NULL,
-          PRIMARY KEY (experiment_version, match_id)
-        )
-        """
-    )
-
-
 def _decision(conn, *, match_id, run_id, as_of):
     return _val(
         conn,
@@ -166,7 +127,13 @@ def _decision(conn, *, match_id, run_id, as_of):
     )
 
 
-def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connection):
+def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connection, tmp_path):
+    from sports_edge_tennis.validation.forward_evidence_outbox import (
+        build_rehearsal_freeze, run_with_originals,
+    )
+    from sports_edge_tennis.validation.forward_archive_dispatch import dispatch_archive
+    from sports_edge_tennis.validation.forward_original_collector import OriginalReceiptStore
+    from sports_edge_tennis.validation.forward_evidence_settlement import record_expected_fixture
     now = db.execute(
         "SELECT date_trunc('second', clock_timestamp())"
     ).fetchone()[0]
@@ -184,11 +151,16 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
     )
     target = _target(db, start=start, as_of=now, ingest_run_id=ingest)
     _configs(db)
-    outcome = run_full_slate(db, _request(db, target["match_id"], now))
+    # Freeze only after the fixture has actually been persisted.
+    cutoff_at = db.execute("SELECT clock_timestamp()").fetchone()[0]
+    request = replace(_request(db, target["match_id"], cutoff_at),
+                      experiment_id="EXP-1", persist_identity_resolutions=True)
+    outcome = run_with_originals(db, request,
+                                 freeze_bytes=build_rehearsal_freeze(db, request))
     assert outcome.runner_status == "COMPLETED"
     run_id = outcome.prediction_run_id
 
-    decision = _decision(db, match_id=target["match_id"], run_id=run_id, as_of=now)
+    decision = _decision(db, match_id=target["match_id"], run_id=run_id, as_of=cutoff_at)
     odds = _val(
         db,
         """
@@ -223,20 +195,12 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         """,
         (decision, result, now + timedelta(days=1)),
     )
-    _forward_tables(db)
-    db.execute(
-        "INSERT INTO forward_originals VALUES ('EXP-1',%s,%s,%s,%s,%s)",
-        (target["match_id"], run_id, b"original", "sha", now),
-    )
-    db.execute(
-        "INSERT INTO forward_delivery_events (experiment_version, match_id, "
-        "channel, state) VALUES ('EXP-1',%s,'ARCHIVE','DELIVERED')",
-        (target["match_id"],),
-    )
-    db.execute(
-        "INSERT INTO forward_fixture_expectations VALUES ('EXP-1',%s,%s,%s,%s)",
-        (target["match_id"], start, b"expected", "sha"),
-    )
+    store = OriginalReceiptStore(tmp_path / "monitoring-test.sqlite")
+    receipt = dispatch_archive(db, "EXP-1", target["match_id"], store.receive)
+    assert receipt["eligible_for_activation_evidence"] is False
+    assert store.verify_inventory() == {"count": 1, "digest_mismatches": 0}
+    record_expected_fixture(db, "EXP-1", target["match_id"],
+                            expected_at=now, source_bytes=b"synthetic census")
 
     cutoff = now + timedelta(days=2)
     scope = ReceiptScope(
@@ -299,7 +263,7 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         WHERE prediction_run_id=%s AND match_id=%s
           AND prediction_locked_at
               <= %s::timestamptz - interval '30 minutes'
-          AND experiment_id IS NOT DISTINCT FROM NULL
+          AND experiment_id IS NOT DISTINCT FROM 'EXP-1'
         """,
         (run_id, target["match_id"], picked_start),
     ).fetchone()[0]
@@ -322,6 +286,8 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         loop_agents,
     )
     assert collected["record"].eligible_fixture_count == 1
+    assert collected["independent_archive_qualified"] is False
+    assert collected["eligible_for_activation_evidence"] is False
     assessment = evaluate_run(
         collected["record"],
         slot=now,

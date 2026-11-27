@@ -227,6 +227,10 @@ class WorkProductReceiptPublisher:
             ),
             "missing_stages": tuple(missing),
             "success": not missing,
+            # This publisher verifies local operational work products only.
+            # It does not authenticate an independent clock or source authority.
+            "independent_archive_qualified": False,
+            "eligible_for_activation_evidence": False,
         }
 
     def publish(
@@ -250,6 +254,8 @@ class WorkProductReceiptPublisher:
             "receipt_path": receipt_path,
             "receipt_sha256": digest,
             "success": collected["success"],
+            "independent_archive_qualified": False,
+            "eligible_for_activation_evidence": False,
             "missing_stages": collected["missing_stages"],
             "checks": collected["checks"],
             "record": collected["record"].to_payload(),
@@ -279,7 +285,7 @@ class WorkProductReceiptPublisher:
             WHERE ir.source_system = 'API_TENNIS'
               AND ir.source_dataset = 'api_tennis_scheduled_fixtures'
               AND ir.started_at >= %(start)s AND ir.started_at <= %(end)s
-              AND ir.status = 'PARTIAL') AS partial_runs,
+              AND ir.status <> 'COMPLETED') AS partial_runs,
           (SELECT COUNT(*) FROM ingest_runs ir
             WHERE ir.source_system = 'API_TENNIS'
               AND ir.source_dataset = 'api_tennis_scheduled_fixtures'
@@ -307,7 +313,7 @@ class WorkProductReceiptPublisher:
                 int(expected),
                 int(persisted),
                 "INGEST_RUN_ROWS",
-                "PARTIAL_INGEST_RUNS",
+                "INCOMPLETE_INGEST_RUNS",
                 extra={"partial_runs": partial_runs, "rejected": rejected},
             )
         if run_count == 0:
@@ -320,7 +326,7 @@ class WorkProductReceiptPublisher:
                 "NO_DISCOVERY_RUN_IN_WINDOW",
             )
         if int(expected) == 0:
-            if scope.acknowledge_empty_discovery:
+            if scope.acknowledge_empty_discovery and not rejected and int(persisted) == 0:
                 return StageCheck(
                     STAGE_FIXTURE_DISCOVERY,
                     STATUS_EMPTY_ACKNOWLEDGED,
@@ -605,7 +611,8 @@ class WorkProductReceiptPublisher:
                          AND d.match_id = o.match_id AND d.channel = 'ARCHIVE'
                        ORDER BY d.event_id DESC LIMIT 1
                      ) last ON TRUE
-                     WHERE last.state IN ('DELIVERED','RECONCILED')) AS persisted
+                     WHERE o.experiment_version = %(experiment)s
+                       AND last.state IN ('DELIVERED','RECONCILED')) AS persisted
                 """,
                 {"experiment": scope.experiment_id},
             )
