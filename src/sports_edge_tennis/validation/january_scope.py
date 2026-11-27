@@ -15,7 +15,11 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Mapping
 
-SPEC_PATH = Path("specs/january_2027_scope_20261127.json")
+SPEC_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "specs"
+    / "january_2027_scope_20261127.json"
+)
 
 SUPPORTED_TOURS = frozenset({"ATP_MAIN", "CHALLENGER"})
 SUPPORTED_SURFACES = frozenset({"HARD", "CLAY", "GRASS", "CARPET"})

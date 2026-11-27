@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from sports_edge_tennis.validation.january_scope import (
+    SPEC_PATH,
     eligible_competitions,
     first_eligible_start,
     load_scope,
@@ -17,7 +18,7 @@ from sports_edge_tennis.validation.january_scope import (
 )
 
 VERSION = "JANUARY_2027_SCOPE_EVIDENCE_20261127_V1"
-DEFAULT_SPEC = Path("specs/january_2027_scope_20261127.json")
+DEFAULT_SPEC = SPEC_PATH
 
 
 def build_evidence(spec_path: Path) -> dict[str, object]:
