@@ -258,6 +258,29 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         """,
         (run_id,),
     ).fetchall()
+    diag = [
+        (
+            row[0],
+            row[1].isoformat() if row[1] else None,
+            row[2].isoformat() if row[2] else None,
+            row[3],
+            row[4],
+        )
+        for row in diag
+    ]
+    timing = db.execute(
+        """
+        SELECT
+          COUNT(*) FILTER (
+            WHERE p.prediction_locked_at <= mv.match_start_at - interval '30 minutes'
+          ),
+          COUNT(*) FILTER (WHERE p.prediction_locked_at <= mv.match_start_at),
+          COUNT(*)
+        FROM predictions p JOIN match_versions mv USING (match_id)
+        WHERE p.prediction_run_id=%s
+        """,
+        (run_id,),
+    ).fetchone()
     assert collected["success"] is True, (
         [
             (
@@ -271,6 +294,7 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
             for check in collected["checks"]
         ],
         diag,
+        timing,
     )
     assert collected["record"].eligible_fixture_count == 1
     assessment = evaluate_run(
