@@ -657,8 +657,12 @@ def provider_coverage_report(
             "original_time_qualified_comparisons": 0,
         })
 
-    for code, raw, fixtures, live, historical, market_map, first_at, last_at, duplicates in rows(
-        _raw_extraction_sql(provider_code, []), []
+    def query(builder):
+        params: list[Any] = []
+        return rows(builder(provider_code, params), params)
+
+    for code, raw, fixtures, live, historical, market_map, first_at, last_at, duplicates in query(
+        _raw_extraction_sql
     ):
         item = bucket(str(code))
         item.update({
@@ -672,11 +676,11 @@ def provider_coverage_report(
             "last_received_at": last_at,
         })
 
-    for code, extracted in rows(_extracted_sql(provider_code, []), []):
+    for code, extracted in query(_extracted_sql):
         bucket(str(code))["extracted_winner_observations"] = int(extracted)
 
-    for code, quotes, fixtures, books, first_obs, last_obs, first_ing, last_ing in rows(
-        _normalized_sql(provider_code, []), []
+    for code, quotes, fixtures, books, first_obs, last_obs, first_ing, last_ing in query(
+        _normalized_sql
     ):
         bucket(str(code)).update({
             "normalized_quotes": int(quotes),
@@ -688,25 +692,25 @@ def provider_coverage_report(
             "last_normalized_ingested_at": last_ing,
         })
 
-    for code, reason, count in rows(_rejections_sql(provider_code, []), []):
+    for code, reason, count in query(_rejections_sql):
         item = bucket(str(code))
         item["rejection_reasons"][str(reason)] = int(count)
         if str(reason) != "NORMALIZED":
             item["rejected_observations"] += int(count)
 
-    for code, mapped, mapping_rows in rows(_mapped_fixtures_sql(provider_code, []), []):
+    for code, mapped, mapping_rows in query(_mapped_fixtures_sql):
         item = bucket(str(code))
         item["unique_mapped_fixtures"] = int(mapped)
         item["mapping_rows"] = int(mapping_rows)
 
-    for code, markets, fixtures, books in rows(_two_sided_sql(provider_code, []), []):
+    for code, markets, fixtures, books in query(_two_sided_sql):
         bucket(str(code)).update({
             "valid_two_sided_markets": int(markets),
             "fixtures_with_two_sided_market": int(fixtures),
             "bookmakers_with_two_sided_market": int(books),
         })
 
-    for code, qualified, fixtures, books in rows(_original_time_sql(provider_code, []), []):
+    for code, qualified, fixtures, books in query(_original_time_sql):
         bucket(str(code)).update({
             "original_time_qualified_comparisons": int(qualified),
             "fixtures_with_original_time_pair": int(fixtures),

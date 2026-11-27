@@ -193,6 +193,20 @@ def test_benchmark_qualification_never_promotes_late_or_historical_quotes():
     assert historical["status"] == BENCHMARK_RETROSPECTIVE
 
 
+def test_coverage_report_binds_every_placeholder_without_a_database():
+    class ParamCountingConnection:
+        def execute(self, sql, params=()):
+            assert sql.count("%s") == len(params), (sql, params)
+            self._last = sql
+            return self
+
+        def fetchall(self):
+            return []
+
+    report = provider_coverage_report(ParamCountingConnection(), provider_code="ODDSPAPI")
+    assert report["providers"] == {}
+
+
 def test_real_format_oddspapi_record_is_attributed_and_counted(db):
     match = _insert_real_format_match(db)
     observation = build_oddspapi_tennis_observation(
