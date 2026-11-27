@@ -54,3 +54,25 @@ Neither is a substitute for independent receipts or official fixture census.
 Do not run corrected models until every active dependency is cleared.
 No purchase, production migration, deployment, Telegram publication, model
 training, or activation. can_promote=false.
+
+## Archive operations and owner controls
+
+Local backup/restore: use `forward_archive_backup.backup_archive` with a new
+absolute operator-controlled path; SQLite online backup API, integrity check,
+per-record exact digest and original receipt metadata manifest. Restore to a
+fresh path with the separately retained expected manifest, then verify producer
+inventory and rehearse retry. Do not overwrite a running archive. External
+retention, encryption, off-host immutable copies, separate credentials and
+independent clock validation are not implemented by this helper.
+
+Proposed independent deployment: separate owner-controlled account/service,
+TLS termination, private durable encrypted volume, backup in a separate
+account, clock synchronization/monitoring, independent inventory access and
+separate admin identities. Rotate high-entropy producer tokens with a staged
+new credential, verify in isolated traffic, drain uncertain exact-byte retries,
+revoke old credential, retain rotation evidence; collector restart is currently
+required and dual-token overlap would need a reviewed implementation. Budget
+must include hosting, durable storage, egress, backup retention and monitoring;
+no pricing quote or spending authority obtained. Approve jurisdiction, operator,
+retention period, access, clock trust, recovery objectives and cost ceiling
+before provisioning. Local receipts remain ineligible for promotion.
