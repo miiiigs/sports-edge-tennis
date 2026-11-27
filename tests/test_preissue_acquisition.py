@@ -151,7 +151,7 @@ def test_executor_wait_budget_prevents_indefinite_delay():
         [_fixture(1, start_in=timedelta(hours=5), issue_in=timedelta(hours=4)),
          _fixture(2, start_in=timedelta(hours=6), issue_in=timedelta(hours=5))],
         now=NOW, policy=OddspapiBudgetPolicy(per_cycle_limit=20))
-    times = iter([NOW, NOW, NOW, NOW + timedelta(minutes=3)])
+    times = iter([NOW, NOW, NOW, NOW, NOW + timedelta(minutes=3)])
     results = execute_preissue_acquisition(
         plan,
         resolve_identity=lambda mid: {"event": mid},
@@ -159,3 +159,41 @@ def test_executor_wait_budget_prevents_indefinite_delay():
         clock=lambda: next(times), max_wait=timedelta(minutes=2))
     assert results[0].status == AcquisitionStatus.CAPTURED
     assert results[1].status == AcquisitionStatus.TIMEOUT
+
+
+def test_identity_completion_at_deadline_does_not_fetch_prices():
+    plan = plan_preissue_acquisition(
+        [_fixture(1, issue_in=timedelta(minutes=1))], now=NOW)
+    times = iter([NOW, NOW, NOW + timedelta(minutes=1)])
+    calls = []
+    results = execute_preissue_acquisition(
+        plan, resolve_identity=lambda mid: {"event": mid},
+        fetch_prices=lambda mid, identity: calls.append(mid),
+        clock=lambda: next(times), max_wait=timedelta(minutes=5))
+    assert results[0].status == AcquisitionStatus.TOO_LATE
+    assert results[0].prices == ()
+    assert calls == []
+
+
+def test_price_completion_at_deadline_is_never_preissue():
+    plan = plan_preissue_acquisition(
+        [_fixture(1, issue_in=timedelta(minutes=1))], now=NOW)
+    times = iter([NOW, NOW, NOW, NOW + timedelta(minutes=1)])
+    results = execute_preissue_acquisition(
+        plan, resolve_identity=lambda mid: {"event": mid},
+        fetch_prices=lambda mid, identity: [("PLAYER_1", 2.0), ("PLAYER_2", 1.8)],
+        clock=lambda: next(times), max_wait=timedelta(minutes=5))
+    assert results[0].status == AcquisitionStatus.TOO_LATE
+    assert results[0].prices == ()
+    assert results[0].completed_at == NOW + timedelta(minutes=1)
+
+
+def test_price_completion_over_wait_budget_is_not_captured():
+    plan = plan_preissue_acquisition([_fixture(1)], now=NOW)
+    times = iter([NOW, NOW, NOW, NOW + timedelta(minutes=2)])
+    results = execute_preissue_acquisition(
+        plan, resolve_identity=lambda mid: {"event": mid},
+        fetch_prices=lambda mid, identity: [("PLAYER_1", 2.0), ("PLAYER_2", 1.8)],
+        clock=lambda: next(times), max_wait=timedelta(minutes=2))
+    assert results[0].status == AcquisitionStatus.TIMEOUT
+    assert results[0].prices == ()
