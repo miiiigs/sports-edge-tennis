@@ -189,9 +189,10 @@ def test_sqlite_reservations_survive_a_new_store_instance(tmp_path: Path):
 def test_json_sink_records_durable_timestamps(tmp_path: Path):
     path = str(tmp_path / "observations.jsonl")
     sink = JsonObservationSink(path)
+    observed = datetime.now(UTC)
     observation = PilotObservation(
         provider_code="ODDSPAPI", endpoint="/v4/odds", dedupe_key="k",
-        match_ids=(1,), received_at=NOW, observed_at=NOW + timedelta(seconds=1),
+        match_ids=(1,), received_at=observed, observed_at=observed,
         persisted_at=None, payload_hash="sha256:x", qualification="QUALIFIED",
     )
     persisted = sink.persist(observation)
