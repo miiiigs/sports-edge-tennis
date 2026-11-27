@@ -6,6 +6,7 @@ from sports_edge_tennis.validation.api_tennis_acquisition_plan import (
     STATUS_ENTITLEMENT_ONLY,
     STATUS_VERIFIED,
     FixtureCandidate,
+    ProviderEntitlement,
     assess_entitlement,
     coverage_gate,
     dedupe_requests,
@@ -79,7 +80,7 @@ def test_simultaneous_plan_never_duplicates_a_provider_request():
     assert plan["duplicate_requests_removed"] == 0
     assert plan["request_count"] == 4  # discovery, 1 odds, get_events, get_odds
     assert plan["execution_authorised"] is False
-    assert plan["blocked_providers"] == ["API_TENNIS"]
+    assert plan["blocked_providers"] == ["API_TENNIS", "ODDSPAPI"]
     assert plan["provider_calls_made"] == 0
 
     no_entitlement = plan_simultaneous_acquisition(
@@ -121,3 +122,43 @@ def test_coverage_gate_states_targets_are_not_achievements():
     assert gate["mapping_target_met"] is False
     assert gate["two_sided_target_met"] is False
     assert gate["targets_are_targets_not_achievements"] is True
+
+
+def test_verified_label_does_not_override_false_quota():
+    entitlement = ProviderEntitlement("API_TENNIS", STATUS_VERIFIED, True, False, "ref")
+    assert entitlement.may_make_billable_requests is False
+
+
+def test_simultaneous_plan_requires_both_entitlements_budgets_and_approval():
+    verified = tuple(ProviderEntitlement(code, STATUS_VERIFIED, True, True, "proof")
+                     for code in ("API_TENNIS", "ODDSPAPI"))
+    params = dict(fixtures=[], oddspapi_tournament_ids=[10],
+                  oddspapi_bookmakers=("pinnacle+30",), coalesce_discovery=True,
+                  api_tennis_date_start=T, api_tennis_date_stop=T + timedelta(days=1),
+                  oddspapi_monthly_remaining=5, api_tennis_remaining=5)
+    incomplete = plan_simultaneous_acquisition(**params, entitlements=verified[:1],
+                                              authorization_reference="approved")
+    assert incomplete["execution_authorised"] is False
+    assert incomplete["blocked_providers"] == ["ODDSPAPI"]
+    assert plan_simultaneous_acquisition(**params, entitlements=verified)["execution_authorised"] is False
+    assert plan_simultaneous_acquisition(**params, entitlements=verified,
+                                         authorization_reference="approved")["execution_authorised"] is True
+    params["api_tennis_remaining"] = None
+    blocked = plan_simultaneous_acquisition(**params, entitlements=verified,
+                                          authorization_reference="approved")
+    assert blocked["execution_authorised"] is False
+    assert blocked["blocked_budget_providers"] == ["API_TENNIS"]
+
+
+def test_provider_overlap_requires_distinct_provider_fixture_identifiers():
+    fixtures = [
+        FixtureCandidate(1, "ATP_MAIN", T, provider_fixture_id="same-provider-fixture",
+                         provider_tournament_id="same-provider-tournament", mapped=True),
+        FixtureCandidate(2, "ATP_MAIN", T, mapped=True, api_tennis_match_key="api-2",
+                         oddspapi_fixture_id="odd-2"),
+    ]
+    report = plan_simultaneous_acquisition(
+        fixtures=fixtures, oddspapi_tournament_ids=[], oddspapi_bookmakers=(),
+        coalesce_discovery=False, api_tennis_date_start=T,
+        api_tennis_date_stop=T + timedelta(days=1))
+    assert report["provider_overlap"]["fixtures_with_both_provider_ids"] == 1

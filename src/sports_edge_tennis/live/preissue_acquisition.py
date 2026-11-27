@@ -13,10 +13,10 @@ cycle by default:
 4. execute with an injected identity resolver and price fetcher, bounded by a
    wall-clock wait budget, and downgrade every failure to ``UNAVAILABLE``.
 
-Forecasting must never wait indefinitely for odds. The executor therefore returns
-a terminal status for every fixture and never raises a provider, budget or
-timeout error to the caller. A fixture that cannot be priced simply proceeds to
-forecast without a market quote, exactly as it does today.
+The executor checks the deadline and elapsed budget before and after provider
+callbacks. It never marks a late callback as pre-issue evidence. Callbacks must
+enforce their own transport timeouts: this synchronous primitive cannot cancel
+a blocked network call. The live runner remains unchanged.
 """
 from __future__ import annotations
 
@@ -232,48 +232,65 @@ def execute_preissue_acquisition(
     max_wait: timedelta = DEFAULT_MAX_WAIT,
     attempt_cap: OddspapiAttemptCap | None = None,
 ) -> tuple[AcquisitionResult, ...]:
-    """Execute ready items without ever blocking forecasting.
+    """Execute ready items and reject late or over-budget callback results.
 
-    Every provider, budget and cap failure is converted to a terminal result.
-    The caller continues to forecast immediately after this function returns.
+    Provider errors become terminal results. The callbacks must enforce their
+    own bounded transport timeouts; this function does not interrupt a blocked
+    synchronous call. A CAPTURED status describes completion timing only, not
+    proof of durable storage, orientation or independent market qualification.
     """
     if max_wait < timedelta(0):
         raise ValueError("max_wait must be non-negative")
-    started = clock()
+    started = _utc(clock(), "clock")
     results: list[AcquisitionResult] = []
-    for item in executable_items(plan):
-        now = clock()
-        if now >= item.deadline:
-            results.append(AcquisitionResult(
+
+    def boundary_failure(item: AcquisitionItem, completed: datetime):
+        if completed >= item.deadline:
+            return AcquisitionResult(
                 item.fixture.match_id, AcquisitionStatus.TOO_LATE,
-                "SAFE_DEADLINE_PASSED", completed_at=now))
-            continue
-        if now - started >= max_wait:
-            results.append(AcquisitionResult(
+                "SAFE_DEADLINE_PASSED", completed_at=completed)
+        if completed - started >= max_wait:
+            return AcquisitionResult(
                 item.fixture.match_id, AcquisitionStatus.TIMEOUT,
-                "ACQUISITION_WAIT_BUDGET_EXHAUSTED", completed_at=now))
+                "ACQUISITION_WAIT_BUDGET_EXHAUSTED", completed_at=completed)
+        return None
+    for item in executable_items(plan):
+        now = _utc(clock(), "clock")
+        failure = boundary_failure(item, now)
+        if failure is not None:
+            results.append(failure)
             continue
         try:
             if attempt_cap is not None:
                 attempt_cap.take()
             identity = resolve_identity(item.fixture.match_id)
+            resolved_at = _utc(clock(), "clock")
+            failure = boundary_failure(item, resolved_at)
+            if failure is not None:
+                results.append(failure)
+                continue
             if identity is None:
                 results.append(AcquisitionResult(
                     item.fixture.match_id,
                     AcquisitionStatus.IDENTITY_UNAVAILABLE,
-                    "NO_VERIFIED_IDENTITY", completed_at=clock()))
+                    "NO_VERIFIED_IDENTITY", completed_at=resolved_at))
                 continue
             prices = tuple(fetch_prices(item.fixture.match_id, identity))
+            completed_at = _utc(clock(), "clock")
+            failure = boundary_failure(item, completed_at)
+            if failure is not None:
+                results.append(failure)
+                continue
             if not prices:
                 results.append(AcquisitionResult(
                     item.fixture.match_id, AcquisitionStatus.PRICE_UNAVAILABLE,
                     "NO_BOTH_SIDED_MARKET_WINNER", identity=identity,
-                    completed_at=clock()))
+                    completed_at=completed_at))
                 continue
             results.append(AcquisitionResult(
                 item.fixture.match_id, AcquisitionStatus.CAPTURED,
                 "CAPTURED_BEFORE_FIRST_ISSUE", identity=identity,
-                prices=prices, completed_at=clock()))
+                prices=prices, completed_at=completed_at))
         except OddspapiBudgetExceeded:
             results.append(AcquisitionResult(
                 item.fixture.match_id,

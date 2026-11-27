@@ -20,6 +20,10 @@ from sports_edge_tennis.odds.providers.oddspapi_tennis import (
     build_oddspapi_tennis_observation,
 )
 from sports_edge_tennis.odds.service import ingest_provider_observation
+from sports_edge_tennis.validation.paired_qualification_audit import (
+    audit_quotes,
+    load_quote_lineage,
+)
 
 NOW = datetime(2026, 11, 27, 1, 24, tzinfo=timezone.utc)
 
@@ -107,8 +111,8 @@ def _insert_real_format_match(conn) -> dict:
     ).fetchone()[0]
     conn.execute(
         "INSERT INTO match_source_ids "
-        "(match_id, match_version_id, source_system, source_match_id) "
-        "VALUES (%s, %s, 'ODDSPAPI', %s)",
+        "(match_id, match_version_id, source_system, source_match_id, created_at) "
+        "VALUES (%s, %s, 'ODDSPAPI', %s, '2026-11-26T00:00:00Z')",
         (match_id, version_id, "id1200670776914752"),
     )
     insert_bookmaker_mapping(
@@ -243,3 +247,13 @@ def test_real_format_oddspapi_record_is_attributed_and_counted(db):
     # qualification is zero rather than inferred.
     assert provider["original_time_qualified_comparisons"] == 0
     assert provider["normalized_by_bookmaker"][0]["bookmaker_code"] == "PINNACLE"
+
+    lineage = load_quote_lineage(
+        db, provider_code="ODDSPAPI", match_ids=[match["match_id"]])
+    audit = audit_quotes(
+        lineage, prediction_locks={match["match_id"]: NOW + timedelta(hours=1)},
+        now=NOW,
+    )
+    assert audit["candidate_markets"] == 1
+    assert audit["qualified_markets"] == 1
+    assert audit["qualified_fixtures"] == 1

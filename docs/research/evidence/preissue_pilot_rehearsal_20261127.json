@@ -1,0 +1,639 @@
+{
+  "actual_reservations": 9,
+  "assertions": {
+    "budget_blocks_request": true,
+    "crash_never_qualified": true,
+    "happy_path_completes": true,
+    "late_response_never_qualified": true,
+    "lost_ack_never_qualified": true,
+    "missing_prices_never_qualified": true,
+    "rescheduled_fixture_misses_deadline": true,
+    "retrospective_never_qualified": true
+  },
+  "captured_two_sided_observations": 3,
+  "durable_observation_records": 8,
+  "measured_at": "2026-11-27T12:00:00+00:00",
+  "original_time_qualified": 3,
+  "production_side_effects": {
+    "database_writes": 0,
+    "production_budget_used": 0,
+    "provider_calls": 0
+  },
+  "provider_calls": 9,
+  "scenarios": {
+    "budget_exhausted": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": false,
+        "issued": true,
+        "model_p1": 0.62,
+        "reason": "ORIGINAL_TIME_MARKET_CONFIRMED"
+      },
+      "observations": 1,
+      "provider_calls": 1,
+      "qualified": 1,
+      "requested": 2,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:1180e80b6a59f0e6d89551f603082c8d553d5317a8d6e2d7526a895e4a8ff5be",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:1180e80b6a59f0e6d89551f603082c8d553d5317a8d6e2d7526a895e4a8ff5be",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:577ddfbd19bdb371b7a449f6b5a82f1c16fb5145bb76380013713523355b6b0e",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "ORIGINAL_TIME_QUALIFIED",
+            "qualification_reasons": [],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "ORIGINAL_TIME_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:1180e80b6a59f0e6d89551f603082c8d553d5317a8d6e2d7526a895e4a8ff5be",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:1180e80b6a59f0e6d89551f603082c8d553d5317a8d6e2d7526a895e4a8ff5be:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "CAPTURED"
+        },
+        {
+          "attempts": 0,
+          "completed_at": null,
+          "dedupe_key": "pilot:a511aea75311a5298369f6bed4a7fb1a18c56121df994255294d5ebca61adce7",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": null,
+          "provider_code": "ODDSPAPI",
+          "reason": "ATOMIC_ALLOWANCE_EXHAUSTED",
+          "reservations": [],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "BUDGET_EXHAUSTED"
+        }
+      ],
+      "scenario": "budget_exhausted",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "BUDGET_EXHAUSTED": 1,
+        "CAPTURED": 1
+      },
+      "transport_calls": 1,
+      "unique_requests": 2,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "crash": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 0,
+      "provider_calls": 1,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": null,
+          "dedupe_key": "pilot:b411256a4f629d61cd58e08a7738a702cefc223a79d79b843e57a8c44004f104",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": null,
+          "provider_code": "ODDSPAPI",
+          "reason": "RuntimeError:provider connection reset",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:b411256a4f629d61cd58e08a7738a702cefc223a79d79b843e57a8c44004f104",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:b411256a4f629d61cd58e08a7738a702cefc223a79d79b843e57a8c44004f104:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "PROVIDER_ERROR"
+        }
+      ],
+      "scenario": "crash",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "PROVIDER_ERROR": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "happy_path": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": false,
+        "issued": true,
+        "model_p1": 0.62,
+        "reason": "ORIGINAL_TIME_MARKET_CONFIRMED"
+      },
+      "identity_resolution": {
+        "api_tennis_match_key": "api-1",
+        "canonical_match_id": 1,
+        "oddspapi_fixture_id": "op-1",
+        "orientation": "DIRECT"
+      },
+      "observations": 3,
+      "persisted_observations": 3,
+      "provider_calls": 3,
+      "qualified": 2,
+      "requested": 3,
+      "reservation_rows": 3,
+      "reservations": 3,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:8bb3fe145860229d10784b5f784aadd24e57345fa85cd655a3cdf059f370c6ef",
+          "endpoint": "/v4/fixtures",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:8bb3fe145860229d10784b5f784aadd24e57345fa85cd655a3cdf059f370c6ef",
+            "endpoint": "/v4/fixtures",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:98f8fb99b0150f159336271a4b00cfc0ef8fa6750be187dfb32bbb3470555076",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "NO_TWO_SIDED_PRICE",
+            "qualification_reasons": [
+              "MISSING_OPPOSITE_SELECTION"
+            ],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "NOT_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:8bb3fe145860229d10784b5f784aadd24e57345fa85cd655a3cdf059f370c6ef",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:8bb3fe145860229d10784b5f784aadd24e57345fa85cd655a3cdf059f370c6ef:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "NO_TWO_SIDED_PRICE"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:bfd7c93eb4c0cb3b287cdc513424b5944f54295ee840c1d2d6cd8aaec26ce942",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:bfd7c93eb4c0cb3b287cdc513424b5944f54295ee840c1d2d6cd8aaec26ce942",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:577ddfbd19bdb371b7a449f6b5a82f1c16fb5145bb76380013713523355b6b0e",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "ORIGINAL_TIME_QUALIFIED",
+            "qualification_reasons": [],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "ORIGINAL_TIME_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:bfd7c93eb4c0cb3b287cdc513424b5944f54295ee840c1d2d6cd8aaec26ce942",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:bfd7c93eb4c0cb3b287cdc513424b5944f54295ee840c1d2d6cd8aaec26ce942:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "CAPTURED"
+        },
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:a3ec3fd31e887f301540a9cb81b67d0ad20744eb9cc641cd34dacd2fd62fd721",
+          "endpoint": "get_odds",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:a3ec3fd31e887f301540a9cb81b67d0ad20744eb9cc641cd34dacd2fd62fd721",
+            "endpoint": "get_odds",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:577ddfbd19bdb371b7a449f6b5a82f1c16fb5145bb76380013713523355b6b0e",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "API_TENNIS",
+            "provider_request_id": null,
+            "qualification": "ORIGINAL_TIME_QUALIFIED",
+            "qualification_reasons": [],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "API_TENNIS",
+          "reason": "ORIGINAL_TIME_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:a3ec3fd31e887f301540a9cb81b67d0ad20744eb9cc641cd34dacd2fd62fd721",
+              "provider_code": "API_TENNIS",
+              "reservation_id": "mem:pilot:a3ec3fd31e887f301540a9cb81b67d0ad20744eb9cc641cd34dacd2fd62fd721:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "CAPTURED"
+        }
+      ],
+      "scenario": "happy_path",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "CAPTURED": 2,
+        "NO_TWO_SIDED_PRICE": 1
+      },
+      "unique_requests": 3,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "late_response": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T15:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 1,
+      "provider_calls": 1,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T15:00:00+00:00",
+          "dedupe_key": "pilot:5e62e38a843ea620a644418d5172846762d0ea2d25cee50eb149e594c9bf8b9e",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:5e62e38a843ea620a644418d5172846762d0ea2d25cee50eb149e594c9bf8b9e",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T15:00:00+00:00",
+            "payload_hash": "sha256:577ddfbd19bdb371b7a449f6b5a82f1c16fb5145bb76380013713523355b6b0e",
+            "persisted_at": "2026-11-27T15:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "LATE_RESPONSE",
+            "qualification_reasons": [
+              "RESPONSE_COMPLETED_AFTER_DEADLINE"
+            ],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "RESPONSE_COMPLETED_AFTER_DEADLINE",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:5e62e38a843ea620a644418d5172846762d0ea2d25cee50eb149e594c9bf8b9e",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:5e62e38a843ea620a644418d5172846762d0ea2d25cee50eb149e594c9bf8b9e:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "LATE_RESPONSE"
+        }
+      ],
+      "scenario": "late_response",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "LATE_RESPONSE": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "lost_acknowledgement": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 1,
+      "provider_calls": 1,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:e09e0c2d3a8289c5e08eb59d7f38423cbd54cec66ff24fdec1326e81fc7df0f7",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:e09e0c2d3a8289c5e08eb59d7f38423cbd54cec66ff24fdec1326e81fc7df0f7",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:577ddfbd19bdb371b7a449f6b5a82f1c16fb5145bb76380013713523355b6b0e",
+            "persisted_at": null,
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "ORIGINAL_TIME_QUALIFIED",
+            "qualification_reasons": [],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "ACK_LOST:durable ack lost",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:e09e0c2d3a8289c5e08eb59d7f38423cbd54cec66ff24fdec1326e81fc7df0f7",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:e09e0c2d3a8289c5e08eb59d7f38423cbd54cec66ff24fdec1326e81fc7df0f7:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "ACKNOWLEDGEMENT_LOST"
+        }
+      ],
+      "scenario": "lost_acknowledgement",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "ACKNOWLEDGEMENT_LOST": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "missing_prices": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 1,
+      "provider_calls": 1,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:5931cf91b6207f14702cc2162c6e58fc6af1625afa79dab85c87752a7c5efd4f",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:5931cf91b6207f14702cc2162c6e58fc6af1625afa79dab85c87752a7c5efd4f",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:6562214cf05df58d38f28580ebe128dc04397527ac6b0a3b6700e080fd751287",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "NO_TWO_SIDED_PRICE",
+            "qualification_reasons": [
+              "MISSING_OPPOSITE_SELECTION"
+            ],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "NOT_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:5931cf91b6207f14702cc2162c6e58fc6af1625afa79dab85c87752a7c5efd4f",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:5931cf91b6207f14702cc2162c6e58fc6af1625afa79dab85c87752a7c5efd4f:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "NO_TWO_SIDED_PRICE"
+        }
+      ],
+      "scenario": "missing_prices",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "NO_TWO_SIDED_PRICE": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "rescheduled_fixture": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 0,
+      "provider_calls": 0,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 0,
+      "results": [
+        {
+          "attempts": 0,
+          "completed_at": null,
+          "dedupe_key": "pilot:b7097b8649d315801ada293f392392b701149cedcdb57595c680de5867565c41",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": null,
+          "provider_code": "ODDSPAPI",
+          "reason": "INSUFFICIENT_TIME_BEFORE_ISSUE_OR_T60",
+          "reservations": [],
+          "started_at": null,
+          "status": "DEADLINE_MISSED"
+        }
+      ],
+      "scenario": "rescheduled_fixture",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "DEADLINE_MISSED": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    },
+    "retrospective_reconstruction": {
+      "authorization_reference": "synthetic owner approval",
+      "completed_at": "2026-11-27T12:00:00+00:00",
+      "entitlement_verified": true,
+      "forecast": {
+        "abstained": true,
+        "issued": false,
+        "model_p1": null,
+        "reason": "NO_ORIGINAL_TIME_MARKET"
+      },
+      "observations": 1,
+      "provider_calls": 1,
+      "qualified": 0,
+      "requested": 1,
+      "reservations": 1,
+      "results": [
+        {
+          "attempts": 1,
+          "completed_at": "2026-11-27T12:00:00+00:00",
+          "dedupe_key": "pilot:2f161beae7670ee21b08b02dfb843d815f848928d5f73633420b432803a2fda1",
+          "endpoint": "/v4/odds-by-tournaments",
+          "match_ids": [
+            1,
+            2
+          ],
+          "observation": {
+            "dedupe_key": "pilot:2f161beae7670ee21b08b02dfb843d815f848928d5f73633420b432803a2fda1",
+            "endpoint": "/v4/odds-by-tournaments",
+            "match_ids": [
+              1,
+              2
+            ],
+            "observed_at": "2026-11-27T12:00:00+00:00",
+            "payload_hash": "sha256:abeb334f549e05fa953f568197cdf76288c77b0061fc63e836c080c5bec047ec",
+            "persisted_at": "2026-11-27T12:00:00+00:00",
+            "provider_code": "ODDSPAPI",
+            "provider_request_id": null,
+            "qualification": "REJECTED_RETROSPECTIVE_RECONSTRUCTION",
+            "qualification_reasons": [
+              "HISTORICAL_RECONSTRUCTION_NOT_ORIGINAL_TIME"
+            ],
+            "received_at": "2026-11-27T12:00:00+00:00"
+          },
+          "provider_code": "ODDSPAPI",
+          "reason": "NOT_QUALIFIED",
+          "reservations": [
+            {
+              "dedupe_key": "pilot:2f161beae7670ee21b08b02dfb843d815f848928d5f73633420b432803a2fda1",
+              "provider_code": "ODDSPAPI",
+              "reservation_id": "mem:pilot:2f161beae7670ee21b08b02dfb843d815f848928d5f73633420b432803a2fda1:0",
+              "reserved_at": "2026-11-27T12:00:00+00:00",
+              "retry_sequence": 0,
+              "status": "RESERVED",
+              "units": 1
+            }
+          ],
+          "started_at": "2026-11-27T12:00:00+00:00",
+          "status": "NO_TWO_SIDED_PRICE"
+        }
+      ],
+      "scenario": "retrospective_reconstruction",
+      "started_at": "2026-11-27T12:00:00+00:00",
+      "status": "COMPLETED_WITH_FAILURES",
+      "status_counts": {
+        "NO_TWO_SIDED_PRICE": 1
+      },
+      "unique_requests": 1,
+      "version": "PREISSUE_PILOT_V1"
+    }
+  },
+  "version": "PREISSUE_PILOT_REHEARSAL_V1"
+}
