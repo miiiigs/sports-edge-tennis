@@ -106,6 +106,9 @@ class ApiTennisIngestedMatch:
     player_1_id: int
     player_2_id: int
     match_status: str
+    #: Scheduled start of the version that was just persisted. Kept on the
+    #: outcome so the live runner can refuse to target a retrospective backfill.
+    match_start_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -200,6 +203,7 @@ def ingest_api_tennis_source_a_fixtures(
                     player_1_id=locator.player_1_id,
                     player_2_id=locator.player_2_id,
                     match_status=record.match_status,
+                    match_start_at=record.match_start_at,
                 )
             )
         status = _ingest_status(success_count=len(ingested), rejected_count=len(rejected_rows))

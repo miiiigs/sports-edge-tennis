@@ -1,0 +1,156 @@
+{
+  "version": "TENNIS_EXTERNAL_SERVICE_MANIFEST_20261127_V1",
+  "status": "PREPARED_NOT_ACTIVATED",
+  "prepared_utc": "2026-11-27T04:00:00+00:00",
+  "service": {
+    "name": "tennis-independent-monitor",
+    "purpose": "Dead-man's-switch monitoring and durable receipt verification for the tennis pipeline.",
+    "separate_from_forecasting_scheduler": true,
+    "must_not_run_inside": "tennis-live-runner",
+    "runtime": "Railway cron service or equivalent container scheduler",
+    "schedule_utc": "*/15 * * * *",
+    "command": "python ops/validation/monitoring_cycle.py --slot $TENNIS_MONITOR_SLOT --receipt /data/receipts/$TENNIS_MONITOR_SLOT.json --stream LIVE_RUNNER --state-path /data/monitoring-state.json",
+    "max_runtime_minutes": 5,
+    "restart_policy": "NEVER",
+    "inbound_network": "NONE",
+    "outbound_network": [
+      "https://hc-ping.com (or self-hosted equivalent)",
+      "approved incident notification endpoint"
+    ]
+  },
+  "authentication": {
+    "credentials_location": "SERVER_ENVIRONMENT_ONLY",
+    "secret_store_required": true,
+    "tls_required": true,
+    "inbound_authentication": "NOT_APPLICABLE_NO_INBOUND_LISTENER",
+    "secret_names": [
+      "TENNIS_HEALTHCHECKS_PING_KEY",
+      "TENNIS_HEALTHCHECKS_BASE_URL",
+      "TENNIS_HEALTHCHECKS_SLUG",
+      "TENNIS_MONITORING_STATE_PATH",
+      "TENNIS_MONITORING_RECEIPT_DIR"
+    ],
+    "logging_rule": "Never print a ping key, check UUID, notifier URL or database DSN.",
+    "rotation_days": 90,
+    "rotation_procedure": [
+      "Create a second ping key or check with a new slug.",
+      "Deploy the new secret to the monitor service only.",
+      "Confirm two consecutive successful cycles on the new check.",
+      "Disable the old check after a 24-hour overlap.",
+      "Record the rotation date and operator; never record the secret."
+    ]
+  },
+  "clocks": {
+    "local_clock_source": "host NTP (provider-managed)",
+    "independent_verification": "HTTP Date header from the monitoring service",
+    "max_skew_seconds": 60,
+    "verification_frequency": "EVERY_CYCLE",
+    "failure_behaviour": "CLOCK_SKEW_EXCEEDED -> exit 2, no success signal",
+    "code": "src/sports_edge_tennis/ops/clock_health.py"
+  },
+  "storage": {
+    "durable_volume_required": true,
+    "mount_path": "/data",
+    "state_file": "/data/monitoring-state.json",
+    "receipt_directory": "/data/receipts",
+    "receipt_store": "append-only SQLite with WAL and FULL synchronous",
+    "minimum_size_gb": 1,
+    "estimated_growth_mb_per_month": 20,
+    "retention_days": 400,
+    "backup_frequency": "DAILY",
+    "backup_destination": "separate provider or object store approved by the owner",
+    "backup_manifest_required": true,
+    "restore_drill_frequency": "MONTHLY",
+    "backup_code": "src/sports_edge_tennis/ops/durable_store.py",
+    "filesystem_copy_of_live_wal_forbidden": true
+  },
+  "health_checks": {
+    "checks": [
+      "FIXTURE_DISCOVERY",
+      "FORECAST_GENERATION",
+      "BOOKMAKER_ACQUISITION",
+      "INDEPENDENT_ARCHIVAL",
+      "OFFICIAL_SETTLEMENT",
+      "BOOKMAKER_SETTLEMENT",
+      "PROSPECTIVE_CANDIDATE_EXECUTION"
+    ],
+    "one_check_per_stream": true,
+    "grace_minutes": 45,
+    "repeat_reminder_minutes": 60,
+    "success_requires_durable_receipt": true,
+    "missing_receipt_behaviour": "FAIL_CLOSED",
+    "independent_of_database": true
+  },
+  "incident_notification": {
+    "channels_minimum": 2,
+    "recommended": ["email", "team chat", "SMS or phone for P1"],
+    "on_call_route": "OWNER_TO_DEFINE",
+    "test_alert_required_before_activation": true,
+    "duplicate_suppression_seconds": 3600,
+    "recovery_notification": "ONE_PER_INCIDENT",
+    "notifier_failure_exit_code": 2
+  },
+  "recovery": {
+    "detect": "missing success heartbeat or failed job receipt",
+    "first_response_minutes": 15,
+    "owner_actions": [
+      "Verify the monitor itself is alive with an independent ping.",
+      "Check the forecasting scheduler deployment state.",
+      "Check the database read-only reachability.",
+      "Re-run the receipt publisher after the pipeline recovers.",
+      "Confirm one recovery notification and no duplicate pages."
+    ],
+    "never_backdate": true,
+    "never_insert_a_missed_forecast": true
+  },
+  "estimated_costs": {
+    "currency": "USD",
+    "as_of_utc": "2026-11-27T04:00:00+00:00",
+    "healthchecks": {
+      "hobbyist_usd_month": 0,
+      "business_usd_month": 20,
+      "business_annual_usd": 192,
+      "checks_needed": 8,
+      "note": "Hobbyist covers 20 checks. Business adds SMS/phone credits and 100 checks. Verify current public pricing before purchase."
+    },
+    "railway_monitor_service": {
+      "incremental_usd_month_low": 0,
+      "incremental_usd_month_high": 5,
+      "note": "Short 15-minute cron execution on the existing plan; provider usage pricing must be confirmed. No new plan is required by this document."
+    },
+    "durable_volume": {
+      "size_gb": 1,
+      "incremental_usd_month_low": 0,
+      "incremental_usd_month_high": 1
+    },
+    "backup_storage": {
+      "size_gb": 1,
+      "incremental_usd_month_low": 0,
+      "incremental_usd_month_high": 1
+    },
+    "total_recommended_usd_month_low": 0,
+    "total_recommended_usd_month_high": 27,
+    "purchase_authorised": false,
+    "accounts_provisioned": false
+  },
+  "activation_gates": {
+    "owner_approval": false,
+    "provider_account": false,
+    "paid_plan": false,
+    "notifier_destination": false,
+    "durable_volume": false,
+    "backup_destination": false,
+    "clock_verification": false,
+    "receipt_publisher_wired": false,
+    "test_alert_rehearsed": false,
+    "restore_drill_completed": false,
+    "credential_rotation_recorded": false
+  },
+  "explicit_non_claims": [
+    "No account was created.",
+    "No paid service was activated.",
+    "No heartbeat or incident notification was sent.",
+    "No backup was written to an external provider.",
+    "Costs are estimates to be verified against current provider pricing."
+  ]
+}

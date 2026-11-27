@@ -20,9 +20,10 @@ import json
 import os
 import re
 import sys
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 import psycopg
 import requests
@@ -38,15 +39,18 @@ from sports_edge_tennis.live.api_tennis_fixture_compat import (
     normalize_api_tennis_fixture_rounds,
     normalize_api_tennis_upcoming_status,
 )
-from sports_edge_tennis.live.api_tennis_match_stats import persist_api_tennis_match_stats
+from sports_edge_tennis.live.api_tennis_match_stats import (
+    persist_api_tennis_match_stats,
+)
 from sports_edge_tennis.live.credentials import MissingCredentialError, load_secret
 from sports_edge_tennis.live.transport import (
     API_TENNIS_BASE_URL,
+    API_TENNIS_REQUEST_TIMEZONE,
     DEFAULT_TIMEOUT,
     TransportError,
+    _require_utc_request_timezone,
     api_tennis_failure_category,
 )
-
 
 RESULT_DATASET = "api_tennis_completed_result_refresh"
 RESULT_ADAPTER_VERSION = "API_TENNIS_RESULT_REFRESH_V1"
@@ -175,6 +179,7 @@ def fetch_api_tennis_fixture_window(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = API_TENNIS_BASE_URL,
     clock: Callable[[], datetime] | None = None,
+    source_timezone: str = API_TENNIS_REQUEST_TIMEZONE,
 ) -> tuple[datetime, list[dict[str, Any]]]:
     """Fetch one API-Tennis fixture window with one HTTP request and no retries."""
     if end_date < start_date:
@@ -187,7 +192,7 @@ def fetch_api_tennis_fixture_window(
         "APIkey": api_key,
         "date_start": start_date.isoformat(),
         "date_stop": end_date.isoformat(),
-        "timezone": "UTC",
+        "timezone": _require_utc_request_timezone(source_timezone),
     }
     try:
         response = requests.get(base_url, params=params, timeout=timeout)
