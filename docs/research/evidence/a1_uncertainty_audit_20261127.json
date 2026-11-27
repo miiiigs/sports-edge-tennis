@@ -1,0 +1,2340 @@
+{
+  "audit": {
+    "dimensions": {
+      "overall_min_matches": [
+        {
+          "stratum": "0-4",
+          "n": 327,
+          "wins": 225,
+          "losses": 102,
+          "accuracy": 0.6880733944954128,
+          "wilson95": [
+            0.6359210793069893,
+            0.7358582026440742
+          ],
+          "mean_confidence": 0.6643782996941896,
+          "calibration_gap": -0.023695094801223227,
+          "brier": 0.19969564910488075,
+          "log_loss": 0.5841467031958979,
+          "mean_min_matches": 1.4464831804281346,
+          "median_min_matches": 1.0,
+          "surface_known": 284,
+          "surface_missing": 43,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 20,
+              "wins": 18,
+              "accuracy": 0.9,
+              "wilson95": [
+                0.6989663547715128,
+                0.9721335187862319
+              ]
+            },
+            "CHALLENGER": {
+              "n": 307,
+              "wins": 207,
+              "accuracy": 0.6742671009771987,
+              "wilson95": [
+                0.6199704450002557,
+                0.7242564815041714
+              ]
+            }
+          },
+          "atp_share": 0.06116207951070336,
+          "calibration_slope": 1.1233537494983192,
+          "calibration_intercept": 0.04218003286057426,
+          "calibration_status": "OK",
+          "ece": 0.02607059938837918,
+          "murphy_reliability": 0.0016065143660475092,
+          "murphy_resolution": 0.015624788912390958,
+          "murphy_uncertainty": 0.2146283982829728
+        },
+        {
+          "stratum": "10-19",
+          "n": 297,
+          "wins": 189,
+          "losses": 108,
+          "accuracy": 0.6363636363636364,
+          "wilson95": [
+            0.5802362577111487,
+            0.689008547567758
+          ],
+          "mean_confidence": 0.6751110942760943,
+          "calibration_gap": 0.03874745791245793,
+          "brier": 0.2123375229992357,
+          "log_loss": 0.6115758749016407,
+          "mean_min_matches": 14.606060606060606,
+          "median_min_matches": 15.0,
+          "surface_known": 263,
+          "surface_missing": 34,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 12,
+              "wins": 11,
+              "accuracy": 0.9166666666666666,
+              "wilson95": [
+                0.646120088858883,
+                0.9851349055950829
+              ]
+            },
+            "CHALLENGER": {
+              "n": 285,
+              "wins": 178,
+              "accuracy": 0.624561403508772,
+              "wilson95": [
+                0.5670363771903696,
+                0.6787732108441346
+              ]
+            }
+          },
+          "atp_share": 0.04040404040404041,
+          "calibration_slope": 1.1968270667217304,
+          "calibration_intercept": -0.3138010386202297,
+          "calibration_status": "OK",
+          "ece": 0.04804741077441073,
+          "murphy_reliability": 0.004485705646903995,
+          "murphy_resolution": 0.02221314822257762,
+          "murphy_uncertainty": 0.23140495867768596
+        },
+        {
+          "stratum": "100+",
+          "n": 1217,
+          "wins": 809,
+          "losses": 408,
+          "accuracy": 0.6647493837304848,
+          "wilson95": [
+            0.6377450469753915,
+            0.6907169307062618
+          ],
+          "mean_confidence": 0.6443117189811011,
+          "calibration_gap": -0.02043766474938369,
+          "brier": 0.21790518164696632,
+          "log_loss": 0.6256581335190577,
+          "mean_min_matches": 243.29580936729664,
+          "median_min_matches": 205.0,
+          "surface_known": 1035,
+          "surface_missing": 182,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 429,
+              "wins": 292,
+              "accuracy": 0.6806526806526807,
+              "wilson95": [
+                0.6350985460095668,
+                0.7230002378322307
+              ]
+            },
+            "CHALLENGER": {
+              "n": 788,
+              "wins": 517,
+              "accuracy": 0.6560913705583756,
+              "wilson95": [
+                0.6222403433004721,
+                0.6884279063342121
+              ]
+            }
+          },
+          "atp_share": 0.352506162695152,
+          "calibration_slope": 0.7806226577059654,
+          "calibration_intercept": 0.21636262701199035,
+          "calibration_status": "OK",
+          "ece": 0.031918698438783914,
+          "murphy_reliability": 0.0014646808394196075,
+          "murphy_resolution": 0.006348493247435349,
+          "murphy_uncertainty": 0.22285764056042548
+        },
+        {
+          "stratum": "20-49",
+          "n": 732,
+          "wins": 470,
+          "losses": 262,
+          "accuracy": 0.6420765027322405,
+          "wilson95": [
+            0.6066895181666832,
+            0.6759800671178344
+          ],
+          "mean_confidence": 0.6722440642076503,
+          "calibration_gap": 0.030167561475409777,
+          "brier": 0.21833625590885383,
+          "log_loss": 0.623167021276828,
+          "mean_min_matches": 34.650273224043715,
+          "median_min_matches": 35.0,
+          "surface_known": 649,
+          "surface_missing": 83,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 53,
+              "wins": 39,
+              "accuracy": 0.7358490566037735,
+              "wilson95": [
+                0.6041933558938148,
+                0.8356264608153632
+              ]
+            },
+            "CHALLENGER": {
+              "n": 679,
+              "wins": 431,
+              "accuracy": 0.6347569955817378,
+              "wilson95": [
+                0.5978763340947222,
+                0.6701214531457469
+              ]
+            }
+          },
+          "atp_share": 0.07240437158469945,
+          "calibration_slope": 0.9800760725364362,
+          "calibration_intercept": -0.1289444609356754,
+          "calibration_status": "OK",
+          "ece": 0.0406506598360656,
+          "murphy_reliability": 0.002368041141295762,
+          "murphy_resolution": 0.014582414553117309,
+          "murphy_uncertainty": 0.22981426737137567
+        },
+        {
+          "stratum": "5-9",
+          "n": 144,
+          "wins": 104,
+          "losses": 40,
+          "accuracy": 0.7222222222222222,
+          "wilson95": [
+            0.6440180632259012,
+            0.7888780980438603
+          ],
+          "mean_confidence": 0.6997872916666666,
+          "calibration_gap": -0.022434930555555566,
+          "brier": 0.17977430016918056,
+          "log_loss": 0.5364460376849313,
+          "mean_min_matches": 6.798611111111111,
+          "median_min_matches": 7.0,
+          "surface_known": 132,
+          "surface_missing": 12,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 2,
+              "wins": 2,
+              "accuracy": 1.0,
+              "wilson95": [
+                0.34238022750665303,
+                1.0
+              ]
+            },
+            "CHALLENGER": {
+              "n": 142,
+              "wins": 102,
+              "accuracy": 0.7183098591549296,
+              "wilson95": [
+                0.6393290230352737,
+                0.7857901474759481
+              ]
+            }
+          },
+          "atp_share": 0.013888888888888888,
+          "calibration_slope": 1.4689317844561738,
+          "calibration_intercept": -0.2234049101422529,
+          "calibration_status": "OK",
+          "ece": 0.04193722222222221,
+          "murphy_reliability": 0.002023855390631205,
+          "murphy_resolution": 0.022194901484117176,
+          "murphy_uncertainty": 0.2006172839506173
+        },
+        {
+          "stratum": "50-99",
+          "n": 506,
+          "wins": 319,
+          "losses": 187,
+          "accuracy": 0.6304347826086957,
+          "wilson95": [
+            0.5875422070953044,
+            0.6713618065275325
+          ],
+          "mean_confidence": 0.6624732786561265,
+          "calibration_gap": 0.03203849604743081,
+          "brier": 0.21659316932933398,
+          "log_loss": 0.6238436575982044,
+          "mean_min_matches": 69.65612648221344,
+          "median_min_matches": 66.0,
+          "surface_known": 450,
+          "surface_missing": 56,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 61,
+              "wins": 41,
+              "accuracy": 0.6721311475409836,
+              "wilson95": [
+                0.5472180631353664,
+                0.7766488020144636
+              ]
+            },
+            "CHALLENGER": {
+              "n": 445,
+              "wins": 278,
+              "accuracy": 0.6247191011235955,
+              "wilson95": [
+                0.57884471676857,
+                0.6684586412849536
+              ]
+            }
+          },
+          "atp_share": 0.12055335968379446,
+          "calibration_slope": 1.18100308195027,
+          "calibration_intercept": -0.26088818715652273,
+          "calibration_status": "OK",
+          "ece": 0.04875605731225298,
+          "murphy_reliability": 0.003402733792647515,
+          "murphy_resolution": 0.018330301281830344,
+          "murphy_uncertainty": 0.2329867674858223
+        }
+      ],
+      "favourite_matches": [
+        {
+          "stratum": "0-4",
+          "n": 99,
+          "wins": 33,
+          "losses": 66,
+          "accuracy": 0.3333333333333333,
+          "wilson95": [
+            0.24823816410788008,
+            0.4308795732480624
+          ],
+          "mean_confidence": 0.6044906666666666,
+          "calibration_gap": 0.2711573333333333,
+          "brier": 0.3015694290754343,
+          "log_loss": 0.8094495974402599,
+          "mean_min_matches": 1.3131313131313131,
+          "median_min_matches": 1.0,
+          "surface_known": 86,
+          "surface_missing": 13,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 1,
+              "wins": 0,
+              "accuracy": 0.0,
+              "wilson95": [
+                0.0,
+                0.7934506856227626
+              ]
+            },
+            "CHALLENGER": {
+              "n": 98,
+              "wins": 33,
+              "accuracy": 0.336734693877551,
+              "wilson95": [
+                0.2509013451362383,
+                0.4348847740871675
+              ]
+            }
+          },
+          "atp_share": 0.010101010101010102,
+          "calibration_slope": 0.0016432626456918393,
+          "calibration_intercept": -0.6938792469204016,
+          "calibration_status": "OK",
+          "ece": 0.2711573333333333,
+          "murphy_reliability": 0.08506829580721975,
+          "murphy_resolution": 0.0053770023466993165,
+          "murphy_uncertainty": 0.22222222222222224
+        },
+        {
+          "stratum": "10-19",
+          "n": 133,
+          "wins": 81,
+          "losses": 52,
+          "accuracy": 0.6090225563909775,
+          "wilson95": [
+            0.5241464887832695,
+            0.6877775892697074
+          ],
+          "mean_confidence": 0.6328648496240602,
+          "calibration_gap": 0.023842293233082734,
+          "brier": 0.22237394325623308,
+          "log_loss": 0.6337110440858541,
+          "mean_min_matches": 11.661654135338345,
+          "median_min_matches": 13.0,
+          "surface_known": 115,
+          "surface_missing": 18,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 2,
+              "wins": 1,
+              "accuracy": 0.5,
+              "wilson95": [
+                0.09453120573423074,
+                0.9054687942657693
+              ]
+            },
+            "CHALLENGER": {
+              "n": 131,
+              "wins": 80,
+              "accuracy": 0.6106870229007634,
+              "wilson95": [
+                0.5251741909777458,
+                0.6898931944809273
+              ]
+            }
+          },
+          "atp_share": 0.015037593984962405,
+          "calibration_slope": 1.4889060370417524,
+          "calibration_intercept": -0.3505496928929609,
+          "calibration_status": "OK",
+          "ece": 0.046933887218045096,
+          "murphy_reliability": 0.002374299864810404,
+          "murphy_resolution": 0.015950441388635717,
+          "murphy_uncertainty": 0.23811408219797614
+        },
+        {
+          "stratum": "100+",
+          "n": 2123,
+          "wins": 1447,
+          "losses": 676,
+          "accuracy": 0.6815826660386246,
+          "wilson95": [
+            0.6614532114462297,
+            0.7010561786178091
+          ],
+          "mean_confidence": 0.6693834644371173,
+          "calibration_gap": -0.012199201601507337,
+          "brier": 0.20700470958112058,
+          "log_loss": 0.6012801226578534,
+          "mean_min_matches": 156.2741403674046,
+          "median_min_matches": 120.0,
+          "surface_known": 1830,
+          "surface_missing": 293,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 529,
+              "wins": 372,
+              "accuracy": 0.7032136105860114,
+              "wilson95": [
+                0.6629313614790663,
+                0.7405657696860773
+              ]
+            },
+            "CHALLENGER": {
+              "n": 1594,
+              "wins": 1075,
+              "accuracy": 0.6744040150564617,
+              "wilson95": [
+                0.6510045555846442,
+                0.6969648858957156
+              ]
+            }
+          },
+          "atp_share": 0.2491756947715497,
+          "calibration_slope": 0.9132556108296359,
+          "calibration_intercept": 0.11461026790141185,
+          "calibration_status": "OK",
+          "ece": 0.014739316533207729,
+          "murphy_reliability": 0.00037893493804421857,
+          "murphy_resolution": 0.009633095725617621,
+          "murphy_uncertainty": 0.21702773539430534
+        },
+        {
+          "stratum": "20-49",
+          "n": 423,
+          "wins": 277,
+          "losses": 146,
+          "accuracy": 0.6548463356973995,
+          "wilson95": [
+            0.6083297611905794,
+            0.6985757590977624
+          ],
+          "mean_confidence": 0.6479703971631205,
+          "calibration_gap": -0.006875938534278925,
+          "brier": 0.21816538111615602,
+          "log_loss": 0.6228984917556617,
+          "mean_min_matches": 26.91725768321513,
+          "median_min_matches": 29.0,
+          "surface_known": 371,
+          "surface_missing": 52,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 16,
+              "wins": 14,
+              "accuracy": 0.875,
+              "wilson95": [
+                0.639771727342413,
+                0.9650225122567595
+              ]
+            },
+            "CHALLENGER": {
+              "n": 407,
+              "wins": 263,
+              "accuracy": 0.6461916461916462,
+              "wilson95": [
+                0.5985690081835996,
+                0.6910804355253807
+              ]
+            }
+          },
+          "atp_share": 0.037825059101654845,
+          "calibration_slope": 0.9199728274579435,
+          "calibration_intercept": 0.0768181202876764,
+          "calibration_status": "OK",
+          "ece": 0.02978149881796692,
+          "murphy_reliability": 0.001819819163774338,
+          "murphy_resolution": 0.01174153634558294,
+          "murphy_uncertainty": 0.22602261232108828
+        },
+        {
+          "stratum": "5-9",
+          "n": 44,
+          "wins": 23,
+          "losses": 21,
+          "accuracy": 0.5227272727272727,
+          "wilson95": [
+            0.3793546556062164,
+            0.662450089677489
+          ],
+          "mean_confidence": 0.6228405681818182,
+          "calibration_gap": 0.1001132954545455,
+          "brier": 0.24249676367534093,
+          "log_loss": 0.6747376877057835,
+          "mean_min_matches": 5.159090909090909,
+          "median_min_matches": 5.0,
+          "surface_known": 39,
+          "surface_missing": 5,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 1,
+              "wins": 0,
+              "accuracy": 0.0,
+              "wilson95": [
+                0.0,
+                0.7934506856227626
+              ]
+            },
+            "CHALLENGER": {
+              "n": 43,
+              "wins": 23,
+              "accuracy": 0.5348837209302325,
+              "wilson95": [
+                0.38915640472313967,
+                0.6748894229587816
+              ]
+            }
+          },
+          "atp_share": 0.022727272727272728,
+          "calibration_slope": 1.3242516588958515,
+          "calibration_intercept": -0.5913852760161742,
+          "calibration_status": "OK",
+          "ece": 0.1232681590909091,
+          "murphy_reliability": 0.016735233709704353,
+          "murphy_resolution": 0.02796635182998819,
+          "murphy_uncertainty": 0.24948347107438015
+        },
+        {
+          "stratum": "50-99",
+          "n": 401,
+          "wins": 255,
+          "losses": 146,
+          "accuracy": 0.6359102244389028,
+          "wilson95": [
+            0.5877314810829352,
+            0.6815097184659394
+          ],
+          "mean_confidence": 0.6567017605985037,
+          "calibration_gap": 0.020791536159600943,
+          "brier": 0.21697054787181547,
+          "log_loss": 0.6210474696887089,
+          "mean_min_matches": 43.45885286783042,
+          "median_min_matches": 50.0,
+          "surface_known": 372,
+          "surface_missing": 29,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 28,
+              "wins": 16,
+              "accuracy": 0.5714285714285714,
+              "wilson95": [
+                0.3907078562746876,
+                0.734914528758763
+              ]
+            },
+            "CHALLENGER": {
+              "n": 373,
+              "wins": 239,
+              "accuracy": 0.6407506702412868,
+              "wilson95": [
+                0.5908538413275656,
+                0.6877779215591192
+              ]
+            }
+          },
+          "atp_share": 0.06982543640897755,
+          "calibration_slope": 1.1987044163367089,
+          "calibration_intercept": -0.21466254341628288,
+          "calibration_status": "OK",
+          "ece": 0.035725311720698275,
+          "murphy_reliability": 0.0014232877762737296,
+          "murphy_resolution": 0.015967711175699405,
+          "murphy_uncertainty": 0.23152841089296708
+        }
+      ],
+      "surface_experience_min": [
+        {
+          "stratum": "0",
+          "n": 499,
+          "wins": 347,
+          "losses": 152,
+          "accuracy": 0.6953907815631263,
+          "wilson95": [
+            0.6536433257068711,
+            0.7341528605052411
+          ],
+          "mean_confidence": 0.6768801603206412,
+          "calibration_gap": -0.018510621242485037,
+          "brier": 0.20083293195323848,
+          "log_loss": 0.5863678256991341,
+          "mean_min_matches": 96.7875751503006,
+          "median_min_matches": 11.0,
+          "surface_known": 239,
+          "surface_missing": 260,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 205,
+              "wins": 147,
+              "accuracy": 0.7170731707317073,
+              "wilson95": [
+                0.6518615743936413,
+                0.7742990189223298
+              ]
+            },
+            "CHALLENGER": {
+              "n": 294,
+              "wins": 200,
+              "accuracy": 0.6802721088435374,
+              "wilson95": [
+                0.6249312378184705,
+                0.730962801982798
+              ]
+            }
+          },
+          "atp_share": 0.41082164328657317,
+          "calibration_slope": 0.9323523558639418,
+          "calibration_intercept": 0.1360910015374204,
+          "calibration_status": "OK",
+          "ece": 0.04104696993987973,
+          "murphy_reliability": 0.0019383209467979925,
+          "murphy_resolution": 0.012836465541132198,
+          "murphy_uncertainty": 0.21182244248015067
+        },
+        {
+          "stratum": "1-4",
+          "n": 493,
+          "wins": 314,
+          "losses": 179,
+          "accuracy": 0.6369168356997972,
+          "wilson95": [
+            0.5935602450038926,
+            0.6781562102219592
+          ],
+          "mean_confidence": 0.6638683955375253,
+          "calibration_gap": 0.026951559837728123,
+          "brier": 0.21379018293912982,
+          "log_loss": 0.6135485987977349,
+          "mean_min_matches": 19.703853955375255,
+          "median_min_matches": 13.0,
+          "surface_known": 457,
+          "surface_missing": 36,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 24,
+              "wins": 19,
+              "accuracy": 0.7916666666666666,
+              "wilson95": [
+                0.5952954674681133,
+                0.9075517464714814
+              ]
+            },
+            "CHALLENGER": {
+              "n": 469,
+              "wins": 295,
+              "accuracy": 0.6289978678038379,
+              "wilson95": [
+                0.5843957809102278,
+                0.6715039456107588
+              ]
+            }
+          },
+          "atp_share": 0.0486815415821501,
+          "calibration_slope": 1.1912000936386653,
+          "calibration_intercept": -0.24413445147890495,
+          "calibration_status": "OK",
+          "ece": 0.032583020283975646,
+          "murphy_reliability": 0.0018478470445261687,
+          "murphy_resolution": 0.017845274067148646,
+          "murphy_uncertainty": 0.23125378010195474
+        },
+        {
+          "stratum": "10+",
+          "n": 1873,
+          "wins": 1219,
+          "losses": 654,
+          "accuracy": 0.6508275493860117,
+          "wilson95": [
+            0.6289497548251246,
+            0.6720879259787806
+          ],
+          "mean_confidence": 0.6544348723972238,
+          "calibration_gap": 0.003607323011212027,
+          "brier": 0.2185959724861463,
+          "log_loss": 0.6275433178044375,
+          "mean_min_matches": 156.12386545648693,
+          "median_min_matches": 117.0,
+          "surface_known": 1794,
+          "surface_missing": 79,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 324,
+              "wins": 223,
+              "accuracy": 0.6882716049382716,
+              "wilson95": [
+                0.6358770460218457,
+                0.7362540457529907
+              ]
+            },
+            "CHALLENGER": {
+              "n": 1549,
+              "wins": 996,
+              "accuracy": 0.6429954809554551,
+              "wilson95": [
+                0.6188090379237088,
+                0.6664744322487302
+              ]
+            }
+          },
+          "atp_share": 0.17298451681793914,
+          "calibration_slope": 0.8622874361784919,
+          "calibration_intercept": 0.06558658779176713,
+          "calibration_status": "OK",
+          "ece": 0.007675751201281374,
+          "murphy_reliability": 0.00018759627968751528,
+          "murphy_resolution": 0.00858419575724322,
+          "murphy_uncertainty": 0.22725105034621018
+        },
+        {
+          "stratum": "5-9",
+          "n": 358,
+          "wins": 236,
+          "losses": 122,
+          "accuracy": 0.659217877094972,
+          "wilson95": [
+            0.6086621151949214,
+            0.7063929931156252
+          ],
+          "mean_confidence": 0.6679992458100559,
+          "calibration_gap": 0.008781368715083837,
+          "brier": 0.2061917882192849,
+          "log_loss": 0.5940941244431173,
+          "mean_min_matches": 33.687150837988824,
+          "median_min_matches": 26.0,
+          "surface_known": 323,
+          "surface_missing": 35,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 24,
+              "wins": 14,
+              "accuracy": 0.5833333333333334,
+              "wilson95": [
+                0.3883466586522876,
+                0.7553239739018824
+              ]
+            },
+            "CHALLENGER": {
+              "n": 334,
+              "wins": 222,
+              "accuracy": 0.6646706586826348,
+              "wilson95": [
+                0.6124214248699501,
+                0.7131750853510804
+              ]
+            }
+          },
+          "atp_share": 0.0670391061452514,
+          "calibration_slope": 1.4131476759366717,
+          "calibration_intercept": -0.29951918254450216,
+          "calibration_status": "OK",
+          "ece": 0.051045301675977664,
+          "murphy_reliability": 0.004366472446027204,
+          "murphy_resolution": 0.023583274497271815,
+          "murphy_uncertainty": 0.22464966761337038
+        }
+      ],
+      "candidate_count": [
+        {
+          "stratum": "MULTI",
+          "n": 189,
+          "wins": 117,
+          "losses": 72,
+          "accuracy": 0.6190476190476191,
+          "wilson95": [
+            0.5480949583759496,
+            0.6852573522485073
+          ],
+          "mean_confidence": 0.6679470264550265,
+          "calibration_gap": 0.04889940740740739,
+          "brier": 0.2274647644602857,
+          "log_loss": 0.6454339257755028,
+          "mean_min_matches": 28.984126984126984,
+          "median_min_matches": 25.0,
+          "surface_known": 167,
+          "surface_missing": 22,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 23,
+              "wins": 12,
+              "accuracy": 0.5217391304347826,
+              "wilson95": [
+                0.32962737336427406,
+                0.7076284258335335
+              ]
+            },
+            "CHALLENGER": {
+              "n": 166,
+              "wins": 105,
+              "accuracy": 0.6325301204819277,
+              "wilson95": [
+                0.556964001456568,
+                0.7021011308469167
+              ]
+            }
+          },
+          "atp_share": 0.12169312169312169,
+          "calibration_slope": 0.9386093802337698,
+          "calibration_intercept": -0.18350162598689168,
+          "calibration_status": "OK",
+          "ece": 0.05068513227513224,
+          "murphy_reliability": 0.003206307435790952,
+          "murphy_resolution": 0.013966293630618376,
+          "murphy_uncertainty": 0.23582766439909297
+        },
+        {
+          "stratum": "SINGLE",
+          "n": 3034,
+          "wins": 1999,
+          "losses": 1035,
+          "accuracy": 0.6588661832564272,
+          "wilson95": [
+            0.6418052992478722,
+            0.6755252833606851
+          ],
+          "mean_confidence": 0.6604181203032301,
+          "calibration_gap": 0.0015519370468028981,
+          "brier": 0.21287747837828577,
+          "log_loss": 0.61343583489055,
+          "mean_min_matches": 117.67073170731707,
+          "median_min_matches": 62.0,
+          "surface_known": 2646,
+          "surface_missing": 388,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 554,
+              "wins": 391,
+              "accuracy": 0.7057761732851986,
+              "wilson95": [
+                0.6665175100208123,
+                0.7422007671793154
+              ]
+            },
+            "CHALLENGER": {
+              "n": 2480,
+              "wins": 1608,
+              "accuracy": 0.6483870967741936,
+              "wilson95": [
+                0.6293787897980825,
+                0.6669364188020053
+              ]
+            }
+          },
+          "atp_share": 0.1825972313777192,
+          "calibration_slope": 0.9951995490665008,
+          "calibration_intercept": -0.004378022082694571,
+          "calibration_status": "OK",
+          "ece": 0.00881582102834547,
+          "murphy_reliability": 0.00011573901422596643,
+          "murphy_resolution": 0.011567891657003422,
+          "murphy_uncertainty": 0.22476153581753527
+        }
+      ],
+      "identity_completeness": [
+        {
+          "stratum": "AMBIGUOUS",
+          "n": 189,
+          "wins": 117,
+          "losses": 72,
+          "accuracy": 0.6190476190476191,
+          "wilson95": [
+            0.5480949583759496,
+            0.6852573522485073
+          ],
+          "mean_confidence": 0.6679470264550265,
+          "calibration_gap": 0.04889940740740739,
+          "brier": 0.2274647644602857,
+          "log_loss": 0.6454339257755028,
+          "mean_min_matches": 28.984126984126984,
+          "median_min_matches": 25.0,
+          "surface_known": 167,
+          "surface_missing": 22,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 23,
+              "wins": 12,
+              "accuracy": 0.5217391304347826,
+              "wilson95": [
+                0.32962737336427406,
+                0.7076284258335335
+              ]
+            },
+            "CHALLENGER": {
+              "n": 166,
+              "wins": 105,
+              "accuracy": 0.6325301204819277,
+              "wilson95": [
+                0.556964001456568,
+                0.7021011308469167
+              ]
+            }
+          },
+          "atp_share": 0.12169312169312169,
+          "calibration_slope": 0.9386093802337698,
+          "calibration_intercept": -0.18350162598689168,
+          "calibration_status": "OK",
+          "ece": 0.05068513227513224,
+          "murphy_reliability": 0.003206307435790952,
+          "murphy_resolution": 0.013966293630618376,
+          "murphy_uncertainty": 0.23582766439909297
+        },
+        {
+          "stratum": "COMPLETE",
+          "n": 2490,
+          "wins": 1667,
+          "losses": 823,
+          "accuracy": 0.6694779116465863,
+          "wilson95": [
+            0.6507528658870896,
+            0.6876808372718581
+          ],
+          "mean_confidence": 0.6613723140562249,
+          "calibration_gap": -0.008105597590361446,
+          "brier": 0.21136244491270764,
+          "log_loss": 0.6103335987141323,
+          "mean_min_matches": 139.4534136546185,
+          "median_min_matches": 96.0,
+          "surface_known": 2178,
+          "surface_missing": 312,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 493,
+              "wins": 348,
+              "accuracy": 0.7058823529411765,
+              "wilson95": [
+                0.6641938421222879,
+                0.744387197958067
+              ]
+            },
+            "CHALLENGER": {
+              "n": 1997,
+              "wins": 1319,
+              "accuracy": 0.6604907361041562,
+              "wilson95": [
+                0.6394311389951531,
+                0.6809340739377138
+              ]
+            }
+          },
+          "atp_share": 0.19799196787148593,
+          "calibration_slope": 0.9296564844544783,
+          "calibration_intercept": 0.08150360280882682,
+          "calibration_status": "OK",
+          "ece": 0.01646988353413658,
+          "murphy_reliability": 0.0003315848847512039,
+          "murphy_resolution": 0.009814211098266617,
+          "murphy_uncertainty": 0.22127723746391187
+        },
+        {
+          "stratum": "NO_HISTORY",
+          "n": 544,
+          "wins": 332,
+          "losses": 212,
+          "accuracy": 0.6102941176470589,
+          "wilson95": [
+            0.5686759544609118,
+            0.6503655183372897
+          ],
+          "mean_confidence": 0.6560505790441177,
+          "calibration_gap": 0.0457564613970588,
+          "brier": 0.21981209846889155,
+          "log_loss": 0.6276354085656972,
+          "mean_min_matches": 17.966911764705884,
+          "median_min_matches": 8.0,
+          "surface_known": 468,
+          "surface_missing": 76,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 61,
+              "wins": 43,
+              "accuracy": 0.7049180327868853,
+              "wilson95": [
+                0.5811059794277964,
+                0.8044498124172395
+              ]
+            },
+            "CHALLENGER": {
+              "n": 483,
+              "wins": 289,
+              "accuracy": 0.598343685300207,
+              "wilson95": [
+                0.5540139113415582,
+                0.641121482899771
+              ]
+            }
+          },
+          "atp_share": 0.11213235294117647,
+          "calibration_slope": 1.2598507432331552,
+          "calibration_intercept": -0.3636017950923908,
+          "calibration_status": "OK",
+          "ece": 0.04697669669117646,
+          "murphy_reliability": 0.003768057840512494,
+          "murphy_resolution": 0.021486741425530396,
+          "murphy_uncertainty": 0.23783520761245674
+        }
+      ],
+      "inactivity_max": [
+        {
+          "stratum": "0-7d",
+          "n": 1517,
+          "wins": 966,
+          "losses": 551,
+          "accuracy": 0.6367831245880027,
+          "wilson95": [
+            0.6122646988323633,
+            0.6606105555822576
+          ],
+          "mean_confidence": 0.6457628081740276,
+          "calibration_gap": 0.008979683586024967,
+          "brier": 0.2210723644966223,
+          "log_loss": 0.6319657664906734,
+          "mean_min_matches": 138.29136453526698,
+          "median_min_matches": 84.0,
+          "surface_known": 1313,
+          "surface_missing": 204,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 315,
+              "wins": 213,
+              "accuracy": 0.6761904761904762,
+              "wilson95": [
+                0.6226620777901727,
+                0.7254733259636496
+              ]
+            },
+            "CHALLENGER": {
+              "n": 1202,
+              "wins": 753,
+              "accuracy": 0.6264559068219634,
+              "wilson95": [
+                0.5987465297535138,
+                0.6533595806942977
+              ]
+            }
+          },
+          "atp_share": 0.20764667106130522,
+          "calibration_slope": 0.9912747921899633,
+          "calibration_intercept": -0.035952553295007274,
+          "calibration_status": "OK",
+          "ece": 0.018386156888595885,
+          "murphy_reliability": 0.0003983389589689379,
+          "murphy_resolution": 0.010617851418615707,
+          "murphy_uncertainty": 0.23129037682794293
+        },
+        {
+          "stratum": "181d+",
+          "n": 209,
+          "wins": 152,
+          "losses": 57,
+          "accuracy": 0.7272727272727273,
+          "wilson95": [
+            0.6631984463266392,
+            0.7831431664699151
+          ],
+          "mean_confidence": 0.6898741244019139,
+          "calibration_gap": -0.037398602870813424,
+          "brier": 0.19169470859310048,
+          "log_loss": 0.5628568430457284,
+          "mean_min_matches": 51.0,
+          "median_min_matches": 12.0,
+          "surface_known": 188,
+          "surface_missing": 21,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 17,
+              "wins": 16,
+              "accuracy": 0.9411764705882353,
+              "wilson95": [
+                0.7301796936242461,
+                0.9895395990150025
+              ]
+            },
+            "CHALLENGER": {
+              "n": 192,
+              "wins": 136,
+              "accuracy": 0.7083333333333334,
+              "wilson95": [
+                0.6404570798630717,
+                0.768036609275781
+              ]
+            }
+          },
+          "atp_share": 0.08133971291866028,
+          "calibration_slope": 0.9010338110567063,
+          "calibration_intercept": 0.2626631399695726,
+          "calibration_status": "OK",
+          "ece": 0.048475234449760776,
+          "murphy_reliability": 0.002617329068557415,
+          "murphy_resolution": 0.009945111654110377,
+          "murphy_uncertainty": 0.1983471074380165
+        },
+        {
+          "stratum": "31-90d",
+          "n": 298,
+          "wins": 190,
+          "losses": 108,
+          "accuracy": 0.6375838926174496,
+          "wilson95": [
+            0.5815757031641082,
+            0.690090092251727
+          ],
+          "mean_confidence": 0.6699473523489933,
+          "calibration_gap": 0.03236345973154364,
+          "brier": 0.2135696924661443,
+          "log_loss": 0.6120488266172264,
+          "mean_min_matches": 44.35906040268456,
+          "median_min_matches": 19.0,
+          "surface_known": 260,
+          "surface_missing": 38,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 26,
+              "wins": 20,
+              "accuracy": 0.7692307692307693,
+              "wilson95": [
+                0.5794844592105632,
+                0.8896615059421671
+              ]
+            },
+            "CHALLENGER": {
+              "n": 272,
+              "wins": 170,
+              "accuracy": 0.625,
+              "wilson95": [
+                0.5661014129514635,
+                0.6804170048770987
+              ]
+            }
+          },
+          "atp_share": 0.087248322147651,
+          "calibration_slope": 1.1851646099731632,
+          "calibration_intercept": -0.27093680089435557,
+          "calibration_status": "OK",
+          "ece": 0.0402925268456376,
+          "murphy_reliability": 0.0022913907611729722,
+          "murphy_resolution": 0.019629535035550406,
+          "murphy_uncertainty": 0.2310706724922301
+        },
+        {
+          "stratum": "8-30d",
+          "n": 1084,
+          "wins": 727,
+          "losses": 357,
+          "accuracy": 0.6706642066420664,
+          "wilson95": [
+            0.6421272058493482,
+            0.6979958856175913
+          ],
+          "mean_confidence": 0.6713565452029521,
+          "calibration_gap": 0.0006923385608856858,
+          "brier": 0.20904577049203413,
+          "log_loss": 0.6053280755472211,
+          "mean_min_matches": 116.18173431734317,
+          "median_min_matches": 64.0,
+          "surface_known": 952,
+          "surface_missing": 132,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 213,
+              "wins": 150,
+              "accuracy": 0.704225352112676,
+              "wilson95": [
+                0.6397543708578192,
+                0.7614604174633578
+              ]
+            },
+            "CHALLENGER": {
+              "n": 871,
+              "wins": 577,
+              "accuracy": 0.6624569460390356,
+              "wilson95": [
+                0.6304006801469489,
+                0.6930865038983641
+              ]
+            }
+          },
+          "atp_share": 0.19649446494464945,
+          "calibration_slope": 0.9642209361371387,
+          "calibration_intercept": 0.02004717550868227,
+          "calibration_status": "OK",
+          "ece": 0.02850965405904058,
+          "murphy_reliability": 0.001209304989760014,
+          "murphy_resolution": 0.012373110336898384,
+          "murphy_uncertainty": 0.22087372857123405
+        },
+        {
+          "stratum": "91-180d",
+          "n": 114,
+          "wins": 81,
+          "losses": 33,
+          "accuracy": 0.7105263157894737,
+          "wilson95": [
+            0.6214933876201677,
+            0.7858335453655833
+          ],
+          "mean_confidence": 0.6864025175438596,
+          "calibration_gap": -0.02412379824561406,
+          "brier": 0.2011469761149386,
+          "log_loss": 0.5926566286044638,
+          "mean_min_matches": 25.29824561403509,
+          "median_min_matches": 10.0,
+          "surface_known": 99,
+          "surface_missing": 15,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 6,
+              "wins": 4,
+              "accuracy": 0.6666666666666666,
+              "wilson95": [
+                0.299993315138392,
+                0.9032285888942195
+              ]
+            },
+            "CHALLENGER": {
+              "n": 108,
+              "wins": 77,
+              "accuracy": 0.7129629629629629,
+              "wilson95": [
+                0.6214901729048635,
+                0.7898063220178991
+              ]
+            }
+          },
+          "atp_share": 0.05263157894736842,
+          "calibration_slope": 0.629358511039672,
+          "calibration_intercept": 0.3894651769726942,
+          "calibration_status": "OK",
+          "ece": 0.09224774561403502,
+          "murphy_reliability": 0.013929876079041625,
+          "murphy_resolution": 0.018089435288038195,
+          "murphy_uncertainty": 0.2056786703601108
+        },
+        {
+          "stratum": "MISSING",
+          "n": 1,
+          "wins": 0,
+          "losses": 1,
+          "accuracy": 0.0,
+          "wilson95": [
+            0.0,
+            0.7934506856227626
+          ],
+          "mean_confidence": 0.5,
+          "calibration_gap": 0.5,
+          "brier": 0.25,
+          "log_loss": 0.6931471805599453,
+          "mean_min_matches": 0.0,
+          "median_min_matches": 0.0,
+          "surface_known": 1,
+          "surface_missing": 0,
+          "by_tier": {
+            "CHALLENGER": {
+              "n": 1,
+              "wins": 0,
+              "accuracy": 0.0,
+              "wilson95": [
+                0.0,
+                0.7934506856227626
+              ]
+            }
+          },
+          "atp_share": 0.0,
+          "calibration_slope": null,
+          "calibration_intercept": null,
+          "calibration_status": "INSUFFICIENT",
+          "ece": 0.5,
+          "murphy_reliability": 0.25,
+          "murphy_resolution": 0.0,
+          "murphy_uncertainty": 0.0
+        }
+      ],
+      "divergence_favourite": [
+        {
+          "stratum": "0-49",
+          "n": 1299,
+          "wins": 835,
+          "losses": 464,
+          "accuracy": 0.642802155504234,
+          "wilson95": [
+            0.6163584068630086,
+            0.6684037930871081
+          ],
+          "mean_confidence": 0.6551282432640493,
+          "calibration_gap": 0.012326087759815252,
+          "brier": 0.2164474314021709,
+          "log_loss": 0.6204942180139419,
+          "mean_min_matches": 101.75519630484989,
+          "median_min_matches": 48.0,
+          "surface_known": 1242,
+          "surface_missing": 57,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 101,
+              "wins": 77,
+              "accuracy": 0.7623762376237624,
+              "wilson95": [
+                0.6707248418003476,
+                0.8348003635541833
+              ]
+            },
+            "CHALLENGER": {
+              "n": 1198,
+              "wins": 758,
+              "accuracy": 0.6327212020033389,
+              "wilson95": [
+                0.6050397846077081,
+                0.6595541829793622
+              ]
+            }
+          },
+          "atp_share": 0.07775211701308699,
+          "calibration_slope": 1.1279314471466901,
+          "calibration_intercept": -0.132690945587164,
+          "calibration_status": "OK",
+          "ece": 0.027628093918398777,
+          "murphy_reliability": 0.0008256463702440545,
+          "murphy_resolution": 0.014184084367253009,
+          "murphy_uncertainty": 0.22960754438334458
+        },
+        {
+          "stratum": "100+",
+          "n": 1018,
+          "wins": 672,
+          "losses": 346,
+          "accuracy": 0.6601178781925344,
+          "wilson95": [
+            0.6304673863562753,
+            0.6885644920099012
+          ],
+          "mean_confidence": 0.664400510805501,
+          "calibration_gap": 0.004282632612966575,
+          "brier": 0.21620105556476818,
+          "log_loss": 0.6217084093790561,
+          "mean_min_matches": 121.57563850687623,
+          "median_min_matches": 59.0,
+          "surface_known": 710,
+          "surface_missing": 308,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 346,
+              "wins": 233,
+              "accuracy": 0.6734104046242775,
+              "wilson95": [
+                0.6223273023525135,
+                0.720685216531088
+              ]
+            },
+            "CHALLENGER": {
+              "n": 672,
+              "wins": 439,
+              "accuracy": 0.6532738095238095,
+              "wilson95": [
+                0.616510859395581,
+                0.6882943538854429
+              ]
+            }
+          },
+          "atp_share": 0.33988212180746563,
+          "calibration_slope": 0.7751382675965285,
+          "calibration_intercept": 0.12158445103156942,
+          "calibration_status": "OK",
+          "ece": 0.030717866404715136,
+          "murphy_reliability": 0.001244471122498986,
+          "murphy_resolution": 0.009111103830013628,
+          "murphy_uncertainty": 0.2243622650831207
+        },
+        {
+          "stratum": "50-99",
+          "n": 906,
+          "wins": 609,
+          "losses": 297,
+          "accuracy": 0.6721854304635762,
+          "wilson95": [
+            0.6409480906895854,
+            0.7019687955165058
+          ],
+          "mean_confidence": 0.6650985176600441,
+          "calibration_gap": -0.0070869128035320195,
+          "brier": 0.20706757387015343,
+          "log_loss": 0.600695568522637,
+          "mean_min_matches": 117.60154525386314,
+          "median_min_matches": 63.5,
+          "surface_known": 861,
+          "surface_missing": 45,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 130,
+              "wins": 93,
+              "accuracy": 0.7153846153846154,
+              "wilson95": [
+                0.6325077267145672,
+                0.7858977546170623
+              ]
+            },
+            "CHALLENGER": {
+              "n": 776,
+              "wins": 516,
+              "accuracy": 0.6649484536082474,
+              "wilson95": [
+                0.6309979999554803,
+                0.69727385210421
+              ]
+            }
+          },
+          "atp_share": 0.1434878587196468,
+          "calibration_slope": 1.0780152172110697,
+          "calibration_intercept": -0.014658434850278365,
+          "calibration_status": "OK",
+          "ece": 0.02465225496688745,
+          "murphy_reliability": 0.0007376595252091501,
+          "murphy_resolution": 0.013072458547344387,
+          "murphy_uncertainty": 0.22035217753607297
+        }
+      ],
+      "rating_gap_band": [
+        {
+          "stratum": "0-49",
+          "n": 830,
+          "wins": 449,
+          "losses": 381,
+          "accuracy": 0.5409638554216868,
+          "wilson95": [
+            0.506951471523085,
+            0.5745988031492404
+          ],
+          "mean_confidence": 0.5367379795180723,
+          "calibration_gap": -0.004225875903614451,
+          "brier": 0.24861991347583254,
+          "log_loss": 0.6903858719505639,
+          "mean_min_matches": 123.54578313253012,
+          "median_min_matches": 67.0,
+          "surface_known": 727,
+          "surface_missing": 103,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 127,
+              "wins": 75,
+              "accuracy": 0.5905511811023622,
+              "wilson95": [
+                0.5035940877249806,
+                0.6721911733635503
+              ]
+            },
+            "CHALLENGER": {
+              "n": 703,
+              "wins": 374,
+              "accuracy": 0.5320056899004267,
+              "wilson95": [
+                0.4950467827008751,
+                0.5686167155821469
+              ]
+            }
+          },
+          "atp_share": 0.1530120481927711,
+          "calibration_slope": 0.17555521841539423,
+          "calibration_intercept": 0.13834327468120858,
+          "calibration_status": "OK",
+          "ece": 0.004225875903614451,
+          "murphy_reliability": 1.7858027152749254e-05,
+          "murphy_resolution": 0.0,
+          "murphy_uncertainty": 0.24832196254899114
+        },
+        {
+          "stratum": "100-199",
+          "n": 1009,
+          "wins": 686,
+          "losses": 323,
+          "accuracy": 0.6798810703666998,
+          "wilson95": [
+            0.6504598081009861,
+            0.7079378432181657
+          ],
+          "mean_confidence": 0.69617582160555,
+          "calibration_gap": 0.01629475123885027,
+          "brier": 0.21548662961205153,
+          "log_loss": 0.6219337283991061,
+          "mean_min_matches": 115.25470763131814,
+          "median_min_matches": 58.0,
+          "surface_known": 878,
+          "surface_missing": 131,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 186,
+              "wins": 127,
+              "accuracy": 0.6827956989247311,
+              "wilson95": [
+                0.612792110902778,
+                0.7454015124628443
+              ]
+            },
+            "CHALLENGER": {
+              "n": 823,
+              "wins": 559,
+              "accuracy": 0.6792223572296476,
+              "wilson95": [
+                0.646562848645398,
+                0.710216551870817
+              ]
+            }
+          },
+          "atp_share": 0.18434093161546086,
+          "calibration_slope": 1.5515471125449254,
+          "calibration_intercept": -0.5299137156084227,
+          "calibration_status": "OK",
+          "ece": 0.019004249752229932,
+          "murphy_reliability": 0.0005663843251176878,
+          "murphy_resolution": 0.0021127597202206185,
+          "murphy_uncertainty": 0.21764280052373042
+        },
+        {
+          "stratum": "200+",
+          "n": 645,
+          "wins": 539,
+          "losses": 106,
+          "accuracy": 0.8356589147286821,
+          "wilson95": [
+            0.8050879426979016,
+            0.8622553568301554
+          ],
+          "mean_confidence": 0.8291365147286822,
+          "calibration_gap": -0.006522399999999928,
+          "brier": 0.13592564133501395,
+          "log_loss": 0.44211533888936005,
+          "mean_min_matches": 89.93178294573643,
+          "median_min_matches": 41.0,
+          "surface_known": 561,
+          "surface_missing": 84,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 148,
+              "wins": 132,
+              "accuracy": 0.8918918918918919,
+              "wilson95": [
+                0.8316021691644995,
+                0.9323525563823722
+              ]
+            },
+            "CHALLENGER": {
+              "n": 497,
+              "wins": 407,
+              "accuracy": 0.8189134808853119,
+              "wilson95": [
+                0.7826531963986801,
+                0.8502816264221459
+              ]
+            }
+          },
+          "atp_share": 0.22945736434108527,
+          "calibration_slope": 0.7193595869359788,
+          "calibration_intercept": 0.47953708126037636,
+          "calibration_status": "OK",
+          "ece": 0.011165013953488328,
+          "murphy_reliability": 0.00014302774330365867,
+          "murphy_resolution": 0.0013614039272251224,
+          "murphy_uncertainty": 0.1373330929631633
+        },
+        {
+          "stratum": "50-99",
+          "n": 739,
+          "wins": 442,
+          "losses": 297,
+          "accuracy": 0.5981055480378891,
+          "wilson95": [
+            0.5623375978238511,
+            0.6328588310752526
+          ],
+          "mean_confidence": 0.605174,
+          "calibration_gap": 0.007068451962110922,
+          "brier": 0.24006567490951014,
+          "log_loss": 0.6731198048338233,
+          "mean_min_matches": 115.8998646820027,
+          "median_min_matches": 62.0,
+          "surface_known": 647,
+          "surface_missing": 92,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 116,
+              "wins": 69,
+              "accuracy": 0.5948275862068966,
+              "wilson95": [
+                0.5038412276075694,
+                0.6797346418493957
+              ]
+            },
+            "CHALLENGER": {
+              "n": 623,
+              "wins": 373,
+              "accuracy": 0.5987158908507223,
+              "wilson95": [
+                0.5597349437855671,
+                0.636486921040358
+              ]
+            }
+          },
+          "atp_share": 0.15696887686062247,
+          "calibration_slope": 0.949658269027101,
+          "calibration_intercept": -0.008073960167923095,
+          "calibration_status": "OK",
+          "ece": 0.007068451962110943,
+          "murphy_reliability": 0.00010671081550969154,
+          "murphy_resolution": 0.0006061612283464165,
+          "murphy_uncertainty": 0.24037530144418545
+        }
+      ],
+      "market_available": [
+        {
+          "stratum": "NO",
+          "n": 2722,
+          "wins": 1789,
+          "losses": 933,
+          "accuracy": 0.6572373254959588,
+          "wilson95": [
+            0.6391964920244282,
+            0.6748349778653646
+          ],
+          "mean_confidence": 0.6621680293901543,
+          "calibration_gap": 0.004930703894195476,
+          "brier": 0.2130075106609155,
+          "log_loss": 0.6136133930267944,
+          "mean_min_matches": 113.66421748714181,
+          "median_min_matches": 56.0,
+          "surface_known": 2351,
+          "surface_missing": 371,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 509,
+              "wins": 351,
+              "accuracy": 0.6895874263261297,
+              "wilson95": [
+                0.6480996711377255,
+                0.7282349575871315
+              ]
+            },
+            "CHALLENGER": {
+              "n": 2213,
+              "wins": 1438,
+              "accuracy": 0.64979665612291,
+              "wilson95": [
+                0.6296776517611855,
+                0.6693965095244392
+              ]
+            }
+          },
+          "atp_share": 0.1869948567229978,
+          "calibration_slope": 1.0179798504827446,
+          "calibration_intercept": -0.03428052725534564,
+          "calibration_status": "OK",
+          "ece": 0.009201498163115385,
+          "murphy_reliability": 0.00010949054400395638,
+          "murphy_resolution": 0.012271975010477379,
+          "murphy_uncertainty": 0.2252764234708779
+        },
+        {
+          "stratum": "YES",
+          "n": 501,
+          "wins": 327,
+          "losses": 174,
+          "accuracy": 0.6526946107784432,
+          "wilson95": [
+            0.6099846140159138,
+            0.6930808282665146
+          ],
+          "mean_confidence": 0.6537508762475049,
+          "calibration_gap": 0.00105626546906179,
+          "brier": 0.21767398375988223,
+          "log_loss": 0.624542273873382,
+          "mean_min_matches": 105.98203592814372,
+          "median_min_matches": 58.0,
+          "surface_known": 462,
+          "surface_missing": 39,
+          "by_tier": {
+            "ATP_MAIN": {
+              "n": 68,
+              "wins": 52,
+              "accuracy": 0.7647058823529411,
+              "wilson95": [
+                0.6514483202805676,
+                0.8496550897970421
+              ]
+            },
+            "CHALLENGER": {
+              "n": 433,
+              "wins": 275,
+              "accuracy": 0.6351039260969977,
+              "wilson95": [
+                0.5887569447823126,
+                0.6790747768584299
+              ]
+            }
+          },
+          "atp_share": 0.13572854291417166,
+          "calibration_slope": 0.84429193710705,
+          "calibration_intercept": 0.08641738941961963,
+          "calibration_status": "OK",
+          "ece": 0.05304014570858284,
+          "murphy_reliability": 0.0029980819843839447,
+          "murphy_resolution": 0.010894612423447619,
+          "murphy_uncertainty": 0.22668435583921975
+        }
+      ]
+    },
+    "note": "The model probability is an estimated winning probability; these strata measure whether the reliability of the supporting information is reflected. A calibration slope below 1 means the log-odds are too wide for that stratum."
+  },
+  "research_candidate": {
+    "definition": "favourite <10 prior matches AND confidence in [0.60,0.75)",
+    "development_n": 25,
+    "development_accuracy": 0.44,
+    "development_mean_confidence": 0.6527134,
+    "fitted_calibration_slope": 2.247607791532886,
+    "fitted_calibration_intercept": -1.678329606302284,
+    "fit_status": "OK",
+    "justified": false,
+    "candidate_slope": null,
+    "note": "Fitted on 2026-09-10..2026-10-31 only. A slope >= 0.95 means the evidence does not justify a separate candidate; no adjustment is then evaluated or recommended."
+  },
+  "holdout_evaluation": {
+    "status": "NOT_JUSTIFIED",
+    "evaluated": false
+  },
+  "reliability_flag": {
+    "version": "A1_INFORMATION_RELIABILITY_FLAG_V1",
+    "rule": "FLAGGED if favourite observed matches <5 OR any unresolved identity OR minimum surface history <5 OR favourite overall/surface divergence >=100 Elo.",
+    "probability_changed": false,
+    "selection_changed": false,
+    "development": {
+      "label": "development",
+      "n": 2198,
+      "flagged_n": 1078,
+      "flagged_share": 0.49044585987261147,
+      "flagged": {
+        "n": 1078,
+        "wins": 711,
+        "losses": 367,
+        "accuracy": 0.6595547309833024,
+        "wilson95": [
+          0.6307457006822327,
+          0.6872306508388039
+        ],
+        "mean_confidence": 0.6690513432282004,
+        "calibration_gap": 0.00949661224489795,
+        "brier": 0.20916132035416699,
+        "log_loss": 0.6048469858400949,
+        "mean_min_matches": 82.46660482374769,
+        "median_min_matches": 37.0,
+        "surface_known": 855,
+        "surface_missing": 223,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 282,
+            "wins": 191,
+            "accuracy": 0.6773049645390071,
+            "wilson95": [
+              0.6206729712094516,
+              0.7291713110460807
+            ]
+          },
+          "CHALLENGER": {
+            "n": 796,
+            "wins": 520,
+            "accuracy": 0.6532663316582915,
+            "wilson95": [
+              0.6195390812548199,
+              0.6855213745507088
+            ]
+          }
+        },
+        "atp_share": 0.26159554730983303
+      },
+      "unflagged": {
+        "n": 1120,
+        "wins": 748,
+        "losses": 372,
+        "accuracy": 0.6678571428571428,
+        "wilson95": [
+          0.6397414708859304,
+          0.6948252930013501
+        ],
+        "mean_confidence": 0.6595976571428571,
+        "calibration_gap": -0.008259485714285697,
+        "brier": 0.21424181076424464,
+        "log_loss": 0.6162932060169398,
+        "mean_min_matches": 150.99464285714285,
+        "median_min_matches": 109.0,
+        "surface_known": 1050,
+        "surface_missing": 70,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 189,
+            "wins": 141,
+            "accuracy": 0.746031746031746,
+            "wilson95": [
+              0.679500483759182,
+              0.8027609581980286
+            ]
+          },
+          "CHALLENGER": {
+            "n": 931,
+            "wins": 607,
+            "accuracy": 0.6519871106337272,
+            "wilson95": [
+              0.6208212931387699,
+              0.681903834560429
+            ]
+          }
+        },
+        "atp_share": 0.16875
+      },
+      "error_rate_difference_flagged_minus_unflagged": 0.008302411873840398,
+      "risk_difference_ci95": [
+        -0.03114942648942158,
+        0.047764309307801504
+      ]
+    },
+    "holdout": {
+      "label": "holdout",
+      "n": 1025,
+      "flagged_n": 606,
+      "flagged_share": 0.5912195121951219,
+      "flagged": {
+        "n": 606,
+        "wins": 393,
+        "losses": 213,
+        "accuracy": 0.6485148514851485,
+        "wilson95": [
+          0.6096753099736473,
+          0.6854833700348953
+        ],
+        "mean_confidence": 0.6564432854785478,
+        "calibration_gap": 0.007928433993399264,
+        "brier": 0.21651214481418318,
+        "log_loss": 0.6223633047407474,
+        "mean_min_matches": 76.29702970297029,
+        "median_min_matches": 26.0,
+        "surface_known": 489,
+        "surface_missing": 117,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 86,
+            "wins": 60,
+            "accuracy": 0.6976744186046512,
+            "wilson95": [
+              0.5938796504460166,
+              0.7845647831852016
+            ]
+          },
+          "CHALLENGER": {
+            "n": 520,
+            "wins": 333,
+            "accuracy": 0.6403846153846153,
+            "wilson95": [
+              0.5982473659358923,
+              0.6804629147064315
+            ]
+          }
+        },
+        "atp_share": 0.1419141914191419
+      },
+      "unflagged": {
+        "n": 419,
+        "wins": 264,
+        "losses": 155,
+        "accuracy": 0.630071599045346,
+        "wilson95": [
+          0.5828582969543393,
+          0.6749215345314409
+        ],
+        "mean_confidence": 0.6495446539379475,
+        "calibration_gap": 0.019473054892601427,
+        "brier": 0.2201146031684296,
+        "log_loss": 0.6294170188114815,
+        "mean_min_matches": 139.00238663484487,
+        "median_min_matches": 104.0,
+        "surface_known": 419,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 20,
+            "wins": 11,
+            "accuracy": 0.55,
+            "wilson95": [
+              0.34208534245034233,
+              0.7418021417443759
+            ]
+          },
+          "CHALLENGER": {
+            "n": 399,
+            "wins": 253,
+            "accuracy": 0.6340852130325815,
+            "wilson95": [
+              0.5857516516229401,
+              0.6798615261101543
+            ]
+          }
+        },
+        "atp_share": 0.0477326968973747
+      },
+      "error_rate_difference_flagged_minus_unflagged": -0.018443252439802493,
+      "risk_difference_ci95": [
+        -0.07840796921641738,
+        0.040886560453299595
+      ]
+    },
+    "full": {
+      "label": "full",
+      "n": 3223,
+      "flagged_n": 1684,
+      "flagged_share": 0.5224945702761402,
+      "flagged": {
+        "n": 1684,
+        "wins": 1104,
+        "losses": 580,
+        "accuracy": 0.6555819477434679,
+        "wilson95": [
+          0.632555752726963,
+          0.6778999463326645
+        ],
+        "mean_confidence": 0.6645142393111639,
+        "calibration_gap": 0.008932291567696038,
+        "brier": 0.2118065695363343,
+        "log_loss": 0.6111503642568381,
+        "mean_min_matches": 80.24643705463183,
+        "median_min_matches": 34.0,
+        "surface_known": 1344,
+        "surface_missing": 340,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 368,
+            "wins": 251,
+            "accuracy": 0.6820652173913043,
+            "wilson95": [
+              0.6328153642939622,
+              0.7275532735254591
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1316,
+            "wins": 853,
+            "accuracy": 0.648176291793313,
+            "wilson95": [
+              0.6219784145697339,
+              0.673511621292962
+            ]
+          }
+        },
+        "atp_share": 0.21852731591448932
+      },
+      "unflagged": {
+        "n": 1539,
+        "wins": 1012,
+        "losses": 527,
+        "accuracy": 0.6575698505523067,
+        "wilson95": [
+          0.6334963080915582,
+          0.680858739361419
+        ],
+        "mean_confidence": 0.6568606796621183,
+        "calibration_gap": -0.0007091708901884042,
+        "brier": 0.21584070616213516,
+        "log_loss": 0.6198662258745831,
+        "mean_min_matches": 147.7296946068876,
+        "median_min_matches": 106.0,
+        "surface_known": 1469,
+        "surface_missing": 70,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 209,
+            "wins": 152,
+            "accuracy": 0.7272727272727273,
+            "wilson95": [
+              0.6631984463266392,
+              0.7831431664699151
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1330,
+            "wins": 860,
+            "accuracy": 0.6466165413533834,
+            "wilson95": [
+              0.6205375550679495,
+              0.6718510173676497
+            ]
+          }
+        },
+        "atp_share": 0.13580246913580246
+      },
+      "error_rate_difference_flagged_minus_unflagged": 0.0019879028088387596,
+      "risk_difference_ci95": [
+        -0.03083934970544941,
+        0.034738139432431606
+      ]
+    },
+    "high_risk_3plus": {
+      "development": {
+        "n": 171,
+        "wins": 102,
+        "losses": 69,
+        "accuracy": 0.5964912280701754,
+        "wilson95": [
+          0.5216202249217822,
+          0.6671221947685192
+        ],
+        "mean_confidence": 0.6596278421052632,
+        "calibration_gap": 0.06313661403508775,
+        "brier": 0.22775781539202924,
+        "log_loss": 0.6431204040194878,
+        "mean_min_matches": 20.08187134502924,
+        "median_min_matches": 10.0,
+        "surface_known": 126,
+        "surface_missing": 45,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 47,
+            "wins": 31,
+            "accuracy": 0.6595744680851063,
+            "wilson95": [
+              0.5167092456194193,
+              0.7783255615622839
+            ]
+          },
+          "CHALLENGER": {
+            "n": 124,
+            "wins": 71,
+            "accuracy": 0.5725806451612904,
+            "wilson95": [
+              0.4846173228363051,
+              0.6561820717110161
+            ]
+          }
+        },
+        "atp_share": 0.27485380116959063
+      },
+      "holdout": {
+        "n": 110,
+        "wins": 58,
+        "losses": 52,
+        "accuracy": 0.5272727272727272,
+        "wilson95": [
+          0.43463694346238685,
+          0.6180679327940769
+        ],
+        "mean_confidence": 0.6349501727272727,
+        "calibration_gap": 0.1076774454545455,
+        "brier": 0.2556725186399909,
+        "log_loss": 0.7091450578564373,
+        "mean_min_matches": 13.145454545454545,
+        "median_min_matches": 2.0,
+        "surface_known": 78,
+        "surface_missing": 32,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 6,
+            "wins": 4,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.299993315138392,
+              0.9032285888942195
+            ]
+          },
+          "CHALLENGER": {
+            "n": 104,
+            "wins": 54,
+            "accuracy": 0.5192307692307693,
+            "wilson95": [
+              0.42424497820417756,
+              0.6128465081661129
+            ]
+          }
+        },
+        "atp_share": 0.05454545454545454
+      },
+      "full": {
+        "n": 281,
+        "wins": 160,
+        "losses": 121,
+        "accuracy": 0.5693950177935944,
+        "wilson95": [
+          0.5109482096844135,
+          0.6259700611370763
+        ],
+        "mean_confidence": 0.6499675444839857,
+        "calibration_gap": 0.08057252669039139,
+        "brier": 0.23868527929692526,
+        "log_loss": 0.6689663539200731,
+        "mean_min_matches": 17.366548042704625,
+        "median_min_matches": 4.0,
+        "surface_known": 204,
+        "surface_missing": 77,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 53,
+            "wins": 35,
+            "accuracy": 0.660377358490566,
+            "wilson95": [
+              0.5259478663754829,
+              0.7731296089867581
+            ]
+          },
+          "CHALLENGER": {
+            "n": 228,
+            "wins": 125,
+            "accuracy": 0.5482456140350878,
+            "wilson95": [
+              0.4833805829431775,
+              0.6115118496351336
+            ]
+          }
+        },
+        "atp_share": 0.18861209964412812
+      },
+      "marginal_pool_n": 12,
+      "marginal_pool_errors": 5,
+      "marginal_pool_total_errors": 42
+    },
+    "by_risk_score": {
+      "0": {
+        "n": 1539,
+        "wins": 1012,
+        "losses": 527,
+        "accuracy": 0.6575698505523067,
+        "wilson95": [
+          0.6334963080915582,
+          0.680858739361419
+        ],
+        "mean_confidence": 0.6568606796621183,
+        "calibration_gap": -0.0007091708901884042,
+        "brier": 0.21584070616213516,
+        "log_loss": 0.6198662258745831,
+        "mean_min_matches": 147.7296946068876,
+        "median_min_matches": 106.0,
+        "surface_known": 1469,
+        "surface_missing": 70,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 209,
+            "wins": 152,
+            "accuracy": 0.7272727272727273,
+            "wilson95": [
+              0.6631984463266392,
+              0.7831431664699151
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1330,
+            "wins": 860,
+            "accuracy": 0.6466165413533834,
+            "wilson95": [
+              0.6205375550679495,
+              0.6718510173676497
+            ]
+          }
+        },
+        "atp_share": 0.13580246913580246
+      },
+      "1": {
+        "n": 821,
+        "wins": 559,
+        "losses": 262,
+        "accuracy": 0.6808769792935444,
+        "wilson95": [
+          0.648212524924271,
+          0.7118566699785067
+        ],
+        "mean_confidence": 0.6641626199756394,
+        "calibration_gap": -0.016714359317904992,
+        "brier": 0.20397198160663946,
+        "log_loss": 0.5951692089043781,
+        "mean_min_matches": 95.02557856272838,
+        "median_min_matches": 47.0,
+        "surface_known": 769,
+        "surface_missing": 52,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 130,
+            "wins": 83,
+            "accuracy": 0.6384615384615384,
+            "wilson95": [
+              0.5529955827585962,
+              0.7159793695260228
+            ]
+          },
+          "CHALLENGER": {
+            "n": 691,
+            "wins": 476,
+            "accuracy": 0.6888567293777135,
+            "wilson95": [
+              0.6533737036231929,
+              0.7222515511550368
+            ]
+          }
+        },
+        "atp_share": 0.15834348355663824
+      },
+      "2": {
+        "n": 582,
+        "wins": 385,
+        "losses": 197,
+        "accuracy": 0.6615120274914089,
+        "wilson95": [
+          0.6221207130599976,
+          0.6987852200544772
+        ],
+        "mean_confidence": 0.6720336563573883,
+        "calibration_gap": 0.010521628865979404,
+        "brier": 0.20988093250463918,
+        "log_loss": 0.6057796347877669,
+        "mean_min_matches": 89.75773195876289,
+        "median_min_matches": 23.0,
+        "surface_known": 371,
+        "surface_missing": 211,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 185,
+            "wins": 133,
+            "accuracy": 0.7189189189189189,
+            "wilson95": [
+              0.6501968019821049,
+              0.7787344322174248
+            ]
+          },
+          "CHALLENGER": {
+            "n": 397,
+            "wins": 252,
+            "accuracy": 0.6347607052896725,
+            "wilson95": [
+              0.5863152333433113,
+              0.6806232223613509
+            ]
+          }
+        },
+        "atp_share": 0.3178694158075601
+      },
+      "3": {
+        "n": 267,
+        "wins": 154,
+        "losses": 113,
+        "accuracy": 0.5767790262172284,
+        "wilson95": [
+          0.5168391238516964,
+          0.6345409498583013
+        ],
+        "mean_confidence": 0.6505621310861424,
+        "calibration_gap": 0.07378310486891393,
+        "brier": 0.2318868649328277,
+        "log_loss": 0.652236883343415,
+        "mean_min_matches": 18.191011235955056,
+        "median_min_matches": 6.0,
+        "surface_known": 200,
+        "surface_missing": 67,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 52,
+            "wins": 35,
+            "accuracy": 0.6730769230769231,
+            "wilson95": [
+              0.5375618936197395,
+              0.7847792554143083
+            ]
+          },
+          "CHALLENGER": {
+            "n": 215,
+            "wins": 119,
+            "accuracy": 0.5534883720930233,
+            "wilson95": [
+              0.48667788246917915,
+              0.6184210330834029
+            ]
+          }
+        },
+        "atp_share": 0.1947565543071161
+      },
+      "4": {
+        "n": 14,
+        "wins": 6,
+        "losses": 8,
+        "accuracy": 0.42857142857142855,
+        "wilson95": [
+          0.21380798904474121,
+          0.6740935542034926
+        ],
+        "mean_confidence": 0.6386279285714286,
+        "calibration_gap": 0.21005650000000003,
+        "brier": 0.3683407532407857,
+        "log_loss": 0.9880212570606226,
+        "mean_min_matches": 1.6428571428571428,
+        "median_min_matches": 1.5,
+        "surface_known": 4,
+        "surface_missing": 10,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 1,
+            "wins": 0,
+            "accuracy": 0.0,
+            "wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          },
+          "CHALLENGER": {
+            "n": 13,
+            "wins": 6,
+            "accuracy": 0.46153846153846156,
+            "wilson95": [
+              0.23206067809538303,
+              0.7085620428549398
+            ]
+          }
+        },
+        "atp_share": 0.07142857142857142
+      }
+    },
+    "note": "Diagnostic only. It does not change p, the selected side, the frozen thresholds or any production policy. A single factor has no aggregate discrimination; only 3+ simultaneous risk factors separate."
+  },
+  "existing_mechanisms": {
+    "initial_rating": 1500,
+    "dynamic_k": "K(n) = 250 / (n + 5)^0.4",
+    "k_at_zero_matches": 131.32639022018836,
+    "k_at_10_matches": 84.62593986645679,
+    "k_at_100_matches": 38.85655458615683,
+    "probability_scale": 400,
+    "surface_weight": "w = min(surface_matches, 10)/10 * 0.5",
+    "effective_rating": "(1 - w) * overall + w * surface",
+    "surface_cap": 0.5,
+    "overall_match_count_used": true,
+    "recent_match_count_used": false,
+    "surface_specific_experience_used": true,
+    "opponent_strength_used": true,
+    "identity_resolution_confidence_used": false,
+    "time_since_last_match_used": false,
+    "overall_surface_divergence_as_uncertainty": false,
+    "note": "Agent 1 carries a point estimate. Match counts change the learning rate, and surface counts change the blend, but none of these enter the probability as an explicit reliability term."
+  },
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}

@@ -1,0 +1,1220 @@
+{
+  "overall": {
+    "ATP_MAIN": {
+      "n": 577,
+      "wins": 403,
+      "losses": 174,
+      "accuracy": 0.6984402079722704,
+      "wilson95": [
+        0.6597822433441499,
+        0.7344733603535406
+      ],
+      "mean_confidence": 0.6841137036395147,
+      "calibration_gap": -0.014326504332755619,
+      "brier": 0.19689861009277818,
+      "log_loss": 0.5753877970414439,
+      "mean_min_matches": 244.41421143847487,
+      "median_min_matches": 222.0,
+      "surface_known": 374,
+      "surface_missing": 203,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 577,
+          "wins": 403,
+          "accuracy": 0.6984402079722704,
+          "wilson95": [
+            0.6597822433441499,
+            0.7344733603535406
+          ]
+        }
+      },
+      "atp_share": 1.0
+    },
+    "CHALLENGER": {
+      "n": 2646,
+      "wins": 1713,
+      "losses": 933,
+      "accuracy": 0.6473922902494331,
+      "wilson95": [
+        0.628985891099958,
+        0.6653713420105607
+      ],
+      "mean_confidence": 0.6557887218442933,
+      "calibration_gap": 0.008396431594860143,
+      "brier": 0.21740385935721088,
+      "log_loss": 0.6240183583282636,
+      "mean_min_matches": 83.69765684051399,
+      "median_min_matches": 45.0,
+      "surface_known": 2439,
+      "surface_missing": 207,
+      "by_tier": {
+        "CHALLENGER": {
+          "n": 2646,
+          "wins": 1713,
+          "accuracy": 0.6473922902494331,
+          "wilson95": [
+            0.628985891099958,
+            0.6653713420105607
+          ]
+        }
+      },
+      "atp_share": 0.0
+    }
+  },
+  "crude_difference_ch_minus_atp": -0.05104791772283723,
+  "strata_full": {
+    "confidence_band": {
+      "cells": [
+        {
+          "stratum": "0.50-0.60",
+          "atp_n": 177,
+          "atp_wins": 103,
+          "atp_accuracy": 0.5819209039548022,
+          "challenger_n": 969,
+          "challenger_wins": 526,
+          "challenger_accuracy": 0.542827657378741,
+          "common_support": true
+        },
+        {
+          "stratum": "0.60-0.70",
+          "atp_n": 149,
+          "atp_wins": 97,
+          "atp_accuracy": 0.6510067114093959,
+          "challenger_n": 833,
+          "challenger_wins": 522,
+          "challenger_accuracy": 0.6266506602641057,
+          "common_support": true
+        },
+        {
+          "stratum": "0.70-0.80",
+          "atp_n": 143,
+          "atp_wins": 103,
+          "atp_accuracy": 0.7202797202797203,
+          "challenger_n": 532,
+          "challenger_wins": 404,
+          "challenger_accuracy": 0.7593984962406015,
+          "common_support": true
+        },
+        {
+          "stratum": "0.80-0.90",
+          "atp_n": 76,
+          "atp_wins": 70,
+          "atp_accuracy": 0.9210526315789473,
+          "challenger_n": 278,
+          "challenger_wins": 231,
+          "challenger_accuracy": 0.8309352517985612,
+          "common_support": true
+        },
+        {
+          "stratum": "0.90-1.00",
+          "atp_n": 32,
+          "atp_wins": 30,
+          "atp_accuracy": 0.9375,
+          "challenger_n": 34,
+          "challenger_wins": 30,
+          "challenger_accuracy": 0.8823529411764706,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 5,
+      "total_cells": 5,
+      "standardized_atp_accuracy": 0.6764773159491123,
+      "standardized_challenger_accuracy": 0.6523213782041987,
+      "standardized_difference_ch_minus_atp": -0.024155937744913647,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.8931808044742294,
+      "common_support": {
+        "atp_rows_in_common_cells": 577,
+        "atp_rows_total": 577,
+        "atp_share": 1.0,
+        "challenger_rows_in_common_cells": 2646,
+        "challenger_rows_total": 2646,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "experience_min": {
+      "cells": [
+        {
+          "stratum": "0-4",
+          "atp_n": 20,
+          "atp_wins": 18,
+          "atp_accuracy": 0.9,
+          "challenger_n": 307,
+          "challenger_wins": 207,
+          "challenger_accuracy": 0.6742671009771987,
+          "common_support": true
+        },
+        {
+          "stratum": "10-19",
+          "atp_n": 12,
+          "atp_wins": 11,
+          "atp_accuracy": 0.9166666666666666,
+          "challenger_n": 285,
+          "challenger_wins": 178,
+          "challenger_accuracy": 0.624561403508772,
+          "common_support": true
+        },
+        {
+          "stratum": "100+",
+          "atp_n": 429,
+          "atp_wins": 292,
+          "atp_accuracy": 0.6806526806526807,
+          "challenger_n": 788,
+          "challenger_wins": 517,
+          "challenger_accuracy": 0.6560913705583756,
+          "common_support": true
+        },
+        {
+          "stratum": "20-49",
+          "atp_n": 53,
+          "atp_wins": 39,
+          "atp_accuracy": 0.7358490566037735,
+          "challenger_n": 679,
+          "challenger_wins": 431,
+          "challenger_accuracy": 0.6347569955817378,
+          "common_support": true
+        },
+        {
+          "stratum": "5-9",
+          "atp_n": 2,
+          "atp_wins": 2,
+          "atp_accuracy": 1.0,
+          "challenger_n": 142,
+          "challenger_wins": 102,
+          "challenger_accuracy": 0.7183098591549296,
+          "common_support": false
+        },
+        {
+          "stratum": "50-99",
+          "atp_n": 61,
+          "atp_wins": 41,
+          "atp_accuracy": 0.6721311475409836,
+          "challenger_n": 445,
+          "challenger_wins": 278,
+          "challenger_accuracy": 0.6247191011235955,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 5,
+      "total_cells": 6,
+      "standardized_atp_accuracy": 0.7384359150516441,
+      "standardized_challenger_accuracy": 0.6447526023921935,
+      "standardized_difference_ch_minus_atp": -0.09368331265945062,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.7832941069897947,
+      "common_support": {
+        "atp_rows_in_common_cells": 575,
+        "atp_rows_total": 577,
+        "atp_share": 0.9965337954939342,
+        "challenger_rows_in_common_cells": 2504,
+        "challenger_rows_total": 2646,
+        "challenger_share": 0.9463340891912321
+      },
+      "min_cell": 10
+    },
+    "identity_completeness": {
+      "cells": [
+        {
+          "stratum": "ANY_AMBIGUOUS",
+          "atp_n": 23,
+          "atp_wins": 12,
+          "atp_accuracy": 0.5217391304347826,
+          "challenger_n": 166,
+          "challenger_wins": 105,
+          "challenger_accuracy": 0.6325301204819277,
+          "common_support": true
+        },
+        {
+          "stratum": "ANY_NO_HISTORY",
+          "atp_n": 61,
+          "atp_wins": 43,
+          "atp_accuracy": 0.7049180327868853,
+          "challenger_n": 483,
+          "challenger_wins": 289,
+          "challenger_accuracy": 0.598343685300207,
+          "common_support": true
+        },
+        {
+          "stratum": "COMPLETE",
+          "atp_n": 493,
+          "atp_wins": 348,
+          "atp_accuracy": 0.7058823529411765,
+          "challenger_n": 1997,
+          "challenger_wins": 1319,
+          "challenger_accuracy": 0.6604907361041562,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 3,
+      "total_cells": 3,
+      "standardized_atp_accuracy": 0.6949212424175517,
+      "standardized_challenger_accuracy": 0.6483614925453757,
+      "standardized_difference_ch_minus_atp": -0.04655974987217604,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.8115078865381212,
+      "common_support": {
+        "atp_rows_in_common_cells": 577,
+        "atp_rows_total": 577,
+        "atp_share": 1.0,
+        "challenger_rows_in_common_cells": 2646,
+        "challenger_rows_total": 2646,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "rating_gap_band": {
+      "cells": [
+        {
+          "stratum": "0-49",
+          "atp_n": 127,
+          "atp_wins": 75,
+          "atp_accuracy": 0.5905511811023622,
+          "challenger_n": 703,
+          "challenger_wins": 374,
+          "challenger_accuracy": 0.5320056899004267,
+          "common_support": true
+        },
+        {
+          "stratum": "100-199",
+          "atp_n": 186,
+          "atp_wins": 127,
+          "atp_accuracy": 0.6827956989247311,
+          "challenger_n": 823,
+          "challenger_wins": 559,
+          "challenger_accuracy": 0.6792223572296476,
+          "common_support": true
+        },
+        {
+          "stratum": "200+",
+          "atp_n": 148,
+          "atp_wins": 132,
+          "atp_accuracy": 0.8918918918918919,
+          "challenger_n": 497,
+          "challenger_wins": 407,
+          "challenger_accuracy": 0.8189134808853119,
+          "common_support": true
+        },
+        {
+          "stratum": "50-99",
+          "atp_n": 116,
+          "atp_wins": 69,
+          "atp_accuracy": 0.5948275862068966,
+          "challenger_n": 623,
+          "challenger_wins": 373,
+          "challenger_accuracy": 0.5987158908507223,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 4,
+      "total_cells": 4,
+      "standardized_atp_accuracy": 0.680715543595154,
+      "standardized_challenger_accuracy": 0.6508068009841075,
+      "standardized_difference_ch_minus_atp": -0.02990874261104648,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.8588415233026148,
+      "common_support": {
+        "atp_rows_in_common_cells": 577,
+        "atp_rows_total": 577,
+        "atp_share": 1.0,
+        "challenger_rows_in_common_cells": 2646,
+        "challenger_rows_total": 2646,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "surface_experience_min": {
+      "cells": [
+        {
+          "stratum": "0",
+          "atp_n": 205,
+          "atp_wins": 147,
+          "atp_accuracy": 0.7170731707317073,
+          "challenger_n": 294,
+          "challenger_wins": 200,
+          "challenger_accuracy": 0.6802721088435374,
+          "common_support": true
+        },
+        {
+          "stratum": "1-4",
+          "atp_n": 24,
+          "atp_wins": 19,
+          "atp_accuracy": 0.7916666666666666,
+          "challenger_n": 469,
+          "challenger_wins": 295,
+          "challenger_accuracy": 0.6289978678038379,
+          "common_support": true
+        },
+        {
+          "stratum": "10+",
+          "atp_n": 324,
+          "atp_wins": 223,
+          "atp_accuracy": 0.6882716049382716,
+          "challenger_n": 1549,
+          "challenger_wins": 996,
+          "challenger_accuracy": 0.6429954809554551,
+          "common_support": true
+        },
+        {
+          "stratum": "5-9",
+          "atp_n": 24,
+          "atp_wins": 14,
+          "atp_accuracy": 0.5833333333333334,
+          "challenger_n": 334,
+          "challenger_wins": 222,
+          "challenger_accuracy": 0.6646706586826348,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 4,
+      "total_cells": 4,
+      "standardized_atp_accuracy": 0.696890235260473,
+      "standardized_challenger_accuracy": 0.6490333114421867,
+      "standardized_difference_ch_minus_atp": -0.04785692381828632,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.8234566131962056,
+      "common_support": {
+        "atp_rows_in_common_cells": 577,
+        "atp_rows_total": 577,
+        "atp_share": 1.0,
+        "challenger_rows_in_common_cells": 2646,
+        "challenger_rows_total": 2646,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "round": {
+      "cells": [
+        {
+          "stratum": "F",
+          "atp_n": 39,
+          "atp_wins": 27,
+          "atp_accuracy": 0.6923076923076923,
+          "challenger_n": 168,
+          "challenger_wins": 98,
+          "challenger_accuracy": 0.5833333333333334,
+          "common_support": true
+        },
+        {
+          "stratum": "QF",
+          "atp_n": 39,
+          "atp_wins": 29,
+          "atp_accuracy": 0.7435897435897436,
+          "challenger_n": 228,
+          "challenger_wins": 148,
+          "challenger_accuracy": 0.6491228070175439,
+          "common_support": true
+        },
+        {
+          "stratum": "QUAL",
+          "atp_n": 86,
+          "atp_wins": 51,
+          "atp_accuracy": 0.5930232558139535,
+          "challenger_n": 478,
+          "challenger_wins": 292,
+          "challenger_accuracy": 0.6108786610878661,
+          "common_support": true
+        },
+        {
+          "stratum": "R16",
+          "atp_n": 74,
+          "atp_wins": 55,
+          "atp_accuracy": 0.7432432432432432,
+          "challenger_n": 467,
+          "challenger_wins": 301,
+          "challenger_accuracy": 0.6445396145610278,
+          "common_support": true
+        },
+        {
+          "stratum": "R32",
+          "atp_n": 147,
+          "atp_wins": 90,
+          "atp_accuracy": 0.6122448979591837,
+          "challenger_n": 896,
+          "challenger_wins": 598,
+          "challenger_accuracy": 0.6674107142857143,
+          "common_support": true
+        },
+        {
+          "stratum": "R64",
+          "atp_n": 19,
+          "atp_wins": 13,
+          "atp_accuracy": 0.6842105263157895,
+          "challenger_n": 0,
+          "challenger_wins": 0,
+          "challenger_accuracy": null,
+          "common_support": false
+        },
+        {
+          "stratum": "SF",
+          "atp_n": 72,
+          "atp_wins": 53,
+          "atp_accuracy": 0.7361111111111112,
+          "challenger_n": 339,
+          "challenger_wins": 228,
+          "challenger_accuracy": 0.672566371681416,
+          "common_support": true
+        },
+        {
+          "stratum": "UNKNOWN",
+          "atp_n": 101,
+          "atp_wins": 85,
+          "atp_accuracy": 0.8415841584158416,
+          "challenger_n": 70,
+          "challenger_wins": 48,
+          "challenger_accuracy": 0.6857142857142857,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 7,
+      "total_cells": 8,
+      "standardized_atp_accuracy": 0.675227793710057,
+      "standardized_challenger_accuracy": 0.6482798322169044,
+      "standardized_difference_ch_minus_atp": -0.026947961493152595,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.8550856072831541,
+      "common_support": {
+        "atp_rows_in_common_cells": 558,
+        "atp_rows_total": 577,
+        "atp_share": 0.9670710571923743,
+        "challenger_rows_in_common_cells": 2646,
+        "challenger_rows_total": 2646,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "inactivity_max": {
+      "cells": [
+        {
+          "stratum": "0-7d",
+          "atp_n": 315,
+          "atp_wins": 213,
+          "atp_accuracy": 0.6761904761904762,
+          "challenger_n": 1202,
+          "challenger_wins": 753,
+          "challenger_accuracy": 0.6264559068219634,
+          "common_support": true
+        },
+        {
+          "stratum": "181d+",
+          "atp_n": 17,
+          "atp_wins": 16,
+          "atp_accuracy": 0.9411764705882353,
+          "challenger_n": 192,
+          "challenger_wins": 136,
+          "challenger_accuracy": 0.7083333333333334,
+          "common_support": true
+        },
+        {
+          "stratum": "31-90d",
+          "atp_n": 26,
+          "atp_wins": 20,
+          "atp_accuracy": 0.7692307692307693,
+          "challenger_n": 272,
+          "challenger_wins": 170,
+          "challenger_accuracy": 0.625,
+          "common_support": true
+        },
+        {
+          "stratum": "8-30d",
+          "atp_n": 213,
+          "atp_wins": 150,
+          "atp_accuracy": 0.704225352112676,
+          "challenger_n": 871,
+          "challenger_wins": 577,
+          "challenger_accuracy": 0.6624569460390356,
+          "common_support": true
+        },
+        {
+          "stratum": "91-180d",
+          "atp_n": 6,
+          "atp_wins": 4,
+          "atp_accuracy": 0.6666666666666666,
+          "challenger_n": 108,
+          "challenger_wins": 77,
+          "challenger_accuracy": 0.7129629629629629,
+          "common_support": false
+        },
+        {
+          "stratum": "MISSING",
+          "atp_n": 0,
+          "atp_wins": 0,
+          "atp_accuracy": null,
+          "challenger_n": 1,
+          "challenger_wins": 0,
+          "challenger_accuracy": 0.0,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 4,
+      "total_cells": 6,
+      "standardized_atp_accuracy": 0.7127084574178905,
+      "standardized_challenger_accuracy": 0.6443785736235199,
+      "standardized_difference_ch_minus_atp": -0.06832988379437055,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.7682284421622598,
+      "common_support": {
+        "atp_rows_in_common_cells": 571,
+        "atp_rows_total": 577,
+        "atp_share": 0.9896013864818024,
+        "challenger_rows_in_common_cells": 2537,
+        "challenger_rows_total": 2646,
+        "challenger_share": 0.9588057445200302
+      },
+      "min_cell": 10
+    }
+  },
+  "strata_base_50": {
+    "confidence_band": {
+      "cells": [
+        {
+          "stratum": "0.60-0.70",
+          "atp_n": 12,
+          "atp_wins": 9,
+          "atp_accuracy": 0.75,
+          "challenger_n": 137,
+          "challenger_wins": 85,
+          "challenger_accuracy": 0.6204379562043796,
+          "common_support": true
+        },
+        {
+          "stratum": "0.70-0.80",
+          "atp_n": 29,
+          "atp_wins": 22,
+          "atp_accuracy": 0.7586206896551724,
+          "challenger_n": 170,
+          "challenger_wins": 129,
+          "challenger_accuracy": 0.7588235294117647,
+          "common_support": true
+        },
+        {
+          "stratum": "0.80-0.90",
+          "atp_n": 13,
+          "atp_wins": 10,
+          "atp_accuracy": 0.7692307692307693,
+          "challenger_n": 102,
+          "challenger_wins": 87,
+          "challenger_accuracy": 0.8529411764705882,
+          "common_support": true
+        },
+        {
+          "stratum": "0.90-1.00",
+          "atp_n": 4,
+          "atp_wins": 4,
+          "atp_accuracy": 1.0,
+          "challenger_n": 9,
+          "challenger_wins": 7,
+          "challenger_accuracy": 0.7777777777777778,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 3,
+      "total_cells": 4,
+      "standardized_atp_accuracy": 0.7584817617773602,
+      "standardized_challenger_accuracy": 0.7376660326598518,
+      "standardized_difference_ch_minus_atp": -0.020815729117508397,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.9488427038963074,
+      "common_support": {
+        "atp_rows_in_common_cells": 54,
+        "atp_rows_total": 58,
+        "atp_share": 0.9310344827586207,
+        "challenger_rows_in_common_cells": 409,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.9784688995215312
+      },
+      "min_cell": 10
+    },
+    "experience_min": {
+      "cells": [
+        {
+          "stratum": "0-4",
+          "atp_n": 1,
+          "atp_wins": 1,
+          "atp_accuracy": 1.0,
+          "challenger_n": 55,
+          "challenger_wins": 43,
+          "challenger_accuracy": 0.7818181818181819,
+          "common_support": false
+        },
+        {
+          "stratum": "10-19",
+          "atp_n": 1,
+          "atp_wins": 1,
+          "atp_accuracy": 1.0,
+          "challenger_n": 51,
+          "challenger_wins": 36,
+          "challenger_accuracy": 0.7058823529411765,
+          "common_support": false
+        },
+        {
+          "stratum": "100+",
+          "atp_n": 46,
+          "atp_wins": 34,
+          "atp_accuracy": 0.7391304347826086,
+          "challenger_n": 90,
+          "challenger_wins": 60,
+          "challenger_accuracy": 0.6666666666666666,
+          "common_support": true
+        },
+        {
+          "stratum": "20-49",
+          "atp_n": 4,
+          "atp_wins": 3,
+          "atp_accuracy": 0.75,
+          "challenger_n": 128,
+          "challenger_wins": 93,
+          "challenger_accuracy": 0.7265625,
+          "common_support": false
+        },
+        {
+          "stratum": "5-9",
+          "atp_n": 1,
+          "atp_wins": 1,
+          "atp_accuracy": 1.0,
+          "challenger_n": 28,
+          "challenger_wins": 26,
+          "challenger_accuracy": 0.9285714285714286,
+          "common_support": false
+        },
+        {
+          "stratum": "50-99",
+          "atp_n": 5,
+          "atp_wins": 5,
+          "atp_accuracy": 1.0,
+          "challenger_n": 66,
+          "challenger_wins": 50,
+          "challenger_accuracy": 0.7575757575757576,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 1,
+      "total_cells": 6,
+      "standardized_atp_accuracy": 0.7391304347826086,
+      "standardized_challenger_accuracy": 0.6666666666666666,
+      "standardized_difference_ch_minus_atp": -0.07246376811594202,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.7058823529411764,
+      "common_support": {
+        "atp_rows_in_common_cells": 46,
+        "atp_rows_total": 58,
+        "atp_share": 0.7931034482758621,
+        "challenger_rows_in_common_cells": 90,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.215311004784689
+      },
+      "min_cell": 10
+    },
+    "identity_completeness": {
+      "cells": [
+        {
+          "stratum": "ANY_AMBIGUOUS",
+          "atp_n": 0,
+          "atp_wins": 0,
+          "atp_accuracy": null,
+          "challenger_n": 33,
+          "challenger_wins": 21,
+          "challenger_accuracy": 0.6363636363636364,
+          "common_support": false
+        },
+        {
+          "stratum": "ANY_NO_HISTORY",
+          "atp_n": 6,
+          "atp_wins": 5,
+          "atp_accuracy": 0.8333333333333334,
+          "challenger_n": 85,
+          "challenger_wins": 68,
+          "challenger_accuracy": 0.8,
+          "common_support": false
+        },
+        {
+          "stratum": "COMPLETE",
+          "atp_n": 52,
+          "atp_wins": 40,
+          "atp_accuracy": 0.7692307692307693,
+          "challenger_n": 300,
+          "challenger_wins": 219,
+          "challenger_accuracy": 0.73,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 1,
+      "total_cells": 3,
+      "standardized_atp_accuracy": 0.7692307692307693,
+      "standardized_challenger_accuracy": 0.73,
+      "standardized_difference_ch_minus_atp": -0.03923076923076929,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.811111111111111,
+      "common_support": {
+        "atp_rows_in_common_cells": 52,
+        "atp_rows_total": 58,
+        "atp_share": 0.896551724137931,
+        "challenger_rows_in_common_cells": 300,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.7177033492822966
+      },
+      "min_cell": 10
+    },
+    "rating_gap_band": {
+      "cells": [
+        {
+          "stratum": "100-199",
+          "atp_n": 38,
+          "atp_wins": 28,
+          "atp_accuracy": 0.7368421052631579,
+          "challenger_n": 252,
+          "challenger_wins": 169,
+          "challenger_accuracy": 0.6706349206349206,
+          "common_support": true
+        },
+        {
+          "stratum": "200+",
+          "atp_n": 20,
+          "atp_wins": 17,
+          "atp_accuracy": 0.85,
+          "challenger_n": 166,
+          "challenger_wins": 139,
+          "challenger_accuracy": 0.8373493975903614,
+          "common_support": true
+        }
+      ],
+      "common_support_cells": 2,
+      "total_cells": 2,
+      "standardized_atp_accuracy": 0.7810592658115877,
+      "standardized_challenger_accuracy": 0.7357796532267525,
+      "standardized_difference_ch_minus_atp": -0.04527961258483515,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.7698797610077577,
+      "common_support": {
+        "atp_rows_in_common_cells": 58,
+        "atp_rows_total": 58,
+        "atp_share": 1.0,
+        "challenger_rows_in_common_cells": 418,
+        "challenger_rows_total": 418,
+        "challenger_share": 1.0
+      },
+      "min_cell": 10
+    },
+    "surface_experience_min": {
+      "cells": [
+        {
+          "stratum": "0",
+          "atp_n": 33,
+          "atp_wins": 26,
+          "atp_accuracy": 0.7878787878787878,
+          "challenger_n": 62,
+          "challenger_wins": 45,
+          "challenger_accuracy": 0.7258064516129032,
+          "common_support": true
+        },
+        {
+          "stratum": "1-4",
+          "atp_n": 2,
+          "atp_wins": 2,
+          "atp_accuracy": 1.0,
+          "challenger_n": 78,
+          "challenger_wins": 62,
+          "challenger_accuracy": 0.7948717948717948,
+          "common_support": false
+        },
+        {
+          "stratum": "10+",
+          "atp_n": 20,
+          "atp_wins": 15,
+          "atp_accuracy": 0.75,
+          "challenger_n": 214,
+          "challenger_wins": 149,
+          "challenger_accuracy": 0.6962616822429907,
+          "common_support": true
+        },
+        {
+          "stratum": "5-9",
+          "atp_n": 3,
+          "atp_wins": 2,
+          "atp_accuracy": 0.6666666666666666,
+          "challenger_n": 64,
+          "challenger_wins": 52,
+          "challenger_accuracy": 0.8125,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 2,
+      "total_cells": 4,
+      "standardized_atp_accuracy": 0.7609376439163673,
+      "standardized_challenger_accuracy": 0.7047928466507162,
+      "standardized_difference_ch_minus_atp": -0.056144797265651136,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.7369690848903102,
+      "common_support": {
+        "atp_rows_in_common_cells": 53,
+        "atp_rows_total": 58,
+        "atp_share": 0.9137931034482759,
+        "challenger_rows_in_common_cells": 276,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.6602870813397129
+      },
+      "min_cell": 10
+    },
+    "round": {
+      "cells": [
+        {
+          "stratum": "F",
+          "atp_n": 3,
+          "atp_wins": 3,
+          "atp_accuracy": 1.0,
+          "challenger_n": 5,
+          "challenger_wins": 2,
+          "challenger_accuracy": 0.4,
+          "common_support": false
+        },
+        {
+          "stratum": "QF",
+          "atp_n": 2,
+          "atp_wins": 2,
+          "atp_accuracy": 1.0,
+          "challenger_n": 19,
+          "challenger_wins": 16,
+          "challenger_accuracy": 0.8421052631578947,
+          "common_support": false
+        },
+        {
+          "stratum": "QUAL",
+          "atp_n": 10,
+          "atp_wins": 7,
+          "atp_accuracy": 0.7,
+          "challenger_n": 114,
+          "challenger_wins": 87,
+          "challenger_accuracy": 0.7631578947368421,
+          "common_support": true
+        },
+        {
+          "stratum": "R16",
+          "atp_n": 9,
+          "atp_wins": 7,
+          "atp_accuracy": 0.7777777777777778,
+          "challenger_n": 71,
+          "challenger_wins": 54,
+          "challenger_accuracy": 0.7605633802816901,
+          "common_support": false
+        },
+        {
+          "stratum": "R32",
+          "atp_n": 20,
+          "atp_wins": 13,
+          "atp_accuracy": 0.65,
+          "challenger_n": 181,
+          "challenger_wins": 128,
+          "challenger_accuracy": 0.7071823204419889,
+          "common_support": true
+        },
+        {
+          "stratum": "R64",
+          "atp_n": 6,
+          "atp_wins": 5,
+          "atp_accuracy": 0.8333333333333334,
+          "challenger_n": 0,
+          "challenger_wins": 0,
+          "challenger_accuracy": null,
+          "common_support": false
+        },
+        {
+          "stratum": "SF",
+          "atp_n": 3,
+          "atp_wins": 3,
+          "atp_accuracy": 1.0,
+          "challenger_n": 7,
+          "challenger_wins": 4,
+          "challenger_accuracy": 0.5714285714285714,
+          "common_support": false
+        },
+        {
+          "stratum": "UNKNOWN",
+          "atp_n": 5,
+          "atp_wins": 5,
+          "atp_accuracy": 1.0,
+          "challenger_n": 21,
+          "challenger_wins": 17,
+          "challenger_accuracy": 0.8095238095238095,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 2,
+      "total_cells": 8,
+      "standardized_atp_accuracy": 0.669076923076923,
+      "standardized_challenger_accuracy": 0.728539154942179,
+      "standardized_difference_ch_minus_atp": 0.05946223186525601,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 1.325217743568969,
+      "common_support": {
+        "atp_rows_in_common_cells": 30,
+        "atp_rows_total": 58,
+        "atp_share": 0.5172413793103449,
+        "challenger_rows_in_common_cells": 295,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.7057416267942583
+      },
+      "min_cell": 10
+    },
+    "inactivity_max": {
+      "cells": [
+        {
+          "stratum": "0-7d",
+          "atp_n": 45,
+          "atp_wins": 34,
+          "atp_accuracy": 0.7555555555555555,
+          "challenger_n": 184,
+          "challenger_wins": 137,
+          "challenger_accuracy": 0.7445652173913043,
+          "common_support": true
+        },
+        {
+          "stratum": "181d+",
+          "atp_n": 1,
+          "atp_wins": 1,
+          "atp_accuracy": 1.0,
+          "challenger_n": 26,
+          "challenger_wins": 21,
+          "challenger_accuracy": 0.8076923076923077,
+          "common_support": false
+        },
+        {
+          "stratum": "31-90d",
+          "atp_n": 2,
+          "atp_wins": 2,
+          "atp_accuracy": 1.0,
+          "challenger_n": 45,
+          "challenger_wins": 36,
+          "challenger_accuracy": 0.8,
+          "common_support": false
+        },
+        {
+          "stratum": "8-30d",
+          "atp_n": 10,
+          "atp_wins": 8,
+          "atp_accuracy": 0.8,
+          "challenger_n": 142,
+          "challenger_wins": 99,
+          "challenger_accuracy": 0.6971830985915493,
+          "common_support": true
+        },
+        {
+          "stratum": "91-180d",
+          "atp_n": 0,
+          "atp_wins": 0,
+          "atp_accuracy": null,
+          "challenger_n": 21,
+          "challenger_wins": 15,
+          "challenger_accuracy": 0.7142857142857143,
+          "common_support": false
+        }
+      ],
+      "common_support_cells": 2,
+      "total_cells": 5,
+      "standardized_atp_accuracy": 0.7732866724992709,
+      "standardized_challenger_accuracy": 0.7256621148780161,
+      "standardized_difference_ch_minus_atp": -0.047624557621254726,
+      "mantel_haenszel_odds_ratio_ch_vs_atp": 0.853061503643463,
+      "common_support": {
+        "atp_rows_in_common_cells": 55,
+        "atp_rows_total": 58,
+        "atp_share": 0.9482758620689655,
+        "challenger_rows_in_common_cells": 326,
+        "challenger_rows_total": 418,
+        "challenger_share": 0.7799043062200957
+      },
+      "min_cell": 10
+    }
+  },
+  "holdout_and_selected": {
+    "holdout": {
+      "atp_n": 106,
+      "atp_accuracy": 0.6698113207547169,
+      "challenger_n": 919,
+      "challenger_accuracy": 0.6376496191512514,
+      "difference_ch_minus_atp": -0.03216170160346554,
+      "ci95": [
+        -0.12023140637529925,
+        0.06672779843171404
+      ]
+    },
+    "base_50": {
+      "atp_n": 58,
+      "atp_accuracy": 0.7758620689655172,
+      "challenger_n": 418,
+      "challenger_accuracy": 0.7368421052631579,
+      "difference_ch_minus_atp": -0.039019963702359384,
+      "ci95": [
+        -0.13769144690220253,
+        0.08979495869589932
+      ]
+    },
+    "core_40": {
+      "atp_n": 50,
+      "atp_accuracy": 0.78,
+      "challenger_n": 325,
+      "challenger_accuracy": 0.7846153846153846,
+      "difference_ch_minus_atp": 0.004615384615384577,
+      "ci95": [
+        -0.09950737641547622,
+        0.14330153251931735
+      ]
+    }
+  },
+  "market_full": {
+    "quoted_any_age": 1610,
+    "selected_rows": 501,
+    "age_rule": "0 <= market_age_hours <= 24 (quote at or before forecast, at most 24h old)",
+    "ATP_MAIN": {
+      "n": 68,
+      "model_wins": 52,
+      "model_accuracy": 0.7647058823529411,
+      "market_wins": 51,
+      "market_accuracy": 0.75,
+      "paired_difference_model_minus_market": 0.014705882352941176,
+      "model_minus_market_ci95": [
+        -0.07169244347602428,
+        0.10110420818190664
+      ],
+      "mcnemar_p": 1.0,
+      "discordant_model_only": 5,
+      "discordant_market_only": 4
+    },
+    "CHALLENGER": {
+      "n": 433,
+      "model_wins": 275,
+      "model_accuracy": 0.6351039260969977,
+      "market_wins": 296,
+      "market_accuracy": 0.6836027713625866,
+      "paired_difference_model_minus_market": -0.04849884526558892,
+      "model_minus_market_ci95": [
+        -0.09330444453187,
+        -0.0036932459993078287
+      ],
+      "mcnemar_p": 0.0438752935870152,
+      "discordant_model_only": 39,
+      "discordant_market_only": 60
+    }
+  },
+  "market_base_50": {
+    "quoted_any_age": 93,
+    "selected_rows": 37,
+    "age_rule": "0 <= market_age_hours <= 24 (quote at or before forecast, at most 24h old)",
+    "ATP_MAIN": {
+      "n": 0
+    },
+    "CHALLENGER": {
+      "n": 37,
+      "model_wins": 24,
+      "model_accuracy": 0.6486486486486487,
+      "market_wins": 30,
+      "market_accuracy": 0.8108108108108109,
+      "paired_difference_model_minus_market": -0.16216216216216217,
+      "model_minus_market_ci95": [
+        -0.2809308550966186,
+        -0.04339346922770576
+      ],
+      "mcnemar_p": 0.03125,
+      "discordant_model_only": 0,
+      "discordant_market_only": 6
+    }
+  },
+  "market_tier_gap_ch_minus_atp": {
+    "difference": -0.06639722863741337,
+    "ci95": [
+      -0.16504117230658055,
+      0.055464708749508485
+    ]
+  },
+  "model_tier_gap_on_market_eligible": {
+    "difference": -0.1296019562559434,
+    "ci95": [
+      -0.22637184063308147,
+      -0.008108289411693156
+    ]
+  },
+  "market_sensitivity_age_ge_0": {
+    "quoted_any_age": 1610,
+    "selected_rows": 518,
+    "age_rule": "0 <= market_age_hours <= 24 (quote at or before forecast, at most 24h old)",
+    "ATP_MAIN": {
+      "n": 70,
+      "model_wins": 54,
+      "model_accuracy": 0.7714285714285715,
+      "market_wins": 52,
+      "market_accuracy": 0.7428571428571429,
+      "paired_difference_model_minus_market": 0.02857142857142857,
+      "model_minus_market_ci95": [
+        -0.0597173789036614,
+        0.11686023604651853
+      ],
+      "mcnemar_p": 0.75390625,
+      "discordant_model_only": 6,
+      "discordant_market_only": 4
+    },
+    "CHALLENGER": {
+      "n": 448,
+      "model_wins": 283,
+      "model_accuracy": 0.6316964285714286,
+      "market_wins": 304,
+      "market_accuracy": 0.6785714285714286,
+      "paired_difference_model_minus_market": -0.046875,
+      "model_minus_market_ci95": [
+        -0.09106290629102917,
+        -0.002687093708970821
+      ],
+      "mcnemar_p": 0.04823365217099702,
+      "discordant_model_only": 41,
+      "discordant_market_only": 62
+    }
+  },
+  "market_sensitivity_all_quotes": {
+    "quoted_any_age": 1610,
+    "selected_rows": 1610,
+    "age_rule": "0 <= market_age_hours <= 24 (quote at or before forecast, at most 24h old)",
+    "ATP_MAIN": {
+      "n": 262,
+      "model_wins": 201,
+      "model_accuracy": 0.767175572519084,
+      "market_wins": 189,
+      "market_accuracy": 0.7213740458015268,
+      "paired_difference_model_minus_market": 0.04580152671755725,
+      "model_minus_market_ci95": [
+        0.0038488418434738172,
+        0.08775421159164068
+      ],
+      "mcnemar_p": 0.050102459732443094,
+      "discordant_model_only": 22,
+      "discordant_market_only": 10
+    },
+    "CHALLENGER": {
+      "n": 1348,
+      "model_wins": 883,
+      "model_accuracy": 0.6550445103857567,
+      "market_wins": 950,
+      "market_accuracy": 0.7047477744807121,
+      "paired_difference_model_minus_market": -0.04970326409495549,
+      "model_minus_market_ci95": [
+        -0.0735799705865953,
+        -0.025826557603315686
+      ],
+      "mcnemar_p": 5.991781318397042e-05,
+      "discordant_model_only": 103,
+      "discordant_market_only": 170
+    }
+  },
+  "market_sensitivity_base_50_age_ge_0": {
+    "quoted_any_age": 93,
+    "selected_rows": 37,
+    "age_rule": "0 <= market_age_hours <= 24 (quote at or before forecast, at most 24h old)",
+    "ATP_MAIN": {
+      "n": 0
+    },
+    "CHALLENGER": {
+      "n": 37,
+      "model_wins": 24,
+      "model_accuracy": 0.6486486486486487,
+      "market_wins": 30,
+      "market_accuracy": 0.8108108108108109,
+      "paired_difference_model_minus_market": -0.16216216216216217,
+      "model_minus_market_ci95": [
+        -0.2809308550966186,
+        -0.04339346922770576
+      ],
+      "mcnemar_p": 0.03125,
+      "discordant_model_only": 0,
+      "discordant_market_only": 6
+    }
+  },
+  "common_support_limitation": "Direct standardization uses only strata with at least 10 ATP and 10 Challenger fixtures. ATP rows are scarce: 577 of 3,223. Cells without ATP support are reported, not extrapolated.",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}
