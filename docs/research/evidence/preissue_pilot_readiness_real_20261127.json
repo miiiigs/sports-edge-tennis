@@ -1,0 +1,690 @@
+{
+  "actual_competitive_start_persistence": {
+    "candidate_columns": [
+      {
+        "column": "started_at",
+        "table": "ingest_runs"
+      },
+      {
+        "column": "started_at",
+        "table": "prediction_runs"
+      }
+    ],
+    "explicit_actual_competitive_start_stored": false,
+    "note": "scheduled match_start_at is not an actual competitive start. No match-level actual start column is present."
+  },
+  "actual_request_reservations": 0,
+  "balanced_160_target": {
+    "ATP_MAIN": {
+      "eligible": 0,
+      "shortfall": 80
+    },
+    "CHALLENGER": {
+      "eligible": 23,
+      "shortfall": 57
+    },
+    "requested_per_tour": 80,
+    "substituted_from_other_competition": false,
+    "targets_are_targets_not_achievements": true
+  },
+  "batch_cadence": {
+    "latest_run_at": "2026-11-27T06:04:02.382176+00:00",
+    "median_gap_seconds": 3416.58872,
+    "observed_runs": 48
+  },
+  "entitlements": {
+    "API_TENNIS": {
+      "entitlement_established": true,
+      "evidence_reference": "docs/research/evidence/api_tennis_odds_entitlement_real_20261126.json",
+      "may_make_billable_requests": false,
+      "quota_established": false,
+      "status": "ENTITLEMENT_ONLY"
+    },
+    "ODDSPAPI": {
+      "entitlement_established": false,
+      "evidence_reference": "No owner-approved current OddsPapi quota evidence in this probe.",
+      "may_make_billable_requests": false,
+      "quota_established": false,
+      "status": "UNVERIFIED"
+    }
+  },
+  "genuine_price_observations": 0,
+  "measured_at": "2026-11-27T07:02:44.113270+00:00",
+  "oddspapi_identity_continuity": {
+    "fixtures": 522,
+    "note": "AFTER_PRICE identity cannot be treated as available at acquisition.",
+    "state_counts": {
+      "AFTER_PRICE": 502,
+      "BEFORE_PRICE": 20
+    }
+  },
+  "original_time_qualifications": 0,
+  "outstanding_approvals": [
+    "API-Tennis current quota/entitlement must be verified by the owner.",
+    "OddsPapi current remaining allowance must be supplied from the ledger.",
+    "A non-empty owner authorization reference is required to execute.",
+    "Independent OddsPapi tournament mapping and edition end dates are absent.",
+    "A balanced 160-fixture cohort is unavailable off-season (0 ATP)."
+  ],
+  "pilot_calendar_dry_run": {
+    "actual_request_reservations": 0,
+    "can_promote": false,
+    "cycles": [],
+    "fixture_results": [
+      {
+        "deadline": "2026-11-27T07:30:00+00:00",
+        "match_id": 134385,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T09:00:00+00:00",
+        "match_id": 134390,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T08:30:00+00:00",
+        "match_id": 134391,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T08:30:00+00:00",
+        "match_id": 134392,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T21:00:00+00:00",
+        "match_id": 134400,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T08:00:00+00:00",
+        "match_id": 134405,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T06:30:00+00:00",
+        "match_id": 134406,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T06:30:00+00:00",
+        "match_id": 134407,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T09:00:00+00:00",
+        "match_id": 134408,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T08:00:00+00:00",
+        "match_id": 134411,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T10:00:00+00:00",
+        "match_id": 134412,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T10:00:00+00:00",
+        "match_id": 134413,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T07:30:00+00:00",
+        "match_id": 134414,
+        "slot": null,
+        "status": "NO_FEASIBLE_SLOT_OR_CYCLE_CAP",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T11:30:00+00:00",
+        "match_id": 134415,
+        "slot": null,
+        "status": "AUTHORIZATION_OR_ALLOWANCE_BLOCKED",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T16:00:00+00:00",
+        "match_id": 134416,
+        "slot": null,
+        "status": "AUTHORIZATION_OR_ALLOWANCE_BLOCKED",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T16:00:00+00:00",
+        "match_id": 134417,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T13:00:00+00:00",
+        "match_id": 134418,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T17:30:00+00:00",
+        "match_id": 134419,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T16:30:00+00:00",
+        "match_id": 134420,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T18:00:00+00:00",
+        "match_id": 134421,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T22:00:00+00:00",
+        "match_id": 134422,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T23:30:00+00:00",
+        "match_id": 134423,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      },
+      {
+        "deadline": "2026-11-27T23:30:00+00:00",
+        "match_id": 134424,
+        "slot": null,
+        "status": "DUAL_MAPPING_UNAVAILABLE",
+        "tour": "CHALLENGER"
+      }
+    ],
+    "fixtures": 23,
+    "original_time_prices": 0,
+    "planned_fixtures": 0,
+    "provider_calls": 0,
+    "remaining_estimated_allowance": {
+      "API_TENNIS": null,
+      "ODDSPAPI": null
+    }
+  },
+  "provider_calls": 0,
+  "strict_qualification_audit": {
+    "API_TENNIS": {
+      "candidate_markets": 50586,
+      "groups": 101172,
+      "qualified_fixtures": 0,
+      "qualified_markets": 0,
+      "rejections": [
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1168,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1382,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1624,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1865,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2093,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2338,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2602,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2752,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 688,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 936,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1168,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1382,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1624,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 1865,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2093,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2338,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2602,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 2752,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 688,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "888SPORT",
+          "match_id": 117801,
+          "provider_code": "API_TENNIS",
+          "raw_observation_id": 936,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        }
+      ],
+      "rule": "Both sides must share one raw observation and source snapshot; different observation records never qualify.",
+      "single_sided_markets": [],
+      "status_counts": {
+        "REJECTED_LATE_OBSERVATION": 50586
+      },
+      "version": "STRICT_PAIRED_ORIGINAL_TIME_V1"
+    },
+    "ODDSPAPI": {
+      "candidate_markets": 11288,
+      "groups": 22576,
+      "qualified_fixtures": 0,
+      "qualified_markets": 0,
+      "rejections": [
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 130865,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73651,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "BET365",
+          "match_id": 130865,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73653,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "PINNACLE",
+          "match_id": 130865,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73650,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "UNIBET",
+          "match_id": 130865,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73652,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 130866,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73634,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "BET365",
+          "match_id": 130866,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73636,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "PINNACLE",
+          "match_id": 130866,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73633,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "UNIBET",
+          "match_id": 130866,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73635,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 130867,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73669,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "BET365",
+          "match_id": 130867,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73671,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "PINNACLE",
+          "match_id": 130867,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73668,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "UNIBET",
+          "match_id": 130867,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73670,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 130868,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73638,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "BET365",
+          "match_id": 130868,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73640,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "PINNACLE",
+          "match_id": 130868,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73637,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "UNIBET",
+          "match_id": 130868,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73639,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "1XBET",
+          "match_id": 130869,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73626,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "BET365",
+          "match_id": 130869,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73628,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "PINNACLE",
+          "match_id": 130869,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73625,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        },
+        {
+          "bookmaker_code": "UNIBET",
+          "match_id": 130869,
+          "provider_code": "ODDSPAPI",
+          "raw_observation_id": 73627,
+          "reasons": [
+            "OBSERVED_AFTER_LOCK"
+          ],
+          "status": "REJECTED_LATE_OBSERVATION"
+        }
+      ],
+      "rule": "Both sides must share one raw observation and source snapshot; different observation records never qualify.",
+      "single_sided_markets": [],
+      "status_counts": {
+        "REJECTED_LATE_OBSERVATION": 11288
+      },
+      "version": "STRICT_PAIRED_ORIGINAL_TIME_V1"
+    }
+  },
+  "tournament_edition_mapping": {
+    "cached_oddspapi_editions": 27,
+    "cached_oddspapi_editions_missing_end_date": 27,
+    "oddspapi_tournament_source_ids": 0
+  },
+  "upcoming_14_days": {
+    "by_tour": {
+      "ATP_MAIN": 0,
+      "CHALLENGER": 23
+    },
+    "dual_mapped": 7,
+    "fixtures": 23,
+    "with_oddspapi_tournament_id": 3
+  }
+}
