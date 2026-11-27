@@ -175,3 +175,64 @@ def test_replace_cannot_overwrite_append_only(inputs):
     with store._connect() as db:
         with pytest.raises(sqlite3.IntegrityError):
             db.execute("INSERT OR REPLACE INTO observations SELECT * FROM observations")
+
+
+def test_augrc_exact_and_ties():
+    good = (1, .9, 1)
+    bad = (0, .8, 0)
+    best = m.risk_coverage([good, bad], denominator=2)
+    worst = m.risk_coverage([(0, .9, 0), (1, .8, 1)], denominator=2)
+    tied = m.risk_coverage([good, (0, .9, 0)], denominator=2)
+    assert best["augrc"] == pytest.approx(.125)
+    assert worst["augrc"] == pytest.approx(.375)
+    assert tied["augrc"] == pytest.approx(.25)
+    assert len(tied["curve"]) == 1
+    assert tied == m.risk_coverage([(0, .9, 0), good], denominator=2)
+    assert m.risk_coverage([bad, bad], denominator=2)["augrc"] == pytest.approx(.5)
+    assert m.risk_coverage([good, good], denominator=2)["augrc"] == 0
+
+
+def test_risk_coverage_missing_is_not_success():
+    partial = m.risk_coverage([(0, .8, 0), (1, None, 1)], denominator=4)
+    assert partial["augrc"] is None
+    assert partial["max_coverage"] == .25
+    assert partial["curve"][0]["selective_risk"] == 1
+    assert partial["curve"][0]["generalized_risk"] == .25
+    assert m.risk_coverage([], denominator=0)["augrc"] is None
+
+
+def test_publication_inventory_separates_revisions(inputs):
+    store, f, g, r = inputs
+    store.receive(raw(r), f, g)
+    store.receive(raw(r), f, g)
+    store.receive(raw(dict(r, p_player1=.2,
+                           published_at_utc="2026-12-01T09:30:00Z")), f, g)
+    inv = store.publication_inventory(as_of="2026-12-02T00:00:00Z")["pronocast"]
+    assert inv["first_observations"] == 1
+    assert inv["subsequent_distinct_payloads"] == 1
+    assert inv["first_without_declared_publication_time"] == 1
+    assert inv["original_publication_independently_verified"] is False
+    assert store.first()[0]["forecast"]["published_at_utc"] is None
+    assert store.publication_inventory(as_of="2026-12-01T09:00:00Z") == {}
+
+
+def test_paired_risk_population_and_selection_flags(inputs):
+    store, f, g, r = inputs
+    store.receive(raw(dict(r, selected_at_publication=True)), f, g)
+    base = dict(r, source="sports_edge_original", market_class="market_independent",
+                p_player1=.4)
+    store.receive(raw(base), f, dict(g, source="sports_edge_original"))
+    s = dict(status="COMPLETED", winner_id="a", official_evidence_ref="synthetic",
+             actual_start_utc="2026-12-01T12:00:00Z",
+             result_observed_at_utc="2026-12-01T14:00:00Z")
+    other = dict(f, match_id="2")
+    out = m.score([f, other], store.first(), {"1": s, "2": s},
+                  as_of="2026-12-02T00:00:00Z")
+    row = next(x for x in out["reports"] if x["tour"] == "ALL" and x["draw"] == "ALL"
+               and x["source"] == "pronocast" and x["market_class"] == "market_assisted")
+    assert row["missing_evidence"]["no_source_capture"] == 1
+    assert row["settled_census_risk_coverage"]["augrc"] is None
+    assert row["published_selection"]["metrics"]["settled"] == 1
+    pair = row["paired_probability_risk_coverage"]["market_independent"]
+    assert pair["matched_n"] == 1 and pair["settled_census_n"] == 2
+    assert pair["source"]["augrc"] == pair["baseline"]["augrc"] == 0
