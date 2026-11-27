@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 
 from sports_edge_tennis.validation.forward_evidence_outbox import (
     EvidenceConflict, _append, _lock_and_read, claim_delivery,
@@ -28,8 +29,13 @@ def dispatch_archive(conn, version, match_id, submit):
             or receipt.get("independent_clock_verified") is not False
             or receipt.get("eligible_for_activation_evidence") is not False):
         raise EvidenceConflict("unverified or mismatched collector acknowledgement")
-    if _instant(receipt["collector_received_at_utc"]) < _instant(original["original_issued_at_utc"]):
+    received = _instant(receipt["collector_received_at_utc"])
+    if received < _instant(original["original_issued_at_utc"]):
         raise EvidenceConflict("receipt predates original issuance")
+    deadline = _instant(original["scheduled_start_at_utc"]) - timedelta(minutes=30)
+    timing = "TIMELY_LOCAL_CLOCK_ONLY" if received <= deadline else "LATE_RECEIPT"
+    if receipt.get("timing_status") != timing or type(receipt.get("duplicate_delivery")) is not bool:
+        raise EvidenceConflict("collector timing or retry status mismatch")
     evidence = dict(receipt)
     evidence.pop("duplicate_delivery",None)
     serialized = json.dumps(evidence,sort_keys=True,separators=(",",":"))
