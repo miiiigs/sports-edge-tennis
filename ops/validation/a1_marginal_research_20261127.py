@@ -56,11 +56,15 @@ MANIFEST = OUT / "a1_marginal_research_manifest_20261127.json"
 
 
 def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+    """SHA-256 of an artifact with LF-normalized text bytes.
+
+    Windows checkouts may materialise CRLF; hashing the normalized bytes keeps
+    the manifest reproducible across platforms.
+    """
+    data = path.read_bytes()
+    if path.suffix.lower() in {".json", ".csv", ".md", ".py", ".txt", ".jsonl"}:
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -480,6 +484,7 @@ def main() -> None:
             }
             for path in artifacts
         ],
+        "hash_normalization": "LF for text artifacts (.json/.csv/.md/.py/.txt/.jsonl)",
         "code": [
             {
                 "path": "src/sports_edge_tennis/validation/a1_marginal_research.py",
