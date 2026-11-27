@@ -115,3 +115,63 @@ def test_equal_coverage_and_probability_subset(inputs):
                  and x["market_class"]=="market_assisted" and x["baseline_class"]=="market_independent"
                  and x["target_fraction"]==1)
     assert equal["feasible"] and equal["source_selected"] == equal["baseline_selected"] == 1
+
+
+def test_configured_collector_rejects_unapproved_and_historical(inputs):
+    import hashlib
+
+    store, f, g, r = inputs
+    evidence = b"synthetic source bytes"
+    g = dict(g, digest_retention=True, normalized_forecast_retention=True,
+             internal_comparison=True)
+    r = dict(r, evidence_sha256=hashlib.sha256(evidence).hexdigest(),
+             origin="observed_pre_match")
+    collector = m.ConfiguredCompetitorCollector(store, {"pronocast": g}, {"1": f})
+
+    def receive(record, source_bytes=evidence):
+        payload = raw(record)
+        return collector.receive(payload, hashlib.sha256(payload).hexdigest(), source_bytes)
+
+    with pytest.raises(ValueError, match="historical"):
+        receive(dict(r, origin="historical_result_page"))
+    with pytest.raises(ValueError, match="source evidence digest"):
+        receive(r, b"wrong evidence")
+    with pytest.raises(ValueError, match="publication timestamp semantics"):
+        receive(dict(r, published_at_utc="2026-12-01T09:30:00Z"))
+    with pytest.raises(ValueError, match="transport digest"):
+        collector.receive(raw(r), "0"*64, evidence)
+    assert not store.first()
+    receipt = receive(r)
+    assert receipt["source_evidence_digest_verified"]
+    assert receipt["independent_clock_verified"] is False
+    assert receipt["eligible_for_activation_evidence"] is False
+    assert receive(r)["duplicate"]
+
+
+def test_draw_strata_and_paired_uncertainty(inputs):
+    store, f, g, r = inputs
+    store.receive(raw(r), f, g)
+    b = dict(r, source="sports_edge_original", market_class="market_independent",
+             p_player1=.4)
+    store.receive(raw(b), f, dict(g, source="sports_edge_original"))
+    s = dict(status="COMPLETED", winner_id="a", official_evidence_ref="synthetic",
+             actual_start_utc="2026-12-01T12:00:00Z",
+             result_observed_at_utc="2026-12-01T14:00:00Z")
+    rows = m.score([f], store.first(), {"1": s}, as_of="2026-12-02T00:00:00Z")["reports"]
+    by_draw = {x["draw"]: x for x in rows if x["tour"] == "CHALLENGER"
+               and x["source"] == "pronocast" and x["market_class"] == "market_assisted"}
+    assert by_draw["MAIN_DRAW"]["eligible"] == 1
+    assert by_draw["QUALIFYING"]["eligible"] == 0
+    metrics = by_draw["MAIN_DRAW"]["paired_uncertainty_by_baseline_class"]["market_independent"]
+    assert metrics["accuracy"]["delta"] == 0
+    assert metrics["brier"]["delta"] == pytest.approx(-.07)
+    assert metrics["log_loss"]["delta"] < 0
+    assert metrics["accuracy"]["ci95"] is None
+
+
+def test_replace_cannot_overwrite_append_only(inputs):
+    store, f, g, r = inputs
+    store.receive(raw(r), f, g)
+    with store._connect() as db:
+        with pytest.raises(sqlite3.IntegrityError):
+            db.execute("INSERT OR REPLACE INTO observations SELECT * FROM observations")

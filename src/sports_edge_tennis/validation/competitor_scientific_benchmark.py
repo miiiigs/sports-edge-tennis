@@ -8,16 +8,18 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import hmac
 import json
 import math
 import sqlite3
+from copy import deepcopy
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fractions import Fraction
 from urllib.parse import urlsplit
 
-from sports_edge_tennis.validation.competitor_forward_audit import utc, _mean, _logloss
+from sports_edge_tennis.validation.competitor_forward_audit import utc, _mean, _logloss, _cluster_ci
 
 SOURCES = ("pronocast", "tennispredictions_ai", "bananapoint", "tennisbrain",
            "courtcruncher", "tennisforesight", "sports_edge_original", "bookmaker")
@@ -145,6 +147,7 @@ class ObservationStore:
         conn = sqlite3.connect(self.path, timeout=5)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=FULL")
+        conn.execute("PRAGMA recursive_triggers=ON")
         return conn
 
     def receive(self, raw, fixture, grant):
@@ -190,6 +193,48 @@ class ObservationStore:
                            "forecast": _decode(raw), "fixture": json.loads(fixture),
                            "grant_ref": grant_ref})
         return result
+
+
+class ConfiguredCompetitorCollector:
+    """Local receiver boundary for a separate operator, aligned with PR #394.
+
+    Grants and census are supplied by the collector operator, not the producer.
+    Neither an operator assertion nor a checksum independently proves rights,
+    source transformation fidelity, or clock independence.
+    """
+
+    def __init__(self, store, grants, fixtures):
+        self.store = store
+        self.grants = deepcopy(grants)
+        self.fixtures = deepcopy(fixtures)
+
+    def receive(self, raw, supplied_sha, evidence_bytes):
+        record = _decode(raw)
+        if not isinstance(supplied_sha, str) or not hmac.compare_digest(
+                hashlib.sha256(raw).hexdigest(), supplied_sha):
+            raise ValueError("transport digest mismatch")
+        if not isinstance(evidence_bytes, bytes) or not 0 < len(evidence_bytes) <= 1024 * 1024:
+            raise ValueError("missing permitted source evidence")
+        if hashlib.sha256(evidence_bytes).hexdigest() != record.get("evidence_sha256"):
+            raise ValueError("source evidence digest mismatch")
+        grant = self.grants.get(record.get("source"))
+        fixture = self.fixtures.get(record.get("match_id"))
+        if grant is None or fixture is None:
+            raise ValueError("not in operator-approved grant and census registry")
+        if (grant.get("digest_retention") is not True
+                or grant.get("normalized_forecast_retention") is not True
+                or grant.get("internal_comparison") is not True):
+            raise ValueError("retention or comparison permission missing")
+        if record.get("published_at_utc") is not None and (
+                grant.get("publication_timestamp_semantics") != "original_forecast_publication"):
+            raise ValueError("unverified publication timestamp semantics")
+        if record.get("origin") != "observed_pre_match":
+            raise ValueError("historical or unknown-origin record")
+        result = self.store.receive(raw, fixture, grant)
+        return dict(result, source_evidence_digest_verified=True,
+                    independent_clock_verified=False,
+                    source_transformation_verified=False,
+                    eligible_for_activation_evidence=False)
 
 
 def _metrics(points):
@@ -262,8 +307,12 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
 
     reports = []
     equal_coverage = []
-    for tier in ("ALL", "ATP_TOUR", "CHALLENGER"):
-        ids = {mid for mid,f in universe.items() if tier == "ALL" or f["tour"] == tier}
+    strata = [(tier, draw) for tier in ("ALL", "ATP_TOUR", "CHALLENGER")
+              for draw in ("ALL", "MAIN_DRAW", "QUALIFYING")]
+    for tier, draw in strata:
+        ids = {mid for mid, f in universe.items()
+               if (tier == "ALL" or f["tour"] == tier)
+               and (draw == "ALL" or f["draw"] == draw)}
         for source in sources:
             rows = {mid:r for (src,mid),r in observed.items() if src == source and mid in ids}
             for cls in CLASSES:
@@ -276,6 +325,7 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                             values[mid] = p
                 common, base_values, probability_common, probability_base = [], [], [], []
                 paired_classes = {}
+                paired_rows = {}
                 for mid,p in sorted(values.items()):
                     other = observed.get((baseline,mid))
                     if source != baseline and other:
@@ -285,10 +335,29 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                             base_values.append(bp)
                             bc = other["forecast"]["market_class"]
                             paired_classes[bc] = paired_classes.get(bc, 0) + 1
+                            paired_rows.setdefault(bc, []).append((mid, p, bp))
                             if p[1] is not None and bp[1] is not None:
                                 probability_common.append(p)
                                 probability_base.append(bp)
-                reports.append({"tour":tier,"source":source,"market_class":cls,
+                uncertainty = {}
+                for bc, pairs in paired_rows.items():
+                    differences = {"accuracy": [], "brier": [], "log_loss": []}
+                    for mid, p, bp in pairs:
+                        cluster = (universe[mid]["tournament_id"] + ":" +
+                                   _fixture(universe[mid]).date().isoformat()[:7])
+                        differences["accuracy"].append((cluster, p[0] - bp[0]))
+                        if p[1] is not None and bp[1] is not None:
+                            differences["brier"].append(
+                                (cluster, (p[1]-p[2])**2 - (bp[1]-bp[2])**2))
+                            differences["log_loss"].append(
+                                (cluster, _logloss(p[1], p[2]) - _logloss(bp[1], bp[2])))
+                    uncertainty[bc] = {
+                        name: {"n": len(values), "delta": _mean([v for _, v in values]),
+                               "ci95": _cluster_ci(values),
+                               "clusters": len({c for c, _ in values})}
+                        for name, values in differences.items()
+                    }
+                reports.append({"tour":tier,"draw":draw,"source":source,"market_class":cls,
                                 "eligible":len(ids),"captured":len(selected),
                                 "missing":len(ids)-len(selected),
                                 "coverage":len(selected)/len(ids) if ids else None,
@@ -298,6 +367,7 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                                 "common_probability_source":_metrics(probability_common),
                                 "common_probability_baseline":_metrics(probability_base),
                                 "paired_baseline_classes":paired_classes,
+                                "paired_uncertainty_by_baseline_class": uncertainty,
                                 "average_verified_odds":None})
                 if source == baseline:
                     continue
@@ -322,7 +392,7 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                         def points(chosen, rows):
                             return [p for mid in chosen if mid in settled
                                     for p in [point(rows[mid],mid)] if p is not None]
-                        equal_coverage.append({"tour":tier,"source":source,"market_class":cls,
+                        equal_coverage.append({"tour":tier,"draw":draw,"source":source,"market_class":cls,
                                                "baseline_class":base_class,"target_fraction":fraction,
                                                "eligible":len(ids),"requested_k":k,"feasible":feasible,
                                                "source_selected":len(a_ids),"baseline_selected":len(b_ids),
