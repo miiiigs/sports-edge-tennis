@@ -387,50 +387,53 @@ class WorkProductReceiptPublisher:
                 "NO_COMPLETED_PREDICTION_RUN_IN_WINDOW",
             )
         experiment = scope.experiment_id
-        sql = """
-        WITH run AS (
-          SELECT prediction_run_id, run_status, as_of, prediction_finalized_at,
-                 experiment_id
-          FROM prediction_runs WHERE prediction_run_id = %(run_id)s
-        ), targets AS (
-          SELECT t.match_id, mv.match_start_at
-          FROM prediction_run_targets t
-          JOIN run r ON TRUE
-          JOIN LATERAL (
-            SELECT mv.match_start_at
-            FROM match_versions mv
-            WHERE mv.match_id = t.match_id AND mv.as_of <= r.as_of
-            ORDER BY mv.as_of DESC, mv.source_observed_at DESC,
-                     mv.match_version_id DESC
-            LIMIT 1
-          ) mv ON TRUE
-          WHERE t.prediction_run_id = r.prediction_run_id
-        )
-        SELECT
-          (SELECT COUNT(*) FROM targets) AS expected,
-          (SELECT COUNT(*) FROM (
-             SELECT t.match_id
-             FROM targets t
-             JOIN predictions p
-               ON p.prediction_run_id = %(run_id)s
-              AND p.match_id = t.match_id
-             WHERE p.prediction_locked_at
-                   <= t.match_start_at - interval '30 minutes'
-               AND (%(experiment)s::text IS NULL
-                    OR p.experiment_id IS NOT DISTINCT FROM %(experiment)s::text)
-             GROUP BY t.match_id
-             HAVING COUNT(DISTINCT p.agent_code) = 3
-          ) verified) AS persisted,
-          (SELECT run_status FROM run) AS run_status,
-          (SELECT prediction_finalized_at FROM run) AS finalized_at,
-          (SELECT experiment_id FROM run) AS run_experiment
-        """
-        row = _scalar(
+        run_row = _scalar(
             self._conn,
-            sql,
-            {"run_id": run_id, "experiment": experiment},
+            """
+            SELECT run_status, as_of, prediction_finalized_at, experiment_id
+            FROM prediction_runs WHERE prediction_run_id = %(run_id)s
+            """,
+            {"run_id": run_id},
         )
-        expected, persisted, run_status, finalized_at, run_experiment = row
+        if run_row is None:
+            return StageCheck(
+                STAGE_FORECAST_GENERATION,
+                STATUS_UNVERIFIED,
+                None,
+                None,
+                "PREDICTION_RUN_ROWS",
+                "PREDICTION_RUN_NOT_FOUND",
+            )
+        run_status, run_as_of, finalized_at, run_experiment = run_row
+        rows = self._conn.execute(
+            """
+            SELECT t.match_id, mv.match_start_at,
+              (SELECT COUNT(DISTINCT p.agent_code)
+                 FROM predictions p
+                WHERE p.prediction_run_id = t.prediction_run_id
+                  AND p.match_id = t.match_id
+                  AND p.prediction_locked_at
+                      <= mv.match_start_at - interval '30 minutes'
+                  AND (%(experiment)s::text IS NULL
+                       OR p.experiment_id
+                          IS NOT DISTINCT FROM %(experiment)s::text)) AS agents
+            FROM prediction_run_targets t
+            JOIN prediction_runs r
+              ON r.prediction_run_id = t.prediction_run_id
+            JOIN LATERAL (
+              SELECT mv.match_start_at
+              FROM match_versions mv
+              WHERE mv.match_id = t.match_id AND mv.as_of <= r.as_of
+              ORDER BY mv.as_of DESC, mv.source_observed_at DESC,
+                       mv.match_version_id DESC
+              LIMIT 1
+            ) mv ON TRUE
+            WHERE t.prediction_run_id = %(run_id)s
+            """,
+            {"run_id": run_id, "experiment": experiment},
+        ).fetchall()
+        expected = len(rows)
+        persisted = sum(1 for row in rows if int(row[2]) == 3)
         if run_status != "COMPLETED" or finalized_at is None:
             return StageCheck(
                 STAGE_FORECAST_GENERATION,

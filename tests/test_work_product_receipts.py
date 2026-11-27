@@ -23,7 +23,14 @@ class _Cursor:
         self._row = row
 
     def fetchone(self):
+        if isinstance(self._row, list):
+            return self._row[0] if self._row else None
         return self._row
+
+    def fetchall(self):
+        if isinstance(self._row, list):
+            return self._row
+        return [] if self._row is None else [self._row]
 
 
 class _FakeConnection:
@@ -33,7 +40,8 @@ class _FakeConnection:
                  settlement, bookmaker_settlement=(0, 0), candidate=(1, 1)):
         self._responses = {
             "ingest_runs ir": discovery,
-            "WITH run AS": forecast,
+            "SELECT run_status, as_of, prediction_finalized_at": forecast[0],
+            "FROM prediction_run_targets t": forecast[1],
             "decision_odds_snapshots": bookmaker,
             "forward_delivery_events": archive,
             "WITH bet AS": settlement,
@@ -69,11 +77,21 @@ def _publisher(conn):
     return WorkProductReceiptPublisher(conn, clock=lambda: WINDOW_END)
 
 
+def _forecast_rows(expected: int = 1, persisted: int = 1):
+    start = WINDOW_END + timedelta(days=1)
+    rows = [(index + 1, start, 3) for index in range(persisted)]
+    rows += [(index + 100, start, 2) for index in range(expected - persisted)]
+    return (
+        ("COMPLETED", WINDOW_END - timedelta(hours=3),
+         WINDOW_END - timedelta(hours=2), None),
+        rows,
+    )
+
+
 def _healthy():
-    finalized = WINDOW_END - timedelta(hours=2)
     return _FakeConnection(
         discovery=(1, 1, 0, 1, 0),
-        forecast=(1, 1, "COMPLETED", finalized, None),
+        forecast=_forecast_rows(1, 1),
         bookmaker=(1, 1),
         archive=(1, 1),
         settlement=(1, 1, 0),
@@ -94,13 +112,9 @@ def test_all_seven_stages_verified_produces_a_successful_receipt():
 
 def test_partial_forecast_never_produces_success():
     healthy = _healthy()
-    healthy._responses["WITH run AS"] = (
-        2,
-        1,
-        "COMPLETED",
-        WINDOW_END - timedelta(hours=2),
-        None,
-    )
+    healthy._responses["FROM prediction_run_targets t"] = [
+        (1, WINDOW_END + timedelta(days=1), 2)
+    ]
     collected = _publisher(healthy).collect(_scope())
     assert collected["success"] is False
     assert "FORECAST_GENERATION" in collected["missing_stages"]
@@ -119,7 +133,7 @@ def test_partial_discovery_never_produces_success():
 def test_zero_discovery_requires_an_explicit_acknowledgement():
     zero = _FakeConnection(
         discovery=(0, 0, 0, 1, 0),
-        forecast=(0, 0, "COMPLETED", WINDOW_END - timedelta(hours=1), None),
+        forecast=_forecast_rows(0, 0),
         bookmaker=(0, 0),
         archive=(0, 0),
         settlement=(0, 0, 0),
@@ -187,7 +201,7 @@ def test_missing_forward_tables_are_unverified_not_zero():
 
     conn = NoTables(
         discovery=(1, 1, 0, 1, 0),
-        forecast=(1, 1, "COMPLETED", WINDOW_END - timedelta(hours=2), None),
+        forecast=_forecast_rows(1, 1),
         bookmaker=(1, 1),
         archive=(0, 0),
         settlement=(1, 1, 0),
