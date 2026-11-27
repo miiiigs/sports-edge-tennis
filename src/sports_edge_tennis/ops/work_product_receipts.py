@@ -405,35 +405,46 @@ class WorkProductReceiptPublisher:
                 "PREDICTION_RUN_NOT_FOUND",
             )
         run_status, run_as_of, finalized_at, run_experiment = run_row
-        rows = self._conn.execute(
-            """
-            SELECT t.match_id, mv.match_start_at,
-              (SELECT COUNT(DISTINCT p.agent_code)
-                 FROM predictions p
-                WHERE p.prediction_run_id = t.prediction_run_id
-                  AND p.match_id = t.match_id
-                  AND p.prediction_locked_at
-                      <= mv.match_start_at - interval '30 minutes'
-                  AND (%(experiment)s::text IS NULL
-                       OR p.experiment_id
-                          IS NOT DISTINCT FROM %(experiment)s::text)) AS agents
-            FROM prediction_run_targets t
-            JOIN prediction_runs r
-              ON r.prediction_run_id = t.prediction_run_id
-            JOIN LATERAL (
-              SELECT mv.match_start_at
-              FROM match_versions mv
-              WHERE mv.match_id = t.match_id AND mv.as_of <= r.as_of
-              ORDER BY mv.as_of DESC, mv.source_observed_at DESC,
-                       mv.match_version_id DESC
-              LIMIT 1
-            ) mv ON TRUE
-            WHERE t.prediction_run_id = %(run_id)s
-            """,
-            {"run_id": run_id, "experiment": experiment},
+        target_rows = self._conn.execute(
+            "SELECT match_id FROM prediction_run_targets "
+            "WHERE prediction_run_id = %(run_id)s",
+            {"run_id": run_id},
         ).fetchall()
-        expected = len(rows)
-        persisted = sum(1 for row in rows if int(row[2]) == 3)
+        expected = len(target_rows)
+        persisted = 0
+        for (match_id,) in target_rows:
+            start_row = self._conn.execute(
+                """
+                SELECT match_start_at FROM match_versions
+                WHERE match_id = %s AND as_of <= %s
+                ORDER BY as_of DESC, source_observed_at DESC,
+                         match_version_id DESC
+                LIMIT 1
+                """,
+                (match_id, run_as_of),
+            ).fetchone()
+            if start_row is None:
+                continue
+            agents = self._conn.execute(
+                """
+                SELECT COUNT(DISTINCT agent_code) FROM predictions
+                WHERE prediction_run_id = %(run_id)s
+                  AND match_id = %(match_id)s
+                  AND prediction_locked_at
+                      <= %(start)s::timestamptz - interval '30 minutes'
+                  AND (%(experiment)s::text IS NULL
+                       OR experiment_id
+                          IS NOT DISTINCT FROM %(experiment)s::text)
+                """,
+                {
+                    "run_id": run_id,
+                    "match_id": match_id,
+                    "start": start_row[0],
+                    "experiment": experiment,
+                },
+            ).fetchone()
+            if int(agents[0]) == 3:
+                persisted += 1
         if run_status != "COMPLETED" or finalized_at is None:
             return StageCheck(
                 STAGE_FORECAST_GENERATION,

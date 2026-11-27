@@ -41,7 +41,9 @@ class _FakeConnection:
         self._responses = {
             "ingest_runs ir": discovery,
             "SELECT run_status, as_of, prediction_finalized_at": forecast[0],
-            "FROM prediction_run_targets t": forecast[1],
+            "SELECT match_id FROM prediction_run_targets": forecast[1],
+            "SELECT match_start_at FROM match_versions": forecast[2],
+            "SELECT COUNT(DISTINCT agent_code) FROM predictions": forecast[3],
             "decision_odds_snapshots": bookmaker,
             "forward_delivery_events": archive,
             "WITH bet AS": settlement,
@@ -79,12 +81,13 @@ def _publisher(conn):
 
 def _forecast_rows(expected: int = 1, persisted: int = 1):
     start = WINDOW_END + timedelta(days=1)
-    rows = [(index + 1, start, 3) for index in range(persisted)]
-    rows += [(index + 100, start, 2) for index in range(expected - persisted)]
+    target_rows = [(index + 1,) for index in range(expected)]
     return (
         ("COMPLETED", WINDOW_END - timedelta(hours=3),
          WINDOW_END - timedelta(hours=2), None),
-        rows,
+        target_rows,
+        (start,),
+        (3 if persisted else 2,),
     )
 
 
@@ -112,9 +115,8 @@ def test_all_seven_stages_verified_produces_a_successful_receipt():
 
 def test_partial_forecast_never_produces_success():
     healthy = _healthy()
-    healthy._responses["FROM prediction_run_targets t"] = [
-        (1, WINDOW_END + timedelta(days=1), 2)
-    ]
+    healthy._responses["SELECT match_id FROM prediction_run_targets"] = [(1,)]
+    healthy._responses["SELECT COUNT(DISTINCT agent_code) FROM predictions"] = (2,)
     collected = _publisher(healthy).collect(_scope())
     assert collected["success"] is False
     assert "FORECAST_GENERATION" in collected["missing_stages"]
