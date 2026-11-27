@@ -65,9 +65,18 @@ def test_append_only_correction_and_separate_market(db):
     assert corrected!=first
     market=json.dumps(dict(outcome_kind="RETIRED",source_reference="synthetic book",
         source_participants=[22,11],selection_player_id=11,bookmaker="test",
-        rule_version="test-v1",market_reference="test:market",bookmaker_grade="LOST")).encode()
+        rule_version="test-v1",rule_reference="synthetic-rule-document",
+        market_reference="test:market",bookmaker_grade="LOST")).encode()
+    with pytest.raises(EvidenceConflict, match="rule not explicitly approved"):
+        append_settlement(db,"A-v1",match,pathway="BOOKMAKER",market_key="test:market",
+            evidence_key="market1",evidence_bytes=market)
+    with pytest.raises(EvidenceConflict, match="rule not explicitly approved"):
+        append_settlement(db,"A-v1",match,pathway="BOOKMAKER",market_key="test:market",
+            evidence_key="market1",evidence_bytes=market,
+            approved_bookmaker_rules={("test","test-v1"): "different-document"})
     append_settlement(db,"A-v1",match,pathway="BOOKMAKER",market_key="test:market",
-        evidence_key="market1",evidence_bytes=market)
+        evidence_key="market1",evidence_bytes=market,
+        approved_bookmaker_rules={("test","test-v1"): "synthetic-rule-document"})
     assert db.execute("SELECT status FROM forward_settlement_events ORDER BY settlement_id").fetchall()==[
         ("VOID",),("WON",),("LOST",)]
     record_expected_fixture(db,"A-v1",match,expected_at=issued,source_bytes=b"synthetic")
@@ -76,6 +85,11 @@ def test_append_only_correction_and_separate_market(db):
     report=reconcile_candidate(db,"A-v1")
     assert (report["expected"],report["missing"],report["sporting_wins"])==(2,1,1)
     assert report["checkpoint_qualified"] is False
+    assert report["settled_selections_descriptive"] == 1
+    assert [c["target"] for c in report["checkpoint_progress"]] == [25,50,100,300,600,1000,1500,2000]
+    assert all(not c["qualified"] and not c["descriptive_count_reached"] for c in report["checkpoint_progress"])
+    assert report["minimum_calendar_days"] == 30
+    assert report["independent_qualified_settled"] == 0
 
 
 def test_archive_commit_then_lost_ack_recovery(db,tmp_path):

@@ -76,3 +76,34 @@ must include hosting, durable storage, egress, backup retention and monitoring;
 no pricing quote or spending authority obtained. Approve jurisdiction, operator,
 retention period, access, clock trust, recovery objectives and cost ceiling
 before provisioning. Local receipts remain ineligible for promotion.
+
+## Settlement and competitor compatibility
+
+Unknown bookmaker rules fail closed in the existing inactive journal: explicit
+bookmaker/rule version/reference allowlist, matching market and participants,
+and explicit source grade required. This is not a bookmaker rule engine or
+license grant. No real rule is approved here; synthetic rule only in tests.
+The existing official result table carries canonical winner_side, ingestion
+lineage and observation clocks, but a reviewed result-to-original participant
+orientation contract must be established before automatic journal polling.
+Do not infer bookmaker grading from the existing provider-neutral production
+settlement service. Genuine stored provider examples have not been executed
+in this session; no commercial rights assumed.
+
+The existing reconciliation now exposes every requested count milestone and
+excludes invalid-digest rows from descriptive win/loss counts. Voids, no picks
+and cancellations do not inflate the count of settled selections. Independent
+qualified counts remain zero; counts do not imply calendar-duration, receipt,
+external denominator, statistical or activation qualification.
+
+PR #393 reviewed at 1d61e58291897eb81328a83256a50687276570de. Its local
+competitor intake accepts string fixture IDs, ATP_TOUR/CHALLENGER and both
+qualifying/main draw, whereas the producer uses integer canonical match IDs,
+ATP_MAIN/CHALLENGER and main draw only. It has one baseline source identifier,
+not four policy versions. Integrate via an explicit canonical crosswalk,
+strict main-draw filter, one source identity per version, shared cutoff and
+actual-start verification; retain missing external observations and separate
+permissions. Do not simply join by date or names, reuse a local receipt as
+independent proof, or merge the competitor draft into production. PR #351 at
+f4812c0b74baecaed16d6e5dfdb7b282b7505f8e is a permission/entitlement audit,
+not written commercial clearance. Neither branch is adopted wholesale here.

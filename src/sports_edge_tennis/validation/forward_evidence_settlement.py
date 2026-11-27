@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 
+from sports_edge_tennis.validation.prospective_policy_registry import CHECKPOINTS, MIN_CALENDAR_DAYS, MIN_FIRST_ISSUED_SETTLED
+
 from sports_edge_tennis.validation.forward_evidence_outbox import EvidenceConflict, digest
 
 OUTCOMES = {"COMPLETED", "RETIRED", "WALKOVER", "DEFAULTED", "CANCELLED", "UNRESOLVED"}
@@ -45,12 +47,13 @@ def sporting_grade(payload, *, outcome_kind, source_participants, winner_player_
 
 
 def append_settlement(conn, version, match_id, *, pathway, market_key, evidence_key,
-                      evidence_bytes, supersedes_id=None):
+                      evidence_bytes, supersedes_id=None, approved_bookmaker_rules=None):
     """Explicit source evidence with optimistic predecessor guard.
 
     Source adapters must authenticate official/bookmaker data before calling.
     Bookmaker grading is accepted only as an explicitly supplied market grade
-    under a named bookmaker and rule version, never inferred from a retirement.
+    under an explicitly approved bookmaker/rule/reference, never inferred from a retirement.
+    An omitted or empty registry permits no bookmaker grading.
     """
     if not conn.autocommit or pathway not in ("SPORTING", "BOOKMAKER"):
         raise ValueError("fresh autocommit connection and supported pathway required")
@@ -77,10 +80,21 @@ def append_settlement(conn, version, match_id, *, pathway, market_key, evidence_
                                    winner_player_id=evidence.get("winner_player_id"))
         else:
             participants, selected = _record(payload)
-            if (not evidence.get("bookmaker") or not evidence.get("rule_version")
-                    or not evidence.get("market_reference")
+            bookmaker, rule = evidence.get("bookmaker"), evidence.get("rule_version")
+            rule_reference = evidence.get("rule_reference")
+            if (not isinstance(bookmaker, str) or not bookmaker.strip()
+                    or not isinstance(rule, str) or not rule.strip()
+                    or not isinstance(rule_reference, str) or not rule_reference.strip()
+                    or not approved_bookmaker_rules
+                    or approved_bookmaker_rules.get((bookmaker, rule)) != rule_reference):
+                raise EvidenceConflict("bookmaker rule not explicitly approved")
+            source_participants = evidence.get("source_participants")
+            if (not evidence.get("market_reference")
                     or evidence["market_reference"] != market_key
-                    or set(evidence["source_participants"]) != set(participants)
+                    or not isinstance(source_participants, list)
+                    or len(source_participants) != 2
+                    or any(type(p) is not int for p in source_participants)
+                    or set(source_participants) != set(participants)
                     or evidence.get("selection_player_id") != selected):
                 raise EvidenceConflict("unmatched bookmaker market or rule provenance")
             grade = evidence["bookmaker_grade"]
@@ -150,8 +164,11 @@ def reconcile_candidate(conn, version):
              AND s.match_id=o.match_id AND pathway='SPORTING' ORDER BY settlement_id DESC LIMIT 1)
            FROM forward_originals o WHERE experiment_version=%s""", (version,),
     ).fetchall()
-    wins = sum(row[4] == "WON" for row in rows)
-    losses = sum(row[4] == "LOST" for row in rows)
+    # Corrupted evidence is an operational failure, not a graded selection.
+    valid = [row for row in rows if digest(bytes(row[0])) == row[1]]
+    wins = sum(row[4] == "WON" for row in valid)
+    losses = sum(row[4] == "LOST" for row in valid)
+    settled_selections = wins + losses
     return {
         "expected":expected, "missing":missing, "committed":len(rows),
         "archived":sum(row[2] in ("DELIVERED","RECONCILED") for row in rows),
@@ -163,5 +180,16 @@ def reconcile_candidate(conn, version):
         "sporting_wins":wins, "sporting_losses":losses,
         "descriptive_accuracy":wins/(wins+losses) if wins+losses else None,
         "checkpoint_target":300, "independent_qualified_settled":0,
+        "settled_selections_descriptive": settled_selections,
+        "checkpoint_progress": [
+            {"target": target, "descriptive_count": settled_selections,
+             "descriptive_count_reached": settled_selections >= target,
+             "independent_qualified_count": 0, "qualified": False}
+            for target in CHECKPOINTS
+        ],
+        "minimum_calendar_days": MIN_CALENDAR_DAYS,
+        "minimum_first_issued_settled": MIN_FIRST_ISSUED_SETTLED,
+        "calendar_duration_verified": False,
+        "external_denominator_verified": False,
         "checkpoint_qualified":False, "activation_eligible":False,
     }
