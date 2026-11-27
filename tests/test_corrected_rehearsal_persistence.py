@@ -14,15 +14,24 @@ from tests.test_corrected_candidate_rehearsal import inputs
 from tests.test_full_slate_runner import _insert_scheduled_target, _request, _seed_configs
 
 
-def seed(db):
+def seed(db, *, capture_a=False):
     now = datetime.now(UTC)
     observed = now - timedelta(minutes=5)
     target = _insert_scheduled_target(db, as_of=observed, ingested_at=observed)
     _seed_configs(db)
     cutoff = now - timedelta(minutes=1)
-    anchor = run_full_slate(db, replace(
+    anchor_request = replace(
         _request(db, match_ids=[target["match_id"]], as_of=cutoff),
-        experiment_id=persistence.REHEARSAL_RUN))
+        experiment_id=persistence.REHEARSAL_RUN,
+        persist_identity_resolutions=capture_a)
+    if capture_a:
+        from sports_edge_tennis.validation.forward_evidence_outbox import (
+            build_rehearsal_freeze, run_with_originals,
+        )
+        anchor = run_with_originals(
+            db, anchor_request, freeze_bytes=build_rehearsal_freeze(db, anchor_request))
+    else:
+        anchor = run_full_slate(db, anchor_request)
     data = inputs()
     data["request"] = replace(data["request"], player_1_id=target["player_1_id"],
                               player_2_id=target["player_2_id"], as_of=cutoff,
@@ -125,3 +134,81 @@ def test_each_candidate_uses_its_own_selection(db):
         with pytest.raises(EvidenceConflict, match="invalid synthetic candidate"):
             sporting_grade(json.dumps(original).encode(), outcome_kind="COMPLETED",
                            source_participants=[p1,p2], winner_player_id=p1)
+
+
+def test_four_candidate_end_to_end_rehearsal(db, tmp_path):
+    """One synthetic slate, four original journals, lost receipt and correction.
+
+    A runs the existing runner; B/C/D execute A1 replay with injected specialist
+    inputs. A and B/C/D are separate transactions, not one atomic four-arm run.
+    No live data, independent receipt, external transport or publication.
+    """
+    from sports_edge_tennis.validation.forward_evidence_outbox import digest
+    from sports_edge_tennis.validation.forward_evidence_settlement import (
+        append_settlement, reconcile_candidate, record_expected_fixture,
+        sporting_grade,
+    )
+    data = seed(db, capture_a=True)
+    report = persistence.persist_corrected_rehearsal(db, **data)
+    versions = [persistence.REHEARSAL_RUN, *report["versions"]]
+    assert len(set(versions)) == 4
+    mid = data["match_id"]
+    p1, p2 = data["request"].player_1_id, data["request"].player_2_id
+    store = OriginalReceiptStore(tmp_path / "four-arm.sqlite")
+    original_bytes = {}
+    for version in versions:
+        row = db.execute(
+            "SELECT payload,payload_sha256 FROM forward_originals "
+            "WHERE experiment_version=%s AND match_id=%s", (version, mid)
+        ).fetchone()
+        original_bytes[version] = bytes(row[0])
+        assert digest(original_bytes[version]) == row[1]
+
+        def lost_ack(payload, sha):
+            store.receive(payload, sha)
+            raise TimeoutError("synthetic lost acknowledgement")
+
+        with pytest.raises(TimeoutError):
+            dispatch_archive(db, version, mid, lost_ack)
+        assert reconcile_candidate(db, version)["uncertain"] == 1
+        receipt = dispatch_archive(db, version, mid, store.receive)
+        assert receipt["eligible_for_activation_evidence"] is False
+        assert dispatch_archive(db, version, mid, store.receive) is None
+
+        # Synthetic census includes a deliberately missing expected fixture.
+        record_expected_fixture(db, version, mid,
+            expected_at=data["request"].as_of, source_bytes=b"synthetic census")
+
+    from tests.abstention_helpers import insert_match
+    missing = insert_match(db)
+    for version in versions:
+        record_expected_fixture(db, version, missing,
+            expected_at=data["request"].as_of, source_bytes=b"synthetic missing fixture")
+        def body(winner):
+            return json.dumps({
+                "outcome_kind": "COMPLETED",
+                "source_participants": [p2, p1],
+                "winner_player_id": winner,
+                "source_reference": "synthetic result",
+            }, sort_keys=True).encode()
+        first = append_settlement(db, version, mid, pathway="SPORTING",
+            market_key="official_match_winner", evidence_key="synthetic:first",
+            evidence_bytes=body(p1))
+        corrected = append_settlement(db, version, mid, pathway="SPORTING",
+            market_key="official_match_winner", evidence_key="synthetic:correction",
+            evidence_bytes=body(p2), supersedes_id=first)
+        grade = sporting_grade(original_bytes[version], outcome_kind="COMPLETED",
+                               source_participants=[p2, p1], winner_player_id=p2)
+        assert db.execute(
+            "SELECT status,supersedes_id FROM forward_settlement_events WHERE settlement_id=%s",
+            (corrected,)).fetchone() == (grade, first)
+        summary = reconcile_candidate(db, version)
+        assert (summary["expected"], summary["missing"], summary["archived"]) == (2, 1, 1)
+        assert summary["published"] == 0
+        assert summary["independent_qualified_settled"] == 0
+        assert summary["activation_eligible"] is False
+        assert bytes(db.execute(
+            "SELECT payload FROM forward_originals WHERE experiment_version=%s AND match_id=%s",
+            (version, mid)).fetchone()[0]) == original_bytes[version]
+    assert store.verify_inventory() == {"count": 4, "digest_mismatches": 0}
+    assert db.execute("SELECT count(*) FROM forward_settlement_events").fetchone()[0] == 8
