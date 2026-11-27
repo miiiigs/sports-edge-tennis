@@ -1,0 +1,3819 @@
+{
+  "as_of": "2026-11-26T00:00:00+00:00",
+  "measured_at": "2026-11-27T03:54:44.320655+00:00",
+  "populations": {
+    "latest800_settled_all": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 3,
+        "duplicate_bookmaker_groups": {},
+        "exact_duplicate_pairs": 0,
+        "independent_information_units": 364,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 364
+      },
+      "n": 800,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 3,
+          "duplicate_bookmaker_groups": {},
+          "exact_duplicate_pairs": 0,
+          "independent_information_units": 364,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 364
+        },
+        "fixtures": 209,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 209,
+            "market": {
+              "accuracy": 0.722488038277512,
+              "brier": 0.18857736357520513,
+              "calibration_slope": 1.1411219584885142,
+              "ece": 0.07263864772997265,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5572162094239143,
+              "n": 209
+            },
+            "model": {
+              "accuracy": 0.6124401913875598,
+              "brier": 0.2392053405432394,
+              "calibration_slope": 0.6213315157471521,
+              "ece": 0.08973485645933016,
+              "favourite_agreement": 0.7272727272727273,
+              "log_loss": 0.674566722515767,
+              "n": 209
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.18181818181818177,
+                -0.03827751196172257
+              ],
+              "brier_improvement_95": [
+                0.025486320457719144,
+                0.07538827873158264
+              ],
+              "match_clusters": 209,
+              "n": 209
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 209,
+            "market": {
+              "accuracy": 0.722488038277512,
+              "brier": 0.18857736357520513,
+              "calibration_slope": 1.1411219584885142,
+              "ece": 0.07263864772997265,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5572162094239143,
+              "n": 209
+            },
+            "model": {
+              "accuracy": 0.6124401913875598,
+              "brier": 0.2392053405432394,
+              "calibration_slope": 0.6213315157471521,
+              "ece": 0.08973485645933016,
+              "favourite_agreement": 0.7272727272727273,
+              "log_loss": 0.674566722515767,
+              "n": 209
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.18181818181818177,
+                -0.03827751196172257
+              ],
+              "brier_improvement_95": [
+                0.025486320457719144,
+                0.07538827873158264
+              ],
+              "match_clusters": 209,
+              "n": 209
+            }
+          },
+          "reference": {
+            "coverage": 208,
+            "market": {
+              "accuracy": 0.7211538461538461,
+              "brier": 0.18901755559226954,
+              "calibration_slope": 1.0762363192925566,
+              "ece": 0.08281624076620676,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5586074678597531,
+              "n": 208
+            },
+            "model": {
+              "accuracy": 0.6153846153846154,
+              "brier": 0.2389382719333704,
+              "calibration_slope": 0.6263256591053632,
+              "ece": 0.09277643750000002,
+              "favourite_agreement": 0.7307692307692307,
+              "log_loss": 0.6740459677106271,
+              "n": 208
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.1778846153846153,
+                -0.038461538461538436
+              ],
+              "brier_improvement_95": [
+                0.02490551305034021,
+                0.07556742395566299
+              ],
+              "match_clusters": 208,
+              "n": 208
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    },
+    "latest800_settled_atp": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 13,
+        "duplicate_bookmaker_groups": {
+          "1.040000/11.000000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.090000/5.850000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/5.650000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/7.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.130000/5.000000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.140000/4.750000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.170000/4.500000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "WILLIAMHILL"
+          ],
+          "1.170000/5.000000": [
+            "888SPORT",
+            "BETFAIR"
+          ],
+          "1.190000/4.400000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "1.200000/4.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.200000/4.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.220000/4.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.250000/3.750000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.250000/4.000000": [
+            "BET365",
+            "BETANO"
+          ],
+          "1.330000/3.250000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.360000/3.000000": [
+            "BETANO",
+            "BETFAIR"
+          ],
+          "1.400000/2.750000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.440000/2.820000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "1.500000/2.500000": [
+            "BET365",
+            "BETANO",
+            "BETFAIR"
+          ],
+          "1.570000/2.250000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.600000/2.200000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.610000/2.300000": [
+            "MARATHON",
+            "UNIBET"
+          ],
+          "1.670000/2.100000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.670000/2.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.720000/1.980000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.730000/2.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.740000/1.950000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.750000/2.100000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "1.810000/1.990000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.830000/1.830000": [
+            "BET365",
+            "SBO"
+          ],
+          "1.830000/1.960000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.850000/1.950000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.870000/1.870000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.910000/1.910000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "1.930000/1.870000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "1.960000/1.830000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.000000/1.800000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "2.010000/1.790000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.100000/1.670000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.200000/1.580000": [
+            "BET365",
+            "MARATHON"
+          ],
+          "2.200000/1.600000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "2.200000/1.670000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "2.300000/1.620000": [
+            "1XBET",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "2.500000/1.500000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.500000/1.530000": [
+            "BETANO",
+            "BETFAIR",
+            "UNIBET"
+          ],
+          "2.510000/1.570000": [
+            "1XBET",
+            "PNCL"
+          ],
+          "2.620000/1.500000": [
+            "BET365",
+            "BETANO"
+          ],
+          "2.620000/1.530000": [
+            "1XBET",
+            "PNCL"
+          ],
+          "2.750000/1.400000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.880000/1.360000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.330000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.360000": [
+            "BET365",
+            "BETANO"
+          ],
+          "3.150000/1.360000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "3.250000/1.330000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "3.400000/1.300000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.500000/1.300000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "3.700000/1.280000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "4.000000/1.250000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "6.050000/1.080000": [
+            "1XBET",
+            "MARATHON"
+          ]
+        },
+        "exact_duplicate_pairs": 59,
+        "independent_information_units": 985,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 985
+      },
+      "n": 578,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 13,
+          "duplicate_bookmaker_groups": {
+            "1.040000/11.000000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.090000/5.850000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/5.650000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/7.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.130000/5.000000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.140000/4.750000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.170000/4.500000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "WILLIAMHILL"
+            ],
+            "1.170000/5.000000": [
+              "888SPORT",
+              "BETFAIR"
+            ],
+            "1.190000/4.400000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "1.200000/4.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.200000/4.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.220000/4.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.250000/3.750000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.250000/4.000000": [
+              "BET365",
+              "BETANO"
+            ],
+            "1.330000/3.250000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.360000/3.000000": [
+              "BETANO",
+              "BETFAIR"
+            ],
+            "1.400000/2.750000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.440000/2.820000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "1.500000/2.500000": [
+              "BET365",
+              "BETANO",
+              "BETFAIR"
+            ],
+            "1.570000/2.250000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.600000/2.200000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.610000/2.300000": [
+              "MARATHON",
+              "UNIBET"
+            ],
+            "1.670000/2.100000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.670000/2.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.720000/1.980000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.730000/2.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.740000/1.950000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.750000/2.100000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "1.810000/1.990000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.830000/1.830000": [
+              "BET365",
+              "SBO"
+            ],
+            "1.830000/1.960000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.850000/1.950000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.870000/1.870000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.910000/1.910000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "1.930000/1.870000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "1.960000/1.830000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.000000/1.800000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "2.010000/1.790000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.100000/1.670000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.200000/1.580000": [
+              "BET365",
+              "MARATHON"
+            ],
+            "2.200000/1.600000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "2.200000/1.670000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "2.300000/1.620000": [
+              "1XBET",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "2.500000/1.500000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.500000/1.530000": [
+              "BETANO",
+              "BETFAIR",
+              "UNIBET"
+            ],
+            "2.510000/1.570000": [
+              "1XBET",
+              "PNCL"
+            ],
+            "2.620000/1.500000": [
+              "BET365",
+              "BETANO"
+            ],
+            "2.620000/1.530000": [
+              "1XBET",
+              "PNCL"
+            ],
+            "2.750000/1.400000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.880000/1.360000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.330000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.360000": [
+              "BET365",
+              "BETANO"
+            ],
+            "3.150000/1.360000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "3.250000/1.330000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "3.400000/1.300000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.500000/1.300000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "3.700000/1.280000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "4.000000/1.250000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "6.050000/1.080000": [
+              "1XBET",
+              "MARATHON"
+            ]
+          },
+          "exact_duplicate_pairs": 59,
+          "independent_information_units": 985,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 985
+        },
+        "fixtures": 254,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 254,
+            "market": {
+              "accuracy": 0.7244094488188977,
+              "brier": 0.17433083435063673,
+              "calibration_slope": 1.4753215999194316,
+              "ece": 0.08509068656414084,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5208050348644961,
+              "n": 254
+            },
+            "model": {
+              "accuracy": 0.7125984251968503,
+              "brier": 0.191290089246882,
+              "calibration_slope": 0.9204496973107958,
+              "ece": 0.050415118110236225,
+              "favourite_agreement": 0.8070866141732284,
+              "log_loss": 0.562681874793657,
+              "n": 254
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.06692913385826771,
+                0.04330708661417326
+              ],
+              "brier_improvement_95": [
+                -0.00228300190981092,
+                0.03643886827538152
+              ],
+              "match_clusters": 254,
+              "n": 254
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 254,
+            "market": {
+              "accuracy": 0.7244094488188977,
+              "brier": 0.17435197649884535,
+              "calibration_slope": 1.4744470773145901,
+              "ece": 0.08510205866172484,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5208348059360209,
+              "n": 254
+            },
+            "model": {
+              "accuracy": 0.7125984251968503,
+              "brier": 0.191290089246882,
+              "calibration_slope": 0.9204496973107958,
+              "ece": 0.050415118110236225,
+              "favourite_agreement": 0.8070866141732284,
+              "log_loss": 0.562681874793657,
+              "n": 254
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.06692913385826771,
+                0.04330708661417326
+              ],
+              "brier_improvement_95": [
+                -0.0023135396233110793,
+                0.03639822722039838
+              ],
+              "match_clusters": 254,
+              "n": 254
+            }
+          },
+          "reference": {
+            "coverage": 193,
+            "market": {
+              "accuracy": 0.7202072538860104,
+              "brier": 0.1732472736390729,
+              "calibration_slope": 1.581863714475211,
+              "ece": 0.0691990160476957,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5180116783661283,
+              "n": 193
+            },
+            "model": {
+              "accuracy": 0.7305699481865285,
+              "brier": 0.18668612284896363,
+              "calibration_slope": 0.9678989386812429,
+              "ece": 0.05493588601036271,
+              "favourite_agreement": 0.8134715025906736,
+              "log_loss": 0.5530880899511016,
+              "n": 193
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.051813471502590636,
+                0.07253886010362698
+              ],
+              "brier_improvement_95": [
+                -0.007644016185608194,
+                0.03526649926315725
+              ],
+              "match_clusters": 193,
+              "n": 193
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    },
+    "latest800_settled_challenger": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 3,
+        "duplicate_bookmaker_groups": {},
+        "exact_duplicate_pairs": 0,
+        "independent_information_units": 364,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 364
+      },
+      "n": 800,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 3,
+          "duplicate_bookmaker_groups": {},
+          "exact_duplicate_pairs": 0,
+          "independent_information_units": 364,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 364
+        },
+        "fixtures": 209,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 209,
+            "market": {
+              "accuracy": 0.722488038277512,
+              "brier": 0.18857736357520513,
+              "calibration_slope": 1.1411219584885142,
+              "ece": 0.07263864772997265,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5572162094239143,
+              "n": 209
+            },
+            "model": {
+              "accuracy": 0.6124401913875598,
+              "brier": 0.2392053405432394,
+              "calibration_slope": 0.6213315157471521,
+              "ece": 0.08973485645933016,
+              "favourite_agreement": 0.7272727272727273,
+              "log_loss": 0.674566722515767,
+              "n": 209
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.18181818181818177,
+                -0.03827751196172257
+              ],
+              "brier_improvement_95": [
+                0.025486320457719144,
+                0.07538827873158264
+              ],
+              "match_clusters": 209,
+              "n": 209
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 209,
+            "market": {
+              "accuracy": 0.722488038277512,
+              "brier": 0.18857736357520513,
+              "calibration_slope": 1.1411219584885142,
+              "ece": 0.07263864772997265,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5572162094239143,
+              "n": 209
+            },
+            "model": {
+              "accuracy": 0.6124401913875598,
+              "brier": 0.2392053405432394,
+              "calibration_slope": 0.6213315157471521,
+              "ece": 0.08973485645933016,
+              "favourite_agreement": 0.7272727272727273,
+              "log_loss": 0.674566722515767,
+              "n": 209
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.18181818181818177,
+                -0.03827751196172257
+              ],
+              "brier_improvement_95": [
+                0.025486320457719144,
+                0.07538827873158264
+              ],
+              "match_clusters": 209,
+              "n": 209
+            }
+          },
+          "reference": {
+            "coverage": 208,
+            "market": {
+              "accuracy": 0.7211538461538461,
+              "brier": 0.18901755559226954,
+              "calibration_slope": 1.0762363192925566,
+              "ece": 0.08281624076620676,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5586074678597531,
+              "n": 208
+            },
+            "model": {
+              "accuracy": 0.6153846153846154,
+              "brier": 0.2389382719333704,
+              "calibration_slope": 0.6263256591053632,
+              "ece": 0.09277643750000002,
+              "favourite_agreement": 0.7307692307692307,
+              "log_loss": 0.6740459677106271,
+              "n": 208
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.1778846153846153,
+                -0.038461538461538436
+              ],
+              "brier_improvement_95": [
+                0.02490551305034021,
+                0.07556742395566299
+              ],
+              "match_clusters": 208,
+              "n": 208
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    },
+    "top800_by_confidence_all": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 13,
+        "duplicate_bookmaker_groups": {
+          "1.010000/10.000000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "1.020000/11.000000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.020000/12.000000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.020000/13.000000": [
+            "BETFAIR",
+            "SUPERBET"
+          ],
+          "1.020000/9.300000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.020000/9.400000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.020000/9.500000": [
+            "1XBET",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.030000/8.300000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.030000/8.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.040000/10.000000": [
+            "888SPORT",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.040000/11.000000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.060000/7.500000": [
+            "BETFAIR",
+            "UNIBET"
+          ],
+          "1.070000/7.500000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.080000/6.500000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.080000/7.000000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.080000/8.000000": [
+            "BET365",
+            "UNIBET"
+          ],
+          "1.090000/5.850000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/5.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.100000/5.650000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/6.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.100000/7.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.110000/6.000000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.120000/5.500000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.130000/5.000000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "MARATHON"
+          ],
+          "1.140000/4.750000": [
+            "1XBET",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.140000/5.000000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.170000/4.330000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.170000/4.500000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "WILLIAMHILL"
+          ],
+          "1.200000/4.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.200000/4.330000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.220000/3.750000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.220000/4.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.250000/3.750000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.250000/4.000000": [
+            "BET365",
+            "BETANO"
+          ],
+          "1.290000/3.200000": [
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.290000/3.250000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.290000/3.500000": [
+            "UNIBET",
+            "WILLIAMHILL"
+          ],
+          "1.300000/3.200000": [
+            "BETVICTOR",
+            "UNIBET"
+          ],
+          "1.300000/3.250000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.300000/3.400000": [
+            "BET365",
+            "BETANO",
+            "BETFAIR"
+          ],
+          "1.330000/2.880000": [
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.330000/2.900000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.330000/3.000000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.330000/3.250000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.360000/2.800000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.360000/3.000000": [
+            "BET365",
+            "BETANO",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.400000/2.700000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.440000/2.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.440000/2.620000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.440000/2.630000": [
+            "888SPORT",
+            "BETFAIR"
+          ],
+          "1.470000/2.500000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.500000/2.500000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.570000/2.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.570000/2.250000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.600000/2.200000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.660000/2.100000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.670000/2.050000": [
+            "1XBET",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.670000/2.100000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.730000/2.000000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.740000/1.950000": [
+            "1XBET",
+            "MARATHON",
+            "SBO"
+          ],
+          "1.770000/1.920000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.790000/1.890000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.800000/1.870000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.830000/1.830000": [
+            "BET365",
+            "SBO"
+          ],
+          "1.850000/1.830000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.870000/1.810000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "10.000000/1.010000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "13.000000/1.020000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "15.000000/1.020000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.000000/1.700000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.030000/1.680000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.050000/1.670000": [
+            "1XBET",
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "2.100000/1.660000": [
+            "1XBET",
+            "BET365"
+          ],
+          "2.100000/1.670000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.200000/1.570000": [
+            "BETFAIR",
+            "BETVICTOR",
+            "SBO"
+          ],
+          "2.250000/1.570000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.380000/1.530000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.470000/1.530000": [
+            "BETANO",
+            "PNCL"
+          ],
+          "2.500000/1.500000": [
+            "BET365",
+            "BETFAIR",
+            "UNIBET",
+            "WILLIAMHILL"
+          ],
+          "2.620000/1.440000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "2.750000/1.400000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.800000/1.360000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.850000/1.420000": [
+            "BETANO",
+            "PNCL"
+          ],
+          "2.900000/1.330000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.360000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "3.100000/1.350000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "3.250000/1.290000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.250000/1.300000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "3.250000/1.330000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "3.500000/1.250000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "3.500000/1.300000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "3.750000/1.220000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.750000/1.250000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "4.000000/1.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "4.000000/1.220000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "4.330000/1.170000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "4.330000/1.200000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "4.500000/1.150000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "4.500000/1.170000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "4.900000/1.130000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "5.000000/1.130000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "5.000000/1.140000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "WILLIAMHILL"
+          ],
+          "5.000000/1.160000": [
+            "BET365",
+            "BETANO"
+          ],
+          "5.300000/1.110000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "6.400000/1.070000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "6.500000/1.100000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "8.000000/1.080000": [
+            "BET365",
+            "PNCL"
+          ],
+          "8.500000/1.030000": [
+            "1XBET",
+            "BETVICTOR"
+          ]
+        },
+        "exact_duplicate_pairs": 108,
+        "independent_information_units": 1144,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 1144
+      },
+      "n": 800,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 13,
+          "duplicate_bookmaker_groups": {
+            "1.010000/10.000000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "1.020000/11.000000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.020000/12.000000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.020000/13.000000": [
+              "BETFAIR",
+              "SUPERBET"
+            ],
+            "1.020000/9.300000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.020000/9.400000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.020000/9.500000": [
+              "1XBET",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.030000/8.300000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.030000/8.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.040000/10.000000": [
+              "888SPORT",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.040000/11.000000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.060000/7.500000": [
+              "BETFAIR",
+              "UNIBET"
+            ],
+            "1.070000/7.500000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.080000/6.500000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.080000/7.000000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.080000/8.000000": [
+              "BET365",
+              "UNIBET"
+            ],
+            "1.090000/5.850000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/5.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.100000/5.650000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/6.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.100000/7.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.110000/6.000000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.120000/5.500000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.130000/5.000000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "MARATHON"
+            ],
+            "1.140000/4.750000": [
+              "1XBET",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.140000/5.000000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.170000/4.330000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.170000/4.500000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "WILLIAMHILL"
+            ],
+            "1.200000/4.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.200000/4.330000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.220000/3.750000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.220000/4.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.250000/3.750000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.250000/4.000000": [
+              "BET365",
+              "BETANO"
+            ],
+            "1.290000/3.200000": [
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.290000/3.250000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.290000/3.500000": [
+              "UNIBET",
+              "WILLIAMHILL"
+            ],
+            "1.300000/3.200000": [
+              "BETVICTOR",
+              "UNIBET"
+            ],
+            "1.300000/3.250000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.300000/3.400000": [
+              "BET365",
+              "BETANO",
+              "BETFAIR"
+            ],
+            "1.330000/2.880000": [
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.330000/2.900000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.330000/3.000000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.330000/3.250000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.360000/2.800000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.360000/3.000000": [
+              "BET365",
+              "BETANO",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.400000/2.700000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.440000/2.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.440000/2.620000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.440000/2.630000": [
+              "888SPORT",
+              "BETFAIR"
+            ],
+            "1.470000/2.500000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.500000/2.500000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.570000/2.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.570000/2.250000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.600000/2.200000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.660000/2.100000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.670000/2.050000": [
+              "1XBET",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.670000/2.100000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.730000/2.000000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.740000/1.950000": [
+              "1XBET",
+              "MARATHON",
+              "SBO"
+            ],
+            "1.770000/1.920000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.790000/1.890000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.800000/1.870000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.830000/1.830000": [
+              "BET365",
+              "SBO"
+            ],
+            "1.850000/1.830000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.870000/1.810000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "10.000000/1.010000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "13.000000/1.020000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "15.000000/1.020000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.000000/1.700000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.030000/1.680000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.050000/1.670000": [
+              "1XBET",
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "2.100000/1.660000": [
+              "1XBET",
+              "BET365"
+            ],
+            "2.100000/1.670000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.200000/1.570000": [
+              "BETFAIR",
+              "BETVICTOR",
+              "SBO"
+            ],
+            "2.250000/1.570000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.380000/1.530000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.470000/1.530000": [
+              "BETANO",
+              "PNCL"
+            ],
+            "2.500000/1.500000": [
+              "BET365",
+              "BETFAIR",
+              "UNIBET",
+              "WILLIAMHILL"
+            ],
+            "2.620000/1.440000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "2.750000/1.400000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.800000/1.360000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.850000/1.420000": [
+              "BETANO",
+              "PNCL"
+            ],
+            "2.900000/1.330000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.360000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "3.100000/1.350000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "3.250000/1.290000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.250000/1.300000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "3.250000/1.330000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "3.500000/1.250000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "3.500000/1.300000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "3.750000/1.220000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.750000/1.250000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "4.000000/1.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "4.000000/1.220000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "4.330000/1.170000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "4.330000/1.200000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "4.500000/1.150000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "4.500000/1.170000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "4.900000/1.130000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "5.000000/1.130000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "5.000000/1.140000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "WILLIAMHILL"
+            ],
+            "5.000000/1.160000": [
+              "BET365",
+              "BETANO"
+            ],
+            "5.300000/1.110000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "6.400000/1.070000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "6.500000/1.100000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "8.000000/1.080000": [
+              "BET365",
+              "PNCL"
+            ],
+            "8.500000/1.030000": [
+              "1XBET",
+              "BETVICTOR"
+            ]
+          },
+          "exact_duplicate_pairs": 108,
+          "independent_information_units": 1144,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 1144
+        },
+        "fixtures": 365,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 365,
+            "market": {
+              "accuracy": 0.7863013698630137,
+              "brier": 0.14658430703721925,
+              "calibration_slope": 1.45822320924733,
+              "ece": 0.08252637697430969,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.4576790199805989,
+              "n": 365
+            },
+            "model": {
+              "accuracy": 0.7698630136986301,
+              "brier": 0.18222897702305488,
+              "calibration_slope": 0.6709915010092384,
+              "ece": 0.07886966849315066,
+              "favourite_agreement": 0.9123287671232877,
+              "log_loss": 0.5591847281583701,
+              "n": 365
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.046575342465753455,
+                0.013698630136986245
+              ],
+              "brier_improvement_95": [
+                0.01620021877741399,
+                0.055788737210623635
+              ],
+              "match_clusters": 365,
+              "n": 365
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 365,
+            "market": {
+              "accuracy": 0.7863013698630137,
+              "brier": 0.14662679629280742,
+              "calibration_slope": 1.4573049065454762,
+              "ece": 0.07925142098897249,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.457774303434961,
+              "n": 365
+            },
+            "model": {
+              "accuracy": 0.7698630136986301,
+              "brier": 0.18222897702305488,
+              "calibration_slope": 0.6709915010092384,
+              "ece": 0.07886966849315066,
+              "favourite_agreement": 0.9123287671232877,
+              "log_loss": 0.5591847281583701,
+              "n": 365
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.046575342465753455,
+                0.013698630136986245
+              ],
+              "brier_improvement_95": [
+                0.016160321786827584,
+                0.05573352817337331
+              ],
+              "match_clusters": 365,
+              "n": 365
+            }
+          },
+          "reference": {
+            "coverage": 250,
+            "market": {
+              "accuracy": 0.78,
+              "brier": 0.1443026733790458,
+              "calibration_slope": 1.4006054098642315,
+              "ece": 0.0807283714764692,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.44763737979353346,
+              "n": 250
+            },
+            "model": {
+              "accuracy": 0.752,
+              "brier": 0.192814622539252,
+              "calibration_slope": 0.612934699521234,
+              "ece": 0.09664282799999997,
+              "favourite_agreement": 0.9,
+              "log_loss": 0.5846292654186882,
+              "n": 250
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.06800000000000006,
+                0.01200000000000001
+              ],
+              "brier_improvement_95": [
+                0.024657912916181107,
+                0.07241173423935929
+              ],
+              "match_clusters": 250,
+              "n": 250
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    },
+    "top800_by_confidence_atp": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 13,
+        "duplicate_bookmaker_groups": {
+          "1.040000/11.000000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.090000/5.850000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/5.650000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.100000/7.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.130000/5.000000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.140000/4.750000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.170000/4.500000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "WILLIAMHILL"
+          ],
+          "1.170000/5.000000": [
+            "888SPORT",
+            "BETFAIR"
+          ],
+          "1.190000/4.400000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "1.200000/4.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.200000/4.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.220000/4.000000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.250000/3.750000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.250000/4.000000": [
+            "BET365",
+            "BETANO"
+          ],
+          "1.330000/3.250000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.360000/3.000000": [
+            "BETANO",
+            "BETFAIR"
+          ],
+          "1.400000/2.750000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.440000/2.820000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "1.500000/2.500000": [
+            "BET365",
+            "BETANO",
+            "BETFAIR"
+          ],
+          "1.570000/2.250000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.600000/2.200000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.610000/2.300000": [
+            "MARATHON",
+            "UNIBET"
+          ],
+          "1.670000/2.100000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.670000/2.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.720000/1.980000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.730000/2.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.740000/1.950000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.750000/2.100000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "1.810000/1.990000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.830000/1.830000": [
+            "BET365",
+            "SBO"
+          ],
+          "1.830000/1.960000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.850000/1.950000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.870000/1.870000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.910000/1.910000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "1.930000/1.870000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "1.960000/1.830000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.000000/1.800000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "2.010000/1.790000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.100000/1.670000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.200000/1.580000": [
+            "BET365",
+            "MARATHON"
+          ],
+          "2.200000/1.600000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "2.200000/1.670000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "2.300000/1.620000": [
+            "1XBET",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "2.500000/1.500000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.500000/1.530000": [
+            "BETANO",
+            "BETFAIR",
+            "UNIBET"
+          ],
+          "2.510000/1.570000": [
+            "1XBET",
+            "PNCL"
+          ],
+          "2.620000/1.500000": [
+            "BET365",
+            "BETANO"
+          ],
+          "2.620000/1.530000": [
+            "1XBET",
+            "PNCL"
+          ],
+          "2.750000/1.400000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.880000/1.360000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.330000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.360000": [
+            "BET365",
+            "BETANO"
+          ],
+          "3.150000/1.360000": [
+            "1XBET",
+            "BETANO"
+          ],
+          "3.250000/1.330000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "3.400000/1.300000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.500000/1.300000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "3.700000/1.280000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "4.000000/1.250000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "6.050000/1.080000": [
+            "1XBET",
+            "MARATHON"
+          ]
+        },
+        "exact_duplicate_pairs": 59,
+        "independent_information_units": 985,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 985
+      },
+      "n": 578,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 13,
+          "duplicate_bookmaker_groups": {
+            "1.040000/11.000000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.090000/5.850000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/5.650000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.100000/7.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.130000/5.000000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.140000/4.750000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.170000/4.500000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "WILLIAMHILL"
+            ],
+            "1.170000/5.000000": [
+              "888SPORT",
+              "BETFAIR"
+            ],
+            "1.190000/4.400000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "1.200000/4.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.200000/4.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.220000/4.000000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.250000/3.750000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.250000/4.000000": [
+              "BET365",
+              "BETANO"
+            ],
+            "1.330000/3.250000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.360000/3.000000": [
+              "BETANO",
+              "BETFAIR"
+            ],
+            "1.400000/2.750000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.440000/2.820000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "1.500000/2.500000": [
+              "BET365",
+              "BETANO",
+              "BETFAIR"
+            ],
+            "1.570000/2.250000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.600000/2.200000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.610000/2.300000": [
+              "MARATHON",
+              "UNIBET"
+            ],
+            "1.670000/2.100000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.670000/2.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.720000/1.980000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.730000/2.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.740000/1.950000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.750000/2.100000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "1.810000/1.990000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.830000/1.830000": [
+              "BET365",
+              "SBO"
+            ],
+            "1.830000/1.960000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.850000/1.950000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.870000/1.870000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.910000/1.910000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "1.930000/1.870000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "1.960000/1.830000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.000000/1.800000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "2.010000/1.790000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.100000/1.670000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.200000/1.580000": [
+              "BET365",
+              "MARATHON"
+            ],
+            "2.200000/1.600000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "2.200000/1.670000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "2.300000/1.620000": [
+              "1XBET",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "2.500000/1.500000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.500000/1.530000": [
+              "BETANO",
+              "BETFAIR",
+              "UNIBET"
+            ],
+            "2.510000/1.570000": [
+              "1XBET",
+              "PNCL"
+            ],
+            "2.620000/1.500000": [
+              "BET365",
+              "BETANO"
+            ],
+            "2.620000/1.530000": [
+              "1XBET",
+              "PNCL"
+            ],
+            "2.750000/1.400000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.880000/1.360000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.330000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.360000": [
+              "BET365",
+              "BETANO"
+            ],
+            "3.150000/1.360000": [
+              "1XBET",
+              "BETANO"
+            ],
+            "3.250000/1.330000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "3.400000/1.300000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.500000/1.300000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "3.700000/1.280000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "4.000000/1.250000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "6.050000/1.080000": [
+              "1XBET",
+              "MARATHON"
+            ]
+          },
+          "exact_duplicate_pairs": 59,
+          "independent_information_units": 985,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 985
+        },
+        "fixtures": 254,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 254,
+            "market": {
+              "accuracy": 0.7244094488188977,
+              "brier": 0.1743308343506367,
+              "calibration_slope": 1.4753215999194316,
+              "ece": 0.08509068656414084,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5208050348644964,
+              "n": 254
+            },
+            "model": {
+              "accuracy": 0.7125984251968503,
+              "brier": 0.19129008924688204,
+              "calibration_slope": 0.9204496973107958,
+              "ece": 0.050415118110236225,
+              "favourite_agreement": 0.8070866141732284,
+              "log_loss": 0.5626818747936569,
+              "n": 254
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.06309055118110232,
+                0.03937007874015752
+              ],
+              "brier_improvement_95": [
+                -0.0024879971269923594,
+                0.036652489825519545
+              ],
+              "match_clusters": 254,
+              "n": 254
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 254,
+            "market": {
+              "accuracy": 0.7244094488188977,
+              "brier": 0.1743519764988453,
+              "calibration_slope": 1.4744470773145901,
+              "ece": 0.08510205866172484,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5208348059360209,
+              "n": 254
+            },
+            "model": {
+              "accuracy": 0.7125984251968503,
+              "brier": 0.19129008924688204,
+              "calibration_slope": 0.9204496973107958,
+              "ece": 0.050415118110236225,
+              "favourite_agreement": 0.8070866141732284,
+              "log_loss": 0.5626818747936569,
+              "n": 254
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.06309055118110232,
+                0.03937007874015752
+              ],
+              "brier_improvement_95": [
+                -0.0025096522649985594,
+                0.03659051405203946
+              ],
+              "match_clusters": 254,
+              "n": 254
+            }
+          },
+          "reference": {
+            "coverage": 193,
+            "market": {
+              "accuracy": 0.7202072538860104,
+              "brier": 0.17324727363907302,
+              "calibration_slope": 1.581863714475211,
+              "ece": 0.0691990160476957,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5180116783661283,
+              "n": 193
+            },
+            "model": {
+              "accuracy": 0.7305699481865285,
+              "brier": 0.18668612284896371,
+              "calibration_slope": 0.9678989386812429,
+              "ece": 0.05493588601036271,
+              "favourite_agreement": 0.8134715025906736,
+              "log_loss": 0.5530880899511014,
+              "n": 193
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.04663212435233166,
+                0.07253886010362687
+              ],
+              "brier_improvement_95": [
+                -0.006937333885627742,
+                0.03479647582697352
+              ],
+              "match_clusters": 193,
+              "n": 193
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    },
+    "top800_by_confidence_challenger": {
+      "clv": {
+        "available": false,
+        "note": "Closing-line value requires an original-time entry quote and a separately observed closing quote. Late quotes are not a substitute.",
+        "reason": "NO_ORIGINAL_TIME_ENTRY_AND_CLOSING_PAIR"
+      },
+      "comparisons_original": {
+        "A_identical_selected": {
+          "available": false,
+          "coverage": null
+        },
+        "B_all_common": {
+          "available": false,
+          "coverage": 0.0
+        },
+        "C_independent_ranking": {
+          "available": false,
+          "coverage": null
+        },
+        "D_market_assisted": {
+          "available": false,
+          "coverage": null
+        }
+      },
+      "duplicate_pairs": {
+        "bookmakers": 13,
+        "duplicate_bookmaker_groups": {
+          "1.010000/10.000000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "1.020000/12.000000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.020000/9.300000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.020000/9.400000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.020000/9.500000": [
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.030000/8.300000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.030000/8.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.040000/10.000000": [
+            "888SPORT",
+            "WILLIAMHILL"
+          ],
+          "1.040000/8.000000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.050000/7.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.070000/6.450000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.070000/7.500000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.080000/7.000000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.100000/5.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.100000/5.650000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.110000/6.000000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.120000/5.500000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.130000/5.000000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "MARATHON"
+          ],
+          "1.140000/4.750000": [
+            "1XBET",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.140000/5.000000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.170000/4.330000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.170000/4.500000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.200000/4.000000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.200000/4.330000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "1.220000/3.750000": [
+            "BET365",
+            "BETVICTOR"
+          ],
+          "1.250000/3.750000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.290000/3.200000": [
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.290000/3.250000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.290000/3.500000": [
+            "UNIBET",
+            "WILLIAMHILL"
+          ],
+          "1.300000/3.100000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.300000/3.250000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.300000/3.400000": [
+            "BET365",
+            "BETANO"
+          ],
+          "1.330000/2.900000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.330000/3.000000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.330000/3.250000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "1.360000/2.800000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.360000/3.000000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.400000/2.700000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.400000/2.750000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.440000/2.500000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.440000/2.620000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "1.440000/2.630000": [
+            "888SPORT",
+            "BETFAIR"
+          ],
+          "1.470000/2.500000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.500000/2.500000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.530000/2.300000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.570000/2.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.570000/2.250000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.600000/2.200000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.620000/2.200000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.660000/2.100000": [
+            "1XBET",
+            "BET365"
+          ],
+          "1.670000/2.050000": [
+            "1XBET",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "1.670000/2.100000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.720000/2.070000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "1.730000/1.970000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.730000/2.000000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.740000/1.950000": [
+            "1XBET",
+            "MARATHON",
+            "SBO"
+          ],
+          "1.770000/1.920000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.790000/1.890000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.800000/1.870000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.850000/1.830000": [
+            "1XBET",
+            "BETVICTOR"
+          ],
+          "1.870000/1.810000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.910000/1.800000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "1.950000/1.730000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "1.950000/1.740000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "1.990000/1.710000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "10.000000/1.010000": [
+            "1XBET",
+            "BETFAIR"
+          ],
+          "10.000000/1.030000": [
+            "BET365",
+            "BETFAIR"
+          ],
+          "13.000000/1.020000": [
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "2.000000/1.700000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.030000/1.680000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "2.050000/1.670000": [
+            "1XBET",
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "2.100000/1.660000": [
+            "1XBET",
+            "BET365"
+          ],
+          "2.100000/1.670000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.200000/1.570000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.250000/1.570000": [
+            "1XBET",
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.380000/1.530000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.470000/1.530000": [
+            "BETANO",
+            "PNCL"
+          ],
+          "2.500000/1.440000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.500000/1.500000": [
+            "BET365",
+            "BETFAIR",
+            "UNIBET",
+            "WILLIAMHILL"
+          ],
+          "2.620000/1.440000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "2.750000/1.400000": [
+            "888SPORT",
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "2.800000/1.360000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "2.800000/1.410000": [
+            "SUPERBET",
+            "UNIBET"
+          ],
+          "2.850000/1.420000": [
+            "BETANO",
+            "PNCL"
+          ],
+          "2.900000/1.330000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.000000/1.360000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "3.100000/1.300000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.100000/1.350000": [
+            "BETANO",
+            "UNIBET"
+          ],
+          "3.250000/1.290000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.250000/1.330000": [
+            "BET365",
+            "BETANO",
+            "WILLIAMHILL"
+          ],
+          "3.400000/1.300000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "3.750000/1.220000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "3.750000/1.250000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "4.000000/1.200000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "4.000000/1.220000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "4.330000/1.170000": [
+            "BET365",
+            "BETFAIR",
+            "BETVICTOR",
+            "MARATHON"
+          ],
+          "4.330000/1.200000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "4.500000/1.150000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "4.500000/1.170000": [
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "4.900000/1.130000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "5.000000/1.140000": [
+            "BET365",
+            "BETFAIR",
+            "WILLIAMHILL"
+          ],
+          "5.000000/1.160000": [
+            "BET365",
+            "BETANO"
+          ],
+          "5.500000/1.100000": [
+            "BETFAIR",
+            "BETVICTOR"
+          ],
+          "6.000000/1.120000": [
+            "BET365",
+            "BETANO"
+          ],
+          "6.400000/1.070000": [
+            "1XBET",
+            "MARATHON"
+          ],
+          "6.500000/1.100000": [
+            "BET365",
+            "WILLIAMHILL"
+          ],
+          "8.000000/1.080000": [
+            "BET365",
+            "PNCL"
+          ],
+          "8.500000/1.030000": [
+            "1XBET",
+            "BETVICTOR"
+          ]
+        },
+        "exact_duplicate_pairs": 108,
+        "independent_information_units": 1033,
+        "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+        "price_pairs": 1033
+      },
+      "n": 800,
+      "odds_distribution": {
+        "favourite_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        },
+        "n": 0,
+        "underdog_price": {
+          "p10": null,
+          "p50": null,
+          "p90": null
+        }
+      },
+      "original_time_fixtures": 0,
+      "retrospective": {
+        "duplicate_pairs": {
+          "bookmakers": 13,
+          "duplicate_bookmaker_groups": {
+            "1.010000/10.000000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "1.020000/12.000000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.020000/9.300000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.020000/9.400000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.020000/9.500000": [
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.030000/8.300000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.030000/8.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.040000/10.000000": [
+              "888SPORT",
+              "WILLIAMHILL"
+            ],
+            "1.040000/8.000000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.050000/7.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.070000/6.450000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.070000/7.500000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.080000/7.000000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.100000/5.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.100000/5.650000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.110000/6.000000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.120000/5.500000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.130000/5.000000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "MARATHON"
+            ],
+            "1.140000/4.750000": [
+              "1XBET",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.140000/5.000000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.170000/4.330000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.170000/4.500000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.200000/4.000000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.200000/4.330000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "1.220000/3.750000": [
+              "BET365",
+              "BETVICTOR"
+            ],
+            "1.250000/3.750000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.290000/3.200000": [
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.290000/3.250000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.290000/3.500000": [
+              "UNIBET",
+              "WILLIAMHILL"
+            ],
+            "1.300000/3.100000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.300000/3.250000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.300000/3.400000": [
+              "BET365",
+              "BETANO"
+            ],
+            "1.330000/2.900000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.330000/3.000000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.330000/3.250000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "1.360000/2.800000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.360000/3.000000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.400000/2.700000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.400000/2.750000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.440000/2.500000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.440000/2.620000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "1.440000/2.630000": [
+              "888SPORT",
+              "BETFAIR"
+            ],
+            "1.470000/2.500000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.500000/2.500000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.530000/2.300000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.570000/2.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.570000/2.250000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.600000/2.200000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.620000/2.200000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.660000/2.100000": [
+              "1XBET",
+              "BET365"
+            ],
+            "1.670000/2.050000": [
+              "1XBET",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "1.670000/2.100000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.720000/2.070000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "1.730000/1.970000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.730000/2.000000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.740000/1.950000": [
+              "1XBET",
+              "MARATHON",
+              "SBO"
+            ],
+            "1.770000/1.920000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.790000/1.890000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.800000/1.870000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.850000/1.830000": [
+              "1XBET",
+              "BETVICTOR"
+            ],
+            "1.870000/1.810000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.910000/1.800000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "1.950000/1.730000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "1.950000/1.740000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "1.990000/1.710000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "10.000000/1.010000": [
+              "1XBET",
+              "BETFAIR"
+            ],
+            "10.000000/1.030000": [
+              "BET365",
+              "BETFAIR"
+            ],
+            "13.000000/1.020000": [
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "2.000000/1.700000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.030000/1.680000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "2.050000/1.670000": [
+              "1XBET",
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "2.100000/1.660000": [
+              "1XBET",
+              "BET365"
+            ],
+            "2.100000/1.670000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.200000/1.570000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.250000/1.570000": [
+              "1XBET",
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.380000/1.530000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.470000/1.530000": [
+              "BETANO",
+              "PNCL"
+            ],
+            "2.500000/1.440000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.500000/1.500000": [
+              "BET365",
+              "BETFAIR",
+              "UNIBET",
+              "WILLIAMHILL"
+            ],
+            "2.620000/1.440000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "2.750000/1.400000": [
+              "888SPORT",
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "2.800000/1.360000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "2.800000/1.410000": [
+              "SUPERBET",
+              "UNIBET"
+            ],
+            "2.850000/1.420000": [
+              "BETANO",
+              "PNCL"
+            ],
+            "2.900000/1.330000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.000000/1.360000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "3.100000/1.300000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.100000/1.350000": [
+              "BETANO",
+              "UNIBET"
+            ],
+            "3.250000/1.290000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.250000/1.330000": [
+              "BET365",
+              "BETANO",
+              "WILLIAMHILL"
+            ],
+            "3.400000/1.300000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "3.750000/1.220000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "3.750000/1.250000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "4.000000/1.200000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "4.000000/1.220000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "4.330000/1.170000": [
+              "BET365",
+              "BETFAIR",
+              "BETVICTOR",
+              "MARATHON"
+            ],
+            "4.330000/1.200000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "4.500000/1.150000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "4.500000/1.170000": [
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "4.900000/1.130000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "5.000000/1.140000": [
+              "BET365",
+              "BETFAIR",
+              "WILLIAMHILL"
+            ],
+            "5.000000/1.160000": [
+              "BET365",
+              "BETANO"
+            ],
+            "5.500000/1.100000": [
+              "BETFAIR",
+              "BETVICTOR"
+            ],
+            "6.000000/1.120000": [
+              "BET365",
+              "BETANO"
+            ],
+            "6.400000/1.070000": [
+              "1XBET",
+              "MARATHON"
+            ],
+            "6.500000/1.100000": [
+              "BET365",
+              "WILLIAMHILL"
+            ],
+            "8.000000/1.080000": [
+              "BET365",
+              "PNCL"
+            ],
+            "8.500000/1.030000": [
+              "1XBET",
+              "BETVICTOR"
+            ]
+          },
+          "exact_duplicate_pairs": 108,
+          "independent_information_units": 1033,
+          "note": "Several bookmakers publishing one identical price pair are not independent observations. De-duplicated consensus counts the pair once.",
+          "price_pairs": 1033
+        },
+        "fixtures": 361,
+        "label": "LATE_OR_BACKFILLED_DESCRIPTIVE_ONLY",
+        "market_definitions": {
+          "consensus": {
+            "coverage": 361,
+            "market": {
+              "accuracy": 0.7534626038781164,
+              "brier": 0.16742801059833023,
+              "calibration_slope": 1.305055217080254,
+              "ece": 0.0576114758079129,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5090738575541919,
+              "n": 361
+            },
+            "model": {
+              "accuracy": 0.7340720221606648,
+              "brier": 0.2036908530677812,
+              "calibration_slope": 0.6215556842054294,
+              "ece": 0.08793023545706369,
+              "favourite_agreement": 0.8753462603878116,
+              "log_loss": 0.6109508591388125,
+              "n": 361
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.052700831024930776,
+                0.016620498614958512
+              ],
+              "brier_improvement_95": [
+                0.016706790331917912,
+                0.056231352571997704
+              ],
+              "match_clusters": 361,
+              "n": 361
+            }
+          },
+          "consensus_deduplicated": {
+            "coverage": 361,
+            "market": {
+              "accuracy": 0.7534626038781164,
+              "brier": 0.16745836274526527,
+              "calibration_slope": 1.3042423612731944,
+              "ece": 0.05206938664495836,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5091554648829927,
+              "n": 361
+            },
+            "model": {
+              "accuracy": 0.7340720221606648,
+              "brier": 0.2036908530677812,
+              "calibration_slope": 0.6215556842054294,
+              "ece": 0.08793023545706369,
+              "favourite_agreement": 0.8753462603878116,
+              "log_loss": 0.6109508591388125,
+              "n": 361
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.052700831024930776,
+                0.016620498614958512
+              ],
+              "brier_improvement_95": [
+                0.01670404985116283,
+                0.05621066324745348
+              ],
+              "match_clusters": 361,
+              "n": 361
+            }
+          },
+          "reference": {
+            "coverage": 241,
+            "market": {
+              "accuracy": 0.7468879668049793,
+              "brier": 0.16616179079335475,
+              "calibration_slope": 1.216859217986692,
+              "ece": 0.04697852038354297,
+              "favourite_agreement": 1.0,
+              "log_loss": 0.5022900141010213,
+              "n": 241
+            },
+            "model": {
+              "accuracy": 0.7178423236514523,
+              "brier": 0.2142002486620042,
+              "calibration_slope": 0.5679441340928274,
+              "ece": 0.10476819502074688,
+              "favourite_agreement": 0.8630705394190872,
+              "log_loss": 0.6369819896635622,
+              "n": 241
+            },
+            "paired_model_vs_market": {
+              "accuracy_improvement_95": [
+                -0.07883817427385886,
+                0.016597510373444035
+              ],
+              "brier_improvement_95": [
+                0.024155503656137608,
+                0.07374415076998844
+              ],
+              "match_clusters": 241,
+              "n": 241
+            }
+          }
+        },
+        "never_used_for_market_edge": true,
+        "reported_separately": true
+      }
+    }
+  },
+  "provider_calls": 0
+}
