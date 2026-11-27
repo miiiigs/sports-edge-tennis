@@ -18,10 +18,36 @@ GRADES = {"WON", "LOST", "VOID", "CANCELLED", "UNRESOLVED", "NO_SELECTION"}
 def _record(payload):
     original = json.loads(payload)
     fixture = json.loads(original["fixture_json"])
-    manager = json.loads(original["manager_json"][0])
     participants = (fixture["player_1_id"], fixture["player_2_id"])
-    side = manager.get("selected_side")
-    if side not in (1, 2, None) or participants[0] == participants[1]:
+    if "candidate_decision" in original or original.get("classification") == "SYNTHETIC_REHEARSAL_ONLY":
+        from sports_edge_tennis.validation.corrected_rehearsal_persistence import PREFIX
+        from sports_edge_tennis.validation.prospective_policy_registry import POLICIES
+        candidate = original.get("candidate")
+        if candidate not in ("B", "C", "D"):
+            raise EvidenceConflict("unknown corrected candidate")
+        policy = POLICIES[candidate]
+        decision = original.get("candidate_decision")
+        if (original.get("classification") != "SYNTHETIC_REHEARSAL_ONLY"
+                or original.get("experiment_version") != PREFIX + policy.experiment_id
+                or original.get("eligible_for_prospective_evidence") is not False
+                or original.get("can_promote") is not False
+                or not isinstance(decision, dict)
+                or decision.get("experiment_id") != policy.experiment_id
+                or decision.get("threshold") != policy.threshold
+                or decision.get("status") not in ("SELECTED", "BELOW_FROZEN_THRESHOLD",
+                                                   "MISSING", "ABSTAINED")):
+            raise EvidenceConflict("invalid synthetic candidate evidence")
+        side = decision.get("side")
+        if (decision["status"] == "SELECTED") != (type(side) is int and side in (1, 2)):
+            raise EvidenceConflict("inconsistent candidate selection")
+        if decision["status"] != "SELECTED" and side is not None:
+            raise EvidenceConflict("unselected candidate carries a side")
+    else:
+        manager = json.loads(original["manager_json"][0])
+        side = manager.get("selected_side")
+    if (side is not None and (type(side) is not int or side not in (1, 2))
+            or any(type(p) is not int or p <= 0 for p in participants)
+            or participants[0] == participants[1]):
         raise EvidenceConflict("invalid original orientation")
     return participants, participants[side-1] if side is not None else None
 
@@ -29,9 +55,11 @@ def _record(payload):
 def sporting_grade(payload, *, outcome_kind, source_participants, winner_player_id):
     participants, selected = _record(payload)
     if (outcome_kind not in OUTCOMES or len(source_participants) != 2
+            or any(type(p) is not int for p in source_participants)
             or set(source_participants) != set(participants)):
         raise EvidenceConflict("unmatched sporting result identity")
-    if winner_player_id is not None and winner_player_id not in participants:
+    if winner_player_id is not None and (
+            type(winner_player_id) is not int or winner_player_id not in participants):
         raise EvidenceConflict("winner outside original fixture")
     if outcome_kind == "COMPLETED" and winner_player_id is None:
         raise EvidenceConflict("completed result without winner")
@@ -97,6 +125,8 @@ def append_settlement(conn, version, match_id, *, pathway, market_key, evidence_
                     or set(source_participants) != set(participants)
                     or evidence.get("selection_player_id") != selected):
                 raise EvidenceConflict("unmatched bookmaker market or rule provenance")
+            if json.loads(payload).get("classification") == "SYNTHETIC_REHEARSAL_ONLY":
+                raise EvidenceConflict("synthetic rehearsal cannot grade bookmaker evidence")
             grade = evidence["bookmaker_grade"]
             if grade not in GRADES or (selected is None) != (grade == "NO_SELECTION"):
                 raise ValueError("invalid explicit bookmaker grade")

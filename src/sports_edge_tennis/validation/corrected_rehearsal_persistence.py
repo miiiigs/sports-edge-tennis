@@ -40,7 +40,7 @@ def persist_corrected_rehearsal(conn, *, run_id, match_id, request,
             """SELECT r.as_of,r.experiment_id,r.run_status
                FROM prediction_runs r JOIN prediction_run_targets t
                USING (prediction_run_id)
-               WHERE r.prediction_run_id=%s AND t.match_id=%s""",
+               WHERE r.prediction_run_id=%s AND t.match_id=%s FOR UPDATE OF r""",
             (run_id, match_id),
         ).fetchone()
         if anchor != (request.as_of, REHEARSAL_RUN, "COMPLETED"):

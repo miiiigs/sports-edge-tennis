@@ -87,3 +87,41 @@ def test_wrong_anchor_and_orientation_fail_closed(db):
     with pytest.raises(EvidenceConflict, match="orientation"):
         persistence.persist_corrected_rehearsal(db, **{**data, "request": reversed_request})
     assert db.execute("SELECT count(*) FROM forward_originals").fetchone()[0] == 0
+
+
+def test_each_candidate_uses_its_own_selection(db):
+    from sports_edge_tennis.validation.forward_evidence_settlement import (
+        append_settlement, reconcile_candidate, sporting_grade,
+    )
+    data = seed(db)
+    report = persistence.persist_corrected_rehearsal(db, **data)
+    p1 = data["request"].player_1_id
+    p2 = data["request"].player_2_id
+    for version in report["versions"]:
+        payload = bytes(db.execute(
+            "SELECT payload FROM forward_originals WHERE experiment_version=%s",
+            (version,)).fetchone()[0])
+        original = json.loads(payload)
+        decision = original["candidate_decision"]
+        expected = ("NO_SELECTION" if decision["side"] is None else
+                    "WON" if decision["side"] == 1 else "LOST")
+        evidence = json.dumps({
+            "source_reference": "synthetic result",
+            "outcome_kind": "COMPLETED",
+            "source_participants": [p2, p1],
+            "winner_player_id": p1,
+        }).encode()
+        assert sporting_grade(payload, outcome_kind="COMPLETED",
+                              source_participants=[p2,p1], winner_player_id=p1) == expected
+        append_settlement(db, version, data["match_id"], pathway="SPORTING",
+                          market_key="official_match_winner",
+                          evidence_key="synthetic:1", evidence_bytes=evidence)
+        status = db.execute(
+            "SELECT status FROM forward_settlement_events WHERE experiment_version=%s",
+            (version,)).fetchone()[0]
+        assert status == expected
+        assert reconcile_candidate(db, version)["independent_qualified_settled"] == 0
+        original["candidate_decision"]["threshold"] = "0.1"
+        with pytest.raises(EvidenceConflict, match="invalid synthetic candidate"):
+            sporting_grade(json.dumps(original).encode(), outcome_kind="COMPLETED",
+                           source_participants=[p1,p2], winner_player_id=p1)
