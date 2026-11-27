@@ -140,6 +140,21 @@ are at most 24 hours old (`0 <= market_age_hours <= 24`): 501 of 1,610 quoted ro
 benchmark and factor. A sensitivity using all quotes is reported only to show the size of the
 look-ahead distortion.
 
+### 1.5 External evidence alignment
+
+These studies are cited as context, not imported as data. Their populations, rating
+implementations and definitions differ from ours; the table records agreement and disagreement
+without pooling samples.
+
+| External finding | This study | Interpretation |
+|---|---|---|
+| Pronocast newcomer study (95,100 matches, 2022–2026): newcomer favourite 41.1% vs 63.1% expected (665 matches); under-5 21.7%, 5–9 51.6%, 10–19 51.1%; newcomer underdog raises the experienced favourite to 85.6% vs 78.5%. | Favourite 0–4 **33.3%** (99), 5–9 **52.3%** (44), 10–19 **60.9%** (133); underdog 0–4 **80.6%** (248). | Same direction and same monotonic shape. Our 0–4 effect is smaller than their under-5 effect, and our 10–19 group is less severe. Our ATP low-history sample is 1–2 fixtures, so we cannot compare tours. |
+| Pronocast Challenger study (86,865 matches): equal-probability ATP/Challenger gap **+0.2 pp** (95% CI −0.6 to +1.0); market beats Elo by 2.3 pp (CH) and 3.2 pp (ATP). | Crude model gap **−5.10 pp**; after confidence/round/rating-gap adjustment **−2.4 to −3.0 pp**; market beats the model by **4.8 pp** in CH on 433 eligible quotes. | Different model and population; not directly comparable. Their result is Elo-only and finds no tier effect at equal probability; ours finds a residual model-specific gap after adjustment. The market remains stronger in CH. |
+| Pronocast surface study (36,164 matches): global Elo **−3.6 pp** after a switch; surface Elo **−0.3 pp** (CI −1.3 to +0.8); favourites after a switch **−4.2 pp**, underdogs **+3.4 pp**; first/second match effect, gone by the third or fourth. | First match on a new surface for the favourite **66.7%** (102) vs **66.4%** continuing; marginal cohort first-on-new-surface n=4. | Consistent with the average switch effect being absorbed by surface Elo. Our marginal sample cannot test the favourite-specific residual. We do not add a surface-transition penalty. |
+| Sackmann/Tennis Abstract layoff study (ATP Elo ≥1900, layoffs ≥8 weeks): first match back overestimated by ~25%; 8–10 weeks ~17%, 30–52 weeks ~50%; an 8-week break is worth ~100 Elo, a year ~150; post-layoff multiplier 1.5 for 20 matches. | 181d+ inactivity is **stronger** (72.7%, n=209) than 0–7d (63.7%); 31–90d 63.8%. | Apparent contradiction is a **measurement** issue: our inactivity is time since the last rating-corpus match and can be long because lower-level history is absent, not because the player was injured. Without verified layoffs we cannot test the injury effect and must not add a universal penalty. |
+| Pronocast season study (38,071 matches): January **+0.1 pp**, October–November **+0.3 pp**, June **−2.5 pp** (June grass −3.5 pp); no start/end effect. | Population is September–November 2026 only; January and June are absent. | The literature does not support a January penalty; we did not add one. Off-season is **blocked** in our data. |
+| Glicko (Glickman; Yue et al. 2022, PLOS ONE): rating deviation, time factor and opponent RD explicitly represent uncertainty; Glicko gives a small accuracy edge (~1 pp over ~70%) in Grand Slam data. | Dynamic K and surface weight are present; RD, identity confidence, inactivity and overall/surface divergence are not explicit. A simple shrinkage candidate is not justified (dev slope 2.25). | Glicko is a principled alternative but not supported as a replacement by this evidence. The audit identifies which reliability signals are missing; it does not license a new rating system. |
+
 ## 2. Phase 1 — exact marginal cohorts and factor screen
 
 ### 2.1 Frozen cohorts
@@ -534,6 +549,12 @@ slope-based penalty would be unstable. **No uncertainty-aware probability candid
 justified by this evidence.** A reliability marker is defensible as a monitoring/eligibility
 diagnostic; a universal low-history penalty is not.
 
+Glicko and Glicko-2 represent reliability explicitly through rating deviation and a time
+factor (Glickman; Yue et al. 2022). The audit finds the same missing signals, but the data do
+not support replacing Agent 1 with Glicko. If a reliability mechanism is developed later, it
+must be separately versioned, fitted on earlier data and evaluated chronologically, as the
+frozen policies were.
+
 ## 6. Phase 5 — inactivity and surface transitions
 
 ### 6.1 Inactivity
@@ -551,6 +572,12 @@ Long inactivity is **not** a penalty in this population; 181d+ is the strongest 
 marginal band's worst inactivity bucket is 8–30d (50.0%, n=28), not a long layoff. A universal
 January or layoff penalty would be wrong. The apparent 8–30d weakness is small and not
 adjusted for opponent strength.
+
+This does **not** contradict the Sackmann/Tennis Abstract injury result, which is for verified
+ATP 1900+ layoffs: our inactivity is time since the last rating-corpus match and can be long
+because lower-level history is absent, not because the player was injured. Without verified
+absence records we cannot test the injury effect. The correct conclusion is that database
+inactivity is not a clean layoff proxy, not that layoffs are harmless.
 
 The bridge changes the favourite's inactivity by a mean of **−0.05 days** (median 0); only
 0.13% of recovered-history favourites have a shorter corrected inactivity. Recovered history
@@ -584,6 +611,10 @@ A favourite's first match on a new surface is **not** worse than continuing (66.
 66.4%). The marginal cohort's errors are concentrated in continuing-surface matches (70 of
 101 marginal fixtures; 60.0% accuracy). Transitions are not the explanation. The underdog
 first-on-new-surface result is a separate, hypothesis-generating signal (n=86), not a policy.
+This is consistent with the Pronocast surface study: surface Elo absorbs the average switch
+penalty (−3.6 pp on global Elo vs −0.3 pp on surface Elo). Their favourite-specific residual
+(−4.2 pp after a switch) is not testable here because only 4 marginal fixtures are a
+favourite's first match on a new surface.
 
 ### 6.3 Blocked parts of Phase 5
 

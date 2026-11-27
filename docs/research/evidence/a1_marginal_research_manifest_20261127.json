@@ -1,6 +1,6 @@
 {
   "version": "A1_MARGINAL_RESEARCH_MANIFEST_V1",
-  "generated_at": "2026-11-27T03:55:26.432312+00:00",
+  "generated_at": "2026-11-27T04:02:59.302432+00:00",
   "base_commit": "786b01f6e69eaff2d9a7c7ce5082d1eb58f09410",
   "branch": "research/a1-identity-bridge-forward-shadow-20261124",
   "can_promote": false,
@@ -96,8 +96,8 @@
     },
     {
       "path": "docs/research/A1_MARGINAL_FORECAST_WEAKNESSES_20261127.md",
-      "bytes": 45138,
-      "sha256": "98c4ea73d6602cdcf3823ab7d3e492c13f1a27016a8f9d0c3579550924d3cb0f"
+      "bytes": 49894,
+      "sha256": "df6c1677296ee032f8bcdee7a9907b73eeda716016765bb7db89baf6ce6450b0"
     },
     {
       "path": "tests/test_a1_marginal_research.py",
