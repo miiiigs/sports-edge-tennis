@@ -1,0 +1,1792 @@
+{
+  "coverage_contract": {
+    "failed_forecasts_removed_from_denominator": false,
+    "fixtures_and_selections_are_distinct": true,
+    "official_and_bookmaker_settlement_distinct": true,
+    "qualifying_and_main_draw_separated": true,
+    "undiscovered_removed_from_denominator": false,
+    "unknown_is_not_zero": true
+  },
+  "daily": [
+    {
+      "day_utc": "2026-11-14",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 1,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 1,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 1,
+          "missing_identified": [],
+          "missing_unidentified_count": 1,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 1,
+      "stored_internal_fixtures": 1,
+      "targeted_on_time": 0,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-14",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 15,
+          "missing_identified": [],
+          "missing_unidentified_count": 15,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 13,
+      "stored_internal_fixtures": 15,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-14",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 3,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 3,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 3,
+          "missing_identified": [],
+          "missing_unidentified_count": 3,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 3,
+      "stored_internal_fixtures": 3,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-15",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 2,
+          "missing_identified": [],
+          "missing_unidentified_count": 2,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 0,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-15",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 7,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 7,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 7,
+          "missing_identified": [],
+          "missing_unidentified_count": 7,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 6,
+      "stored_internal_fixtures": 7,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-15",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 81,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 81,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 81,
+          "missing_identified": [],
+          "missing_unidentified_count": 81,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 72,
+      "stored_internal_fixtures": 81,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-16",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 2,
+          "missing_identified": [],
+          "missing_unidentified_count": 2,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 0,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-16",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 26,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 26,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 26,
+          "missing_identified": [],
+          "missing_unidentified_count": 26,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 25,
+      "stored_internal_fixtures": 26,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-16",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 43,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 43,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 0,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.0,
+          "missing_from_previous": 43,
+          "missing_identified": [],
+          "missing_unidentified_count": 43,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 0,
+      "settled_fixtures": 42,
+      "stored_internal_fixtures": 43,
+      "targeted_on_time": 0,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-17",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-17",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 75,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 75,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 69,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.92,
+          "missing_from_previous": 6,
+          "missing_identified": [],
+          "missing_unidentified_count": 6,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 13,
+      "pit_visible": 73,
+      "settled_fixtures": 68,
+      "stored_internal_fixtures": 75,
+      "targeted_on_time": 69,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-18",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-18",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 43,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 43,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 42,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.9767441860465116,
+          "missing_from_previous": 1,
+          "missing_identified": [],
+          "missing_unidentified_count": 1,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 12,
+      "pit_visible": 42,
+      "settled_fixtures": 38,
+      "stored_internal_fixtures": 43,
+      "targeted_on_time": 42,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-19",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-19",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 32,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 32,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 32,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 5,
+      "pit_visible": 32,
+      "settled_fixtures": 32,
+      "stored_internal_fixtures": 32,
+      "targeted_on_time": 32,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-20",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-20",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 28,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 28,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 28,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 7,
+      "pit_visible": 28,
+      "settled_fixtures": 28,
+      "stored_internal_fixtures": 28,
+      "targeted_on_time": 28,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-21",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-21",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 3,
+      "pit_visible": 15,
+      "settled_fixtures": 14,
+      "stored_internal_fixtures": 15,
+      "targeted_on_time": 15,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-21",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 1,
+      "pit_visible": 2,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 2,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-22",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 1,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 1,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 1,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 1,
+      "settled_fixtures": 1,
+      "stored_internal_fixtures": 1,
+      "targeted_on_time": 1,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-22",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 7,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 7,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 7,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 7,
+      "settled_fixtures": 7,
+      "stored_internal_fixtures": 7,
+      "targeted_on_time": 7,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-22",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 69,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 69,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 69,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 5,
+      "pit_visible": 69,
+      "settled_fixtures": 62,
+      "stored_internal_fixtures": 69,
+      "targeted_on_time": 69,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-23",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 29,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 29,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 29,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 6,
+      "pit_visible": 29,
+      "settled_fixtures": 25,
+      "stored_internal_fixtures": 29,
+      "targeted_on_time": 29,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-23",
+      "draw_stage": "QUALIFYING",
+      "fixture_track": [
+        {
+          "count": 52,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 52,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 52,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 7,
+      "pit_visible": 52,
+      "settled_fixtures": 48,
+      "stored_internal_fixtures": 52,
+      "targeted_on_time": 52,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-24",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 1,
+      "settled_fixtures": 2,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 1,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-24",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 74,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 74,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 73,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.9864864864864865,
+          "missing_from_previous": 1,
+          "missing_identified": [],
+          "missing_unidentified_count": 1,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 11,
+      "pit_visible": 73,
+      "settled_fixtures": 67,
+      "stored_internal_fixtures": 74,
+      "targeted_on_time": 73,
+      "tour": "CHALLENGER"
+    },
+    {
+      "day_utc": "2026-11-25",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 2,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 0,
+      "pit_visible": 1,
+      "settled_fixtures": 0,
+      "stored_internal_fixtures": 2,
+      "targeted_on_time": 1,
+      "tour": "ATP_MAIN"
+    },
+    {
+      "day_utc": "2026-11-25",
+      "draw_stage": "MAIN_DRAW",
+      "fixture_track": [
+        {
+          "count": 56,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 56,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 56,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "manager_consensus": 10,
+      "pit_visible": 55,
+      "settled_fixtures": 12,
+      "stored_internal_fixtures": 56,
+      "targeted_on_time": 55,
+      "tour": "CHALLENGER"
+    }
+  ],
+  "database_writes": 0,
+  "external_populations": {
+    "blocker_status": "BLOCKED_NO_AUTHORISED_INDEPENDENT_OFFICIAL_SOURCE",
+    "discovered_official": null,
+    "external_coverage": null,
+    "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "external_denominator_includes": [
+      "UNDISCOVERED_OFFICIAL_FIXTURES",
+      "FAILED_OR_MISSING_FORECASTS",
+      "UNMAPPED_OFFICIAL_FIXTURES"
+    ],
+    "mapped_official": null,
+    "official_eligible": null,
+    "official_eligible_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "reason": "No licensed complete ATP/Challenger fixture export or permitted official feed was supplied. Internal stored provider records are not an independent denominator."
+  },
+  "fixture_settlement": {
+    "bookmaker_settlement_status": "UNKNOWN_NOT_IN_COMMITTED_EVIDENCE",
+    "official_settlement_distinct_from_bookmaker": true,
+    "official_settlement_status": "INTERNAL_COMPLETED_RESULT_ONLY",
+    "scope": "ALL_DISCOVERED_FIXTURES_NOT_A_FUNNEL_STAGE",
+    "settled_fixtures": 582
+  },
+  "fixture_track": {
+    "external_coverage": null,
+    "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "official_eligible": null,
+    "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "official_total": null,
+    "official_total_is_known": false,
+    "partial_internal_ratio_is_not_official_coverage": true,
+    "stage_order": [
+      "DISCOVERED",
+      "MAPPED",
+      "EVALUATED"
+    ],
+    "stages": [
+      {
+        "count": 677,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": null,
+        "stage": "DISCOVERED",
+        "track": "FIXTURE",
+        "unknown_reason": null
+      },
+      {
+        "count": 677,
+        "coverage_of_official": null,
+        "coverage_of_previous": 1.0,
+        "missing_from_previous": 0,
+        "missing_identified": [],
+        "missing_unidentified_count": 0,
+        "previous_stage": "DISCOVERED",
+        "stage": "MAPPED",
+        "track": "FIXTURE",
+        "unknown_reason": null
+      },
+      {
+        "count": 489,
+        "coverage_of_official": null,
+        "coverage_of_previous": 0.7223042836041359,
+        "missing_from_previous": 188,
+        "missing_identified": [],
+        "missing_unidentified_count": 188,
+        "previous_stage": "MAPPED",
+        "stage": "EVALUATED",
+        "track": "FIXTURE",
+        "unknown_reason": null
+      }
+    ],
+    "track": "FIXTURE"
+  },
+  "fixture_track_by_draw_stage": {
+    "MAIN_DRAW": {
+      "external_coverage": null,
+      "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_eligible": null,
+      "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_total": null,
+      "official_total_is_known": false,
+      "partial_internal_ratio_is_not_official_coverage": true,
+      "stage_order": [
+        "DISCOVERED",
+        "MAPPED",
+        "EVALUATED"
+      ],
+      "stages": [
+        {
+          "count": 427,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 427,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 366,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.8571428571428571,
+          "missing_from_previous": 61,
+          "missing_identified": [],
+          "missing_unidentified_count": 61,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "track": "FIXTURE"
+    },
+    "QUALIFYING": {
+      "external_coverage": null,
+      "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_eligible": null,
+      "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_total": null,
+      "official_total_is_known": false,
+      "partial_internal_ratio_is_not_official_coverage": true,
+      "stage_order": [
+        "DISCOVERED",
+        "MAPPED",
+        "EVALUATED"
+      ],
+      "stages": [
+        {
+          "count": 250,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 250,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 123,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.492,
+          "missing_from_previous": 127,
+          "missing_identified": [],
+          "missing_unidentified_count": 127,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "track": "FIXTURE"
+    }
+  },
+  "fixture_track_by_tour": {
+    "ATP_MAIN": {
+      "external_coverage": null,
+      "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_eligible": null,
+      "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_total": null,
+      "official_total_is_known": false,
+      "partial_internal_ratio_is_not_official_coverage": true,
+      "stage_order": [
+        "DISCOVERED",
+        "MAPPED",
+        "EVALUATED"
+      ],
+      "stages": [
+        {
+          "count": 20,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 20,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 15,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.75,
+          "missing_from_previous": 5,
+          "missing_identified": [],
+          "missing_unidentified_count": 5,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "track": "FIXTURE"
+    },
+    "CHALLENGER": {
+      "external_coverage": null,
+      "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_eligible": null,
+      "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+      "official_total": null,
+      "official_total_is_known": false,
+      "partial_internal_ratio_is_not_official_coverage": true,
+      "stage_order": [
+        "DISCOVERED",
+        "MAPPED",
+        "EVALUATED"
+      ],
+      "stages": [
+        {
+          "count": 657,
+          "coverage_of_official": null,
+          "coverage_of_previous": null,
+          "missing_from_previous": null,
+          "missing_identified": [],
+          "missing_unidentified_count": null,
+          "previous_stage": null,
+          "stage": "DISCOVERED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 657,
+          "coverage_of_official": null,
+          "coverage_of_previous": 1.0,
+          "missing_from_previous": 0,
+          "missing_identified": [],
+          "missing_unidentified_count": 0,
+          "previous_stage": "DISCOVERED",
+          "stage": "MAPPED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        },
+        {
+          "count": 474,
+          "coverage_of_official": null,
+          "coverage_of_previous": 0.7214611872146118,
+          "missing_from_previous": 183,
+          "missing_identified": [],
+          "missing_unidentified_count": 183,
+          "previous_stage": "MAPPED",
+          "stage": "EVALUATED",
+          "track": "FIXTURE",
+          "unknown_reason": null
+        }
+      ],
+      "track": "FIXTURE"
+    }
+  },
+  "fresh_query": false,
+  "provider_calls": 0,
+  "report_as_of_utc": "2026-11-27T03:34:05.534251+00:00",
+  "scope_warning": "Internal stored-provider records are not an independent official denominator. External coverage is UNKNOWN, never zero.",
+  "scraping": 0,
+  "selection_stage_evidence": {
+    "BOOKMAKER_QUALIFIED": "UNKNOWN_NOT_IN_COMMITTED_EVIDENCE",
+    "INDEPENDENTLY_ARCHIVED": "UNKNOWN_NOT_IN_COMMITTED_EVIDENCE",
+    "PUBLISHED": "UNKNOWN_NOT_IN_COMMITTED_EVIDENCE",
+    "SELECTED": "COUNTED_FROM_MANAGER_CONSENSUS",
+    "SETTLED_SELECTION": "UNKNOWN_NOT_IN_COMMITTED_EVIDENCE"
+  },
+  "selection_track": {
+    "external_coverage": null,
+    "external_coverage_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "official_eligible": null,
+    "official_export_status": "UNKNOWN_NO_LICENSED_OFFICIAL_EXPORT",
+    "official_total": null,
+    "official_total_is_known": false,
+    "partial_internal_ratio_is_not_official_coverage": true,
+    "stage_order": [
+      "SELECTED",
+      "INDEPENDENTLY_ARCHIVED",
+      "PUBLISHED",
+      "BOOKMAKER_QUALIFIED",
+      "SETTLED_SELECTION"
+    ],
+    "stages": [
+      {
+        "count": 80,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": null,
+        "stage": "SELECTED",
+        "track": "SELECTION",
+        "unknown_reason": null
+      },
+      {
+        "count": null,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": "SELECTED",
+        "stage": "INDEPENDENTLY_ARCHIVED",
+        "track": "SELECTION",
+        "unknown_reason": "STAGE_EVIDENCE_UNAVAILABLE"
+      },
+      {
+        "count": null,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": "INDEPENDENTLY_ARCHIVED",
+        "stage": "PUBLISHED",
+        "track": "SELECTION",
+        "unknown_reason": "STAGE_EVIDENCE_UNAVAILABLE"
+      },
+      {
+        "count": null,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": "PUBLISHED",
+        "stage": "BOOKMAKER_QUALIFIED",
+        "track": "SELECTION",
+        "unknown_reason": "STAGE_EVIDENCE_UNAVAILABLE"
+      },
+      {
+        "count": null,
+        "coverage_of_official": null,
+        "coverage_of_previous": null,
+        "missing_from_previous": null,
+        "missing_identified": [],
+        "missing_unidentified_count": null,
+        "previous_stage": "BOOKMAKER_QUALIFIED",
+        "stage": "SETTLED_SELECTION",
+        "track": "SELECTION",
+        "unknown_reason": "STAGE_EVIDENCE_UNAVAILABLE"
+      }
+    ],
+    "track": "SELECTION"
+  },
+  "source_evidence": "docs/research/evidence/internal_coverage_waterfall_refresh_20261125T1740Z.json",
+  "source_report_as_of_utc": "2026-11-25T17:39:59.953637+00:00",
+  "source_window_end_utc": "2026-11-26T00:00:00+00:00",
+  "source_window_start_utc": "2026-11-14T00:00:00+00:00",
+  "version": "TENNIS_INDEPENDENT_COVERAGE_WATERFALL_20261127_V1"
+}
