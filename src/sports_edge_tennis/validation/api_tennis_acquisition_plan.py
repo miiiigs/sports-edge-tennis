@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping, Sequence
 
-PLANNER_VERSION = "SIMULTANEOUS_PROVIDER_ACQUISITION_PLAN_V1"
+PLANNER_VERSION = "SIMULTANEOUS_PROVIDER_ACQUISITION_PLAN_V2"
 API_TENNIS_MAX_ODDS_DAYS = 10
 ODDSPAPI_MAX_TOURNAMENTS_PER_REQUEST = 5
 
@@ -51,7 +51,11 @@ class ProviderEntitlement:
 
     @property
     def may_make_billable_requests(self) -> bool:
-        return self.status == STATUS_VERIFIED
+        return (
+            self.status == STATUS_VERIFIED
+            and self.entitlement_established is True
+            and self.quota_established is True
+        )
 
 
 def assess_entitlement(
@@ -87,6 +91,8 @@ class FixtureCandidate:
     provider_tournament_id: str | None = None
     mapped: bool = False
     two_sided: bool = False
+    api_tennis_match_key: str | None = None
+    oddspapi_fixture_id: str | None = None
 
     def __post_init__(self) -> None:
         if self.tour not in ("ATP_MAIN", "CHALLENGER"):
@@ -235,7 +241,11 @@ def select_balanced_cohort(
     shortfall is reported and never filled from another competition.
     """
     pools: dict[str, list[FixtureCandidate]] = {"ATP_MAIN": [], "CHALLENGER": []}
+    seen = set()
     for fixture in fixtures:
+        if fixture.match_id in seen:
+            raise ValueError("duplicate canonical fixture")
+        seen.add(fixture.match_id)
         pools[fixture.tour].append(fixture)
     selected: list[FixtureCandidate] = []
     report: dict[str, Any] = {}
@@ -269,8 +279,18 @@ def plan_simultaneous_acquisition(
     api_tennis_use_event_odds: bool = False,
     entitlements: Sequence[ProviderEntitlement] = (),
     oddspapi_monthly_remaining: int | None = None,
+    api_tennis_remaining: int | None = None,
+    authorization_reference: str | None = None,
 ) -> dict[str, Any]:
-    """Plan both providers together with a hard no-duplicate-request gate."""
+    """Plan both providers; missing proof or budget blocks execution.
+
+    A positive readiness result is a planning gate, not spending authority
+    or a replacement for the live request ledger and atomic budget guard.
+    """
+    if len({f.match_id for f in fixtures}) != len(fixtures):
+        raise ValueError("duplicate canonical fixture")
+    if len({e.provider_code for e in entitlements}) != len(entitlements):
+        raise ValueError("duplicate provider entitlement")
     requests = plan_oddspapi_requests(
         oddspapi_tournament_ids,
         bookmakers=oddspapi_bookmakers,
@@ -291,7 +311,8 @@ def plan_simultaneous_acquisition(
     overlap = {
         "fixtures_with_both_provider_ids": sum(
             1 for fixture in fixtures
-            if fixture.provider_fixture_id and fixture.provider_tournament_id
+            if fixture.api_tennis_match_key and fixture.oddspapi_fixture_id
+            and fixture.mapped
         ),
         "fixtures_in_cohort": len(fixtures),
     }
@@ -306,14 +327,23 @@ def plan_simultaneous_acquisition(
         for item in entitlements
     }
     blocked = [
-        code for code, item in entitlement_by_provider.items()
-        if not item["may_make_billable_requests"]
+        code for code in by_provider
+        if code not in entitlement_by_provider
+        or not entitlement_by_provider[code]["may_make_billable_requests"]
+        or not entitlement_by_provider[code]["evidence_reference"]
     ]
-    entitlement_verified = bool(entitlements) and not blocked
-    budget_blocked = (
-        oddspapi_monthly_remaining is not None
-        and by_provider.get("ODDSPAPI", 0) > oddspapi_monthly_remaining
-    )
+    allowances = {
+        "ODDSPAPI": oddspapi_monthly_remaining,
+        "API_TENNIS": api_tennis_remaining,
+    }
+    blocked_budgets = [
+        code for code, required in by_provider.items()
+        if type(allowances.get(code)) is not int or allowances[code] < required
+    ]
+    budget_blocked = bool(blocked_budgets)
+    entitlement_verified = bool(by_provider) and not blocked
+    approved = isinstance(authorization_reference, str) and bool(
+        authorization_reference.strip())
     return {
         "version": PLANNER_VERSION,
         "requests": [
@@ -337,7 +367,9 @@ def plan_simultaneous_acquisition(
         "blocked_providers": sorted(blocked),
         "entitlements_supplied": bool(entitlements),
         "budget_blocked": budget_blocked,
-        "execution_authorised": entitlement_verified and not budget_blocked,
+        "blocked_budget_providers": sorted(blocked_budgets),
+        "owner_authorization_recorded": approved,
+        "execution_authorised": entitlement_verified and not budget_blocked and approved,
         "provider_calls_made": 0,
         "note": (
             "Planning only. Execution still requires VERIFIED entitlement and the "
@@ -353,6 +385,8 @@ def coverage_gate(
     two_sided_threshold: float = 0.80,
 ) -> dict[str, Any]:
     """Report the operational targets without claiming they are achieved."""
+    if len({f.match_id for f in fixtures}) != len(fixtures):
+        raise ValueError("duplicate canonical fixture")
     total = len(fixtures)
     if not total:
         return {
