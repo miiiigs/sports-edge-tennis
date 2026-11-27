@@ -61,6 +61,14 @@ A success signal is allowed **only** when all of the following hold:
 4. `expected_rows` is known and equal to `persisted_rows`;
 5. an empty stage expectation is explicitly acknowledged.
 
+**Receipt contract.** The pipeline publishes
+`/data/receipts/<slot>.json` (`TENNIS_MONITORING_RECEIPT_V1`) only after it has
+run the verification queries behind each stage. The monitor reads that receipt;
+it never infers success from logs or a process exit code. The receipt publisher
+is not wired into production yet, so the monitor currently fails closed:
+a missing receipt is `JOB_STARTED_FAILED` with
+`RECEIPT_MISSING`, never a heartbeat. This is the intended safe default.
+
 An empty eligible slate is successful only when fixture discovery and
 reconciliation both completed (`discovered=0`, `reconciled=0`,
 `reconciliation_completed=True`). Otherwise it is a partial run.
@@ -228,4 +236,5 @@ paid_services_activated        false
 heartbeats_sent                 0
 provider_calls                  0
 database_writes                 0
+production_receipt_publisher   NOT_WIRED (monitor fails closed)
 ```

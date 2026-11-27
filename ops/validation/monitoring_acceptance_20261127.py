@@ -145,7 +145,11 @@ def scenario(name, description, cycle_result, **extra):
     return payload
 
 
-def build_evidence(tmp_path: str) -> dict[str, object]:
+def build_evidence(tmp_path: str | None = None) -> dict[str, object]:
+    import tempfile
+
+    if tmp_path is None:
+        tmp_path = tempfile.mkdtemp(prefix="tennis-monitoring-acceptance-")
     scenarios: list[dict[str, object]] = []
 
     # 1. Independent simulated schedule: the real 95-slot gap.
@@ -451,6 +455,9 @@ def build_evidence(tmp_path: str) -> dict[str, object]:
             "No external monitoring account provisioned.",
             "No notifier destination or on-call route authorised.",
             "No writable durable state path assigned in production.",
+            "The production pipeline does not yet publish a durable per-slot "
+            "receipt; without it the monitor fails closed rather than reporting "
+            "a false success.",
         ],
         "configuration": {
             "streams_defined": [
@@ -477,7 +484,11 @@ def main(argv: list[str] | None = None) -> int:
         "--out-json",
         default="docs/research/evidence/monitoring_acceptance_20261127.json",
     )
-    parser.add_argument("--workdir", default=".")
+    parser.add_argument(
+        "--workdir",
+        default=None,
+        help="optional scratch directory for the durable-state rehearsal",
+    )
     args = parser.parse_args(argv)
     evidence = build_evidence(args.workdir)
     text = json.dumps(evidence, indent=2, sort_keys=True)
