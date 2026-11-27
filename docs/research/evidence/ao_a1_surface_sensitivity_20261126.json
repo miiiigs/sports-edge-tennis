@@ -1,0 +1,64 @@
+{
+  "ao_2026_completed_matches_corrected": 229,
+  "ao_2026_completed_sha256": "c5133f6183b88f49dbd662521811445ccdb6d16165d733fabdff90a434a08d78",
+  "counterfactual_only": true,
+  "deltas_vs_stored": {
+    "bestof_only": {
+      "changed_targets": 0,
+      "max_abs_probability_delta": 0.0,
+      "mean_abs_probability_delta": 0.0
+    },
+    "surface_and_bestof": {
+      "changed_targets": 1664,
+      "max_abs_probability_delta": 0.10036599999999996,
+      "mean_abs_probability_delta": 0.004861263093788062
+    },
+    "surface_only": {
+      "changed_targets": 1664,
+      "max_abs_probability_delta": 0.10036599999999996,
+      "mean_abs_probability_delta": 0.004861263093788062
+    }
+  },
+  "history_rows": 134160,
+  "interpretation": {
+    "bestof_only": "Exactly zero changed probabilities. Agent 1 does not consume best_of_sets; the BO3 defect does not change A1 ratings or A1 evaluation results.",
+    "surface_and_bestof": "Identical to surface_only, confirming the two corrections are independent and only the surface metadata moves A1.",
+    "surface_only": "A real but separate effect from the NULL AO 2026 surface. Measured as a bounded counterfactual on the stored A1 target population; not a production model change."
+  },
+  "metrics": {
+    "bestof_only": {
+      "accuracy": 0.6208891595615104,
+      "brier": 0.23114118726231792,
+      "log_loss": 0.6550307985925509,
+      "n": 3284
+    },
+    "stored": {
+      "accuracy": 0.6208891595615104,
+      "brier": 0.23114118726231792,
+      "log_loss": 0.6550307985925509,
+      "n": 3284
+    },
+    "surface_and_bestof": {
+      "accuracy": 0.6221071863580999,
+      "brier": 0.2314042791148392,
+      "log_loss": 0.6556072502381936,
+      "n": 3284
+    },
+    "surface_only": {
+      "accuracy": 0.6221071863580999,
+      "brier": 0.2314042791148392,
+      "log_loss": 0.6556072502381936,
+      "n": 3284
+    }
+  },
+  "no_database_write": true,
+  "no_historical_rewrite": true,
+  "read_only": true,
+  "report_as_of_utc": "2026-11-26T04:42:50.024801+00:00",
+  "scope": "A1 targets since 2026-09-10, settled COMPLETED only",
+  "settled_completed": 3284,
+  "settled_set_sha256": "e93e15846f8714e41a1ac9a1ebaba94445ad5bdc0ded1a97f8f30d79a1de2517",
+  "target_set_sha256": "dbd2482605d7fb5520326a94972210b32f847843a8b54283808750a77991ea14",
+  "targets": 3792,
+  "version": "AO_A1_SURFACE_SENSITIVITY_20261126_V1"
+}

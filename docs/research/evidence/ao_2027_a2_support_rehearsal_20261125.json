@@ -1,0 +1,87 @@
+{
+  "agent2_cold_start_control": {
+    "abstain_reason": "INSUFFICIENT_HISTORY",
+    "prediction_status": "ABSTAINED"
+  },
+  "agent2_realistic_support": {
+    "diagnostics": {
+      "abstain_reason": null,
+      "best_of_sets": 5,
+      "first_server_marginalized": true,
+      "mu_c": "0.64222959514987476330537562822982434121133078312497",
+      "p_1_serve_vs_2": "0.63990992636812890197269754224118700565286426460749",
+      "p_2_serve_vs_1": "0.65177164503034570084106909356624474820012517510400",
+      "player_1_overall_return_points": 20727,
+      "player_1_overall_serve_points": 19323,
+      "player_1_prior_usable_matches": 246,
+      "player_1_shrunk_overall_return": "0.37582388054969572195217131622272595046329996419634",
+      "player_1_shrunk_overall_serve": "0.68626601660904526773878582950508932902891912701884",
+      "player_1_shrunk_surface_return": "0.36634707985924385464082441775991274599698928987518",
+      "player_1_shrunk_surface_serve": "0.68680361176017763767224481845294932459458582591343",
+      "player_1_surface_return_points": 12313,
+      "player_1_surface_serve_points": 11648,
+      "player_2_overall_return_points": 18004,
+      "player_2_overall_serve_points": 17276,
+      "player_2_prior_usable_matches": 219,
+      "player_2_shrunk_overall_return": "0.40074468434976685086601812099914948714773375564941",
+      "player_2_shrunk_overall_serve": "0.65525250590248557449365890828491254451379877390892",
+      "player_2_shrunk_surface_return": "0.40737934721112951599715566144428666286110157430161",
+      "player_2_shrunk_surface_serve": "0.66015163970338086797629792573798386641890803348786",
+      "player_2_surface_return_points": 12700,
+      "player_2_surface_serve_points": 12026,
+      "population_fallback_level": "SURFACE_TOUR",
+      "scoring_rule_version": "BO5_DECIDER_TB10_AT_6_6"
+    },
+    "player_1_probability": "0.426741",
+    "prediction_status": "PREDICTED",
+    "selection_side": 2,
+    "win_probability": "0.573259"
+  },
+  "cutoff": "2026-11-25T17:00:00Z",
+  "database_writes": 0,
+  "interpretation": {
+    "cold_start_abstain_expected": true,
+    "what_this_does_not_show": "It is not a 2027 forecast, not an accuracy result, and not evidence that the synthetic pairing resembles the real draw.",
+    "what_this_shows": "Real PIT-available player history satisfies Agent 2's support gates and produces a BO5 prediction; the cold-start control abstains for insufficient history."
+  },
+  "loaded_history": {
+    "ao_main_draw_observations": 356,
+    "observations": 58179,
+    "pairings_above_support_gates": 356
+  },
+  "lookback_start_year": 2023,
+  "player_support": {
+    "player_1": {
+      "hard_return_points_played": 12313,
+      "hard_serve_points_played": 11648,
+      "overall_return_points_played": 20727,
+      "overall_serve_points_played": 19323,
+      "prior_usable_matches": 246
+    },
+    "player_2": {
+      "hard_return_points_played": 12700,
+      "hard_serve_points_played": 12026,
+      "overall_return_points_played": 18004,
+      "overall_serve_points_played": 17276,
+      "prior_usable_matches": 219
+    }
+  },
+  "provider_calls": 0,
+  "read_only_production": true,
+  "source": "internal stored Sackmann/API-Tennis history; not a licensed certification and not redistributed",
+  "target": {
+    "best_of_sets": 5,
+    "note": "AO 2027 R128 pairing selected for real support coverage from stored AO main-draw participants (latest hard-court edition in lookback); no 2027 fixture exists",
+    "player_1_id": 150,
+    "player_2_id": 230,
+    "resolver_abstain_reason": null,
+    "round_code": "R128",
+    "scoring_rule": "BO5_DECIDER_TB10_AT_6_6",
+    "season_year": 2027,
+    "selected_from_ao_match_id": 89663,
+    "sporting_claim": false,
+    "surface": "HARD",
+    "synthetic": true
+  },
+  "version": "AO_2027_A2_SUPPORT_REHEARSAL_20261125_V1"
+}

@@ -1,0 +1,218 @@
+{
+  "all_passed": true,
+  "blocked_scenarios": [
+    "LUCKY_LOSER_REQUIRES_DRAW_DIFF"
+  ],
+  "database_writes": 0,
+  "mode": "ISOLATED_SYNTHETIC_REHEARSAL",
+  "no_universal_january_or_inactivity_penalty": true,
+  "preserved_unknowns": {
+    "ao_2027_edition_rulebook": "NOT_LOCATED",
+    "draw_entitlement": "UNVERIFIED_NO_PROVIDER_CALL",
+    "draws_published": false,
+    "entries_published": false,
+    "qualifying_exact_first_match": "UNKNOWN_PENDING_OFFICIAL_ORDER_OF_PLAY"
+  },
+  "production_activation": false,
+  "provider_calls": 0,
+  "report_as_of_utc": "2026-11-27T07:03:10.891992+00:00",
+  "scenario_count": 13,
+  "scenarios": [
+    {
+      "detail": "Brisbane ATP 250 main draw is eligible at the 30-minute deadline.",
+      "evidence": {
+        "competition_eligible": true,
+        "draw_stage": "MAIN_DRAW",
+        "forecast_enabled": true,
+        "format_matches_scope": true,
+        "lead_minutes": 30.0,
+        "target_eligible": true,
+        "unknowns": {
+          "draw": "NOT_PUBLISHED",
+          "edition_rulebook": null,
+          "entries": "NOT_PUBLISHED"
+        }
+      },
+      "scenario": "FIRST_ELIGIBLE_ATP_FIXTURE",
+      "status": "PASS"
+    },
+    {
+      "detail": "Canberra Challenger 125 main draw is eligible.",
+      "evidence": {
+        "competition_eligible": true,
+        "draw_stage": "MAIN_DRAW",
+        "forecast_enabled": true,
+        "format_matches_scope": true,
+        "lead_minutes": 30.0,
+        "target_eligible": true,
+        "unknowns": {
+          "draw": "NOT_PUBLISHED",
+          "edition_rulebook": null,
+          "entries": "NOT_PUBLISHED"
+        }
+      },
+      "scenario": "FIRST_ELIGIBLE_CHALLENGER_FIXTURE",
+      "status": "PASS"
+    },
+    {
+      "detail": "AO R128 is best-of-five and forecast-enabled.",
+      "evidence": {
+        "competition_eligible": true,
+        "draw_stage": "MAIN_DRAW",
+        "forecast_enabled": true,
+        "format_matches_scope": true,
+        "lead_minutes": 30.0,
+        "target_eligible": true,
+        "unknowns": {
+          "draw": "NOT_PUBLISHED",
+          "edition_rulebook": "NOT_LOCATED",
+          "entries": "NOT_PUBLISHED"
+        }
+      },
+      "scenario": "AUSTRALIAN_OPEN_BO5_MAIN_DRAW",
+      "status": "PASS"
+    },
+    {
+      "detail": "Qualifying is BO3 and not enabled for forecasting.",
+      "evidence": {
+        "competition_eligible": true,
+        "draw_stage": "QUALIFYING",
+        "forecast_enabled": false,
+        "format_matches_scope": true,
+        "lead_minutes": 30.0,
+        "target_eligible": true,
+        "unknowns": {
+          "draw": "NOT_PUBLISHED",
+          "edition_rulebook": null,
+          "entries": "NOT_PUBLISHED"
+        }
+      },
+      "scenario": "AUSTRALIAN_OPEN_QUALIFYING_BO3_CLASSIFICATION",
+      "status": "PASS"
+    },
+    {
+      "detail": "Original and replacement participant pairs stay distinct.",
+      "evidence": {
+        "current": [
+          103,
+          102
+        ],
+        "forecast_adjustment": 0.0,
+        "original": [
+          101,
+          102
+        ],
+        "status": "WITHDRAWN"
+      },
+      "scenario": "WITHDRAWAL_AND_REPLACEMENT",
+      "status": "PASS"
+    },
+    {
+      "detail": "LL is recognised as a token but promotion needs two authorised draw snapshots.",
+      "evidence": {
+        "draw_diff_implemented": false,
+        "entitlement": "UNVERIFIED_NO_PROVIDER_CALL",
+        "seed_token": "LL"
+      },
+      "scenario": "LUCKY_LOSER_REQUIRES_DRAW_DIFF",
+      "status": "BLOCKED"
+    },
+    {
+      "detail": "Original and revised starts are both retained; no backdating.",
+      "evidence": {
+        "backdated": false,
+        "original_start": "2027-01-04T00:00:00+00:00",
+        "revised_start": "2027-01-04T03:00:00+00:00",
+        "scheduled_start": "2027-01-04T03:00:00+00:00"
+      },
+      "scenario": "RESCHEDULED_START_PRESERVES_BOTH_CLOCKS",
+      "status": "PASS"
+    },
+    {
+      "detail": "A provider failure is reported as failed discovery; it is not NO_ELIGIBLE_FIXTURES.",
+      "evidence": {
+        "discovery_status": "FAILED",
+        "eligible_slate": "UNKNOWN",
+        "success_signal_allowed": false
+      },
+      "scenario": "PROVIDER_FAILURE_NOT_EMPTY_SLATE",
+      "status": "PASS"
+    },
+    {
+      "detail": "An undiscovered official fixture is not removed from the external denominator.",
+      "evidence": {
+        "discovered": 1,
+        "external_coverage": null,
+        "missing": "UNKNOWN_NOT_ZERO",
+        "official_eligible": "UNKNOWN"
+      },
+      "scenario": "MISSING_FIXTURE_REMAINS_IN_DENOMINATOR",
+      "status": "PASS"
+    },
+    {
+      "detail": "An unavailable archive stage cannot produce a successful receipt.",
+      "evidence": {
+        "archive_status": "UNVERIFIED",
+        "monitor_outcome": "JOB_COMPLETED_PARTIALLY",
+        "receipt_success": false
+      },
+      "scenario": "ARCHIVE_UNAVAILABLE_FAILS_RECEIPT",
+      "status": "PASS"
+    },
+    {
+      "detail": "A newer official result appends a correction and supersedes the prior settlement.",
+      "evidence": {
+        "action": "CORRECTION",
+        "append_only": true,
+        "grade": "LOST",
+        "reason": "NEWER_REVISION",
+        "rewritten": false,
+        "supersedes_settlement_id": 41
+      },
+      "scenario": "SETTLEMENT_CORRECTION_APPEND_ONLY",
+      "status": "PASS"
+    },
+    {
+      "detail": "One skipped hourly execution is detected from the schedule, not from rows.",
+      "evidence": {
+        "executed": 5,
+        "expected_slots": 6,
+        "never_triggered": [
+          "2027-01-04T02:00:00+00:00"
+        ]
+      },
+      "scenario": "SCHEDULER_NON_EXECUTION",
+      "status": "PASS"
+    },
+    {
+      "detail": "A normal January return is labelled and carries zero adjustment.",
+      "evidence": {
+        "adjustment_policy": "NONE_METADATA_ONLY",
+        "days_inactive": 46,
+        "evidence": {
+          "current_surface": null,
+          "last_match_date": "2026-11-20",
+          "lower_level_matches": null,
+          "matches_last_365_days": null,
+          "matches_last_90_days": null,
+          "previous_surface": null,
+          "status": "ACTIVE",
+          "surface_matches": null,
+          "tour_level_matches": 120
+        },
+        "flags": [
+          "NORMAL_SEASONAL_INTERRUPTION"
+        ],
+        "forecast_adjustment": 0.0,
+        "is_competition_opening": true,
+        "is_january": true,
+        "january_universal_penalty_applied": false,
+        "player_id": 201,
+        "primary": "NORMAL_SEASONAL_INTERRUPTION"
+      },
+      "scenario": "NO_UNIVERSAL_JANUARY_PENALTY",
+      "status": "PASS"
+    }
+  ],
+  "version": "JANUARY_2027_REHEARSAL_20261127_V1"
+}
