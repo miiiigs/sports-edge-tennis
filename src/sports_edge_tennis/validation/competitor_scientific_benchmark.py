@@ -14,6 +14,7 @@ import math
 import sqlite3
 from copy import deepcopy
 from contextlib import closing
+from itertools import groupby
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fractions import Fraction
@@ -131,6 +132,9 @@ def _validate(record, f, grant, received):
         raise ValueError("missing evidence reference")
     if record.get("model_version") is not None and not _nonempty(record["model_version"]):
         raise ValueError("invalid model version")
+    if (record.get("selected_at_publication") is not None
+            and type(record["selected_at_publication"]) is not bool):
+        raise ValueError("invalid publication selection flag")
     if record.get("outcomes_available") is not False:
         raise ValueError("outcome contamination")
 
@@ -178,6 +182,39 @@ class ObservationStore:
         return {"seq": seq, "received_at_utc": received.isoformat(), "duplicate": False,
                 "revision": previous is not None, "payload_sha256": digest,
                 "independent_clock_verified": False}
+
+    def publication_inventory(self, *, as_of):
+        """Inventory only; never promote a revision to first publication."""
+        now = utc(as_of)
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT source,match_id,received,payload,digest FROM observations ORDER BY seq"
+            ).fetchall()
+        result = {}
+        seen = set()
+        for source, mid, received, raw, digest in rows:
+            if utc(received) > now:
+                continue
+            if hashlib.sha256(raw).hexdigest() != digest:
+                raise ValueError("stored payload digest mismatch")
+            record = _decode(raw)
+            key = (source, mid)
+            row = result.setdefault(source, {
+                "first_observations": 0, "subsequent_distinct_payloads": 0,
+                "first_with_declared_publication_time": 0,
+                "first_without_declared_publication_time": 0,
+                "original_publication_independently_verified": False,
+            })
+            if key in seen:
+                row["subsequent_distinct_payloads"] += 1
+            else:
+                seen.add(key)
+                row["first_observations"] += 1
+                field = ("first_with_declared_publication_time" if
+                         record.get("published_at_utc") is not None else
+                         "first_without_declared_publication_time")
+                row[field] += 1
+        return result
 
     def first(self):
         with closing(self._connect()) as conn:
@@ -248,6 +285,55 @@ def _metrics(points):
             "accuracy": _mean([hit for hit,_,_ in points]), "probability_n": len(probs),
             "brier": _mean([(p-y)**2 for p,y in probs]),
             "log_loss": _mean([_logloss(p,y) for p,y in probs]), "calibration": calibration}
+
+
+def risk_coverage(points, *, denominator):
+    """0/1 loss, confidence=max(p,1-p); complete denominator for full AUGRC.
+
+    Points represent distinct, settled, timely probability forecasts from
+    the declared cohort. Equal-confidence rows enter together. Trapezoids on
+    generalized risk implement uniform fractional acceptance within a tie.
+    Missing rows are not imputed as correct, wrong or low-confidence.
+    """
+    if type(denominator) is not int or denominator < 0:
+        raise ValueError("invalid risk denominator")
+    ranked = []
+    for hit, p, y in points:
+        if p is None:
+            continue
+        if (type(p) not in (int, float) or not math.isfinite(p)
+                or not 0 < p < 1 or hit not in (0, 1) or y not in (0, 1)):
+            raise ValueError("invalid risk point")
+        ranked.append((max(p, 1-p), 1-hit))
+    if len(ranked) > denominator:
+        raise ValueError("risk observations exceed denominator")
+    ranked.sort(reverse=True)
+    curve = []
+    accepted = errors = 0
+    augrc = 0.0
+    previous_c = previous_g = 0.0
+    if denominator:
+        for confidence, group in groupby(ranked, key=lambda item: item[0]):
+            block = list(group)
+            accepted += len(block)
+            errors += sum(error for _, error in block)
+            coverage = accepted / denominator
+            generalized = errors / denominator
+            augrc += (coverage - previous_c) * (generalized + previous_g) / 2
+            curve.append({"confidence_threshold": confidence, "accepted": accepted,
+                          "errors": errors, "coverage": coverage,
+                          "selective_risk": errors / accepted,
+                          "generalized_risk": generalized})
+            previous_c, previous_g = coverage, generalized
+    complete = denominator > 0 and len(ranked) == denominator
+    return {"denominator": denominator, "probability_n": len(ranked),
+            "missing_probability_or_unavailable_n": denominator-len(ranked),
+            "max_coverage": len(ranked)/denominator if denominator else None,
+            "curve": curve, "full_coverage_available": complete,
+            "augrc": augrc if complete else None,
+            "confidence": "maximum_class_probability",
+            "tie_policy": "grouped_uniform_fractional_acceptance",
+            "loss": "zero_one", "descriptive_only": True}
 
 
 def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="sports_edge_original"):
@@ -340,7 +426,17 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                                 probability_common.append(p)
                                 probability_base.append(bp)
                 uncertainty = {}
+                paired_curves = {}
                 for bc, pairs in paired_rows.items():
+                    common_probs = [(p, bp) for _, p, bp in pairs
+                                    if p[1] is not None and bp[1] is not None]
+                    n = len(common_probs)
+                    paired_curves[bc] = {
+                        "population": "identical_settled_timely_probability_fixtures",
+                        "matched_n": n, "settled_census_n": len(ids & settled.keys()),
+                        "source": risk_coverage([p for p, _ in common_probs], denominator=n),
+                        "baseline": risk_coverage([bp for _, bp in common_probs], denominator=n),
+                    }
                     differences = {"accuracy": [], "brier": [], "log_loss": []}
                     for mid, p, bp in pairs:
                         cluster = (universe[mid]["tournament_id"] + ":" +
@@ -357,11 +453,36 @@ def score(fixtures, first, settlements, *, as_of, sources=SOURCES, baseline="spo
                                "clusters": len({c for c, _ in values})}
                         for name, values in differences.items()
                     }
+                explicitly_selected = [mid for mid, r in selected.items()
+                                       if r["forecast"].get("selected_at_publication") is True]
+                selection_known = sum(type(r["forecast"].get("selected_at_publication")) is bool
+                                      for r in selected.values())
                 reports.append({"tour":tier,"draw":draw,"source":source,"market_class":cls,
                                 "eligible":len(ids),"captured":len(selected),
                                 "missing":len(ids)-len(selected),
                                 "coverage":len(selected)/len(ids) if ids else None,
                                 "own":_metrics(list(values.values())),
+                                "published_selection": {
+                                    "known_flags": selection_known,
+                                    "unknown_flags": len(selected)-selection_known,
+                                    "explicitly_selected": len(explicitly_selected),
+                                    "metrics": _metrics([values[mid] for mid in explicitly_selected
+                                                         if mid in values]),
+                                },
+                                "missing_evidence": {
+                                    "no_source_capture": len(ids)-len(rows),
+                                    "other_market_class": len(rows)-len(selected),
+                                    "captured_without_probability": sum(
+                                        r["forecast"].get("p_player1") is None
+                                        for r in selected.values()),
+                                    "without_valid_completed_settlement": len(ids-settled.keys()),
+                                    "first_without_declared_publication": sum(
+                                        r["forecast"].get("published_at_utc") is None
+                                        for r in selected.values()),
+                                },
+                                "settled_census_risk_coverage": risk_coverage(
+                                    list(values.values()), denominator=len(ids & settled.keys())),
+                                "paired_probability_risk_coverage": paired_curves,
                                 "actual_start_late":sum(1 for mid,r in selected.items() if mid in settled and point(r,mid) is None),
                                 "common_source":_metrics(common),"common_baseline":_metrics(base_values),
                                 "common_probability_source":_metrics(probability_common),
@@ -449,8 +570,10 @@ def main(argv=None):
                                                    _decode(args.fixture.read_bytes()),
                                                    _decode(args.grant.read_bytes()))
     else:
-        result = score(json.loads(args.fixtures.read_bytes()), ObservationStore(args.db).first(),
+        store = ObservationStore(args.db)
+        result = score(json.loads(args.fixtures.read_bytes()), store.first(),
                        _decode(args.settlements.read_bytes()), as_of=args.as_of)
+        result["publication_inventory"] = store.publication_inventory(as_of=args.as_of)
     print(json.dumps(result, sort_keys=True, indent=2))
     return 0
 
