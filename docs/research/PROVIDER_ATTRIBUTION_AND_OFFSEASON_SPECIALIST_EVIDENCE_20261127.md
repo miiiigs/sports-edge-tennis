@@ -248,10 +248,11 @@ Implemented:
 - Agent 2 specialist audit and support gate;
 - reproducible read-only evidence scripts and JSON artifacts.
 
-Validation: new unit tests pass locally; PostgreSQL integration tests are
-expected to run on exact-head CI. Local PostgreSQL is unavailable in this
-session, so the OddsPapi insert test is **not locally validated** and must be
-confirmed by the PostgreSQL workflow.
+Validation: new unit tests pass locally. The exact code head `f3f0e35` passed
+the PostgreSQL Foundation workflow (run 45939666768) with **2,561 passed**,
+including the real-format OddsPapi insert/coverage regression test. Local
+PostgreSQL was unavailable in this session, so that insert test was validated by
+CI rather than locally.
 
 Outstanding blockers:
 
