@@ -145,7 +145,11 @@ def scenario(name, description, cycle_result, **extra):
     return payload
 
 
-def build_evidence(tmp_path: str) -> dict[str, object]:
+def build_evidence(tmp_path: str | None = None) -> dict[str, object]:
+    import tempfile
+
+    if tmp_path is None:
+        tmp_path = tempfile.mkdtemp(prefix="tennis-monitoring-acceptance-")
     scenarios: list[dict[str, object]] = []
 
     # 1. Independent simulated schedule: the real 95-slot gap.
@@ -480,7 +484,11 @@ def main(argv: list[str] | None = None) -> int:
         "--out-json",
         default="docs/research/evidence/monitoring_acceptance_20261127.json",
     )
-    parser.add_argument("--workdir", default=".")
+    parser.add_argument(
+        "--workdir",
+        default=None,
+        help="optional scratch directory for the durable-state rehearsal",
+    )
     args = parser.parse_args(argv)
     evidence = build_evidence(args.workdir)
     text = json.dumps(evidence, indent=2, sort_keys=True)
