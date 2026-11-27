@@ -451,6 +451,9 @@ def build_evidence(tmp_path: str) -> dict[str, object]:
             "No external monitoring account provisioned.",
             "No notifier destination or on-call route authorised.",
             "No writable durable state path assigned in production.",
+            "The production pipeline does not yet publish a durable per-slot "
+            "receipt; without it the monitor fails closed rather than reporting "
+            "a false success.",
         ],
         "configuration": {
             "streams_defined": [

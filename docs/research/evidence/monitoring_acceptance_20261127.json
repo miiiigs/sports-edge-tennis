@@ -3,7 +3,8 @@
     "Owner approval not requested.",
     "No external monitoring account provisioned.",
     "No notifier destination or on-call route authorised.",
-    "No writable durable state path assigned in production."
+    "No writable durable state path assigned in production.",
+    "The production pipeline does not yet publish a durable per-slot receipt; without it the monitor fails closed rather than reporting a false success."
   ],
   "activation_status": "NOT_ACTIVATED",
   "all_passed": true,
@@ -27,7 +28,7 @@
   "network_calls": 0,
   "paid_services_activated": false,
   "provider_calls": 0,
-  "report_as_of_utc": "2026-11-27T03:32:37.568857+00:00",
+  "report_as_of_utc": "2026-11-27T03:42:42.500313+00:00",
   "scenario_count": 14,
   "scenarios": [
     {
