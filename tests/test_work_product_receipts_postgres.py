@@ -249,17 +249,29 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
     )
     publisher = WorkProductReceiptPublisher(db, clock=lambda: cutoff)
     collected = publisher.collect(scope)
-    assert collected["success"] is True, [
-        (
-            check["stage"],
-            check["status"],
-            check["expected_rows"],
-            check["persisted_rows"],
-            check["detail"],
-            check["durable"],
-        )
-        for check in collected["checks"]
-    ]
+    diag = db.execute(
+        """
+        SELECT p.agent_code, p.prediction_locked_at, mv.match_start_at,
+               p.experiment_id, p.prediction_status
+        FROM predictions p JOIN match_versions mv USING (match_id)
+        WHERE p.prediction_run_id=%s ORDER BY p.agent_code
+        """,
+        (run_id,),
+    ).fetchall()
+    assert collected["success"] is True, (
+        [
+            (
+                check["stage"],
+                check["status"],
+                check["expected_rows"],
+                check["persisted_rows"],
+                check["detail"],
+                check["durable"],
+            )
+            for check in collected["checks"]
+        ],
+        diag,
+    )
     assert collected["record"].eligible_fixture_count == 1
     assessment = evaluate_run(
         collected["record"],
