@@ -405,6 +405,20 @@ class WorkProductReceiptPublisher:
                 "PREDICTION_RUN_NOT_FOUND",
             )
         run_status, run_as_of, finalized_at, run_experiment = run_row
+        if run_experiment is not None and scope.experiment_id not in (
+            None,
+            run_experiment,
+        ):
+            return StageCheck(
+                STAGE_FORECAST_GENERATION,
+                STATUS_UNVERIFIED,
+                None,
+                None,
+                "PREDICTION_RUN_ROWS",
+                "SCOPE_EXPERIMENT_DOES_NOT_MATCH_RUN",
+                extra={"run_id": run_id},
+            )
+        experiment = run_experiment
         target_rows = self._conn.execute(
             "SELECT match_id FROM prediction_run_targets "
             "WHERE prediction_run_id = %(run_id)s",
