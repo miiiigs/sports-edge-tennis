@@ -1,0 +1,130 @@
+{
+  "version": "A1_MARGINAL_RESEARCH_MANIFEST_V1",
+  "generated_at": "2026-11-27T03:47:58.097170+00:00",
+  "base_commit": "786b01f6e69eaff2d9a7c7ce5082d1eb58f09410",
+  "branch": "research/a1-identity-bridge-forward-shadow-20261124",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "provider_calls": false,
+  "new_spend": false,
+  "frozen_thresholds": {
+    "conservative_40": 0.683286,
+    "primary_45": 0.66806,
+    "secondary_50": 0.648708
+  },
+  "thresholds_recomputed_from_development": {
+    "development_rows": 2198,
+    "40": {
+      "fraction": 0.4,
+      "development_selections": 879,
+      "threshold": 0.683286
+    },
+    "45": {
+      "fraction": 0.45,
+      "development_selections": 989,
+      "threshold": 0.66806
+    },
+    "50": {
+      "fraction": 0.5,
+      "development_selections": 1099,
+      "threshold": 0.648708
+    }
+  },
+  "sources": {
+    "population_csv": "docs/research/evidence/a1_selective_population_20261126.csv",
+    "population_csv_sha256": "f354c53ea236360a45f7fe114578985aa9bb5320ef297dc9123eb0f17d349b18",
+    "ledger_local_extract": "tmp/ledger_full.jsonl",
+    "ledger_present": true,
+    "ledger_sha256": "3ff85bcdeb399a4d24b265d00bc82d69afd99700762dc3cb371b5382499aa31b",
+    "rating_history_local_extract": "tmp/api_rating_history.json",
+    "rating_history_present": true,
+    "rating_history_sha256": "b157130dd520b2630b05459fa6b0868081ad0fdf747ef04dcedb1980fa678270",
+    "bridge_visibility_local_extract": "tmp/bridge_visibility.json",
+    "bridge_visibility_present": true
+  },
+  "artifacts": [
+    {
+      "path": "docs/research/evidence/a1_marginal_cohorts_20261127.json",
+      "bytes": 187965,
+      "sha256": "f0eefac7f5d28f07e1975d1e811a8a01dc787105a391f22835632ff92daa139b"
+    },
+    {
+      "path": "docs/research/evidence/a1_newcomer_favourite_20261127.json",
+      "bytes": 106802,
+      "sha256": "11f47ad3b567e8236ae73e957de82db8a7697c23a1317eb68cd11d27e30296cc"
+    },
+    {
+      "path": "docs/research/evidence/a1_atp_challenger_controlled_20261127.json",
+      "bytes": 37861,
+      "sha256": "08e88e8c9b5b88f5a29dd2fa91715f149e90497450aab41033719b14b1c6f533"
+    },
+    {
+      "path": "docs/research/evidence/a1_uncertainty_audit_20261127.json",
+      "bytes": 75498,
+      "sha256": "0071888b59e677f4ae656d3ce10097cea99637301fae7d5a4a4304c0fb02dd15"
+    },
+    {
+      "path": "docs/research/evidence/a1_inactivity_surface_20261127.json",
+      "bytes": 53074,
+      "sha256": "7d240f1e032beb290663fd44e64492c6578b55e92a276c736e29e23044d8127b"
+    },
+    {
+      "path": "docs/research/evidence/a1_identity_player_ledger_20261127.json",
+      "bytes": 63772,
+      "sha256": "b2d841be214cf4236a5dbda0fee863ba0003626e1b8cc0d2b1a9b6b566c13b8c"
+    },
+    {
+      "path": "docs/research/evidence/a1_marginal_cohorts_20261127.csv",
+      "bytes": 120123,
+      "sha256": "79588d5d46ed1d692bd5f00d3c822b86525178fa5aea5c72cbd8b6c1b113b5e9"
+    },
+    {
+      "path": "docs/research/evidence/a1_retrospective_bands_20261127.csv",
+      "bytes": 222543,
+      "sha256": "354655e285d81d913292430ec2846ea02f26b06e331f699dca1d5e250c81444a"
+    },
+    {
+      "path": "docs/research/evidence/a1_identity_slot_census_20261127.csv",
+      "bytes": 547291,
+      "sha256": "99b5389ca6b3dd8fb66b7254256c51f65aaa17973a5cc945fc730722364799bf"
+    },
+    {
+      "path": "docs/research/evidence/a1_history_attribution_matches_20261127.csv",
+      "bytes": 1223954,
+      "sha256": "472759133cffa69d68edbdecb04896d170c362cbf4831e6c2355ea5b1ea195d7"
+    },
+    {
+      "path": "docs/research/A1_MARGINAL_FORECAST_WEAKNESSES_20261127.md",
+      "bytes": 44378,
+      "sha256": "98c4ea73d6602cdcf3823ab7d3e492c13f1a27016a8f9d0c3579550924d3cb0f"
+    },
+    {
+      "path": "tests/test_a1_marginal_research.py",
+      "bytes": 11078,
+      "sha256": "41b95e835a4d6a3b146b1a951563fdc50ff97a1caa0d7df114e763585bc59bda"
+    }
+  ],
+  "code": [
+    {
+      "path": "src/sports_edge_tennis/validation/a1_marginal_research.py",
+      "bytes": 110335,
+      "sha256": "6af2d29ef9404677077331662cb8c34969fc3a60362de16e8749dbf1b8a04b96"
+    },
+    {
+      "path": "ops/validation/a1_marginal_research_20261127.py",
+      "bytes": 26686,
+      "sha256": "1c79179c7e744cdd18218dc667c546660a33f1cadf73415c6829b7976ba81b44"
+    }
+  ],
+  "validation": {
+    "settled_rows": 3223,
+    "development_rows": 2198,
+    "holdout_rows": 1025,
+    "primary_selections": 420,
+    "secondary_selections": 476,
+    "marginal_40_45": 45,
+    "marginal_45_50": 56
+  },
+  "note": "Research evidence only. Frozen primary and secondary policies are untouched. can_promote=false. No production activation."
+}

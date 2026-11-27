@@ -1,0 +1,2088 @@
+{
+  "sampling_rule": "Mandatory: model identities with more than one live id (4). Then the highest maximum absolute effective-rating change across settled slots, ties by model id ascending, until 20 unique model identities. Outcome fields are not used.",
+  "population_slots": 6446,
+  "resolved_slots": 5653,
+  "unresolved_slots": 793,
+  "resolved_methods": [
+    "ALIAS",
+    "HISTORICAL_ID",
+    "PERSISTED_BRIDGE"
+  ],
+  "unique_live_players": 1089,
+  "unique_model_players": 832,
+  "multi_live_model_identities": 4,
+  "selected": [
+    {
+      "model_player_id": 3918,
+      "live_player_ids": [
+        4318
+      ],
+      "live_id_count": 1,
+      "settled_slots": 15,
+      "aliases": [
+        "kouame m"
+      ],
+      "methods": {
+        "ALIAS": 15
+      },
+      "candidate_counts": {
+        "1": 15
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 15
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 15
+      },
+      "matches_before_range": [
+        5.0,
+        5.0
+      ],
+      "matches_after_range": [
+        33.0,
+        48.0
+      ],
+      "overall_rating_delta_range": [
+        250.73406717006173,
+        424.24886511756426
+      ],
+      "surface_rating_delta_range": [
+        -46.869729312095615,
+        314.9488968914552
+      ],
+      "probability_delta_range": [
+        0.059739,
+        0.48456800000000005
+      ],
+      "max_abs_effective_rating_delta": 424.24886511756426,
+      "max_abs_overall_rating_delta": 424.24886511756426,
+      "max_abs_surface_rating_delta": 314.9488968914552,
+      "max_recovered_matches": 43.0,
+      "max_abs_probability_delta": 0.48456800000000005,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 124201,
+        "match_id": 133204,
+        "date": "2026-11-03",
+        "tour": "ATP_MAIN",
+        "round": "UNKNOWN",
+        "surface": "",
+        "side": "p2",
+        "live_player_id": 4318,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 5.0,
+        "matches_after": 46.0,
+        "recovered_matches": 41.0,
+        "overall_before": 1397.6618055003107,
+        "overall_after": 1821.910670617875,
+        "surface_before": 0.0,
+        "surface_after": 0.0,
+        "effective_before": 1397.6618055003107,
+        "effective_after": 1821.910670617875,
+        "probability_before": 0.034116000000000035,
+        "probability_after": 0.25043400000000005,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 4043,
+      "live_player_ids": [
+        4303
+      ],
+      "live_id_count": 1,
+      "settled_slots": 11,
+      "aliases": [
+        "balshaw f"
+      ],
+      "methods": {
+        "ALIAS": 11
+      },
+      "candidate_counts": {
+        "1": 11
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 11
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 11
+      },
+      "matches_before_range": [
+        2.0,
+        2.0
+      ],
+      "matches_after_range": [
+        41.0,
+        51.0
+      ],
+      "overall_rating_delta_range": [
+        370.9821617676612,
+        445.42210919156173
+      ],
+      "surface_rating_delta_range": [
+        -10.312090493905544,
+        147.21257757328772
+      ],
+      "probability_delta_range": [
+        0.12218700000000005,
+        0.482653
+      ],
+      "max_abs_effective_rating_delta": 424.0395409974101,
+      "max_abs_overall_rating_delta": 445.42210919156173,
+      "max_abs_surface_rating_delta": 147.21257757328772,
+      "max_recovered_matches": 49.0,
+      "max_abs_probability_delta": 0.48265300000000005,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 93337,
+        "match_id": 132509,
+        "date": "2026-10-21",
+        "tour": "ATP_MAIN",
+        "round": "R16",
+        "surface": "",
+        "side": "p2",
+        "live_player_id": 4303,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 2.0,
+        "matches_after": 49.0,
+        "recovered_matches": 47.0,
+        "overall_before": 1422.20980207992,
+        "overall_after": 1846.2493430773302,
+        "surface_before": 0.0,
+        "surface_after": 0.0,
+        "effective_before": 1422.20980207992,
+        "effective_after": 1846.2493430773302,
+        "probability_before": 0.030934000000000017,
+        "probability_after": 0.37795100000000004,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3207,
+      "live_player_ids": [
+        4796
+      ],
+      "live_id_count": 1,
+      "settled_slots": 5,
+      "aliases": [
+        "gea a"
+      ],
+      "methods": {
+        "ALIAS": 5
+      },
+      "candidate_counts": {
+        "1": 5
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 5
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 5
+      },
+      "matches_before_range": [
+        101.0,
+        101.0
+      ],
+      "matches_after_range": [
+        157.0,
+        162.0
+      ],
+      "overall_rating_delta_range": [
+        340.8320947966906,
+        399.2534483095717
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        262.9353760729298
+      ],
+      "probability_delta_range": [
+        0.10425400000000001,
+        0.195805
+      ],
+      "max_abs_effective_rating_delta": 399.2534483095717,
+      "max_abs_overall_rating_delta": 399.2534483095717,
+      "max_abs_surface_rating_delta": 262.9353760729298,
+      "max_recovered_matches": 61.0,
+      "max_abs_probability_delta": 0.195805,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 124951,
+        "match_id": 133162,
+        "date": "2026-11-03",
+        "tour": "ATP_MAIN",
+        "round": "R64",
+        "surface": "",
+        "side": "p2",
+        "live_player_id": 4796,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 101.0,
+        "matches_after": 162.0,
+        "recovered_matches": 61.0,
+        "overall_before": 1638.1640395621887,
+        "overall_after": 2037.4174878717604,
+        "surface_before": 0.0,
+        "surface_after": 0.0,
+        "effective_before": 1638.1640395621887,
+        "effective_after": 2037.4174878717604,
+        "probability_before": 0.25792800000000005,
+        "probability_after": 0.43842400000000004,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3388,
+      "live_player_ids": [
+        4491
+      ],
+      "live_id_count": 1,
+      "settled_slots": 14,
+      "aliases": [
+        "demin y"
+      ],
+      "methods": {
+        "ALIAS": 14
+      },
+      "candidate_counts": {
+        "1": 14
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 14
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 14
+      },
+      "matches_before_range": [
+        15.0,
+        15.0
+      ],
+      "matches_after_range": [
+        20.0,
+        33.0
+      ],
+      "overall_rating_delta_range": [
+        -1.8377937267921425,
+        385.1358493029045
+      ],
+      "surface_rating_delta_range": [
+        -25.377251912409065,
+        401.236746398351
+      ],
+      "probability_delta_range": [
+        -0.10412299999999997,
+        0.380309
+      ],
+      "max_abs_effective_rating_delta": 393.18629785062785,
+      "max_abs_overall_rating_delta": 385.1358493029045,
+      "max_abs_surface_rating_delta": 401.236746398351,
+      "max_recovered_matches": 18.0,
+      "max_abs_probability_delta": 0.380309,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 125716,
+        "match_id": 133076,
+        "date": "2026-11-04",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "HARD",
+        "side": "p1",
+        "live_player_id": 4491,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 15.0,
+        "matches_after": 33.0,
+        "recovered_matches": 18.0,
+        "overall_before": 1311.631715783579,
+        "overall_after": 1696.7675650864835,
+        "surface_before": 1330.155579836575,
+        "surface_after": 1731.392326234926,
+        "effective_before": 1320.893647810077,
+        "effective_after": 1714.0799456607049,
+        "probability_before": 0.039068,
+        "probability_after": 0.357813,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3834,
+      "live_player_ids": [
+        4540
+      ],
+      "live_id_count": 1,
+      "settled_slots": 10,
+      "aliases": [
+        "schoenhaus m"
+      ],
+      "methods": {
+        "ALIAS": 10
+      },
+      "candidate_counts": {
+        "1": 10
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 10
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 10
+      },
+      "matches_before_range": [
+        7.0,
+        7.0
+      ],
+      "matches_after_range": [
+        33.0,
+        42.0
+      ],
+      "overall_rating_delta_range": [
+        304.8695132262271,
+        352.85193102214635
+      ],
+      "surface_rating_delta_range": [
+        -31.50505821451361,
+        62.49655418353359
+      ],
+      "probability_delta_range": [
+        0.13349,
+        0.47819199999999995
+      ],
+      "max_abs_effective_rating_delta": 335.209334471039,
+      "max_abs_overall_rating_delta": 352.85193102214635,
+      "max_abs_surface_rating_delta": 62.49655418353359,
+      "max_recovered_matches": 35.0,
+      "max_abs_probability_delta": 0.478192,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 8563,
+        "match_id": 117949,
+        "date": "2026-09-13",
+        "tour": "CHALLENGER",
+        "round": "SF",
+        "surface": "",
+        "side": "p1",
+        "live_player_id": 4540,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 7.0,
+        "matches_after": 33.0,
+        "recovered_matches": 26.0,
+        "overall_before": 1334.5538635246896,
+        "overall_after": 1687.405794546836,
+        "surface_before": 1433.5599752683897,
+        "surface_after": 1433.5599752683897,
+        "effective_before": 1339.5041691118747,
+        "effective_after": 1674.7135035829137,
+        "probability_before": 0.359222,
+        "probability_after": 0.798979,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 3041,
+      "live_player_ids": [
+        5670
+      ],
+      "live_id_count": 1,
+      "settled_slots": 9,
+      "aliases": [
+        "kumstat j"
+      ],
+      "methods": {
+        "ALIAS": 9
+      },
+      "candidate_counts": {
+        "1": 9
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 9
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 9
+      },
+      "matches_before_range": [
+        16.0,
+        16.0
+      ],
+      "matches_after_range": [
+        43.0,
+        51.0
+      ],
+      "overall_rating_delta_range": [
+        263.663696940044,
+        357.1227800329052
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        209.56105242888088
+      ],
+      "probability_delta_range": [
+        0.06454700000000002,
+        0.409901
+      ],
+      "max_abs_effective_rating_delta": 329.7065991160539,
+      "max_abs_overall_rating_delta": 357.1227800329052,
+      "max_abs_surface_rating_delta": 209.56105242888088,
+      "max_recovered_matches": 35.0,
+      "max_abs_probability_delta": 0.409901,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 83290,
+        "match_id": 132291,
+        "date": "2026-10-18",
+        "tour": "ATP_MAIN",
+        "round": "QUAL",
+        "surface": "",
+        "side": "p1",
+        "live_player_id": 5670,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 16.0,
+        "matches_after": 45.0,
+        "recovered_matches": 29.0,
+        "overall_before": 1616.3443240655124,
+        "overall_after": 1946.0509231815663,
+        "surface_before": 0.0,
+        "surface_after": 0.0,
+        "effective_before": 1616.3443240655124,
+        "effective_after": 1946.0509231815663,
+        "probability_before": 0.256454,
+        "probability_after": 0.666355,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 3748,
+      "live_player_ids": [
+        4582
+      ],
+      "live_id_count": 1,
+      "settled_slots": 12,
+      "aliases": [
+        "pieri s"
+      ],
+      "methods": {
+        "ALIAS": 12
+      },
+      "candidate_counts": {
+        "1": 12
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 12
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 12
+      },
+      "matches_before_range": [
+        4.0,
+        4.0
+      ],
+      "matches_after_range": [
+        38.0,
+        50.0
+      ],
+      "overall_rating_delta_range": [
+        148.0773243336589,
+        322.7231759967251
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        334.72670921108306
+      ],
+      "probability_delta_range": [
+        -0.05063699999999993,
+        0.438439
+      ],
+      "max_abs_effective_rating_delta": 328.30295781348786,
+      "max_abs_overall_rating_delta": 322.7231759967251,
+      "max_abs_surface_rating_delta": 334.72670921108306,
+      "max_recovered_matches": 46.0,
+      "max_abs_probability_delta": 0.438439,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 64498,
+        "match_id": 131655,
+        "date": "2026-10-06",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "CLAY",
+        "side": "p1",
+        "live_player_id": 4582,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 4.0,
+        "matches_after": 47.0,
+        "recovered_matches": 43.0,
+        "overall_before": 1361.5567153741636,
+        "overall_after": 1684.2798913708887,
+        "surface_before": 1360.1500994061098,
+        "surface_after": 1694.8768086171929,
+        "effective_before": 1361.275392180553,
+        "effective_after": 1689.5783499940408,
+        "probability_before": 0.182266,
+        "probability_after": 0.532934,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 3094,
+      "live_player_ids": [
+        4868
+      ],
+      "live_id_count": 1,
+      "settled_slots": 9,
+      "aliases": [
+        "cigarran t"
+      ],
+      "methods": {
+        "ALIAS": 9
+      },
+      "candidate_counts": {
+        "1": 9
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 9
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 9
+      },
+      "matches_before_range": [
+        22.0,
+        22.0
+      ],
+      "matches_after_range": [
+        51.0,
+        64.0
+      ],
+      "overall_rating_delta_range": [
+        316.1932985894746,
+        397.2825491744834
+      ],
+      "surface_rating_delta_range": [
+        -6.6052445857033035,
+        239.41204128028812
+      ],
+      "probability_delta_range": [
+        0.11690400000000001,
+        0.449712
+      ],
+      "max_abs_effective_rating_delta": 318.347295227386,
+      "max_abs_overall_rating_delta": 397.2825491744834,
+      "max_abs_surface_rating_delta": 239.41204128028812,
+      "max_recovered_matches": 42.0,
+      "max_abs_probability_delta": 0.449712,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 151489,
+        "match_id": 133979,
+        "date": "2026-11-17",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "CLAY",
+        "side": "p2",
+        "live_player_id": 4868,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 22.0,
+        "matches_after": 63.0,
+        "recovered_matches": 41.0,
+        "overall_before": 1142.6666510081475,
+        "overall_after": 1539.9492001826309,
+        "surface_before": 1148.9897841213337,
+        "surface_after": 1388.4018254016219,
+        "effective_before": 1145.8282175647405,
+        "effective_after": 1464.1755127921265,
+        "probability_before": 0.021109000000000044,
+        "probability_after": 0.13801300000000005,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3429,
+      "live_player_ids": [
+        5282
+      ],
+      "live_id_count": 1,
+      "settled_slots": 17,
+      "aliases": [
+        "dietrich d"
+      ],
+      "methods": {
+        "ALIAS": 17
+      },
+      "candidate_counts": {
+        "1": 17
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 17
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 17
+      },
+      "matches_before_range": [
+        17.0,
+        17.0
+      ],
+      "matches_after_range": [
+        30.0,
+        49.0
+      ],
+      "overall_rating_delta_range": [
+        111.91260732694263,
+        349.6012481082387
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        290.809947548707
+      ],
+      "probability_delta_range": [
+        0.011804999999999954,
+        0.478603
+      ],
+      "max_abs_effective_rating_delta": 315.04558154730216,
+      "max_abs_overall_rating_delta": 349.6012481082387,
+      "max_abs_surface_rating_delta": 290.809947548707,
+      "max_recovered_matches": 32.0,
+      "max_abs_probability_delta": 0.478603,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": true,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 161005,
+        "match_id": 134196,
+        "date": "2026-11-22",
+        "tour": "CHALLENGER",
+        "round": "F",
+        "surface": "HARD",
+        "side": "p2",
+        "live_player_id": 5282,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 17.0,
+        "matches_after": 49.0,
+        "recovered_matches": 32.0,
+        "overall_before": 1686.8475231108885,
+        "overall_after": 2034.1010832734185,
+        "surface_before": 1607.1240769445567,
+        "surface_after": 1897.9340244932637,
+        "effective_before": 1650.971972336039,
+        "effective_after": 1966.0175538833412,
+        "probability_before": 0.374653,
+        "probability_after": 0.658172,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 2872,
+      "live_player_ids": [
+        5655
+      ],
+      "live_id_count": 1,
+      "settled_slots": 18,
+      "aliases": [
+        "legout t"
+      ],
+      "methods": {
+        "ALIAS": 18
+      },
+      "candidate_counts": {
+        "1": 18
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 18
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 18
+      },
+      "matches_before_range": [
+        18.0,
+        18.0
+      ],
+      "matches_after_range": [
+        29.0,
+        49.0
+      ],
+      "overall_rating_delta_range": [
+        181.8960775437879,
+        332.96330166961275
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        293.46491846279423
+      ],
+      "probability_delta_range": [
+        -0.07158199999999998,
+        0.40457800000000005
+      ],
+      "max_abs_effective_rating_delta": 312.4625663853826,
+      "max_abs_overall_rating_delta": 332.96330166961275,
+      "max_abs_surface_rating_delta": 293.46491846279423,
+      "max_recovered_matches": 31.0,
+      "max_abs_probability_delta": 0.40457800000000005,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 144592,
+        "match_id": 133596,
+        "date": "2026-11-10",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "HARD",
+        "side": "p2",
+        "live_player_id": 5655,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 18.0,
+        "matches_after": 47.0,
+        "recovered_matches": 29.0,
+        "overall_before": 1516.3070712277367,
+        "overall_after": 1847.7672855357075,
+        "surface_before": 1463.388896796615,
+        "surface_after": 1756.8538152594092,
+        "effective_before": 1489.8479840121759,
+        "effective_after": 1802.3105503975585,
+        "probability_before": 0.43783700000000003,
+        "probability_after": 0.790478,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 4183,
+      "live_player_ids": [
+        4287
+      ],
+      "live_id_count": 1,
+      "settled_slots": 14,
+      "aliases": [
+        "manzano j c m"
+      ],
+      "methods": {
+        "ALIAS": 14
+      },
+      "candidate_counts": {
+        "1": 14
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 14
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 14
+      },
+      "matches_before_range": [
+        2.0,
+        2.0
+      ],
+      "matches_after_range": [
+        27.0,
+        41.0
+      ],
+      "overall_rating_delta_range": [
+        165.99088016783867,
+        315.2394816077019
+      ],
+      "surface_rating_delta_range": [
+        -33.756930572378906,
+        298.5301904496914
+      ],
+      "probability_delta_range": [
+        0.02917700000000001,
+        0.38011000000000006
+      ],
+      "max_abs_effective_rating_delta": 310.35333104658685,
+      "max_abs_overall_rating_delta": 315.2394816077019,
+      "max_abs_surface_rating_delta": 298.5301904496914,
+      "max_recovered_matches": 39.0,
+      "max_abs_probability_delta": 0.38011000000000006,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": true,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 58858,
+        "match_id": 131565,
+        "date": "2026-10-04",
+        "tour": "CHALLENGER",
+        "round": "F",
+        "surface": "CLAY",
+        "side": "p1",
+        "live_player_id": 4287,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 2.0,
+        "matches_after": 40.0,
+        "recovered_matches": 38.0,
+        "overall_before": 1391.3748491703382,
+        "overall_after": 1706.61433077804,
+        "surface_before": 1400.0460867150634,
+        "surface_after": 1698.5762771647549,
+        "effective_before": 1392.2419729248106,
+        "effective_after": 1702.5953039713975,
+        "probability_before": 0.544447,
+        "probability_after": 0.573624,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3787,
+      "live_player_ids": [
+        5116
+      ],
+      "live_id_count": 1,
+      "settled_slots": 22,
+      "aliases": [
+        "caniato c a"
+      ],
+      "methods": {
+        "ALIAS": 22
+      },
+      "candidate_counts": {
+        "1": 22
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 22
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 22
+      },
+      "matches_before_range": [
+        19.0,
+        19.0
+      ],
+      "matches_after_range": [
+        47.0,
+        71.0
+      ],
+      "overall_rating_delta_range": [
+        96.45909915070797,
+        340.6517984882512
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        294.53240016863515
+      ],
+      "probability_delta_range": [
+        -0.014697999999999989,
+        0.46344299999999994
+      ],
+      "max_abs_effective_rating_delta": 307.8540263508976,
+      "max_abs_overall_rating_delta": 340.6517984882512,
+      "max_abs_surface_rating_delta": 294.53240016863515,
+      "max_recovered_matches": 52.0,
+      "max_abs_probability_delta": 0.46344299999999994,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": true,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 67900,
+        "match_id": 131831,
+        "date": "2026-10-08",
+        "tour": "CHALLENGER",
+        "round": "R16",
+        "surface": "CLAY",
+        "side": "p1",
+        "live_player_id": 5116,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 19.0,
+        "matches_after": 61.0,
+        "recovered_matches": 42.0,
+        "overall_before": 1478.656398017406,
+        "overall_after": 1819.3081965056572,
+        "surface_before": 1544.355492647716,
+        "surface_after": 1819.4117468612599,
+        "effective_before": 1511.505945332561,
+        "effective_after": 1819.3599716834585,
+        "probability_before": 0.13181,
+        "probability_after": 0.532543,
+        "side_changed": true
+      }
+    },
+    {
+      "model_player_id": 2986,
+      "live_player_ids": [
+        5338
+      ],
+      "live_id_count": 1,
+      "settled_slots": 12,
+      "aliases": [
+        "staeheli l"
+      ],
+      "methods": {
+        "ALIAS": 12
+      },
+      "candidate_counts": {
+        "1": 12
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 12
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 12
+      },
+      "matches_before_range": [
+        3.0,
+        3.0
+      ],
+      "matches_after_range": [
+        18.0,
+        30.0
+      ],
+      "overall_rating_delta_range": [
+        235.09065278234516,
+        362.1044128310573
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        117.15218138460796
+      ],
+      "probability_delta_range": [
+        0.030966999999999967,
+        0.455249
+      ],
+      "max_abs_effective_rating_delta": 301.17564742220134,
+      "max_abs_overall_rating_delta": 362.1044128310573,
+      "max_abs_surface_rating_delta": 117.15218138460796,
+      "max_recovered_matches": 27.0,
+      "max_abs_probability_delta": 0.455249,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 52711,
+        "match_id": 131470,
+        "date": "2026-09-30",
+        "tour": "CHALLENGER",
+        "round": "R16",
+        "surface": "",
+        "side": "p1",
+        "live_player_id": 5338,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 3.0,
+        "matches_after": 25.0,
+        "recovered_matches": 22.0,
+        "overall_before": 1365.2485192861202,
+        "overall_after": 1727.3529321171775,
+        "surface_before": 1393.94904051535,
+        "surface_after": 1495.1180789734456,
+        "effective_before": 1368.1185714090432,
+        "effective_after": 1669.2942188312445,
+        "probability_before": 0.240504,
+        "probability_after": 0.464016,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3292,
+      "live_player_ids": [
+        4402
+      ],
+      "live_id_count": 1,
+      "settled_slots": 17,
+      "aliases": [
+        "giunta m"
+      ],
+      "methods": {
+        "ALIAS": 17
+      },
+      "candidate_counts": {
+        "1": 17
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 17
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 17
+      },
+      "matches_before_range": [
+        19.0,
+        19.0
+      ],
+      "matches_after_range": [
+        19.0,
+        54.0
+      ],
+      "overall_rating_delta_range": [
+        0.0,
+        283.8932179506817
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        325.1806919211515
+      ],
+      "probability_delta_range": [
+        0.0,
+        0.311009
+      ],
+      "max_abs_effective_rating_delta": 301.0901131082271,
+      "max_abs_overall_rating_delta": 283.8932179506817,
+      "max_abs_surface_rating_delta": 325.1806919211515,
+      "max_recovered_matches": 35.0,
+      "max_abs_probability_delta": 0.311009,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 79435,
+        "match_id": 132243,
+        "date": "2026-10-17",
+        "tour": "CHALLENGER",
+        "round": "SF",
+        "surface": "CLAY",
+        "side": "p1",
+        "live_player_id": 4402,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 19.0,
+        "matches_after": 48.0,
+        "recovered_matches": 29.0,
+        "overall_before": 1433.6227618414287,
+        "overall_after": 1716.8438609597758,
+        "surface_before": 1371.4071136109874,
+        "surface_after": 1696.5878055321389,
+        "effective_before": 1405.6257201377302,
+        "effective_after": 1706.7158332459574,
+        "probability_before": 0.13832,
+        "probability_after": 0.449329,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 4230,
+      "live_player_ids": [
+        5204
+      ],
+      "live_id_count": 1,
+      "settled_slots": 10,
+      "aliases": [
+        "tabata r"
+      ],
+      "methods": {
+        "ALIAS": 10
+      },
+      "candidate_counts": {
+        "1": 10
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 10
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 10
+      },
+      "matches_before_range": [
+        4.0,
+        4.0
+      ],
+      "matches_after_range": [
+        13.0,
+        23.0
+      ],
+      "overall_rating_delta_range": [
+        21.150673272703898,
+        284.12770585201247
+      ],
+      "surface_rating_delta_range": [
+        -42.21848178780556,
+        193.29835312898717
+      ],
+      "probability_delta_range": [
+        -0.04558799999999999,
+        0.35497599999999996
+      ],
+      "max_abs_effective_rating_delta": 291.22277192744923,
+      "max_abs_overall_rating_delta": 284.12770585201247,
+      "max_abs_surface_rating_delta": 193.29835312898717,
+      "max_recovered_matches": 19.0,
+      "max_abs_probability_delta": 0.35497599999999996,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 146776,
+        "match_id": 133635,
+        "date": "2026-11-11",
+        "tour": "CHALLENGER",
+        "round": "R16",
+        "surface": "CLAY",
+        "side": "p2",
+        "live_player_id": 5204,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 4.0,
+        "matches_after": 22.0,
+        "recovered_matches": 18.0,
+        "overall_before": 1391.4329820883825,
+        "overall_after": 1675.560687940395,
+        "surface_before": 1500.0,
+        "surface_after": 1693.2983531289872,
+        "effective_before": 1391.4329820883825,
+        "effective_after": 1682.6557540158317,
+        "probability_before": 0.15736499999999998,
+        "probability_after": 0.426214,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3413,
+      "live_player_ids": [
+        4577
+      ],
+      "live_id_count": 1,
+      "settled_slots": 14,
+      "aliases": [
+        "romano f"
+      ],
+      "methods": {
+        "ALIAS": 14
+      },
+      "candidate_counts": {
+        "1": 14
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 14
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 14
+      },
+      "matches_before_range": [
+        34.0,
+        34.0
+      ],
+      "matches_after_range": [
+        79.0,
+        93.0
+      ],
+      "overall_rating_delta_range": [
+        270.21227979135915,
+        383.2244077452708
+      ],
+      "surface_rating_delta_range": [
+        -49.716250521641996,
+        136.3315468991998
+      ],
+      "probability_delta_range": [
+        -0.04868899999999998,
+        0.296195
+      ],
+      "max_abs_effective_rating_delta": 287.41830580895294,
+      "max_abs_overall_rating_delta": 383.2244077452708,
+      "max_abs_surface_rating_delta": 136.3315468991998,
+      "max_recovered_matches": 59.0,
+      "max_abs_probability_delta": 0.296195,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": true,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 109345,
+        "match_id": 132758,
+        "date": "2026-10-28",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "HARD",
+        "side": "p2",
+        "live_player_id": 4577,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 34.0,
+        "matches_after": 91.0,
+        "recovered_matches": 57.0,
+        "overall_before": 1349.9870825952412,
+        "overall_after": 1733.211490340512,
+        "surface_before": 1324.8168572705088,
+        "surface_after": 1324.8168572705088,
+        "effective_before": 1343.6945262640581,
+        "effective_after": 1631.112832073011,
+        "probability_before": 0.07582500000000003,
+        "probability_after": 0.329315,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 4143,
+      "live_player_ids": [
+        4364,
+        5948
+      ],
+      "live_id_count": 2,
+      "settled_slots": 23,
+      "aliases": [
+        "friend j d h"
+      ],
+      "methods": {
+        "ALIAS": 23
+      },
+      "candidate_counts": {
+        "1": 23
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 23
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 23
+      },
+      "matches_before_range": [
+        15.0,
+        15.0
+      ],
+      "matches_after_range": [
+        15.0,
+        68.0
+      ],
+      "overall_rating_delta_range": [
+        0.0,
+        85.14372095672434
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        86.91267786213916
+      ],
+      "probability_delta_range": [
+        -0.09120499999999998,
+        0.14398600000000006
+      ],
+      "max_abs_effective_rating_delta": 86.02819940943186,
+      "max_abs_overall_rating_delta": 85.14372095672434,
+      "max_abs_surface_rating_delta": 86.91267786213916,
+      "max_recovered_matches": 53.0,
+      "max_abs_probability_delta": 0.143986,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": false,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 69271,
+        "match_id": 131907,
+        "date": "2026-10-11",
+        "tour": "CHALLENGER",
+        "round": "F",
+        "surface": "HARD",
+        "side": "p1",
+        "live_player_id": 4364,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 15.0,
+        "matches_after": 54.0,
+        "recovered_matches": 39.0,
+        "overall_before": 1762.2973374760015,
+        "overall_after": 1847.4410584327259,
+        "surface_before": 1748.8523381942769,
+        "surface_after": 1835.765016056416,
+        "effective_before": 1755.574837835139,
+        "effective_after": 1841.603037244571,
+        "probability_before": 0.54943,
+        "probability_after": 0.661731,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3029,
+      "live_player_ids": [
+        5811,
+        5988
+      ],
+      "live_id_count": 2,
+      "settled_slots": 9,
+      "aliases": [
+        "maloney p"
+      ],
+      "methods": {
+        "ALIAS": 9
+      },
+      "candidate_counts": {
+        "1": 9
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 9
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 9
+      },
+      "matches_before_range": [
+        63.0,
+        63.0
+      ],
+      "matches_after_range": [
+        69.0,
+        77.0
+      ],
+      "overall_rating_delta_range": [
+        2.09623859679823,
+        62.88870408824573
+      ],
+      "surface_rating_delta_range": [
+        0.0,
+        49.86024443132533
+      ],
+      "probability_delta_range": [
+        -0.28582300000000005,
+        0.05674800000000002
+      ],
+      "max_abs_effective_rating_delta": 56.3744742597853,
+      "max_abs_overall_rating_delta": 62.88870408824573,
+      "max_abs_surface_rating_delta": 49.86024443132533,
+      "max_recovered_matches": 14.0,
+      "max_abs_probability_delta": 0.285823,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": false,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 96700,
+        "match_id": 132561,
+        "date": "2026-10-23",
+        "tour": "CHALLENGER",
+        "round": "QF",
+        "surface": "HARD",
+        "side": "p2",
+        "live_player_id": 5811,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 63.0,
+        "matches_after": 76.0,
+        "recovered_matches": 13.0,
+        "overall_before": 1589.6239959257034,
+        "overall_after": 1652.5127000139491,
+        "surface_before": 1527.091246807936,
+        "surface_after": 1576.9514912392613,
+        "effective_before": 1558.3576213668198,
+        "effective_after": 1614.732095626605,
+        "probability_before": 0.09265400000000001,
+        "probability_after": 0.14940200000000003,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3503,
+      "live_player_ids": [
+        4456,
+        6027
+      ],
+      "live_id_count": 2,
+      "settled_slots": 4,
+      "aliases": [
+        "xiao l"
+      ],
+      "methods": {
+        "ALIAS": 4
+      },
+      "candidate_counts": {
+        "1": 4
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 4
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 4
+      },
+      "matches_before_range": [
+        34.0,
+        34.0
+      ],
+      "matches_after_range": [
+        40.0,
+        44.0
+      ],
+      "overall_rating_delta_range": [
+        -66.26900286543196,
+        -39.06306834232237
+      ],
+      "surface_rating_delta_range": [
+        -7.750003766352847,
+        37.23286555200616
+      ],
+      "probability_delta_range": [
+        -0.11141600000000002,
+        0.02019700000000002
+      ],
+      "max_abs_effective_rating_delta": 37.00950331589229,
+      "max_abs_overall_rating_delta": 66.26900286543196,
+      "max_abs_surface_rating_delta": 37.23286555200616,
+      "max_recovered_matches": 10.0,
+      "max_abs_probability_delta": 0.11141600000000002,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": false,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 106978,
+        "match_id": 132724,
+        "date": "2026-10-27",
+        "tour": "CHALLENGER",
+        "round": "R32",
+        "surface": "HARD",
+        "side": "p1",
+        "live_player_id": 4456,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 34.0,
+        "matches_after": 44.0,
+        "recovered_matches": 10.0,
+        "overall_before": 1409.0958012096833,
+        "overall_after": 1342.8267983442513,
+        "surface_before": 1396.774374472199,
+        "surface_after": 1389.0243707058462,
+        "effective_before": 1402.9350878409412,
+        "effective_after": 1365.9255845250489,
+        "probability_before": 0.279745,
+        "probability_after": 0.168329,
+        "side_changed": false
+      }
+    },
+    {
+      "model_player_id": 3343,
+      "live_player_ids": [
+        4421,
+        6141
+      ],
+      "live_id_count": 2,
+      "settled_slots": 4,
+      "aliases": [
+        "dhamne m"
+      ],
+      "methods": {
+        "ALIAS": 4
+      },
+      "candidate_counts": {
+        "1": 4
+      },
+      "evidence": {
+        "tennis_data_alias_pit": 4
+      },
+      "name_sources": {
+        "PIT_CANONICAL_NAME": 4
+      },
+      "matches_before_range": [
+        14.0,
+        14.0
+      ],
+      "matches_after_range": [
+        58.0,
+        61.0
+      ],
+      "overall_rating_delta_range": [
+        -28.33167698066677,
+        29.21731680208495
+      ],
+      "surface_rating_delta_range": [
+        73.02496406832438,
+        121.54822309674114
+      ],
+      "probability_delta_range": [
+        -0.12007600000000002,
+        0.11301799999999995
+      ],
+      "max_abs_effective_rating_delta": 35.733529841504605,
+      "max_abs_overall_rating_delta": 29.21731680208495,
+      "max_abs_surface_rating_delta": 121.54822309674114,
+      "max_recovered_matches": 47.0,
+      "max_abs_probability_delta": 0.12007600000000002,
+      "verification": {
+        "alias_count": 1,
+        "single_live_id": false,
+        "matches_not_reduced": true,
+        "candidate_ambiguity": 1,
+        "same_day_duplicate_pair_flag": false,
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "provenance": "tennis_data alias / PIT canonical name already in the production corpus; Sackmann-associated lineage, commercial training rights not verified"
+      },
+      "detail": {
+        "prediction_id": 45280,
+        "match_id": 131320,
+        "date": "2026-09-28",
+        "tour": "CHALLENGER",
+        "round": "F",
+        "surface": "",
+        "side": "p1",
+        "live_player_id": 6141,
+        "model_player_id": "probability_delta",
+        "method": "ALIAS",
+        "evidence": "tennis_data_alias_pit",
+        "name_source": "PIT_CANONICAL_NAME",
+        "candidate_count": 1,
+        "bridged": true,
+        "matches_before": 14.0,
+        "matches_after": 59.0,
+        "recovered_matches": 45.0,
+        "overall_before": 1562.7057467808274,
+        "overall_after": 1591.9230635829124,
+        "surface_before": 1390.7083856894278,
+        "surface_after": 1512.256608786169,
+        "effective_before": 1528.3062745625475,
+        "effective_after": 1564.0398044040521,
+        "probability_before": 0.356233,
+        "probability_after": 0.469251,
+        "side_changed": false
+      }
+    }
+  ],
+  "note": "Aliases are public competition names retained for identity verification. No contact details, account identifiers or provider payloads are present.",
+  "slot_census": {
+    "targets": 3776,
+    "slots": 7552,
+    "expected_slots": 7552,
+    "method_classified_slots": 7552,
+    "method_unclassified_slots": 0,
+    "resolved_slots": 6558,
+    "unresolved_slots": 994,
+    "methods": {
+      "ALIAS": 6547,
+      "NO_HISTORICAL_CANDIDATE": 768,
+      "AMBIGUOUS": 226,
+      "PERSISTED_BRIDGE": 6,
+      "HISTORICAL_ID": 5
+    },
+    "statuses": {
+      "RESOLVED": 6558,
+      "NO_CANDIDATE": 768,
+      "AMBIGUOUS": 226
+    },
+    "csv": "a1_identity_slot_census_20261127.csv",
+    "csv_sha256": "99b5389ca6b3dd8fb66b7254256c51f65aaa17973a5cc945fc730722364799bf",
+    "record_digest_sha256": "b080fc3322304ae8c447fc83d8c9ddcfa1ce15738d423ed990473ce2c4cc4baa",
+    "five_slot_reconciliation": {
+      "reference_policy_3778_slots": 7556,
+      "reference_policy_3778_declared_classified": 7551,
+      "unclassified_slots_in_3778_artifact": 5,
+      "ledger_3776_slots": 7552,
+      "ledger_3776_method_classified": 7552,
+      "ledger_3776_resolved": 6558,
+      "ledger_3776_unresolved": 994,
+      "arithmetic": "7,552 + 4 (two added fixtures) - 5 = 7,551",
+      "status": "The 3,776 ledger emits one method record per slot (7,552/7,552). The 3,778 snapshot is not stored per-slot offline, so its five unclassified slots cannot be named; they are a bounded reporting gap, not five fixtures.",
+      "policy_measured": "pre-v2 permissive-equivalent resolver used for the 3,223 experiment",
+      "v3_applied": false,
+      "census_format": "ONE_RECORD_PER_SLOT_V3_FORMAT"
+    }
+  },
+  "history_attribution": {
+    "row_level_artifact_matches": 16104,
+    "unique_matches_in_artifact": 16104,
+    "integrity_census_attribution_changed": 16105,
+    "difference": 1,
+    "difference_explanation": "The row-level visibility extract was generated with a later wall-clock cutoff than the E3 2026-11-25T07:20Z census. The most likely explanation is that one additional history row was visible at the later cutoff. The exact E3-census count is 16,105; the row-level extract has 16,104. This is a bounded one-record cutoff artefact, not a missing player or fixture.",
+    "late_mapping_rows": 48,
+    "late_mapping_share": 0.0029806259314456036,
+    "moved_players": 1260,
+    "methods": {
+      "ALIAS": 1259,
+      "PERSISTED_BRIDGE": 1
+    },
+    "multi_live_model_ids_ledger": [
+      3029,
+      3343,
+      3503,
+      4143
+    ],
+    "late_visibility_rows": 48
+  },
+  "supplementary_method_risk": {
+    "persisted_bridge_cases": [
+      {
+        "prediction_id": 22831,
+        "match_id": 130476,
+        "date": "2026-09-19",
+        "tour": "ATP_MAIN",
+        "side": "p1",
+        "live_player_id": 4644,
+        "model_player_id": 622,
+        "method": "PERSISTED_BRIDGE",
+        "evidence": "model_identity_bridge_events",
+        "candidate_count": 0,
+        "abs_effective_rating_delta": 7.299350911253441,
+        "matches_before": 518.0,
+        "matches_after": 564.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 51175,
+        "match_id": 131385,
+        "date": "2026-09-30",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4644,
+        "model_player_id": 622,
+        "method": "PERSISTED_BRIDGE",
+        "evidence": "model_identity_bridge_events",
+        "candidate_count": 0,
+        "abs_effective_rating_delta": 15.824440382552893,
+        "matches_before": 518.0,
+        "matches_after": 566.0,
+        "alias": null
+      }
+    ],
+    "ambiguous_or_multi_candidate_top10": [
+      {
+        "prediction_id": 95209,
+        "match_id": 132541,
+        "date": "2026-10-22",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 274.5228923865982,
+        "matches_before": 54.0,
+        "matches_after": 54.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 91657,
+        "match_id": 132313,
+        "date": "2026-10-20",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 273.48717813859685,
+        "matches_before": 53.0,
+        "matches_after": 53.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 96610,
+        "match_id": 132580,
+        "date": "2026-10-23",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 268.3672475889166,
+        "matches_before": 55.0,
+        "matches_after": 55.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 124228,
+        "match_id": 132963,
+        "date": "2026-11-03",
+        "tour": "ATP_MAIN",
+        "side": "p1",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 263.5765413679346,
+        "matches_before": 57.0,
+        "matches_after": 57.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 22336,
+        "match_id": 130474,
+        "date": "2026-09-19",
+        "tour": "ATP_MAIN",
+        "side": "p1",
+        "live_player_id": 4735,
+        "model_player_id": 4735,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 261.61314632697054,
+        "matches_before": 48.0,
+        "matches_after": 48.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 18130,
+        "match_id": 130464,
+        "date": "2026-09-18",
+        "tour": "ATP_MAIN",
+        "side": "p1",
+        "live_player_id": 4735,
+        "model_player_id": 4735,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 259.48545650485994,
+        "matches_before": 47.0,
+        "matches_after": 47.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 53185,
+        "match_id": 131366,
+        "date": "2026-10-01",
+        "tour": "ATP_MAIN",
+        "side": "p1",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 246.31357286083767,
+        "matches_before": 51.0,
+        "matches_after": 51.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 109255,
+        "match_id": 132707,
+        "date": "2026-10-28",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4786,
+        "model_player_id": 4786,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 244.59726918129422,
+        "matches_before": 56.0,
+        "matches_after": 56.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 56743,
+        "match_id": 131520,
+        "date": "2026-10-03",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4735,
+        "model_player_id": 4735,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 239.2322746041241,
+        "matches_before": 52.0,
+        "matches_after": 52.0,
+        "alias": null
+      },
+      {
+        "prediction_id": 72292,
+        "match_id": 132079,
+        "date": "2026-10-13",
+        "tour": "ATP_MAIN",
+        "side": "p2",
+        "live_player_id": 4735,
+        "model_player_id": 4735,
+        "method": "AMBIGUOUS",
+        "evidence": "none",
+        "candidate_count": 2,
+        "abs_effective_rating_delta": 238.95047403032186,
+        "matches_before": 54.0,
+        "matches_after": 54.0,
+        "alias": null
+      }
+    ],
+    "ambiguous_or_multi_candidate_count": 193,
+    "alias_to_multiple_models": [],
+    "alias_collision_count": 0,
+    "model_to_multiple_aliases": [],
+    "split_model_count": 0,
+    "same_day_player_pair_duplicates": [
+      {
+        "player_pair": [
+          4287,
+          4428
+        ],
+        "date": "2026-09-23",
+        "fixtures": 2
+      },
+      {
+        "player_pair": [
+          4403,
+          5116
+        ],
+        "date": "2026-09-24",
+        "fixtures": 2
+      },
+      {
+        "player_pair": [
+          4464,
+          4810
+        ],
+        "date": "2026-09-23",
+        "fixtures": 2
+      },
+      {
+        "player_pair": [
+          4520,
+          4580
+        ],
+        "date": "2026-09-24",
+        "fixtures": 2
+      },
+      {
+        "player_pair": [
+          4940,
+          4946
+        ],
+        "date": "2026-09-23",
+        "fixtures": 2
+      },
+      {
+        "player_pair": [
+          5045,
+          5282
+        ],
+        "date": "2026-09-23",
+        "fixtures": 2
+      }
+    ],
+    "same_day_duplicate_count": 6,
+    "note": "These are fail-closed risk flags, not proof of an incorrect merge. Alias collisions need source-level review before any production use."
+  },
+  "provenance": {
+    "historical_rating_source": "tennis_data / Sackmann-associated lineage already in the production corpus",
+    "licensing": "commercial training rights not verified",
+    "commercial_gate": "PR #351 no-spend sample/rights acceptance gate remains the gate",
+    "new_commercial_training": false,
+    "new_provider_calls": false,
+    "new_spend": false,
+    "note": "The 16k attribution changes are rows already ingested before the study. No new historical data, sample or licensed corpus is introduced."
+  },
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}
