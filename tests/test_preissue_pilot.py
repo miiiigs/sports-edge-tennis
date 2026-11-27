@@ -58,7 +58,7 @@ def run(requests, *, store=None, transport=None, sink=None, clock=None,
         lease=None):
     return execute_pilot(
         requests,
-        store=store or InMemoryReservationStore(),
+        store=store or InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100}),
         lease=lease or InMemoryLease(),
         transport=transport or RehearsalTransport(responses={}),
         sink=sink or RecordingSink(),
@@ -76,7 +76,7 @@ def test_happy_path_executes_one_reservation_per_request_and_qualifies():
         one.dedupe_key: {"two_sided": True},
         two.dedupe_key: {"two_sided": False},
     })
-    store = InMemoryReservationStore()
+    store = InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100})
     report = run([one, two], store=store, transport=transport)
     assert report["status"] == "COMPLETED_WITH_FAILURES"
     assert report["provider_calls"] == 2
@@ -90,7 +90,7 @@ def test_happy_path_executes_one_reservation_per_request_and_qualifies():
 
 def test_missing_entitlement_or_authorization_makes_zero_requests():
     transport = RehearsalTransport(responses={})
-    store = InMemoryReservationStore()
+    store = InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100})
     blocked = run([request("a")], store=store, transport=transport,
                   entitlement=False)
     assert blocked["status"] == "BLOCKED_ENTITLEMENT"
@@ -105,7 +105,7 @@ def test_missing_entitlement_or_authorization_makes_zero_requests():
 
 def test_deadline_and_budget_fail_before_any_provider_call():
     transport = RehearsalTransport(responses={})
-    store = InMemoryReservationStore()
+    store = InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100})
     late = run([request("a", deadline=NOW + timedelta(seconds=5))],
                store=store, transport=transport)
     assert late["status_counts"] == {"DEADLINE_MISSED": 1}
@@ -121,7 +121,7 @@ def test_deadline_and_budget_fail_before_any_provider_call():
 
 def test_duplicate_reservation_prevents_a_second_provider_call():
     transport = RehearsalTransport(responses={})
-    store = InMemoryReservationStore()
+    store = InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100})
     _first = run([request("a")], store=store, transport=transport)
     calls_after_first = list(transport.calls)
     second = run([request("a")], store=store, transport=transport)
@@ -155,7 +155,7 @@ def test_late_response_is_persisted_but_never_qualified():
 def test_timeout_and_provider_error_are_bounded_and_accounted():
     one = request("timeout")
     transport = RehearsalTransport(responses={one.dedupe_key: TimeoutError("slow")})
-    store = InMemoryReservationStore()
+    store = InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100})
     report = run([one], store=store, transport=transport,
                  policy=PilotPolicy(max_attempts=2))
     assert report["status_counts"] == {"TIMEOUT": 1}
@@ -195,9 +195,10 @@ def test_json_sink_records_durable_timestamps(tmp_path: Path):
         persisted_at=None, payload_hash="sha256:x", qualification="QUALIFIED",
     )
     persisted = sink.persist(observation)
-    assert persisted == observation.observed_at
+    assert persisted.tzinfo is not None
+    assert persisted >= observation.observed_at
     text = (tmp_path / "observations.jsonl").read_text()
-    assert '"persisted_at"' in text
+    assert '"persisted_at": null' in text
     assert '"dedupe_key": "k"' in text
 
 
@@ -217,3 +218,45 @@ def test_requests_from_plan_apply_earliest_member_deadline():
     assert len(requests) == 1
     assert requests[0].deadline == NOW + timedelta(hours=1, seconds=-10)
     assert requests[0].match_ids == (1, 2)
+
+
+def test_missing_allowance_is_not_unlimited(tmp_path):
+    one = request("unknown", provider="API_TENNIS")
+    transport = RehearsalTransport(responses={one.dedupe_key: {"two_sided": True}})
+    stores = (InMemoryReservationStore(allowances={"ODDSPAPI": 5}),
+              SqliteReservationStore(str(tmp_path / "missing.sqlite"), allowances={"ODDSPAPI": 5}))
+    for store in stores:
+        report = run([one], store=store, transport=transport)
+        assert report["status_counts"] == {"BUDGET_EXHAUSTED": 1}
+        assert report["provider_calls"] == report["reservations"] == 0
+    stores[1].close()
+    assert transport.calls == []
+
+
+def test_late_durable_ack_never_qualifies():
+    clock = MutableClock()
+    one = request("late-ack")
+    class SlowSink(RecordingSink):
+        def persist(self, observation):
+            super().persist(observation)
+            clock.advance(timedelta(hours=2))
+            return clock()
+    sink = SlowSink()
+    transport = RehearsalTransport(responses={one.dedupe_key: {"two_sided": True}})
+    report = run([one], transport=transport, sink=sink, clock=clock)
+    assert report["qualified"] == 0
+    assert report["results"][0]["reason"] == "PERSISTENCE_ACKNOWLEDGED_AFTER_DEADLINE"
+    assert sink.records[0].qualification == "PENDING_DURABLE_QUALIFICATION"
+
+
+def test_retry_stops_at_global_wait_budget():
+    clock = MutableClock()
+    one = request("slow-retry")
+    class SlowTimeout(RehearsalTransport):
+        def fetch(self, request, *, timeout_seconds, clock):
+            clock.advance(timedelta(minutes=3))
+            raise TimeoutError()
+    report = run([one], transport=SlowTimeout(responses={}), clock=clock,
+                 policy=PilotPolicy(max_attempts=2))
+    assert report["provider_calls"] == report["reservations"] == 1
+    assert report["status_counts"] == {"WAIT_BUDGET_EXHAUSTED": 1}

@@ -122,7 +122,7 @@ def _run_scenario(name: str, *, transport: RehearsalTransport,
     requests = requests or [_request("odds")]
     result = execute_pilot(
         requests,
-        store=store or InMemoryReservationStore(),
+        store=store or InMemoryReservationStore(allowances={"ODDSPAPI": 100, "API_TENNIS": 100}),
         lease=InMemoryLease(),
         transport=transport,
         sink=sink or RecordingSink(),

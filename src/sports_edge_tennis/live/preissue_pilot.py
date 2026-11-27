@@ -265,12 +265,12 @@ class InMemoryReservationStore:
                     f"already reserved dedupe_key={request.dedupe_key} "
                     f"retry={retry_sequence}"
                 )
-            if request.provider_code in self.allowances:
-                if self.allowances[request.provider_code] < request.units:
-                    raise BudgetExhausted(
-                        f"allowance exhausted provider={request.provider_code}"
-                    )
-                self.allowances[request.provider_code] -= request.units
+            if (request.provider_code not in self.allowances
+                    or self.allowances[request.provider_code] < request.units):
+                raise BudgetExhausted(
+                    f"allowance missing or exhausted provider={request.provider_code}"
+                )
+            self.allowances[request.provider_code] -= request.units
             reservation = Reservation(
                 reservation_id=f"mem:{request.dedupe_key}:{retry_sequence}",
                 provider_code=request.provider_code,
@@ -395,15 +395,15 @@ class JsonObservationSink:
     def persist(self, observation: PilotObservation) -> datetime:
         import os
 
-        persisted_at = observation.observed_at
-        record = PilotObservation(
-            **{**observation.__dict__, "persisted_at": persisted_at}
-        ).as_dict()
+        # An observation timestamp is not a persistence timestamp. The raw
+        # record intentionally leaves completion unknown until fsync returns.
+        record = observation.as_dict()
+        record["persisted_at"] = None
         with open(self.path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(record, sort_keys=True) + "\n")
             handle.flush()
             os.fsync(handle.fileno())
-        return persisted_at
+        return datetime.now(UTC)
 
 
 class SqliteReservationStore:
@@ -467,15 +467,14 @@ class SqliteReservationStore:
                 "SELECT remaining FROM pilot_allowances WHERE provider_code = ?",
                 (request.provider_code,),
             ).fetchone()
-            if row is not None:
-                if int(row[0]) < request.units:
-                    raise BudgetExhausted(
-                        f"allowance exhausted provider={request.provider_code}")
-                conn.execute(
-                    "UPDATE pilot_allowances SET remaining = remaining - ? "
-                    "WHERE provider_code = ?",
-                    (request.units, request.provider_code),
-                )
+            if row is None or int(row[0]) < request.units:
+                raise BudgetExhausted(
+                    f"allowance missing or exhausted provider={request.provider_code}")
+            conn.execute(
+                "UPDATE pilot_allowances SET remaining = remaining - ? "
+                "WHERE provider_code = ?",
+                (request.units, request.provider_code),
+            )
             reservation = Reservation(
                 reservation_id=f"sqlite:{request.dedupe_key}:{retry_sequence}",
                 provider_code=request.provider_code,
@@ -669,12 +668,15 @@ def _execute_one(
     result.started_at = now
     last_error = "NO_ATTEMPT"
     for attempt in range(policy.max_attempts):
-        if attempt > 0:
-            now = _utc(clock(), "clock")
-            if now + timedelta(seconds=policy.request_timeout_seconds) + policy.completion_buffer >= request.deadline:
-                result.status = PilotStatus.DEADLINE_MISSED.value
-                result.reason = "DEADLINE_PASSED_BEFORE_RETRY"
-                return result
+        now = _utc(clock(), "clock")
+        if now + timedelta(seconds=policy.request_timeout_seconds) + policy.completion_buffer >= request.deadline:
+            result.status = PilotStatus.DEADLINE_MISSED.value
+            result.reason = "DEADLINE_PASSED_BEFORE_ATTEMPT"
+            return result
+        if now - started >= policy.max_wait:
+            result.status = PilotStatus.WAIT_BUDGET_EXHAUSTED.value
+            result.reason = "ACQUISITION_WAIT_BUDGET_EXHAUSTED"
+            return result
         try:
             reservation = store.reserve(
                 request, now=_utc(clock(), "clock"), retry_sequence=attempt)
@@ -687,6 +689,15 @@ def _execute_one(
             result.reason = "ATOMIC_ALLOWANCE_EXHAUSTED"
             return result
         result.reservations.append(reservation)
+        before_call = _utc(clock(), "clock")
+        if (before_call + timedelta(seconds=policy.request_timeout_seconds)
+                + policy.completion_buffer >= request.deadline
+                or before_call - started >= policy.max_wait):
+            store.record(reservation, success=False, now=before_call,
+                         error_kind="DEADLINE_AFTER_RESERVATION")
+            result.status = PilotStatus.DEADLINE_MISSED.value
+            result.reason = "DEADLINE_AFTER_RESERVATION_NO_TRANSPORT"
+            return result
         result.attempts += 1
         try:
             response = transport.fetch(
@@ -768,7 +779,15 @@ def _execute_one(
                 else "NOT_QUALIFIED"
             )
         try:
-            persisted_at = sink.persist(observation)
+            # A raw durable record must not claim qualification before its
+            # own persistence acknowledgement exists.
+            provisional = observation
+            if observation.qualification == "ORIGINAL_TIME_QUALIFIED":
+                provisional = PilotObservation(**{
+                    **observation.__dict__,
+                    "qualification": "PENDING_DURABLE_QUALIFICATION",
+                })
+            persisted_at = sink.persist(provisional)
         except AcknowledgementLost as exc:
             result.status = PilotStatus.ACKNOWLEDGEMENT_LOST.value
             result.reason = f"ACK_LOST:{exc}"[:200]
@@ -779,9 +798,29 @@ def _execute_one(
             result.reason = f"PERSIST_FAILED:{type(exc).__name__}"[:200]
             result.observation = observation
             return result
+        persisted = _utc(persisted_at, "persisted_at")
+        acknowledged = _utc(clock(), "clock")
         observation = PilotObservation(
-            **{**observation.__dict__, "persisted_at": _utc(persisted_at, "persisted_at")}
+            **{**observation.__dict__, "persisted_at": persisted}
         )
+        if result.status == PilotStatus.CAPTURED.value:
+            if not (before_call <= observation.received_at <= observation.observed_at
+                    <= persisted <= acknowledged):
+                reason = "INVALID_DURABLE_CLOCK_ORDER"
+            elif acknowledged >= request.deadline or persisted >= request.deadline:
+                reason = "PERSISTENCE_ACKNOWLEDGED_AFTER_DEADLINE"
+            elif acknowledged - started >= policy.max_wait:
+                reason = "PERSISTENCE_ACKNOWLEDGED_AFTER_WAIT_BUDGET"
+            else:
+                reason = None
+            if reason:
+                result.status = PilotStatus.LATE_RESPONSE.value
+                result.reason = reason
+                observation = PilotObservation(**{
+                    **observation.__dict__, "qualification": "NOT_QUALIFIED",
+                    "qualification_reasons": (reason,),
+                })
+        result.completed_at = acknowledged
         result.observation = observation
         return result
     result.status = PilotStatus.TIMEOUT.value
@@ -839,6 +878,8 @@ class PostgresOddspapiReservationStore:
     def reserve(
         self, request: PilotRequest, *, now: datetime, retry_sequence: int,
     ) -> Reservation:
+        if request.provider_code != "ODDSPAPI" or request.units != 1:
+            raise BudgetExhausted("OddsPapi ledger only supports one OddsPapi request unit")
         from sports_edge_tennis.live.oddspapi_ledger import (
             OddspapiBudgetExceeded,
             reserve_attempt,
