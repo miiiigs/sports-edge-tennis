@@ -222,6 +222,49 @@ def test_unknown_surface_still_completes(db: psycopg.Connection):
     assert outcome.manager_result_count == 1
 
 
+def test_full_slate_persists_request_time_agent1_snapshot(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+    assert outcome.runner_status == "COMPLETED"
+
+    rows = db.execute(
+        """
+        SELECT s.match_version_id, s.player_1_id, s.player_2_id,
+               s.identity_complete, s.surface_known, s.main_draw_verified,
+               s.player_1_overall_match_count, s.player_2_overall_match_count,
+               s.player_1_surface_match_count, s.player_2_surface_match_count,
+               s.rating_uncertainty, s.rating_uncertainty_source,
+               s.model_version, s.feature_version, s.agent_config_version_id,
+               p.prediction_run_id, p.model_version, p.feature_version
+        FROM prediction_feature_snapshots s
+        JOIN predictions p ON p.prediction_id = s.prediction_id
+        WHERE p.prediction_run_id = %s AND s.agent_code = 'AGENT_1_SURFACE_ELO'
+        """,
+        (outcome.prediction_run_id,),
+    ).fetchall()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row[0] == target["match_version_id"]
+    assert (row[1], row[2]) == (target["player_1_id"], target["player_2_id"])
+    # No prior history exists in this fixture: history completeness is false,
+    # but the surface is known and the fixture is a main draw.
+    assert row[3] is False and row[4] is True and row[5] is True
+    assert (row[6], row[7]) == (0, 0)
+    assert (row[8], row[9]) == (0, 0)
+    assert row[10] is None and row[11] is None
+    assert row[12] == A1_CONFIG.model_version
+    assert row[13] == A1_CONFIG.feature_version
+    assert row[14] == db.execute(
+        "SELECT agent_config_version_id FROM agent_config_versions "
+        "WHERE agent_code = %s AND config_version = %s",
+        (A1, A1_CONFIG.config_version),
+    ).fetchone()[0]
+    # Snapshot metadata agrees with the immutable prediction row it binds.
+    assert (row[12], row[13]) == (row[16], row[17])
+    assert row[15] == outcome.prediction_run_id
+
+
 def test_agent_exception_fails_run(db: psycopg.Connection, monkeypatch):
     _seed_configs(db)
     target = _insert_scheduled_target(db)

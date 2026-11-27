@@ -1,0 +1,69 @@
+{
+  "cohort": {
+    "by_pick_type": {
+      "A1_A2_WIDE_SPREAD": 954,
+      "MANAGER_CONSENSUS": 388
+    },
+    "original_predictions": 1342
+  },
+  "database_writes": false,
+  "direct_stages": {
+    "any_quote": 676,
+    "backfilled_observation": 14,
+    "identity_at_issue": 1,
+    "identity_current": 214,
+    "ingested_before_issue": 23,
+    "late_ingested": 5,
+    "observed_before_issue": 23,
+    "original_predictions": 1342,
+    "price_observed_at_issue": 1,
+    "price_received_at_issue": 1,
+    "raw_price_any": 213,
+    "two_sided_any_book": 676,
+    "two_sided_preissue": 22,
+    "unmatched_no_quote_no_identity": 664
+  },
+  "legacy_audit": {
+    "failure_categories": {
+      "INVALID_OR_LATE_PIT_ORIGINAL_ISSUE": 7,
+      "MAPPED_ODDSPAPI_BUT_NO_STORED_ODDS": 20,
+      "NO_ODDSPAPI_FIXTURE_MAPPING_NO_QUOTE": 658,
+      "ONLY_LATER_OR_BACKFILLED_ODDS": 634,
+      "QUALIFIED_ORIGINAL_LIVE_PREISSUE_PAIR": 23
+    },
+    "fully_qualifying_live_preissue_two_sided": 23,
+    "qualifying_pair_count_observations_are_non_oddspapi": "The 23 legacy pairs are SHARP/OFFERED odds_snapshots: 21 OFFERED (SBO/1XBET/PNCL/BETANO/BET365) and 2 SHARP PINNACLE. Only one of the 23 currently has an OddsPapi identity and raw price; at issue, exactly one did.",
+    "unqualified_original_selections": 1319
+  },
+  "mode": "fast_aggregate",
+  "provider_calls": 0,
+  "provider_start_drift": {
+    "matched_fixtures": 213,
+    "max_minutes": 55.0,
+    "median_minutes": -10.0,
+    "min_minutes": -60.0,
+    "within_30": 186
+  },
+  "raw_survival": {
+    "editions": 2579,
+    "editions_missing_end_date": 360,
+    "identity_cache_rows": 136,
+    "independent_tournament_mappings": 0,
+    "normalized_oddspapi_snapshots": 0,
+    "persisted_oddspapi_match_links": 509,
+    "raw_observations": 10939,
+    "raw_observations_without_persisted_fixture_link": 0
+  },
+  "report_as_of_utc": "2026-11-22T15:28:44+00:00",
+  "research_only": true,
+  "timing_intersection": {
+    "cohort": 1342,
+    "identity_at_issue": 1,
+    "interpretation": "Persisted identity and raw price counts are current rows. 'at issue' requires the provider link or receipt before the frozen first-issue cutoff; later links/prices cannot be promoted.",
+    "price_observed_at_issue": 1,
+    "price_received_at_issue": 1,
+    "with_persisted_identity": 214,
+    "with_raw_price": 213
+  },
+  "version": "ODDSPAPI_ACQUISITION_FUNNEL_V1"
+}
