@@ -41,7 +41,7 @@ def _player(conn, name):
     return _val(conn, "INSERT INTO players (canonical_name) VALUES (%s) RETURNING player_id", (name,))
 
 
-def _target(conn, *, start, as_of):
+def _target(conn, *, start, as_of, ingest_run_id=None):
     p1, p2 = _player(conn, "Receipt One"), _player(conn, "Receipt Two")
     tournament = _val(
         conn,
@@ -65,11 +65,11 @@ def _target(conn, *, start, as_of):
         INSERT INTO match_versions (
           match_id, player_1_id, player_2_id, match_start_at, tour_scope,
           competition_tier, surface, round_code, best_of_sets, qualifying_flag,
-          match_status, source_observed_at, as_of)
+          match_status, source_observed_at, as_of, ingest_run_id)
         VALUES (%s,%s,%s,%s,'ATP_MAIN','ATP_250','HARD','R32',3,FALSE,
-                'SCHEDULED',%s,%s) RETURNING match_version_id
+                'SCHEDULED',%s,%s,%s) RETURNING match_version_id
         """,
-        (match, p1, p2, start, as_of, as_of),
+        (match, p1, p2, start, as_of, as_of, ingest_run_id),
     )
     return {"match_id": match, "match_version_id": version, "player_1_id": p1,
             "player_2_id": p2}
@@ -171,7 +171,6 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         "SELECT date_trunc('second', clock_timestamp())"
     ).fetchone()[0]
     start = now + timedelta(days=2)
-    target = _target(db, start=start, as_of=now)
     ingest = _val(
         db,
         """
@@ -183,10 +182,7 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         """,
         (now - timedelta(hours=1), now - timedelta(minutes=30)),
     )
-    db.execute(
-        "UPDATE match_versions SET ingest_run_id=%s WHERE match_version_id=%s",
-        (ingest, target["match_version_id"]),
-    )
+    target = _target(db, start=start, as_of=now, ingest_run_id=ingest)
     _configs(db)
     outcome = run_full_slate(db, _request(db, target["match_id"], now))
     assert outcome.runner_status == "COMPLETED"

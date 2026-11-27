@@ -416,8 +416,8 @@ class WorkProductReceiptPublisher:
               AND p.match_id = t.match_id
              WHERE p.prediction_locked_at
                    <= t.match_start_at - interval '30 minutes'
-               AND (%(experiment)s IS NULL
-                    OR p.experiment_id IS NOT DISTINCT FROM %(experiment)s)
+               AND (%(experiment)s::text IS NULL
+                    OR p.experiment_id IS NOT DISTINCT FROM %(experiment)s::text)
              GROUP BY t.match_id
              HAVING COUNT(DISTINCT p.agent_code) = 3
           ) verified) AS persisted,
