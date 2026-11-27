@@ -50,6 +50,7 @@ def insert_match(
     status: str = "SCHEDULED",
     surface: str | None = "HARD",
     match_start_at: datetime | None = None,
+    ingested_at: datetime | None = None,
 ) -> int:
     p1 = insert_player(conn, "Player One")
     p2 = insert_player(conn, "Player Two")
@@ -75,11 +76,11 @@ def insert_match(
         INSERT INTO match_versions (
             match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
             surface, round_code, best_of_sets, qualifying_flag, match_status,
-            source_observed_at, as_of
+            source_observed_at, as_of, ingested_at
         )
-        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, 'R32', 3, FALSE, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, 'R32', 3, FALSE, %s, %s, %s, COALESCE(%s, now()))
         """,
-        (match_id, p1, p2, start, surface, status, start, start),
+        (match_id, p1, p2, start, surface, status, start, start, ingested_at),
     )
     return match_id
 

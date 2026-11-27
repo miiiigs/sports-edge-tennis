@@ -15,6 +15,14 @@ from sports_edge_tennis.agents.contracts import (
     PredictiveAgentContractError,
     PredictiveAgentResultV1,
 )
+from sports_edge_tennis.data.feature_snapshots import (
+    Agent1FeatureContext,
+    persist_feature_snapshot,
+)
+from sports_edge_tennis.data.identity_runtime import (
+    IdentityResolutionObservation,
+    persist_identity_resolutions,
+)
 
 
 @dataclass(frozen=True)
@@ -44,6 +52,11 @@ class PredictiveAgentMatrixPrediction:
     experiment_id: str | None = None
     walk_forward_fold: int | None = None
     variant_id: str | None = None
+    #: Match version that produced the target's player orientation.
+    match_version_id: int | None = None
+    #: Exact request-time Agent 1 rating state, when the caller has it. Written
+    #: in the same transaction as the prediction so neither can commit alone.
+    agent1_features: Agent1FeatureContext | None = None
 
 
 def insert_prediction_run_targets(
@@ -151,7 +164,16 @@ def persist_and_finalize_prediction_matrix(
     rows: Sequence[PredictiveAgentMatrixPrediction],
     prediction_finalized_at: datetime,
     ended_at: datetime,
+    require_agent1_features: bool = False,
+    identity_resolution_observations: Sequence[IdentityResolutionObservation] = (),
 ) -> list[int]:
+    """Persist a finalized prediction matrix.
+
+    ``identity_resolution_observations`` is opt-in. When supplied, the exact
+    run-time player-resolution decisions are written inside the same transaction as
+    the predictions, so neither can commit without the other. The default is empty,
+    which preserves the live runner's current behaviour byte-for-byte.
+    """
     inserted_ids: list[int] = []
     with conn.transaction():
         conn.execute("SET CONSTRAINTS fk_predictions_prediction_run_finalization DEFERRED")
@@ -177,19 +199,50 @@ def persist_and_finalize_prediction_matrix(
             )
 
         for row in rows:
-            inserted_ids.append(
-                persist_predictive_agent_result(
-                    conn,
-                    prediction_run_id=prediction_run_id,
-                    match_id=row.match_id,
-                    agent_config_version_id=row.agent_config_version_id,
-                    result=row.result,
-                    prediction_locked_at=prediction_finalized_at,
-                    experiment_id=row.experiment_id,
-                    walk_forward_fold=row.walk_forward_fold,
-                    variant_id=row.variant_id,
+            if (
+                require_agent1_features
+                and row.result.agent_code == "AGENT_1_SURFACE_ELO"
+                and row.agent1_features is None
+            ):
+                raise PredictiveAgentContractError(
+                    "AGENT_1_SURFACE_ELO requires request-time feature evidence"
                 )
+            if row.agent1_features is not None:
+                if row.result.agent_code != "AGENT_1_SURFACE_ELO":
+                    raise PredictiveAgentContractError(
+                        "agent1_features may only be attached to AGENT_1_SURFACE_ELO results"
+                    )
+                if row.match_version_id is None:
+                    raise PredictiveAgentContractError(
+                        "agent1_features requires the bound match_version_id"
+                    )
+            prediction_id = persist_predictive_agent_result(
+                conn,
+                prediction_run_id=prediction_run_id,
+                match_id=row.match_id,
+                agent_config_version_id=row.agent_config_version_id,
+                result=row.result,
+                prediction_locked_at=prediction_finalized_at,
+                experiment_id=row.experiment_id,
+                walk_forward_fold=row.walk_forward_fold,
+                variant_id=row.variant_id,
             )
+            inserted_ids.append(prediction_id)
+            if row.agent1_features is not None:
+                persist_feature_snapshot(
+                    conn,
+                    row.agent1_features.to_snapshot(
+                        prediction_id=prediction_id,
+                        prediction_run_id=prediction_run_id,
+                        match_id=row.match_id,
+                        match_version_id=row.match_version_id,
+                        agent_config_version_id=row.agent_config_version_id,
+                        prediction_locked_at=prediction_finalized_at,
+                    ),
+                )
+
+        if identity_resolution_observations:
+            persist_identity_resolutions(conn, identity_resolution_observations)
 
         conn.execute(
             """

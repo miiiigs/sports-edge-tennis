@@ -1,0 +1,3543 @@
+{
+  "settled_targets": 3201,
+  "original_picks": 1223,
+  "bridged_picks": 1168,
+  "overlap": 1024,
+  "original_only": 199,
+  "bridged_only": 144,
+  "tour_counts": {
+    "original": {
+      "CHALLENGER": 1089,
+      "ATP_MAIN": 134
+    },
+    "bridged": {
+      "CHALLENGER": 1031,
+      "ATP_MAIN": 137
+    }
+  },
+  "overlap_metrics": {
+    "original": {
+      "n": 1024,
+      "wins": 730,
+      "losses": 294,
+      "acc": 0.712890625,
+      "ci": [
+        0.6844250270694939,
+        0.7397648481019333
+      ]
+    },
+    "bridged": {
+      "n": 1024,
+      "wins": 730,
+      "losses": 294,
+      "acc": 0.712890625,
+      "ci": [
+        0.6844250270694939,
+        0.7397648481019333
+      ]
+    },
+    "same_side": 1024,
+    "different_side": 0
+  },
+  "original_only_metrics": {
+    "n": 199,
+    "wins": 106,
+    "losses": 93,
+    "acc": 0.5326633165829145,
+    "ci": [
+      0.4633795366464163,
+      0.6007098809089569
+    ]
+  },
+  "bridged_only_metrics": {
+    "n": 144,
+    "wins": 91,
+    "losses": 53,
+    "acc": 0.6319444444444444,
+    "ci": [
+      0.550698687422387,
+      0.7063331628822632
+    ]
+  },
+  "winners_added_by_bridge": 91,
+  "winners_removed_by_bridge": 106,
+  "losses_avoided_by_bridge": 93,
+  "losses_introduced_by_bridge": 53,
+  "equal_coverage": {
+    "400": {
+      "n": 400,
+      "original": {
+        "n": 400,
+        "wins": 301,
+        "losses": 99,
+        "acc": 0.7525,
+        "ci": [
+          0.7079383715578094,
+          0.7922577449393517
+        ]
+      },
+      "bridged": {
+        "n": 400,
+        "wins": 319,
+        "losses": 81,
+        "acc": 0.7975,
+        "ci": [
+          0.7553731579625759,
+          0.8339668208806142
+        ]
+      },
+      "original_atp": {
+        "n": 46,
+        "wins": 39,
+        "losses": 7,
+        "acc": 0.8478260869565217,
+        "ci": [
+          0.7177558259368491,
+          0.9242781376598252
+        ]
+      },
+      "bridged_atp": {
+        "n": 48,
+        "wins": 41,
+        "losses": 7,
+        "acc": 0.8541666666666666,
+        "ci": [
+          0.7283255295714138,
+          0.9275184258620602
+        ]
+      },
+      "original_ch": {
+        "n": 354,
+        "wins": 262,
+        "losses": 92,
+        "acc": 0.7401129943502824,
+        "ci": [
+          0.6920207867814018,
+          0.7830497472202346
+        ]
+      },
+      "bridged_ch": {
+        "n": 352,
+        "wins": 278,
+        "losses": 74,
+        "acc": 0.7897727272727273,
+        "ci": [
+          0.7441916601344031,
+          0.8290971290347103
+        ]
+      },
+      "overlap": 306
+    },
+    "600": {
+      "n": 600,
+      "original": {
+        "n": 600,
+        "wins": 439,
+        "losses": 161,
+        "acc": 0.7316666666666667,
+        "ci": [
+          0.6948203134629558,
+          0.7655653240949734
+        ]
+      },
+      "bridged": {
+        "n": 600,
+        "wins": 457,
+        "losses": 143,
+        "acc": 0.7616666666666667,
+        "ci": [
+          0.7259776086593569,
+          0.7940263128988797
+        ]
+      },
+      "original_atp": {
+        "n": 72,
+        "wins": 56,
+        "losses": 16,
+        "acc": 0.7777777777777778,
+        "ci": [
+          0.6690882726433144,
+          0.8583267607947987
+        ]
+      },
+      "bridged_atp": {
+        "n": 71,
+        "wins": 59,
+        "losses": 12,
+        "acc": 0.8309859154929577,
+        "ci": [
+          0.7274065601494254,
+          0.9005864277075953
+        ]
+      },
+      "original_ch": {
+        "n": 528,
+        "wins": 383,
+        "losses": 145,
+        "acc": 0.7253787878787878,
+        "ci": [
+          0.6857831588124726,
+          0.7617185033365582
+        ]
+      },
+      "bridged_ch": {
+        "n": 529,
+        "wins": 398,
+        "losses": 131,
+        "acc": 0.7523629489603024,
+        "ci": [
+          0.7138479838244686,
+          0.7872390183915746
+        ]
+      },
+      "overlap": 470
+    },
+    "800": {
+      "n": 800,
+      "original": {
+        "n": 800,
+        "wins": 575,
+        "losses": 225,
+        "acc": 0.71875,
+        "ci": [
+          0.6866052162125573,
+          0.7488039489762062
+        ]
+      },
+      "bridged": {
+        "n": 800,
+        "wins": 594,
+        "losses": 206,
+        "acc": 0.7425,
+        "ci": [
+          0.7110909929128846,
+          0.7715911673535163
+        ]
+      },
+      "original_atp": {
+        "n": 97,
+        "wins": 76,
+        "losses": 21,
+        "acc": 0.7835051546391752,
+        "ci": [
+          0.6915965374341109,
+          0.8538132934293423
+        ]
+      },
+      "bridged_atp": {
+        "n": 95,
+        "wins": 75,
+        "losses": 20,
+        "acc": 0.7894736842105263,
+        "ci": [
+          0.6970666655558435,
+          0.8593792033900256
+        ]
+      },
+      "original_ch": {
+        "n": 703,
+        "wins": 499,
+        "losses": 204,
+        "acc": 0.7098150782361309,
+        "ci": [
+          0.6751969408363967,
+          0.7421525756606517
+        ]
+      },
+      "bridged_ch": {
+        "n": 705,
+        "wins": 519,
+        "losses": 186,
+        "acc": 0.7361702127659574,
+        "ci": [
+          0.7024211808002558,
+          0.7673593738398781
+        ]
+      },
+      "overlap": 644
+    },
+    "1000": {
+      "n": 1000,
+      "original": {
+        "n": 1000,
+        "wins": 698,
+        "losses": 302,
+        "acc": 0.698,
+        "ci": [
+          0.6688297933190253,
+          0.7256547548407641
+        ]
+      },
+      "bridged": {
+        "n": 1000,
+        "wins": 715,
+        "losses": 285,
+        "acc": 0.715,
+        "ci": [
+          0.686239728877674,
+          0.7421147047301779
+        ]
+      },
+      "original_atp": {
+        "n": 117,
+        "wins": 88,
+        "losses": 29,
+        "acc": 0.7521367521367521,
+        "ci": [
+          0.6667207450882539,
+          0.8215217144620998
+        ]
+      },
+      "bridged_atp": {
+        "n": 123,
+        "wins": 91,
+        "losses": 32,
+        "acc": 0.7398373983739838,
+        "ci": [
+          0.6558776000744663,
+          0.8092694810093423
+        ]
+      },
+      "original_ch": {
+        "n": 883,
+        "wins": 610,
+        "losses": 273,
+        "acc": 0.6908267270668177,
+        "ci": [
+          0.6595717239287298,
+          0.7204284925699098
+        ]
+      },
+      "bridged_ch": {
+        "n": 877,
+        "wins": 624,
+        "losses": 253,
+        "acc": 0.7115165336374002,
+        "ci": [
+          0.6806599334115269,
+          0.7405281666963699
+        ]
+      },
+      "overlap": 829
+    },
+    "1168": {
+      "n": 1168,
+      "original": {
+        "n": 1168,
+        "wins": 802,
+        "losses": 366,
+        "acc": 0.6866438356164384,
+        "ci": [
+          0.6594662407480494,
+          0.7125976969035923
+        ]
+      },
+      "bridged": {
+        "n": 1168,
+        "wins": 821,
+        "losses": 347,
+        "acc": 0.7029109589041096,
+        "ci": [
+          0.6760726502893438,
+          0.7284188782585418
+        ]
+      },
+      "original_atp": {
+        "n": 132,
+        "wins": 99,
+        "losses": 33,
+        "acc": 0.75,
+        "ci": [
+          0.6697693264838684,
+          0.8160906751651109
+        ]
+      },
+      "bridged_atp": {
+        "n": 137,
+        "wins": 101,
+        "losses": 36,
+        "acc": 0.7372262773722628,
+        "ci": [
+          0.6577770435397969,
+          0.8037343281004004
+        ]
+      },
+      "original_ch": {
+        "n": 1036,
+        "wins": 703,
+        "losses": 333,
+        "acc": 0.6785714285714286,
+        "ci": [
+          0.6495175050081788,
+          0.7063059204058458
+        ]
+      },
+      "bridged_ch": {
+        "n": 1031,
+        "wins": 720,
+        "losses": 311,
+        "acc": 0.6983511154219205,
+        "ci": [
+          0.6696406018726387,
+          0.7255889675609829
+        ]
+      },
+      "overlap": 992
+    },
+    "1223": {
+      "n": 1223,
+      "original": {
+        "n": 1223,
+        "wins": 836,
+        "losses": 387,
+        "acc": 0.6835650040883074,
+        "ci": [
+          0.6569586668342363,
+          0.7090217498715551
+        ]
+      },
+      "bridged": {
+        "n": 1168,
+        "wins": 821,
+        "losses": 347,
+        "acc": 0.7029109589041096,
+        "ci": [
+          0.6760726502893438,
+          0.7284188782585418
+        ]
+      },
+      "original_atp": {
+        "n": 134,
+        "wins": 100,
+        "losses": 34,
+        "acc": 0.746268656716418,
+        "ci": [
+          0.6664375833857817,
+          0.812372877316938
+        ]
+      },
+      "bridged_atp": {
+        "n": 137,
+        "wins": 101,
+        "losses": 36,
+        "acc": 0.7372262773722628,
+        "ci": [
+          0.6577770435397969,
+          0.8037343281004004
+        ]
+      },
+      "original_ch": {
+        "n": 1089,
+        "wins": 736,
+        "losses": 353,
+        "acc": 0.6758494031221304,
+        "ci": [
+          0.6474735450988306,
+          0.7029889555966041
+        ]
+      },
+      "bridged_ch": {
+        "n": 1031,
+        "wins": 720,
+        "losses": 311,
+        "acc": 0.6983511154219205,
+        "ci": [
+          0.6696406018726387,
+          0.7255889675609829
+        ]
+      },
+      "overlap": 1024
+    }
+  },
+  "decomposition_original_only": [
+    {
+      "match_id": 8281,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 8647,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 10387,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 13093,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 16084,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 17206,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 18418,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 27271,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 29050,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 29353,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 29356,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 29752,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 31705,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 32443,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 38350,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 38509,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 38923,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 39238,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 40147,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 40783,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 44857,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 45268,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 45280,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 46075,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 46534,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 47692,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 48976,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 49084,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 49645,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 50251,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 50569,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 52624,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 52711,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 54487,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 54529,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 54643,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 55360,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 55963,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 56461,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 56767,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 59044,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 61174,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 61882,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 64477,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 64498,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 64681,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 65356,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 66487,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 67864,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 67930,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 67945,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 68302,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 68674,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 68749,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 69310,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 70033,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 70183,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 70195,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 72808,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73045,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73147,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73159,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73408,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73507,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73669,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 73861,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 74962,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 74965,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 76627,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 76906,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 77818,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 78085,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 78250,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 79345,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 79435,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 79690,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 81364,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 83284,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 85642,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 86269,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 87007,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 87913,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 87919,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 90562,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 90727,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 91129,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 91429,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 91735,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 92827,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 92947,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 92980,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 93265,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 93310,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 94936,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 95110,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 95881,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 96058,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 96127,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 96211,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 97621,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 97702,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 97717,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 97774,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 100180,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 100714,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 100822,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 101332,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 104998,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 105541,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 107941,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 108127,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 108364,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 108391,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 109285,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 109309,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 109345,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 111217,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 111223,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 111655,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 112489,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 112543,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 113740,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 115636,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 118159,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 119713,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 120253,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 120691,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 122011,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 124564,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 125047,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 125128,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 125434,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 126196,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 126637,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 126700,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 126727,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 126760,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 127225,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 127366,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 127447,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 128704,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 128785,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 129100,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 129244,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 129274,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 129364,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 131038,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 131641,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 131683,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 133327,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 133747,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 135997,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 136093,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 136120,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 136285,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 136408,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 137656,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 137662,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 138136,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 139855,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 140020,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 140143,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 140332,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 140632,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 140698,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 141370,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 142024,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 144442,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 144448,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 144535,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 144694,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 145369,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 145780,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 146713,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 146776,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 147283,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 147334,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 147820,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 147841,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 148435,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 148492,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 151186,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 151741,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 151930,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 153457,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 154807,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 154876,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 154900,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 155035,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 155062,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 155686,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 155980,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 156289,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 158206,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 158224,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 162070,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 164656,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": false,
+      "bridge_won": null
+    },
+    {
+      "match_id": 164674,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": 1,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    },
+    {
+      "match_id": 165796,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": 2,
+      "bridge_side": null,
+      "orig_won": true,
+      "bridge_won": null
+    }
+  ],
+  "decomposition_bridged_only": [
+    {
+      "match_id": 9844,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 9883,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 9886,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 11494,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 12823,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 18082,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 32746,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 38473,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 42457,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 42463,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 45607,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 46186,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 48706,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 48961,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 49171,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 49477,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 49798,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 50131,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 51583,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 52579,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 54661,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 55960,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 56794,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 59386,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 59416,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 59479,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 60982,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 61747,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 61975,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 62221,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 62755,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 63304,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 64483,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 65359,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 65983,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 66289,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 66511,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 67102,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 68176,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 68731,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 69256,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 69283,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 72427,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 72730,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 73519,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 73534,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 73912,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 75082,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 75163,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 76099,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 76804,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 76879,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 77401,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 77857,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 78010,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 79366,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 80302,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 81145,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 82144,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 82738,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 83443,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 84058,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 85462,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 87154,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 87517,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 87853,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 89701,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 90112,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 91591,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 92812,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 95041,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 96454,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 96514,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 96634,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 96691,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 97030,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 100831,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 101329,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 101440,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 101746,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 103246,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 104761,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 105058,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 105064,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 105886,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 107629,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 108190,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 108388,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 108403,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 108463,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 109543,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 110698,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 112519,
+      "tour": "ATP_MAIN",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 114457,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 117850,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 118300,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 118468,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 122782,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 125005,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 125098,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 127279,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 127519,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 128647,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 129217,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 129316,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 129361,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 130681,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 131893,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 133750,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 133762,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 135856,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 136129,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 137140,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 139522,
+      "tour": "ATP_MAIN",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 140356,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 140386,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 140611,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 142366,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 143476,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 144163,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 144376,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 144592,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 145492,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 146125,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 146308,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 147916,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 148246,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 148432,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 148618,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 149956,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 151528,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 151678,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 152236,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 153262,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 154702,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 156064,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 156067,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 156976,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 157102,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 160684,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 161005,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 162190,
+      "tour": "CHALLENGER",
+      "winner_side": 2,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": false
+    },
+    {
+      "match_id": 164446,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 1,
+      "orig_won": null,
+      "bridge_won": true
+    },
+    {
+      "match_id": 164521,
+      "tour": "CHALLENGER",
+      "winner_side": 1,
+      "orig_side": null,
+      "bridge_side": 2,
+      "orig_won": null,
+      "bridge_won": false
+    }
+  ]
+}

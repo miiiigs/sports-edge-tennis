@@ -1,0 +1,168 @@
+{
+  "version": "A1_CANDIDATE_FREEZE_MANIFEST_V1",
+  "generated_at": "2026-11-26T06:13:27.013307+00:00",
+  "source_commit": "6f92cceeaa3b3d76b4a1ad459b13d739230d26bc",
+  "branch": "research/a1-identity-bridge-forward-shadow-20261124",
+  "pr": 388,
+  "pr392_reconciled_head": "af6e09bef019ef3a5cc67273ad08094ee0b8a8a0",
+  "merge_commit": "2a446276eb4e4221f30e001a0f3bc5c5d80991f6",
+  "merge_parents": [
+    "2a6053a50289a03a2e23c56db9abd147b014bffe",
+    "af6e09bef019ef3a5cc67273ad08094ee0b8a8a0"
+  ],
+  "can_promote": false,
+  "production_changed": false,
+  "production_migration_applied": false,
+  "deployment_performed": false,
+  "migration_chain": [
+    {
+      "version": "0023",
+      "name": "prediction_feature_snapshots",
+      "up_sha256": "6df1a447fc10147749ab6da497c65a7f2278f0725765982268eb8ad71bad49ff",
+      "down_sha256": "79ca8c0d3a1de98ba3ec5ee4d1855cffd6a8e194a587d0732503928b1e18b6f2",
+      "schema_snapshot_sha256": "006d30a784f8523ab923d4ede7c8c63438ce66feb5f2a72bd53e59300e5a8b86"
+    },
+    {
+      "version": "0024",
+      "name": "oddspapi_identity_history",
+      "up_sha256": "fba6198943c7f42e9a53f47e58c29dc7232118d7b34d9b8531b27666111f9147",
+      "down_sha256": "23575a046a11b1f8d9fc287505099e3a16bdadb17a835dc26e5d043585913f42",
+      "schema_snapshot_sha256": "e7b9d77d06465c8856d302c1561c6c216f9e672da00ce4a2ed835eb61d906efb"
+    },
+    {
+      "version": "0025",
+      "name": "identity_provenance_v2",
+      "up_sha256": "3f72a1763c38a49e61a86bd11657b2f346ff7aaacbf773ee82ab0b5e78189513",
+      "down_sha256": "2d365d96480c371df388086cd044b858a053ec867d7e92b74b8da0b35a2e6f8b",
+      "schema_snapshot_sha256": "9b157f0ba66eb57a37c217626103b03b2a63aae7ecc5b1733d91be34d92508f9"
+    }
+  ],
+  "migration_chain_contiguous_through_0025": true,
+  "runtime_identity_persistence": {
+    "writer": "sports_edge_tennis.data.identity_runtime.persist_identity_resolutions",
+    "transactional_with_predictions": true,
+    "opt_in_field": "FullSlateRunRequestV1.persist_identity_resolutions",
+    "default_enabled": false,
+    "tests": [
+      "tests/test_identity_resolution_transactional_persistence.py",
+      "tests/test_full_slate_runner.py::test_opt_in_identity_resolution_persistence_matches_predictions",
+      "tests/test_full_slate_runner.py::test_default_full_slate_writes_no_identity_resolution_rows"
+    ]
+  },
+  "historical_reconciliation": {
+    "status": "COMPLETE",
+    "classification": "HISTORICAL_DEVELOPMENT_REUSE_NOT_UNTOUCHED_VALIDATION",
+    "freeze": {
+      "E1_cutoff": "2026-11-24T08:10:00Z",
+      "E2_cutoff": "2026-11-24T09:00:00Z",
+      "E3_cutoff": "2026-11-25T07:20:00Z",
+      "E2_targets": 3725,
+      "E2_settled": 3201,
+      "E3_targets": 3776,
+      "E3_settled": 3223,
+      "E1_reconstructed": 3152
+    },
+    "top800_accounting": "655 = 413 + 242; 596 = 413 + 183; difference = 59"
+  },
+  "forward_quarantine": {
+    "manifest": "docs/research/evidence/a1_forward_quarantine_manifest_20261126.json",
+    "sha256": "d7e32114b3d35083b875cb730dfdb8574a1d2fda45aae40dfa6e683e1f858af7",
+    "quarantined_reissued_targets": 52,
+    "pre_outcome_records_not_independently_receipted": 17,
+    "admissible_independent_receipts": 0
+  },
+  "acceptance": {
+    "activation_state": "NOT_ELIGIBLE",
+    "gates": [
+      {
+        "gate": "minimum_200_settled_first_issued_bridged_selections",
+        "required": 200,
+        "observed": 2,
+        "met": false
+      },
+      {
+        "gate": "minimum_30_calendar_days_genuine_future_captures",
+        "required_days": 30,
+        "observed_days": 2,
+        "met": false
+      },
+      {
+        "gate": "independent_wall_clock_collector_receipt",
+        "required": true,
+        "met": false
+      },
+      {
+        "gate": "paired_brier_interval_entirely_below_zero",
+        "met": false,
+        "reason": "forward sample too small"
+      },
+      {
+        "gate": "paired_log_loss_interval_entirely_below_zero",
+        "met": false,
+        "reason": "forward sample too small"
+      },
+      {
+        "gate": "no_atp_degradation",
+        "met": false,
+        "reason": "forward ATP sample is zero; ATP remains unresolved, not pooled away"
+      },
+      {
+        "gate": "equal_count_and_frozen_coverage_model_picks_comparison",
+        "met": false,
+        "reason": "requires the settled forward sample"
+      },
+      {
+        "gate": "new_agent_1_config_version",
+        "met": false
+      },
+      {
+        "gate": "owner_approval",
+        "met": false
+      }
+    ],
+    "release_requirements": [
+      "Merge integration PR #392 first so migrations 0023 and 0024 are in the applied chain.",
+      "Apply 0025 through the reviewed migration process; verify up/down and cumulative schema parity in PostgreSQL CI.",
+      "Re-run the reference-policy audit under identity_reference_pit_v3 on production and publish the new mapping/forecast effect file.",
+      "Persist runtime identity resolutions in the same transaction as activated predictions; backfill is not permitted.",
+      "Run the shadow capture on a schedule with an independent, externally timestamped archive receipt.",
+      "Accumulate at least 200 settled first-issued bridged selections over at least 30 calendar days.",
+      "Report paired Brier and log-loss intervals (candidate minus baseline) entirely below zero.",
+      "Report equal-count and frozen-coverage Model Picks comparisons with overlap and ATP safety.",
+      "Create a new Agent 1 configuration version; do not reuse agent1_surface_elo_v1.",
+      "Record owner approval and a rollback plan before activation."
+    ]
+  },
+  "legacy_claim": {
+    "status": "RETIRED_UNREPRODUCIBLE",
+    "verdict": "UNREPRODUCIBLE",
+    "recommendation": "RETIRE",
+    "largest_reproducible_cohort": 3375,
+    "largest_reproducible_accuracy": 0.6252,
+    "shortfall_vs_75pct": 0.1248,
+    "evidence": "docs/research/evidence/legacy_75pct_claim_audit_20261125.json"
+  },
+  "evidence_sha256": {
+    "a1_identity_bridge_four_way_20261125.json": "fc95ca28954ea8fb71ee019aa93a9c28e35bc75305081a76632e8545718ef0ae",
+    "a1_identity_bridge_equal_coverage_20261124.json": "37451ef0c58ef0b2aaa141d5dfc85fa58afed0ff638fe8363fc8baaa54756dc6",
+    "a1_identity_bridge_replay_fidelity_20261124.json": "82a235f44c74bff8ae0f0a1c4f2469400e85307fce5424af70c8759649777e30",
+    "a1_identity_reference_policy_20261125.json": "aa796dcc20e82c17cb8d41261cf3bd55bce1b967d28b5c026525e9a16c68868b",
+    "a1_identity_replay_mismatch_20261125.json": "e12c24e6d0a44f97a53f969fe2a0bc357be505da2f6db1d1fc32ed8aeec99170",
+    "a1_identity_replay_mismatch_cases_20261126.json": "622c879b3e6f53cffa80165b434a9a533df8ede08d600a1825ce09f60aadc1f8",
+    "a1_identity_manager_interaction_20261125.json": "fa877c434dbe61c636a6204ebeb74b230d324fd04c8b5d22e8dbad904f7526f1",
+    "a1_identity_bridge_readiness_20261126.json": "18b2b9a849e153e1a248785b1af5fc49bf501ebf149530e858c3cb1692fa3022",
+    "legacy_75pct_claim_audit_20261125.json": "bedb746b7a172e5f9ffbe511167b58cef7ffbb5a878e2cbd8b070eba5f06c83c",
+    "a1_forward_quarantine_manifest_20261126.json": "d7e32114b3d35083b875cb730dfdb8574a1d2fda45aae40dfa6e683e1f858af7",
+    "a1_historical_reconciliation_20261126.json": "261687b6387687149fa7e6fca58258e88214b83811e2d48846f60c0b735b760f",
+    "a1_top800_sets_20261126.json": "76b3f5380a265c7a079ff50f573b6d3dc24849c6c60d6eefb9b519f0f4eb0763"
+  },
+  "scientific_freeze_recommendation": "NOT_READY_FOR_ACTIVATION_FREEZE; READY_FOR_REVIEW_OF_HISTORICAL_EXPLANATION_ONLY",
+  "blockers": [
+    "At least 200 settled first-issued selections over at least 30 calendar days are not present.",
+    "No independent wall-clock collector receipt; hand-committed captures are not sufficient.",
+    "Migration 0025 is implemented but not applied to production, so reference-policy v3 is not re-measured on production.",
+    "No forward ATP sample; ATP remains unresolved rather than pooled away.",
+    "No new Agent 1 configuration version and no owner approval.",
+    "The historical population is development-reused, not untouched validation."
+  ]
+}

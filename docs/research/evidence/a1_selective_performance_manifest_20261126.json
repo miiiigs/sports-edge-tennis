@@ -1,0 +1,173 @@
+{
+  "base_commit": "607ea74a859af473d1295ddf72aee3d7c22fcb11",
+  "can_promote": false,
+  "config_version": "agent1_surface_elo_config_v1",
+  "database_writes": false,
+  "evaluation_cutoff": "2026-11-25T07:20:00Z",
+  "feature_version": "agent1_surface_elo_inputs_v1",
+  "files": [
+    {
+      "bytes": 27749,
+      "path": "docs/research/A1_SELECTIVE_PERFORMANCE_VALIDATION_20261126.md",
+      "sha256": "c0330ac058553620ac2938e65f218891bf4147458e896e11fbdcf0404a7b87ff"
+    },
+    {
+      "bytes": 2239467,
+      "path": "docs/research/evidence/a1_selective_population_20261126.csv",
+      "sha256": "f354c53ea236360a45f7fe114578985aa9bb5320ef297dc9123eb0f17d349b18"
+    },
+    {
+      "bytes": 491648,
+      "path": "docs/research/evidence/a1_target_census_20261126.csv",
+      "sha256": "b29e19a9e2f97d8e860eaee584ea1c2cdb1e9cf61ddc9c8b58a1a7384b501939"
+    },
+    {
+      "bytes": 303949,
+      "path": "docs/research/evidence/a1_selective_ranked_populations_20261126.csv",
+      "sha256": "d7daa2d98a63a9e90b126246aa2462b0883a185238b93c0073f1d6efd8146f9e"
+    },
+    {
+      "bytes": 531027,
+      "path": "docs/research/evidence/a1_selective_risk_coverage_20261126.csv",
+      "sha256": "8e3e346b6570fc3e212600d27613723d6ada02792d809f4bcb741892f47bf121"
+    },
+    {
+      "bytes": 1405,
+      "path": "docs/research/evidence/a1_selective_population_meta_20261126.json",
+      "sha256": "cfe3f2947a1246b7640ac8216e63f94c3bc95ae699563cfebd0963963516b849"
+    },
+    {
+      "bytes": 223155,
+      "path": "docs/research/evidence/a1_selective_performance_20261126.json",
+      "sha256": "c71385cda9e75301cbeb53198e8dc6ffbaa4765667c3544474b18159e65895a4"
+    },
+    {
+      "bytes": 17267,
+      "path": "docs/research/evidence/a1_identity_integrity_20261126.json",
+      "sha256": "93a0b4246703422441719ed3071b531effb30be557d94cd67116e55d3bb1759f"
+    },
+    {
+      "bytes": 6247,
+      "path": "docs/research/evidence/a1_migration_0025_isolated_20261126.json",
+      "sha256": "2cae6b4496f199e8549c427cb9627c3972480900938b56bf3f0eee25944a4572"
+    },
+    {
+      "bytes": 19994,
+      "path": "ops/validation/a1_selective_population_export_20261126.py",
+      "sha256": "a3621b44933b3e9dad04e53bf69ca49b72a653e8e53c02520889d06c038747bd"
+    },
+    {
+      "bytes": 13540,
+      "path": "ops/validation/a1_selective_performance_experiment_20261126.py",
+      "sha256": "25145f9408c22724941657834f2c5ba8c01f2f0cf48ae2aca1640378846af120"
+    },
+    {
+      "bytes": 17755,
+      "path": "ops/validation/a1_identity_integrity_audit_20261126.py",
+      "sha256": "107c6593c2e521afc7835516ab12df0f0c94a2f0ab664aa7b873b5768104ae8f"
+    },
+    {
+      "bytes": 54919,
+      "path": "src/sports_edge_tennis/validation/a1_selective_performance.py",
+      "sha256": "8c4c54cb3de50cc44318f182eb596283630149b624d4a21b28f1b9cf052d4bf4"
+    },
+    {
+      "bytes": 10117,
+      "path": "tests/test_a1_selective_performance.py",
+      "sha256": "75da06168813b4e813d60b7e6d82040fd3380e514f0b87f6c2dc231c942f02ad"
+    }
+  ],
+  "four_way_top800": {
+    "A": 596,
+    "B": 589,
+    "C": 646,
+    "D": 655
+  },
+  "generated_at": "2026-11-26T12:43:48.013195+00:00",
+  "headline_corrected": {
+    "40": {
+      "accuracy": 0.7757951900698216,
+      "brier": 0.1692432424209201,
+      "log_loss": 0.5184452438332963,
+      "losses": 289,
+      "selection_count": 1289,
+      "wilson95": [
+        0.7522267292955301,
+        0.7977246336556619
+      ],
+      "wins": 1000
+    },
+    "45": {
+      "accuracy": 0.763448275862069,
+      "brier": 0.17527488025722485,
+      "log_loss": 0.5318789210332061,
+      "losses": 343,
+      "selection_count": 1450,
+      "wilson95": [
+        0.7408961400764762,
+        0.7846081514501937
+      ],
+      "wins": 1107
+    },
+    "50": {
+      "accuracy": 0.7430167597765364,
+      "brier": 0.1833284814811583,
+      "log_loss": 0.5492933529006842,
+      "losses": 414,
+      "selection_count": 1611,
+      "wilson95": [
+        0.7211178867492782,
+        0.7637593916166001
+      ],
+      "wins": 1197
+    }
+  },
+  "migration_applied": false,
+  "model_version": "agent1_surface_elo_v1",
+  "note": "This manifest binds the exact population, code, evidence and documentation used for the retrospective selective-performance study. It is not a production freeze.",
+  "population": {
+    "atp": 577,
+    "challenger": 2646,
+    "development_end": "2026-10-31",
+    "holdout_rows": 1025,
+    "settled": 3223,
+    "targets": 3776
+  },
+  "population_reconciliation": {
+    "five_record_discrepancy": {
+      "disposition": "Bounded and non-material to the 3,223 evaluation population. It must be closed in the next v3 census by emitting a per-slot record, including NO_PLAYER/NO_CANDIDATE, instead of only a method aggregate.",
+      "evidence": "The 3,776-target ledger is fully classified (7,552/7,552). The settled 3,223 population is fully classified (6,446/6,446). The 3,778 artifact adds two fixtures (four slots): 7,552 + 4 - 5 = 7,551, so exactly five slots are unclassified in that artifact.",
+      "finding": "The 3,778-target reference-policy artifact declares 7,551 classified resolutions for 7,556 player slots. The five-slot gap is a reporting gap in that artifact, not five missing fixtures and not five missing settled forecasts."
+    },
+    "settlement_added_3223_to_3271": 48,
+    "settlement_added_3271_to_3284": 13,
+    "target_churn_0720_to_1100": 53
+  },
+  "production_changed": false,
+  "provider_calls": false,
+  "reference_policy": "pre-v2 permissive-equivalent resolver for this experiment; identity_reference_pit_v3 implemented but not applied",
+  "risk_coverage": {
+    "corrected": {
+      "augrc_paper": 0.14124102582961107,
+      "aurc": 0.24055051676610817
+    },
+    "original": {
+      "augrc_paper": 0.1616998287113574,
+      "aurc": 0.29341530346041095
+    }
+  },
+  "validation": {
+    "added_is_291": true,
+    "direct_plus_indirect_is_affected": true,
+    "four_way_B_is_589": true,
+    "four_way_C_is_646": true,
+    "removed_is_291": true,
+    "settled_population_is_3223": true,
+    "shared_is_509": true,
+    "shared_probability_changes_is_495": true,
+    "shared_side_changes_is_0": true,
+    "top800_corrected_is_655": true,
+    "top800_original_is_596": true
+  },
+  "version": "A1_SELECTIVE_PERFORMANCE_MANIFEST_V1"
+}

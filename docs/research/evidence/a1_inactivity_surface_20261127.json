@@ -1,0 +1,1877 @@
+{
+  "bands": {
+    "0-7d": {
+      "all": {
+        "n": 1517,
+        "wins": 966,
+        "losses": 551,
+        "accuracy": 0.6367831245880027,
+        "wilson95": [
+          0.6122646988323633,
+          0.6606105555822576
+        ],
+        "mean_confidence": 0.6457628081740276,
+        "calibration_gap": 0.008979683586024967,
+        "brier": 0.2210723644966223,
+        "log_loss": 0.6319657664906734,
+        "mean_min_matches": 138.29136453526698,
+        "median_min_matches": 84.0,
+        "surface_known": 1313,
+        "surface_missing": 204,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 315,
+            "wins": 213,
+            "accuracy": 0.6761904761904762,
+            "wilson95": [
+              0.6226620777901727,
+              0.7254733259636496
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1202,
+            "wins": 753,
+            "accuracy": 0.6264559068219634,
+            "wilson95": [
+              0.5987465297535138,
+              0.6533595806942977
+            ]
+          }
+        },
+        "atp_share": 0.20764667106130522
+      },
+      "holdout": {
+        "n": 548,
+        "wins": 347,
+        "losses": 201,
+        "accuracy": 0.6332116788321168,
+        "wilson95": [
+          0.5920646916486685,
+          0.6725040493662011
+        ],
+        "mean_confidence": 0.6387374087591241,
+        "calibration_gap": 0.0055257299270072835,
+        "brier": 0.21890908414645255,
+        "log_loss": 0.6262393687496947,
+        "mean_min_matches": 135.05839416058393,
+        "median_min_matches": 75.5,
+        "surface_known": 462,
+        "surface_missing": 86,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 87,
+            "wins": 57,
+            "accuracy": 0.6551724137931034,
+            "wilson95": [
+              0.5506477302701736,
+              0.7465733882644097
+            ]
+          },
+          "CHALLENGER": {
+            "n": 461,
+            "wins": 290,
+            "accuracy": 0.6290672451193059,
+            "wilson95": [
+              0.5840748121795818,
+              0.6719264496310662
+            ]
+          }
+        },
+        "atp_share": 0.15875912408759124
+      },
+      "marginal": {
+        "n": 58,
+        "wins": 35,
+        "losses": 23,
+        "accuracy": 0.603448275862069,
+        "wilson95": [
+          0.47493215951001205,
+          0.7191124220512564
+        ],
+        "mean_confidence": 0.6651682931034483,
+        "calibration_gap": 0.06172001724137932,
+        "brier": 0.2417504911178793,
+        "log_loss": 0.6769483470674006,
+        "mean_min_matches": 133.41379310344828,
+        "median_min_matches": 85.0,
+        "surface_known": 51,
+        "surface_missing": 7,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 5,
+            "wins": 4,
+            "accuracy": 0.8,
+            "wilson95": [
+              0.37553462976252533,
+              0.9637758913675698
+            ]
+          },
+          "CHALLENGER": {
+            "n": 53,
+            "wins": 31,
+            "accuracy": 0.5849056603773585,
+            "wilson95": [
+              0.45094422181344374,
+              0.7073909122018601
+            ]
+          }
+        },
+        "atp_share": 0.08620689655172414
+      },
+      "favourite_side": {
+        "atp_n": 315,
+        "atp_accuracy": 0.6761904761904762,
+        "challenger_n": 1202,
+        "challenger_accuracy": 0.6264559068219634
+      },
+      "underdog_side": {
+        "atp_n": 315,
+        "atp_accuracy": 0.6761904761904762,
+        "challenger_n": 1202,
+        "challenger_accuracy": 0.6264559068219634
+      }
+    },
+    "8-30d": {
+      "all": {
+        "n": 1084,
+        "wins": 727,
+        "losses": 357,
+        "accuracy": 0.6706642066420664,
+        "wilson95": [
+          0.6421272058493482,
+          0.6979958856175913
+        ],
+        "mean_confidence": 0.6713565452029521,
+        "calibration_gap": 0.0006923385608856858,
+        "brier": 0.20904577049203413,
+        "log_loss": 0.6053280755472211,
+        "mean_min_matches": 116.18173431734317,
+        "median_min_matches": 64.0,
+        "surface_known": 952,
+        "surface_missing": 132,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 213,
+            "wins": 150,
+            "accuracy": 0.704225352112676,
+            "wilson95": [
+              0.6397543708578192,
+              0.7614604174633578
+            ]
+          },
+          "CHALLENGER": {
+            "n": 871,
+            "wins": 577,
+            "accuracy": 0.6624569460390356,
+            "wilson95": [
+              0.6304006801469489,
+              0.6930865038983641
+            ]
+          }
+        },
+        "atp_share": 0.19649446494464945
+      },
+      "holdout": {
+        "n": 273,
+        "wins": 178,
+        "losses": 95,
+        "accuracy": 0.652014652014652,
+        "wilson95": [
+          0.5937554755133407,
+          0.7060551104934243
+        ],
+        "mean_confidence": 0.6746706886446886,
+        "calibration_gap": 0.02265603663003657,
+        "brier": 0.21869896402832967,
+        "log_loss": 0.6298852068747546,
+        "mean_min_matches": 94.25274725274726,
+        "median_min_matches": 47.0,
+        "surface_known": 254,
+        "surface_missing": 19,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 16,
+            "wins": 11,
+            "accuracy": 0.6875,
+            "wilson95": [
+              0.44404355834740666,
+              0.8583535614521796
+            ]
+          },
+          "CHALLENGER": {
+            "n": 257,
+            "wins": 167,
+            "accuracy": 0.6498054474708171,
+            "wilson95": [
+              0.5896668652090152,
+              0.7055316064914933
+            ]
+          }
+        },
+        "atp_share": 0.05860805860805861
+      },
+      "marginal": {
+        "n": 28,
+        "wins": 14,
+        "losses": 14,
+        "accuracy": 0.5,
+        "wilson95": [
+          0.32633127457293465,
+          0.6736687254270654
+        ],
+        "mean_confidence": 0.6651711428571428,
+        "calibration_gap": 0.16517114285714285,
+        "brier": 0.27759557105142857,
+        "log_loss": 0.7516268526634757,
+        "mean_min_matches": 111.92857142857143,
+        "median_min_matches": 46.0,
+        "surface_known": 24,
+        "surface_missing": 4,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 3,
+            "wins": 2,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.2076596008020477,
+              0.9385080552796037
+            ]
+          },
+          "CHALLENGER": {
+            "n": 25,
+            "wins": 12,
+            "accuracy": 0.48,
+            "wilson95": [
+              0.30031285954112974,
+              0.6650148304964322
+            ]
+          }
+        },
+        "atp_share": 0.10714285714285714
+      },
+      "favourite_side": {
+        "atp_n": 213,
+        "atp_accuracy": 0.704225352112676,
+        "challenger_n": 871,
+        "challenger_accuracy": 0.6624569460390356
+      },
+      "underdog_side": {
+        "atp_n": 213,
+        "atp_accuracy": 0.704225352112676,
+        "challenger_n": 871,
+        "challenger_accuracy": 0.6624569460390356
+      }
+    },
+    "31-90d": {
+      "all": {
+        "n": 298,
+        "wins": 190,
+        "losses": 108,
+        "accuracy": 0.6375838926174496,
+        "wilson95": [
+          0.5815757031641082,
+          0.690090092251727
+        ],
+        "mean_confidence": 0.6699473523489933,
+        "calibration_gap": 0.03236345973154364,
+        "brier": 0.2135696924661443,
+        "log_loss": 0.6120488266172264,
+        "mean_min_matches": 44.35906040268456,
+        "median_min_matches": 19.0,
+        "surface_known": 260,
+        "surface_missing": 38,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 26,
+            "wins": 20,
+            "accuracy": 0.7692307692307693,
+            "wilson95": [
+              0.5794844592105632,
+              0.8896615059421671
+            ]
+          },
+          "CHALLENGER": {
+            "n": 272,
+            "wins": 170,
+            "accuracy": 0.625,
+            "wilson95": [
+              0.5661014129514635,
+              0.6804170048770987
+            ]
+          }
+        },
+        "atp_share": 0.087248322147651
+      },
+      "holdout": {
+        "n": 106,
+        "wins": 64,
+        "losses": 42,
+        "accuracy": 0.6037735849056604,
+        "wilson95": [
+          0.5086034113317569,
+          0.691685261417145
+        ],
+        "mean_confidence": 0.663990641509434,
+        "calibration_gap": 0.06021705660377363,
+        "brier": 0.21656152317498115,
+        "log_loss": 0.6171441421565204,
+        "mean_min_matches": 33.68867924528302,
+        "median_min_matches": 15.0,
+        "surface_known": 102,
+        "surface_missing": 4,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 2,
+            "wins": 2,
+            "accuracy": 1.0,
+            "wilson95": [
+              0.34238022750665303,
+              1.0
+            ]
+          },
+          "CHALLENGER": {
+            "n": 104,
+            "wins": 62,
+            "accuracy": 0.5961538461538461,
+            "wilson95": [
+              0.500058706401711,
+              0.6853987254497405
+            ]
+          }
+        },
+        "atp_share": 0.018867924528301886
+      },
+      "marginal": {
+        "n": 5,
+        "wins": 3,
+        "losses": 2,
+        "accuracy": 0.6,
+        "wilson95": [
+          0.2307242812760128,
+          0.882379225767352
+        ],
+        "mean_confidence": 0.668611,
+        "calibration_gap": 0.06861099999999998,
+        "brier": 0.245507687775,
+        "log_loss": 0.6851446609567556,
+        "mean_min_matches": 14.2,
+        "median_min_matches": 4.0,
+        "surface_known": 5,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 5,
+            "wins": 3,
+            "accuracy": 0.6,
+            "wilson95": [
+              0.2307242812760128,
+              0.882379225767352
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "favourite_side": {
+        "atp_n": 26,
+        "atp_accuracy": 0.7692307692307693,
+        "challenger_n": 272,
+        "challenger_accuracy": 0.625
+      },
+      "underdog_side": {
+        "atp_n": 26,
+        "atp_accuracy": 0.7692307692307693,
+        "challenger_n": 272,
+        "challenger_accuracy": 0.625
+      }
+    },
+    "91-180d": {
+      "all": {
+        "n": 114,
+        "wins": 81,
+        "losses": 33,
+        "accuracy": 0.7105263157894737,
+        "wilson95": [
+          0.6214933876201677,
+          0.7858335453655833
+        ],
+        "mean_confidence": 0.6864025175438596,
+        "calibration_gap": -0.02412379824561406,
+        "brier": 0.2011469761149386,
+        "log_loss": 0.5926566286044638,
+        "mean_min_matches": 25.29824561403509,
+        "median_min_matches": 10.0,
+        "surface_known": 99,
+        "surface_missing": 15,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 6,
+            "wins": 4,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.299993315138392,
+              0.9032285888942195
+            ]
+          },
+          "CHALLENGER": {
+            "n": 108,
+            "wins": 77,
+            "accuracy": 0.7129629629629629,
+            "wilson95": [
+              0.6214901729048635,
+              0.7898063220178991
+            ]
+          }
+        },
+        "atp_share": 0.05263157894736842
+      },
+      "holdout": {
+        "n": 46,
+        "wins": 31,
+        "losses": 15,
+        "accuracy": 0.6739130434782609,
+        "wilson95": [
+          0.5296773241932241,
+          0.7913405669074435
+        ],
+        "mean_confidence": 0.6687381086956522,
+        "calibration_gap": -0.0051749347826086645,
+        "brier": 0.22191184142254347,
+        "log_loss": 0.6395537374037066,
+        "mean_min_matches": 12.847826086956522,
+        "median_min_matches": 7.0,
+        "surface_known": 41,
+        "surface_missing": 5,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 46,
+            "wins": 31,
+            "accuracy": 0.6739130434782609,
+            "wilson95": [
+              0.5296773241932241,
+              0.7913405669074435
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "marginal": {
+        "n": 4,
+        "wins": 3,
+        "losses": 1,
+        "accuracy": 0.75,
+        "wilson95": [
+          0.30064184258240184,
+          0.9544127391902995
+        ],
+        "mean_confidence": 0.6741302499999999,
+        "calibration_gap": -0.07586975000000007,
+        "brier": 0.19034157932174997,
+        "log_loss": 0.5693793992620958,
+        "mean_min_matches": 16.5,
+        "median_min_matches": 16.5,
+        "surface_known": 3,
+        "surface_missing": 1,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 4,
+            "wins": 3,
+            "accuracy": 0.75,
+            "wilson95": [
+              0.30064184258240184,
+              0.9544127391902995
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "favourite_side": {
+        "atp_n": 6,
+        "atp_accuracy": 0.6666666666666666,
+        "challenger_n": 108,
+        "challenger_accuracy": 0.7129629629629629
+      },
+      "underdog_side": {
+        "atp_n": 6,
+        "atp_accuracy": 0.6666666666666666,
+        "challenger_n": 108,
+        "challenger_accuracy": 0.7129629629629629
+      }
+    },
+    "181d+": {
+      "all": {
+        "n": 209,
+        "wins": 152,
+        "losses": 57,
+        "accuracy": 0.7272727272727273,
+        "wilson95": [
+          0.6631984463266392,
+          0.7831431664699151
+        ],
+        "mean_confidence": 0.6898741244019139,
+        "calibration_gap": -0.037398602870813424,
+        "brier": 0.19169470859310048,
+        "log_loss": 0.5628568430457284,
+        "mean_min_matches": 51.0,
+        "median_min_matches": 12.0,
+        "surface_known": 188,
+        "surface_missing": 21,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 17,
+            "wins": 16,
+            "accuracy": 0.9411764705882353,
+            "wilson95": [
+              0.7301796936242461,
+              0.9895395990150025
+            ]
+          },
+          "CHALLENGER": {
+            "n": 192,
+            "wins": 136,
+            "accuracy": 0.7083333333333334,
+            "wilson95": [
+              0.6404570798630717,
+              0.768036609275781
+            ]
+          }
+        },
+        "atp_share": 0.08133971291866028
+      },
+      "holdout": {
+        "n": 51,
+        "wins": 37,
+        "losses": 14,
+        "accuracy": 0.7254901960784313,
+        "wilson95": [
+          0.5905334923922092,
+          0.8288572476535512
+        ],
+        "mean_confidence": 0.6687388627450981,
+        "calibration_gap": -0.056751333333333265,
+        "brier": 0.20301798099984314,
+        "log_loss": 0.5923560751674792,
+        "mean_min_matches": 11.235294117647058,
+        "median_min_matches": 2.0,
+        "surface_known": 48,
+        "surface_missing": 3,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 1,
+            "wins": 1,
+            "accuracy": 1.0,
+            "wilson95": [
+              0.20654931437723745,
+              1.0
+            ]
+          },
+          "CHALLENGER": {
+            "n": 50,
+            "wins": 36,
+            "accuracy": 0.72,
+            "wilson95": [
+              0.5833487630404344,
+              0.8252582933408878
+            ]
+          }
+        },
+        "atp_share": 0.0196078431372549
+      },
+      "marginal": {
+        "n": 6,
+        "wins": 4,
+        "losses": 2,
+        "accuracy": 0.6666666666666666,
+        "wilson95": [
+          0.299993315138392,
+          0.9032285888942195
+        ],
+        "mean_confidence": 0.6670871666666667,
+        "calibration_gap": 0.00042050000000004584,
+        "brier": 0.22585494069950002,
+        "log_loss": 0.6446574788995582,
+        "mean_min_matches": 4.333333333333333,
+        "median_min_matches": 1.0,
+        "surface_known": 5,
+        "surface_missing": 1,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 6,
+            "wins": 4,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.299993315138392,
+              0.9032285888942195
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "favourite_side": {
+        "atp_n": 17,
+        "atp_accuracy": 0.9411764705882353,
+        "challenger_n": 192,
+        "challenger_accuracy": 0.7083333333333334
+      },
+      "underdog_side": {
+        "atp_n": 17,
+        "atp_accuracy": 0.9411764705882353,
+        "challenger_n": 192,
+        "challenger_accuracy": 0.7083333333333334
+      }
+    },
+    "MISSING": {
+      "all": {
+        "n": 1,
+        "wins": 0,
+        "losses": 1,
+        "accuracy": 0.0,
+        "wilson95": [
+          0.0,
+          0.7934506856227626
+        ],
+        "mean_confidence": 0.5,
+        "calibration_gap": 0.5,
+        "brier": 0.25,
+        "log_loss": 0.6931471805599453,
+        "mean_min_matches": 0.0,
+        "median_min_matches": 0.0,
+        "surface_known": 1,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 1,
+            "wins": 0,
+            "accuracy": 0.0,
+            "wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "holdout": {
+        "n": 1,
+        "wins": 0,
+        "losses": 1,
+        "accuracy": 0.0,
+        "wilson95": [
+          0.0,
+          0.7934506856227626
+        ],
+        "mean_confidence": 0.5,
+        "calibration_gap": 0.5,
+        "brier": 0.25,
+        "log_loss": 0.6931471805599453,
+        "mean_min_matches": 0.0,
+        "median_min_matches": 0.0,
+        "surface_known": 1,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 1,
+            "wins": 0,
+            "accuracy": 0.0,
+            "wilson95": [
+              0.0,
+              0.7934506856227626
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "marginal": {
+        "n": 0,
+        "wins": 0,
+        "accuracy": null,
+        "wilson95": null
+      },
+      "favourite_side": {
+        "atp_n": 0,
+        "atp_accuracy": null,
+        "challenger_n": 1,
+        "challenger_accuracy": 0.0
+      },
+      "underdog_side": {
+        "atp_n": 0,
+        "atp_accuracy": null,
+        "challenger_n": 1,
+        "challenger_accuracy": 0.0
+      }
+    }
+  },
+  "recovered_history_favourite_inactivity_change_days": {
+    "n": 3031,
+    "mean": -0.04758009824407053,
+    "median": 0.0,
+    "share_improved": 0.0013196964698119432
+  },
+  "off_season_status": "BLOCKED_NO_JUNE_AUGUST_OR_JANUARY_POPULATION",
+  "withdrawal_status": "BLOCKED_NO_WITHDRAWAL_RECORDS_IN_SETTLED_POPULATION",
+  "settlement_exclusions": {
+    "excluded_targets": 553,
+    "exclusion_counts": {
+      "OUTCOME_CANCELLED": 135,
+      "OUTCOME_DEFAULTED": 1,
+      "OUTCOME_NOT_OBSERVED_AT_FREEZE": 278,
+      "OUTCOME_RETIRED": 125,
+      "OUTCOME_WALKOVER": 14
+    },
+    "status": "Retirements, walkovers, cancellations and defaults are excluded from the settled population by construction. Their forecasting effect cannot be measured here; no withdrawal record is present to audit."
+  },
+  "surface_transitions": {
+    "coverage": {
+      "settled_rows": 3223,
+      "rows_with_live_ids": 3223,
+      "rows_with_prior_observed_match": 2929,
+      "share_with_prior": 0.9087806391560658
+    },
+    "full": {
+      "CONTINUING": {
+        "n": 1876,
+        "wins": 1245,
+        "losses": 631,
+        "accuracy": 0.6636460554371002,
+        "wilson95": [
+          0.6419513502668208,
+          0.6846719386913813
+        ],
+        "mean_confidence": 0.6646741481876333,
+        "calibration_gap": 0.0010280927505330606,
+        "brier": 0.21026621844719295,
+        "log_loss": 0.6074035963358357,
+        "mean_min_matches": 121.73400852878464,
+        "median_min_matches": 67.0,
+        "surface_known": 1876,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 284,
+            "wins": 199,
+            "accuracy": 0.7007042253521126,
+            "wilson95": [
+              0.6450538441771657,
+              0.7509975115485371
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1592,
+            "wins": 1046,
+            "accuracy": 0.657035175879397,
+            "wilson95": [
+              0.6333639465430924,
+              0.6799503850506571
+            ]
+          }
+        },
+        "atp_share": 0.1513859275053305
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 102,
+        "wins": 68,
+        "losses": 34,
+        "accuracy": 0.6666666666666666,
+        "wilson95": [
+          0.5706063272058552,
+          0.7506288520786568
+        ],
+        "mean_confidence": 0.659716362745098,
+        "calibration_gap": -0.00695030392156859,
+        "brier": 0.2161382397792451,
+        "log_loss": 0.6206422186632782,
+        "mean_min_matches": 103.09803921568627,
+        "median_min_matches": 50.0,
+        "surface_known": 102,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 3,
+            "wins": 2,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.2076596008020477,
+              0.9385080552796037
+            ]
+          },
+          "CHALLENGER": {
+            "n": 99,
+            "wins": 66,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.5691204267519376,
+              0.7517618358921199
+            ]
+          }
+        },
+        "atp_share": 0.029411764705882353
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 294,
+        "wins": 179,
+        "losses": 115,
+        "accuracy": 0.608843537414966,
+        "wilson95": [
+          0.5519997516017503,
+          0.6628796686556193
+        ],
+        "mean_confidence": 0.6616580476190477,
+        "calibration_gap": 0.05281451020408168,
+        "brier": 0.22645508292518368,
+        "log_loss": 0.6434430789988695,
+        "mean_min_matches": 55.22789115646258,
+        "median_min_matches": 18.0,
+        "surface_known": 217,
+        "surface_missing": 77,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 56,
+            "wins": 44,
+            "accuracy": 0.7857142857142857,
+            "wilson95": [
+              0.6618053643659488,
+              0.8729409575090435
+            ]
+          },
+          "CHALLENGER": {
+            "n": 238,
+            "wins": 135,
+            "accuracy": 0.5672268907563025,
+            "wilson95": [
+              0.5037058378868592,
+              0.6286122524688783
+            ]
+          }
+        },
+        "atp_share": 0.19047619047619047
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 342,
+        "wins": 214,
+        "losses": 128,
+        "accuracy": 0.6257309941520468,
+        "wilson95": [
+          0.5733123574017481,
+          0.6753564988228834
+        ],
+        "mean_confidence": 0.6539525292397661,
+        "calibration_gap": 0.028221535087719296,
+        "brier": 0.21949431219099122,
+        "log_loss": 0.6269079025555415,
+        "mean_min_matches": 75.87134502923976,
+        "median_min_matches": 36.5,
+        "surface_known": 342,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 34,
+            "wins": 19,
+            "accuracy": 0.5588235294117647,
+            "wilson95": [
+              0.3945389925620307,
+              0.7111651775375785
+            ]
+          },
+          "CHALLENGER": {
+            "n": 308,
+            "wins": 195,
+            "accuracy": 0.6331168831168831,
+            "wilson95": [
+              0.5779601661690005,
+              0.6849939654275593
+            ]
+          }
+        },
+        "atp_share": 0.09941520467836257
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 276,
+        "wins": 175,
+        "losses": 101,
+        "accuracy": 0.6340579710144928,
+        "wilson95": [
+          0.5757508860704311,
+          0.6886845564542409
+        ],
+        "mean_confidence": 0.6477031376811594,
+        "calibration_gap": 0.013645166666666597,
+        "brier": 0.22524400118091303,
+        "log_loss": 0.6443185495270253,
+        "mean_min_matches": 93.8840579710145,
+        "median_min_matches": 49.5,
+        "surface_known": 276,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 31,
+            "wins": 23,
+            "accuracy": 0.7419354838709677,
+            "wilson95": [
+              0.5675386419056621,
+              0.8629829409360625
+            ]
+          },
+          "CHALLENGER": {
+            "n": 245,
+            "wins": 152,
+            "accuracy": 0.6204081632653061,
+            "wilson95": [
+              0.558225371000641,
+              0.6788733836828108
+            ]
+          }
+        },
+        "atp_share": 0.11231884057971014
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 333,
+        "wins": 235,
+        "losses": 98,
+        "accuracy": 0.7057057057057057,
+        "wilson95": [
+          0.6546358666774977,
+          0.7520836638685543
+        ],
+        "mean_confidence": 0.6570135045045045,
+        "calibration_gap": -0.04869220120120121,
+        "brier": 0.20583600643555855,
+        "log_loss": 0.5974474307228069,
+        "mean_min_matches": 166.68168168168168,
+        "median_min_matches": 105.0,
+        "surface_known": 0,
+        "surface_missing": 333,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 169,
+            "wins": 116,
+            "accuracy": 0.6863905325443787,
+            "wilson95": [
+              0.6129561359666054,
+              0.751539746154803
+            ]
+          },
+          "CHALLENGER": {
+            "n": 164,
+            "wins": 119,
+            "accuracy": 0.725609756097561,
+            "wilson95": [
+              0.6527441738553478,
+              0.7881480855419837
+            ]
+          }
+        },
+        "atp_share": 0.5075075075075075
+      }
+    },
+    "marginal": {
+      "CONTINUING": {
+        "n": 70,
+        "wins": 42,
+        "losses": 28,
+        "accuracy": 0.6,
+        "wilson95": [
+          0.48293796477356277,
+          0.7066574227443838
+        ],
+        "mean_confidence": 0.6655423857142857,
+        "calibration_gap": 0.06554238571428572,
+        "brier": 0.2423842329917,
+        "log_loss": 0.6781365392085105,
+        "mean_min_matches": 114.0,
+        "median_min_matches": 63.0,
+        "surface_known": 70,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 2,
+            "wins": 2,
+            "accuracy": 1.0,
+            "wilson95": [
+              0.34238022750665303,
+              1.0
+            ]
+          },
+          "CHALLENGER": {
+            "n": 68,
+            "wins": 40,
+            "accuracy": 0.5882352941176471,
+            "wilson95": [
+              0.46961466753105385,
+              0.697419802494816
+            ]
+          }
+        },
+        "atp_share": 0.02857142857142857
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "accuracy": 0.5,
+        "wilson95": [
+          0.15003898915214947,
+          0.8499610108478506
+        ],
+        "mean_confidence": 0.6670165,
+        "calibration_gap": 0.1670165,
+        "brier": 0.28136591306500003,
+        "log_loss": 0.7600290263857309,
+        "mean_min_matches": 46.0,
+        "median_min_matches": 41.5,
+        "surface_known": 4,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 4,
+            "wins": 2,
+            "accuracy": 0.5,
+            "wilson95": [
+              0.15003898915214947,
+              0.8499610108478506
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 7,
+        "wins": 3,
+        "losses": 4,
+        "accuracy": 0.42857142857142855,
+        "wilson95": [
+          0.15821985525146975,
+          0.7495416354723428
+        ],
+        "mean_confidence": 0.6703738571428571,
+        "calibration_gap": 0.24180242857142858,
+        "brier": 0.3092346316587143,
+        "log_loss": 0.8188660358912713,
+        "mean_min_matches": 16.571428571428573,
+        "median_min_matches": 1.0,
+        "surface_known": 4,
+        "surface_missing": 3,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 7,
+            "wins": 3,
+            "accuracy": 0.42857142857142855,
+            "wilson95": [
+              0.15821985525146975,
+              0.7495416354723428
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 5,
+        "wins": 3,
+        "losses": 2,
+        "accuracy": 0.6,
+        "wilson95": [
+          0.2307242812760128,
+          0.882379225767352
+        ],
+        "mean_confidence": 0.6614262,
+        "calibration_gap": 0.061426199999999986,
+        "brier": 0.24492350064860002,
+        "log_loss": 0.6838957169312441,
+        "mean_min_matches": 44.6,
+        "median_min_matches": 2.0,
+        "surface_known": 5,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 5,
+            "wins": 3,
+            "accuracy": 0.6,
+            "wilson95": [
+              0.2307242812760128,
+              0.882379225767352
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 5,
+        "wins": 4,
+        "losses": 1,
+        "accuracy": 0.8,
+        "wilson95": [
+          0.37553462976252533,
+          0.9637758913675698
+        ],
+        "mean_confidence": 0.6691884,
+        "calibration_gap": -0.13081160000000003,
+        "brier": 0.1794711474036,
+        "log_loss": 0.5478831945916608,
+        "mean_min_matches": 45.6,
+        "median_min_matches": 38.0,
+        "surface_known": 5,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 5,
+            "wins": 4,
+            "accuracy": 0.8,
+            "wilson95": [
+              0.37553462976252533,
+              0.9637758913675698
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 10,
+        "wins": 5,
+        "losses": 5,
+        "accuracy": 0.5,
+        "wilson95": [
+          0.236593090512564,
+          0.7634069094874361
+        ],
+        "mean_confidence": 0.6644929,
+        "calibration_gap": 0.16449290000000005,
+        "brier": 0.2759263251085,
+        "log_loss": 0.7479111120723982,
+        "mean_min_matches": 230.4,
+        "median_min_matches": 229.5,
+        "surface_known": 0,
+        "surface_missing": 10,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 6,
+            "wins": 4,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.299993315138392,
+              0.9032285888942195
+            ]
+          },
+          "CHALLENGER": {
+            "n": 4,
+            "wins": 1,
+            "accuracy": 0.25,
+            "wilson95": [
+              0.04558726080970055,
+              0.6993581574175981
+            ]
+          }
+        },
+        "atp_share": 0.6
+      }
+    },
+    "core": {
+      "CONTINUING": {
+        "n": 268,
+        "wins": 216,
+        "losses": 52,
+        "accuracy": 0.8059701492537313,
+        "wilson95": [
+          0.7544386644535568,
+          0.8488541544985881
+        ],
+        "mean_confidence": 0.7745747537313433,
+        "calibration_gap": -0.031395395522388014,
+        "brier": 0.15088142222359702,
+        "log_loss": 0.47443317002334484,
+        "mean_min_matches": 85.4776119402985,
+        "median_min_matches": 43.5,
+        "surface_known": 268,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 24,
+            "wins": 18,
+            "accuracy": 0.75,
+            "wilson95": [
+              0.55100555994846,
+              0.8800063377140499
+            ]
+          },
+          "CHALLENGER": {
+            "n": 244,
+            "wins": 198,
+            "accuracy": 0.8114754098360656,
+            "wilson95": [
+              0.7577140877581051,
+              0.8555812048182972
+            ]
+          }
+        },
+        "atp_share": 0.08955223880597014
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 15,
+        "wins": 11,
+        "losses": 4,
+        "accuracy": 0.7333333333333333,
+        "wilson95": [
+          0.4804956594401943,
+          0.8910254667430761
+        ],
+        "mean_confidence": 0.7679388,
+        "calibration_gap": 0.03460546666666675,
+        "brier": 0.20944658955786666,
+        "log_loss": 0.6159175945024637,
+        "mean_min_matches": 22.333333333333332,
+        "median_min_matches": 8.0,
+        "surface_known": 15,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 15,
+            "wins": 11,
+            "accuracy": 0.7333333333333333,
+            "wilson95": [
+              0.4804956594401943,
+              0.8910254667430761
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 19,
+        "wins": 13,
+        "losses": 6,
+        "accuracy": 0.6842105263157895,
+        "wilson95": [
+          0.46010407675327475,
+          0.8463562091220773
+        ],
+        "mean_confidence": 0.7687316315789474,
+        "calibration_gap": 0.08452110526315793,
+        "brier": 0.24538540251721055,
+        "log_loss": 0.7149338107484567,
+        "mean_min_matches": 17.36842105263158,
+        "median_min_matches": 6.0,
+        "surface_known": 14,
+        "surface_missing": 5,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 19,
+            "wins": 13,
+            "accuracy": 0.6842105263157895,
+            "wilson95": [
+              0.46010407675327475,
+              0.8463562091220773
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 20,
+        "wins": 15,
+        "losses": 5,
+        "accuracy": 0.75,
+        "wilson95": [
+          0.531299122381256,
+          0.8881382985923343
+        ],
+        "mean_confidence": 0.7634733,
+        "calibration_gap": 0.013473300000000021,
+        "brier": 0.18798797907950002,
+        "log_loss": 0.5640716791238528,
+        "mean_min_matches": 31.1,
+        "median_min_matches": 13.5,
+        "surface_known": 20,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 20,
+            "wins": 15,
+            "accuracy": 0.75,
+            "wilson95": [
+              0.531299122381256,
+              0.8881382985923343
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 16,
+        "wins": 10,
+        "losses": 6,
+        "accuracy": 0.625,
+        "wilson95": [
+          0.38641040545502714,
+          0.8151876744113636
+        ],
+        "mean_confidence": 0.7649994375,
+        "calibration_gap": 0.1399994375,
+        "brier": 0.27127964080893746,
+        "log_loss": 0.7629671625066099,
+        "mean_min_matches": 24.0625,
+        "median_min_matches": 22.0,
+        "surface_known": 16,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 16,
+            "wins": 10,
+            "accuracy": 0.625,
+            "wilson95": [
+              0.38641040545502714,
+              0.8151876744113636
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 37,
+        "wins": 29,
+        "losses": 8,
+        "accuracy": 0.7837837837837838,
+        "wilson95": [
+          0.6280485160803084,
+          0.8861348800661442
+        ],
+        "mean_confidence": 0.7748661621621622,
+        "calibration_gap": -0.008917621621621574,
+        "brier": 0.17709577218070272,
+        "log_loss": 0.5596337959007534,
+        "mean_min_matches": 252.8918918918919,
+        "median_min_matches": 295.0,
+        "surface_known": 0,
+        "surface_missing": 37,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 26,
+            "wins": 21,
+            "accuracy": 0.8076923076923077,
+            "wilson95": [
+              0.6212374288068301,
+              0.9149293885105758
+            ]
+          },
+          "CHALLENGER": {
+            "n": 11,
+            "wins": 8,
+            "accuracy": 0.7272727272727273,
+            "wilson95": [
+              0.43435469882387084,
+              0.902539407099751
+            ]
+          }
+        },
+        "atp_share": 0.7027027027027027
+      }
+    },
+    "underdog_full": {
+      "CONTINUING": {
+        "n": 1630,
+        "wins": 993,
+        "losses": 637,
+        "accuracy": 0.6092024539877301,
+        "wilson95": [
+          0.5852851160450033,
+          0.6326062822164661
+        ],
+        "mean_confidence": 0.6514246705521473,
+        "calibration_gap": 0.04222221656441716,
+        "brier": 0.22835581306742025,
+        "log_loss": 0.6477708927456384,
+        "mean_min_matches": 132.08466257668712,
+        "median_min_matches": 79.0,
+        "surface_known": 1630,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 264,
+            "wins": 178,
+            "accuracy": 0.6742424242424242,
+            "wilson95": [
+              0.6155617303903218,
+              0.7279250487105535
+            ]
+          },
+          "CHALLENGER": {
+            "n": 1366,
+            "wins": 815,
+            "accuracy": 0.5966325036603221,
+            "wilson95": [
+              0.5703814371754905,
+              0.6223415953331615
+            ]
+          }
+        },
+        "atp_share": 0.1619631901840491
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 86,
+        "wins": 68,
+        "losses": 18,
+        "accuracy": 0.7906976744186046,
+        "wilson95": [
+          0.6932340925568325,
+          0.8633018392537823
+        ],
+        "mean_confidence": 0.6777925813953488,
+        "calibration_gap": -0.1129050930232558,
+        "brier": 0.1738751133716744,
+        "log_loss": 0.5280013965073906,
+        "mean_min_matches": 92.69767441860465,
+        "median_min_matches": 65.5,
+        "surface_known": 86,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 11,
+            "wins": 8,
+            "accuracy": 0.7272727272727273,
+            "wilson95": [
+              0.43435469882387084,
+              0.902539407099751
+            ]
+          },
+          "CHALLENGER": {
+            "n": 75,
+            "wins": 60,
+            "accuracy": 0.8,
+            "wilson95": [
+              0.6958871716522836,
+              0.8748785228580329
+            ]
+          }
+        },
+        "atp_share": 0.12790697674418605
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 427,
+        "wins": 345,
+        "losses": 82,
+        "accuracy": 0.8079625292740047,
+        "wilson95": [
+          0.7679210302095314,
+          0.8425123313334539
+        ],
+        "mean_confidence": 0.6908704777517565,
+        "calibration_gap": -0.11709205152224822,
+        "brier": 0.16875643487920844,
+        "log_loss": 0.5151356184231379,
+        "mean_min_matches": 46.430913348946135,
+        "median_min_matches": 11.0,
+        "surface_known": 319,
+        "surface_missing": 108,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 75,
+            "wins": 64,
+            "accuracy": 0.8533333333333334,
+            "wilson95": [
+              0.7561523214068765,
+              0.9160828299052742
+            ]
+          },
+          "CHALLENGER": {
+            "n": 352,
+            "wins": 281,
+            "accuracy": 0.7982954545454546,
+            "wilson95": [
+              0.7532584044543832,
+              0.836892053831079
+            ]
+          }
+        },
+        "atp_share": 0.1756440281030445
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 403,
+        "wins": 267,
+        "losses": 136,
+        "accuracy": 0.6625310173697271,
+        "wilson95": [
+          0.6150239258063501,
+          0.7069688238503047
+        ],
+        "mean_confidence": 0.6708882779156328,
+        "calibration_gap": 0.008357260545905687,
+        "brier": 0.20369490682839206,
+        "log_loss": 0.5921299522327853,
+        "mean_min_matches": 70.6302729528536,
+        "median_min_matches": 30.0,
+        "surface_known": 403,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 28,
+            "wins": 19,
+            "accuracy": 0.6785714285714286,
+            "wilson95": [
+              0.49338843180857617,
+              0.8206675307750504
+            ]
+          },
+          "CHALLENGER": {
+            "n": 375,
+            "wins": 248,
+            "accuracy": 0.6613333333333333,
+            "wilson95": [
+              0.612013538931184,
+              0.7073812822604146
+            ]
+          }
+        },
+        "atp_share": 0.06947890818858561
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 375,
+        "wins": 244,
+        "losses": 131,
+        "accuracy": 0.6506666666666666,
+        "wilson95": [
+          0.6011060465163544,
+          0.6971717617038989
+        ],
+        "mean_confidence": 0.6615931546666667,
+        "calibration_gap": 0.010926488000000067,
+        "brier": 0.216223694569496,
+        "log_loss": 0.6224038800842477,
+        "mean_min_matches": 98.50666666666666,
+        "median_min_matches": 52.0,
+        "surface_known": 375,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 43,
+            "wins": 30,
+            "accuracy": 0.6976744186046512,
+            "wilson95": [
+              0.5489463582227039,
+              0.8139799986415182
+            ]
+          },
+          "CHALLENGER": {
+            "n": 332,
+            "wins": 214,
+            "accuracy": 0.6445783132530121,
+            "wilson95": [
+              0.5917072146786749,
+              0.6941419486054045
+            ]
+          }
+        },
+        "atp_share": 0.11466666666666667
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 302,
+        "wins": 199,
+        "losses": 103,
+        "accuracy": 0.6589403973509934,
+        "wilson95": [
+          0.6037767738490436,
+          0.7101113444269094
+        ],
+        "mean_confidence": 0.6502353874172185,
+        "calibration_gap": -0.008705009933774877,
+        "brier": 0.22005279544380463,
+        "log_loss": 0.6287547182330704,
+        "mean_min_matches": 178.77814569536423,
+        "median_min_matches": 134.5,
+        "surface_known": 0,
+        "surface_missing": 302,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 156,
+            "wins": 104,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.5894717296107738,
+              0.7358506265767545
+            ]
+          },
+          "CHALLENGER": {
+            "n": 146,
+            "wins": 95,
+            "accuracy": 0.6506849315068494,
+            "wilson95": [
+              0.5703887370171796,
+              0.7232549604367544
+            ]
+          }
+        },
+        "atp_share": 0.5165562913907285
+      }
+    },
+    "underdog_marginal": {
+      "CONTINUING": {
+        "n": 53,
+        "wins": 29,
+        "losses": 24,
+        "accuracy": 0.5471698113207547,
+        "wilson95": [
+          0.414539754871058,
+          0.6734242084707774
+        ],
+        "mean_confidence": 0.6643779622641509,
+        "calibration_gap": 0.1172081509433962,
+        "brier": 0.2605733521278113,
+        "log_loss": 0.716100560628326,
+        "mean_min_matches": 123.49056603773585,
+        "median_min_matches": 68.0,
+        "surface_known": 53,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 1,
+            "wins": 1,
+            "accuracy": 1.0,
+            "wilson95": [
+              0.20654931437723745,
+              1.0
+            ]
+          },
+          "CHALLENGER": {
+            "n": 52,
+            "wins": 28,
+            "accuracy": 0.5384615384615384,
+            "wilson95": [
+              0.4050361132695787,
+              0.6665952531824317
+            ]
+          }
+        },
+        "atp_share": 0.018867924528301886
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 4,
+        "wins": 2,
+        "losses": 2,
+        "accuracy": 0.5,
+        "wilson95": [
+          0.15003898915214947,
+          0.8499610108478506
+        ],
+        "mean_confidence": 0.67164125,
+        "calibration_gap": 0.17164124999999997,
+        "brier": 0.28188210838775,
+        "log_loss": 0.7613335419502456,
+        "mean_min_matches": 220.75,
+        "median_min_matches": 174.0,
+        "surface_known": 4,
+        "surface_missing": 0,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 1,
+            "wins": 1,
+            "accuracy": 1.0,
+            "wilson95": [
+              0.20654931437723745,
+              1.0
+            ]
+          },
+          "CHALLENGER": {
+            "n": 3,
+            "wins": 1,
+            "accuracy": 0.3333333333333333,
+            "wilson95": [
+              0.06149194472039621,
+              0.7923403991979522
+            ]
+          }
+        },
+        "atp_share": 0.25
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 8,
+        "wins": 6,
+        "losses": 2,
+        "accuracy": 0.75,
+        "wilson95": [
+          0.40927543031016883,
+          0.9285207872478909
+        ],
+        "mean_confidence": 0.67190975,
+        "calibration_gap": -0.07809025000000003,
+        "brier": 0.19255642567499998,
+        "log_loss": 0.5743803872547548,
+        "mean_min_matches": 7.875,
+        "median_min_matches": 1.5,
+        "surface_known": 7,
+        "surface_missing": 1,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 8,
+            "wins": 6,
+            "accuracy": 0.75,
+            "wilson95": [
+              0.40927543031016883,
+              0.9285207872478909
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 14,
+        "wins": 9,
+        "losses": 5,
+        "accuracy": 0.6428571428571429,
+        "wilson95": [
+          0.38764423103907397,
+          0.8365526824644587
+        ],
+        "mean_confidence": 0.6652394285714286,
+        "calibration_gap": 0.022382285714285688,
+        "brier": 0.22838389341314289,
+        "log_loss": 0.6490145107398009,
+        "mean_min_matches": 61.142857142857146,
+        "median_min_matches": 25.0,
+        "surface_known": 14,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 14,
+            "wins": 9,
+            "accuracy": 0.6428571428571429,
+            "wilson95": [
+              0.38764423103907397,
+              0.8365526824644587
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 10,
+        "wins": 7,
+        "losses": 3,
+        "accuracy": 0.7,
+        "wilson95": [
+          0.39677814746114537,
+          0.8922087325936989
+        ],
+        "mean_confidence": 0.6661619,
+        "calibration_gap": -0.03383809999999998,
+        "brier": 0.2116111575573,
+        "log_loss": 0.6144933300516446,
+        "mean_min_matches": 34.6,
+        "median_min_matches": 14.5,
+        "surface_known": 10,
+        "surface_missing": 0,
+        "by_tier": {
+          "CHALLENGER": {
+            "n": 10,
+            "wins": 7,
+            "accuracy": 0.7,
+            "wilson95": [
+              0.39677814746114537,
+              0.8922087325936989
+            ]
+          }
+        },
+        "atp_share": 0.0
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 12,
+        "wins": 6,
+        "losses": 6,
+        "accuracy": 0.5,
+        "wilson95": [
+          0.2537815976337061,
+          0.7462184023662939
+        ],
+        "mean_confidence": 0.6664838333333334,
+        "calibration_gap": 0.1664838333333334,
+        "brier": 0.27886544079616665,
+        "log_loss": 0.7545748624751758,
+        "mean_min_matches": 195.16666666666666,
+        "median_min_matches": 194.5,
+        "surface_known": 0,
+        "surface_missing": 12,
+        "by_tier": {
+          "ATP_MAIN": {
+            "n": 6,
+            "wins": 4,
+            "accuracy": 0.6666666666666666,
+            "wilson95": [
+              0.299993315138392,
+              0.9032285888942195
+            ]
+          },
+          "CHALLENGER": {
+            "n": 6,
+            "wins": 2,
+            "accuracy": 0.3333333333333333,
+            "wilson95": [
+              0.09677141110578041,
+              0.700006684861608
+            ]
+          }
+        },
+        "atp_share": 0.5
+      }
+    },
+    "both_in_transition": {
+      "n": 337
+    },
+    "state_profile": {
+      "CONTINUING": {
+        "n": 1876,
+        "mean_min_surface_matches": 63.306503198294244,
+        "mean_abs_elo_gap": 129.19032165553065,
+        "mean_abs_surface_elo_gap": 135.66104154591136,
+        "mean_inactivity": 29.005019480838968
+      },
+      "FIRST_ON_NEW_SURFACE": {
+        "n": 102,
+        "mean_min_surface_matches": 40.07843137254902,
+        "mean_abs_elo_gap": 123.21792956238825,
+        "mean_abs_surface_elo_gap": 122.58770709419879,
+        "mean_inactivity": 47.389291408610205
+      },
+      "NO_PRIOR_OBSERVED_MATCH": {
+        "n": 294,
+        "mean_min_surface_matches": 22.81972789115646,
+        "mean_abs_elo_gap": 129.43253114517833,
+        "mean_abs_surface_elo_gap": 97.82554384769496,
+        "mean_inactivity": 124.15887048893511
+      },
+      "SECOND_ON_SURFACE": {
+        "n": 342,
+        "mean_min_surface_matches": 32.87426900584796,
+        "mean_abs_elo_gap": 118.15085868706566,
+        "mean_abs_surface_elo_gap": 124.53202141352236,
+        "mean_inactivity": 60.16294864857503
+      },
+      "THIRD_ON_SURFACE": {
+        "n": 276,
+        "mean_min_surface_matches": 44.01449275362319,
+        "mean_abs_elo_gap": 113.90088144010286,
+        "mean_abs_surface_elo_gap": 110.62763760393038,
+        "mean_inactivity": 62.541636840547504
+      },
+      "UNKNOWN_SURFACE": {
+        "n": 333,
+        "mean_min_surface_matches": 14.642642642642643,
+        "mean_abs_elo_gap": 123.95254878280778,
+        "mean_abs_surface_elo_gap": 47.980149760945466,
+        "mean_inactivity": 19.84233817051531
+      }
+    },
+    "history_window": {
+      "first_observed_match": "2026-09-01T01:00:00+00:00",
+      "last_observed_match": "2026-11-24T05:20:00+00:00",
+      "left_censored": true
+    },
+    "note": "Surface transitions are observed only inside the API result history from 2026-09-01. No off-season or January inference is made."
+  },
+  "zero_history_favourite_inactivity": {
+    "NO_OBSERVED_PRIOR_MATCH_UNVERIFIED": {
+      "n": 1,
+      "mean_days": 0.8933418668171296,
+      "median_days": 0.8933418668171296
+    },
+    "total_zero_history_favourites": 39,
+    "missing_inactivity_n": 38
+  },
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}

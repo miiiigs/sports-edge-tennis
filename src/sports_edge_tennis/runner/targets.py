@@ -5,6 +5,7 @@ from datetime import datetime
 import psycopg
 
 from sports_edge_tennis.data import model_identity
+from sports_edge_tennis.data.identity_provenance import ResolvedIdentity, resolve_with_provenance
 from sports_edge_tennis.data.model_identity_bridge import LIVE_FIXTURE_SOURCE_SYSTEMS
 from sports_edge_tennis.data.normalize import (
     normalize_person_lookup,
@@ -509,3 +510,34 @@ def resolve_targets(
 ) -> list[ResolvedTargetV1]:
     """Resolve every target in request order, preserving caller ordering."""
     return [resolve_target(conn, match_id=match_id, as_of=as_of) for match_id in match_ids]
+
+
+def resolve_target_with_identity_provenance(
+    conn: psycopg.Connection,
+    *,
+    match_id: int,
+    as_of: datetime,
+) -> tuple[ResolvedTargetV1, dict[int, ResolvedIdentity]]:
+    """Resolve a target and freeze the exact identity decisions it used.
+
+    The target resolution itself is unchanged (``resolve_target``). The extra
+    provenance pass records which live player id mapped to which model player id,
+    through which method/evidence, against which reference-state digest. It is only
+    called on the opt-in runtime-persistence path.
+    """
+    target = resolve_target(conn, match_id=match_id, as_of=as_of)
+    row = conn.execute(
+        "SELECT player_1_id, player_2_id FROM match_versions WHERE match_version_id = %s",
+        (target.match_version_id,),
+    ).fetchone()
+    if row is None:
+        raise TargetResolutionError(
+            f"match version {target.match_version_id} disappeared during target resolution"
+        )
+    resolved, _reference = resolve_with_provenance(
+        conn,
+        player_ids=(row[0], row[1]),
+        as_of=as_of,
+        reference_policy=model_identity.REFERENCE_POLICY_STRICT,
+    )
+    return target, resolved

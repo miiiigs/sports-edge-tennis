@@ -34,18 +34,32 @@ def _player(conn, name):
 
 def _source_id(conn, player_id, source_system, source_id):
     conn.execute(
-        "INSERT INTO player_source_ids (player_id, source_system, source_player_id) VALUES (%s, %s, %s)",
-        (player_id, source_system, source_id),
+        """
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, %s, %s, %s)
+        """,
+        (player_id, source_system, source_id, OBSERVED - timedelta(days=100)),
     )
 
 
 def _alias(conn, player_id, alias):
     conn.execute(
         """
-        INSERT INTO player_aliases (player_id, source_system, alias, normalized_alias, first_observed_at)
-        VALUES (%s, 'TENNIS_DATA', %s, %s, %s)
+        INSERT INTO player_aliases (
+            player_id, source_system, alias, normalized_alias,
+            first_observed_at, created_at, updated_at
+        )
+        VALUES (%s, 'TENNIS_DATA', %s, %s, %s, %s, %s)
         """,
-        (player_id, alias, normalize_person_lookup(alias), OBSERVED - timedelta(days=100)),
+        (
+            player_id,
+            alias,
+            normalize_person_lookup(alias),
+            OBSERVED - timedelta(days=100),
+            OBSERVED - timedelta(days=100),
+            OBSERVED - timedelta(days=100),
+        ),
     )
 
 

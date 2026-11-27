@@ -1,0 +1,64 @@
+{
+  "version": "A1_COMBINED_MIGRATION_ORDER_V1",
+  "generated_at": "2026-11-26T05:28:45.835289+00:00",
+  "production_highest_contiguous": "0022_defaulted_outcome",
+  "production_applied_0023_0024_0025": false,
+  "manifest_tail": [
+    "0023",
+    "0024",
+    "0025"
+  ],
+  "contiguous_through_0025": true,
+  "ownership": {
+    "0023": "PR #392 (Manager C feature snapshots)",
+    "0024": "PR #392 (OddsPapi identity history)",
+    "0025": "PR #388 (identity provenance v2)"
+  },
+  "files": [
+    {
+      "version": "0023",
+      "name": "prediction_feature_snapshots",
+      "up": "db/migrations/0023_prediction_feature_snapshots.up.sql",
+      "up_sha256": "6df1a447fc10147749ab6da497c65a7f2278f0725765982268eb8ad71bad49ff",
+      "down": "db/migrations/0023_prediction_feature_snapshots.down.sql",
+      "down_sha256": "79ca8c0d3a1de98ba3ec5ee4d1855cffd6a8e194a587d0732503928b1e18b6f2",
+      "schema_snapshot": "db/schema/0023_prediction_feature_snapshots.sql",
+      "schema_snapshot_sha256": "006d30a784f8523ab923d4ede7c8c63438ce66feb5f2a72bd53e59300e5a8b86"
+    },
+    {
+      "version": "0024",
+      "name": "oddspapi_identity_history",
+      "up": "db/migrations/0024_oddspapi_identity_history.up.sql",
+      "up_sha256": "fba6198943c7f42e9a53f47e58c29dc7232118d7b34d9b8531b27666111f9147",
+      "down": "db/migrations/0024_oddspapi_identity_history.down.sql",
+      "down_sha256": "23575a046a11b1f8d9fc287505099e3a16bdadb17a835dc26e5d043585913f42",
+      "schema_snapshot": "db/schema/0024_oddspapi_identity_history.sql",
+      "schema_snapshot_sha256": "e7b9d77d06465c8856d302c1561c6c216f9e672da00ce4a2ed835eb61d906efb"
+    },
+    {
+      "version": "0025",
+      "name": "identity_provenance_v2",
+      "up": "db/migrations/0025_identity_provenance_v2.up.sql",
+      "up_sha256": "3f72a1763c38a49e61a86bd11657b2f346ff7aaacbf773ee82ab0b5e78189513",
+      "down": "db/migrations/0025_identity_provenance_v2.down.sql",
+      "down_sha256": "2d365d96480c371df388086cd044b858a053ec867d7e92b74b8da0b35a2e6f8b",
+      "schema_snapshot": "db/schema/0025_identity_provenance_v2.sql",
+      "schema_snapshot_sha256": "9b157f0ba66eb57a37c217626103b03b2a63aae7ecc5b1733d91be34d92508f9"
+    }
+  ],
+  "isolated_verification": {
+    "database": "local PostgreSQL 16, pr388_recon",
+    "tests": [
+      "tests/test_offseason_evidence_schema_guards.py::test_0024_and_0023_downgrade_and_reupgrade_cleanly",
+      "tests/test_offseason_evidence_schema_guards.py::test_latest_cumulative_snapshot_matches_migrated_schema",
+      "tests/test_identity_provenance_schema.py::test_0025_downgrades_and_reupgrades_cleanly"
+    ],
+    "result": "PASS",
+    "note": "The cumulative snapshot after all manifest migrations equals the 0025 snapshot; 0023/0024/0025 downgrade and re-upgrade cleanly."
+  },
+  "pr392_file_preservation": {
+    "0023_and_0024_diff_vs_af6e09be": "empty",
+    "manager_c_challenger_files_preserved": true
+  },
+  "production_action": "NONE - 0023/0024/0025 are not applied to production by this branch."
+}
