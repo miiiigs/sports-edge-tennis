@@ -281,6 +281,28 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         """,
         (run_id,),
     ).fetchone()
+    run_as_of = db.execute(
+        "SELECT as_of FROM prediction_runs WHERE prediction_run_id=%s", (run_id,)
+    ).fetchone()[0]
+    picked_start = db.execute(
+        """
+        SELECT match_start_at FROM match_versions
+        WHERE match_id=%s AND as_of <= %s
+        ORDER BY as_of DESC, source_observed_at DESC, match_version_id DESC
+        LIMIT 1
+        """,
+        (target["match_id"], run_as_of),
+    ).fetchone()[0]
+    loop_agents = db.execute(
+        """
+        SELECT COUNT(DISTINCT agent_code) FROM predictions
+        WHERE prediction_run_id=%s AND match_id=%s
+          AND prediction_locked_at
+              <= %s::timestamptz - interval '30 minutes'
+          AND experiment_id IS NOT DISTINCT FROM NULL
+        """,
+        (run_id, target["match_id"], picked_start),
+    ).fetchone()[0]
     assert collected["success"] is True, (
         [
             (
@@ -295,6 +317,9 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         ],
         diag,
         timing,
+        run_as_of,
+        picked_start,
+        loop_agents,
     )
     assert collected["record"].eligible_fixture_count == 1
     assessment = evaluate_run(
