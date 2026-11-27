@@ -73,6 +73,8 @@ def validate_scope(spec: Mapping[str, object]) -> None:
     keys: set[str] = set()
     eligible_starts: list[date] = []
     for competition in competitions:
+        if not isinstance(competition, Mapping):
+            raise JanuaryScopeError("each competition must be an object")
         key = str(competition.get("key") or "")
         if not key or key in keys:
             raise JanuaryScopeError(f"duplicate or empty competition key {key!r}")
