@@ -199,3 +199,10 @@ Required before a real pilot can execute:
 
 No market superiority, profitability, 90% mapping or 80% T−60 coverage is
 claimed. Those remain unachieved targets.
+
+## Validation
+
+Exact code head `0d93ded` passed the PostgreSQL Foundation workflow (run
+45957013444) with **2,592 tests passed**, including the strict-lineage loader
+and the full local rehearsal. Local unit run: 1,859 passed, 767 PostgreSQL tests
+skipped.
