@@ -1,0 +1,42 @@
+# December readiness and authorization register - 28 November 2026
+
+Draft integration #394. No model promotion, deployment, commercial training, purchase or outbound correspondence.
+
+## Priority 1 - true forecasting baseline
+
+The row join and exact results are in a1_baseline_reconciliation_20261128.json and a1_baseline_fixture_join_20261128.csv. Reproduce from the original two committed CSVs with python ops/validation/a1_baseline_reconciliation_20261128.py. Both are development-reused exports. The earlier experiment was frozen at 2026-11-25T07:20Z, development Sep 10-Oct 31 and evaluation Nov 1-25. Reliability uses original/unbridged replay probability and original correctness, but corrected-state features and original-to-corrected stability; do not describe those as proven independently observable at original issue. The stricter subset removes 21 rows at/after listed scheduled start. Actual competitive starts and settlement revisions are not verified by this join. Original replay is not exact stored live output. No changes to 0.668060 or 0.648708, selection rules or rating methodology.
+
+At 45%, 74 fewer winners = 11 due to change of population/selection volume and 63 due to different replay versions/ranking on the same strict cohort. At 50%, corresponding difference 9 + 61 = 70. Experienced favourites in November marginal band: 55W/37L of 92, limited-history 4W/5L of 9. The count of errors alone is not evidence of disproportionate experienced-player weakness. No new penalty. R1 replaces 29 selections at 45% and 50%, gaining 5 wins in each, not independent. At 45% whole-population boundary, earlier period contributes +9 net wins and November -4; not separately calibrated policy. Keep older R0-R4 registry intact; future feature ablation uses distinct namespace RELIABILITY_ABLATION_V2, no historical fit before rights.
+
+## Priority 2 - commercial clearance
+
+Owner message authorizes six existing supplier and three competitor enquiries in principle, plus Valuebetennis. Company sender pending. All remain UNSENT. Valuebetennis is a seventh supplier enquiry, separate Live Tennis API trial request proposed but sender and scope still pending. No purchases, commitments or paid trials.
+
+Verified public listing https://www.valuebetennis.com/en/donnees.htm (27 Nov 2026) advertises 480,002 mixed-tour singles across 2021-26 under CC BY 4.0, 2021 onward only, 6 annual files, date/time UTC, player and match IDs, tournament category, result, score, duration and opening/closing Pinnacle prices. Methodology https://www.valuebetennis.com/en/methodologie.htm says live imports since 2021; supplier claim, not independently authenticated event time or source chain. Publisher https://www.valuebetennis.com/en/a-propos.htm identifies VBTech Limited. CC BY 4.0 https://creativecommons.org/licenses/by/4.0/ allows commercial reuse with attribution within licensed rights; third-party provenance and bookmaker rights unresolved. Attempted 2026 CSV fetch failed (unsupported CSV via web and failed direct download). Actual ATP/Challenger/ITF usable counts, duplicates, player overlap, timestamp and scoreline completeness are NOT MEASURED. Do not copy raw files into repository or train until rights/lineage approved. Use a clean separately versioned candidate and reconstruct rating history from authorized sources only; 2021 start limits initialization and historical overlap. Never reuse uncertain rating artifacts or calibration.
+
+### Valuebetennis enquiry (draft, UNSENT)
+
+Recipient proposed by owner: support@valuebetennis.com (confirm delivery address through official contact route before sending).
+Subject: Commercial forecasting research and historical data provenance enquiry
+
+Hello,
+
+We are evaluating your published CC BY 4.0 historical singles dataset for internal tennis forecasting research and a potential commercial ATP and Challenger men's singles forecasting product. Could you confirm the original source(s) of match results, player identifiers, timestamps, scores and opening/closing Pinnacle prices, including whether any fields originate from third-party or Sackmann datasets and the rights you hold to sublicense those fields? Are commercial model training, long-term archival retention, publication and sale of derived forecasts permitted under the licence, with appropriate attribution? Are there limitations specific to odds, historical retention, redistribution, or individual records? Could you clarify whether the date/time represents scheduled start, actual start or another event, whether revisions and collection timestamps are available, and how retirement/walkover records and identity changes are handled? We would also welcome guidance on citation and any available source/version manifests.
+
+Thank you.
+
+### Live Tennis API - evaluation request preparation (not sent)
+
+Official terms/contact https://livetennisapi.com/terms, hello@livetennisapi.com. Terms grant tier-bound application use, limit excess storage and do not establish unrestricted historical model rights. Seek written commercial training, retention and derived forecast rights and a free authorized matched evaluation for (A) results (B) results plus serve/return (C) results plus points. No paid trial. Compare incremental Brier/log loss, coverage and identity continuity on identical chronological populations. iPredictSport https://ipredictsport.com/tennis-data-test indexed comparison of 1,149 matches reports Brier .2504 -> .2302 -> .2287; market .2232. Results-only share of improvement .0202/.0217 = 93.09%; self-report with promoted supplier discount, not independently reproduced. Do not assume the benefit transfers. No advanced data purchase.
+
+Existing A1 changed-history ledger 16,104 vs earlier 16,105 not yet exact-ID reconciled; read-only supplier census not executed. Railway OAuth redacts connection values, no existing fork, no direct SQL execution route; no production changes or service provisioning. Existing configured provider/DB variable names confirmed on live runner.
+
+## Priority 3 and 4 - operational and bookmaker intelligence
+
+Owner explicitly approved account checks and genuine controlled tests within confirmed existing allowances, no new spending. Credentials are configured but inaccessible via connected OAuth; no provider call yet. OddsPapi /v4/account is unmetered (1s endpoint cooldown), current plan, bookmaker, sport and request_count/request_limit from authenticated response only; redact credentials and account IDs. Historical endpoint /v4/historical-odds is unmetered for quota but 5s cooldown, max 3 bookmakers, history since Jan 2026, free-plan settled fixtures only and blocked on exhausted total quota. See https://oddspapi.io/en/docs/get-account, https://oddspapi.io/en/docs/get-historical-odds, https://oddspapi.io/en/docs/requests-and-quota. API-Tennis https://api-tennis.com/documentation lists get_events and get_tournaments for current plan; verify quota first, do not assume probes are free. Distinguish true original capture from retrospective provider history and reconstructed closing benchmark. No synthetic market may count as genuine. Keep pilot inactive until transport, identity, allowance, durability, and original-time cutoff proven. Actual current allowances unknown.
+
+Monitoring exact-head 727689d: 3039 passed / 1 failed. Root cause: experiment ID attached to prediction run but omitted from each matrix row. Commit 7e2713d propagates explicit research experiment ID and checks strict scope equality; CI pending. No live deployment. Continue December genuine capture only after source rights and independent archive readiness, with owner-proposed 28 Dec readiness target, not a guarantee. Chisinau Nov 30-Dec 6 reported by owner; ATP page inaccessible here, verify entries/fixtures from authorized official source.
+
+## Priority 5 and 6 - controlled research
+
+Use predefined experienced/close-rating categories; distinguish pre-match gap from post-match score. Test future information destruction and chronological ordering before adding feature complexity. Freeze evaluation rules independently of candidate model changes. Candidate B and D protected. First operational checkpoints 25/50/100, first meaningful 300 independently settled; not proof of sustainability. Real 2027 draw, BO5 comparative study, independent service activation and matched competitor evidence remain outstanding. DEUCE, ScoreProb and iPredictSport are research watchlist only; prioritize three authorized comparisons.
