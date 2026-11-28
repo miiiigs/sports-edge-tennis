@@ -1,0 +1,231 @@
+{
+  "classification": "SYNTHETIC_ONLY_NOT_TENNIS_PERFORMANCE",
+  "namespace": "RELIABILITY_ABLATION_V2_SYNTHETIC_OFFSET",
+  "train_n": 3600,
+  "threshold_calibration_n": 1200,
+  "test_n": 1200,
+  "coverage_target": 0.45,
+  "offset": "logit(nominal_A1_confidence), coefficient exactly one; intercept and feature effects fitted on train only",
+  "free": "intercept, logit confidence coefficient and same features",
+  "feature_groups": {
+    "R0": "nominal baseline confidence",
+    "R1": "synthetic uncertainty",
+    "R2": "uncertainty, incompleteness, instability",
+    "R3": "R2 plus synthetic specialist disagreement",
+    "R4": "not executed; full 34-field V1 contract is not represented by this synthetic generator"
+  },
+  "results": {
+    "null_signal": {
+      "R0": {
+        "brier": 0.17992639239339092,
+        "log_loss": 0.535526742798126,
+        "rank_n": 540,
+        "rank_w": 461,
+        "fixed_n": 510,
+        "fixed_w": 440,
+        "fixed_threshold": 0.7569109936594032,
+        "weights": null
+      },
+      "R1_OFFSET": {
+        "brier": 0.18028851486321196,
+        "log_loss": 0.5362931334483998,
+        "rank_n": 540,
+        "rank_w": 461,
+        "fixed_n": 520,
+        "fixed_w": 444,
+        "fixed_threshold": 0.7652199411619814,
+        "weights": [
+          0.014026806093843049,
+          0.2188197150024674
+        ]
+      },
+      "R1_FREE": {
+        "brier": 0.18028135169521203,
+        "log_loss": 0.5362265146792563,
+        "rank_n": 540,
+        "rank_w": 461,
+        "fixed_n": 517,
+        "fixed_w": 441,
+        "fixed_threshold": 0.7685178137708584,
+        "weights": [
+          -0.005773960963590705,
+          1.0327604814849747,
+          0.20667942202457196
+        ]
+      },
+      "R2_OFFSET": {
+        "brier": 0.18059629657190548,
+        "log_loss": 0.537010795308533,
+        "rank_n": 540,
+        "rank_w": 461,
+        "fixed_n": 527,
+        "fixed_w": 450,
+        "fixed_threshold": 0.7638970846578049,
+        "weights": [
+          0.015619911917816535,
+          0.22015036142083716,
+          0.04704166637501383,
+          -0.0876600417438286
+        ]
+      },
+      "R2_FREE": {
+        "brier": 0.18060799425095792,
+        "log_loss": 0.5369842472775906,
+        "rank_n": 540,
+        "rank_w": 461,
+        "fixed_n": 524,
+        "fixed_w": 447,
+        "fixed_threshold": 0.7671561736805691,
+        "weights": [
+          -0.0025816829005487515,
+          1.0335021609488986,
+          0.20850406321285805,
+          0.038227420985414304,
+          -0.09461463837923766
+        ]
+      },
+      "R3_OFFSET": {
+        "brier": 0.18065101436009245,
+        "log_loss": 0.5371662603963089,
+        "rank_n": 540,
+        "rank_w": 458,
+        "fixed_n": 526,
+        "fixed_w": 449,
+        "fixed_threshold": 0.7666549856783547,
+        "weights": [
+          0.0004555372161245913,
+          0.21873077759516002,
+          0.045992711363512316,
+          -0.08948258750344383,
+          0.07564622733904436
+        ]
+      },
+      "R3_FREE": {
+        "brier": 0.18065114520964493,
+        "log_loss": 0.5371101079018914,
+        "rank_n": 540,
+        "rank_w": 458,
+        "fixed_n": 527,
+        "fixed_w": 450,
+        "fixed_threshold": 0.7681035960157814,
+        "weights": [
+          -0.015031531268032597,
+          1.0329819079587128,
+          0.20729271913368685,
+          0.037378978050511116,
+          -0.09615624742001436,
+          0.0651278826712158
+        ]
+      }
+    },
+    "injected_signal": {
+      "R0": {
+        "brier": 0.22221724114634042,
+        "log_loss": 0.6366646744986455,
+        "rank_n": 540,
+        "rank_w": 413,
+        "fixed_n": 510,
+        "fixed_w": 395,
+        "fixed_threshold": 0.7569109936594032,
+        "weights": null
+      },
+      "R1_OFFSET": {
+        "brier": 0.20855879757034915,
+        "log_loss": 0.6030482955112126,
+        "rank_n": 540,
+        "rank_w": 421,
+        "fixed_n": 500,
+        "fixed_w": 393,
+        "fixed_threshold": 0.6651163358327319,
+        "weights": [
+          -0.3190208460450043,
+          -0.5913150130696131
+        ]
+      },
+      "R1_FREE": {
+        "brier": 0.2085066146745836,
+        "log_loss": 0.6029042718787881,
+        "rank_n": 540,
+        "rank_w": 420,
+        "fixed_n": 503,
+        "fixed_w": 395,
+        "fixed_threshold": 0.6642932815990008,
+        "weights": [
+          -0.29039796644011473,
+          0.9745289613689105,
+          -0.5990320387069595
+        ]
+      },
+      "R2_OFFSET": {
+        "brier": 0.20357740810152739,
+        "log_loss": 0.5918653732929665,
+        "rank_n": 540,
+        "rank_w": 429,
+        "fixed_n": 531,
+        "fixed_w": 420,
+        "fixed_threshold": 0.6677017777807998,
+        "weights": [
+          -0.16437016012877734,
+          -0.5818510500154177,
+          -0.5024399856620733,
+          -0.5622240869184424
+        ]
+      },
+      "R2_FREE": {
+        "brier": 0.2035481730683005,
+        "log_loss": 0.5917976678313209,
+        "rank_n": 540,
+        "rank_w": 429,
+        "fixed_n": 530,
+        "fixed_w": 419,
+        "fixed_threshold": 0.6693029668108057,
+        "weights": [
+          -0.15630488647790253,
+          0.9990258316365959,
+          -0.5914223645216248,
+          -0.5087546933910752,
+          -0.5676114723406174
+        ]
+      },
+      "R3_OFFSET": {
+        "brier": 0.20118592367260105,
+        "log_loss": 0.5863341020799386,
+        "rank_n": 540,
+        "rank_w": 434,
+        "fixed_n": 527,
+        "fixed_w": 426,
+        "fixed_threshold": 0.6706447249919981,
+        "weights": [
+          -0.04746948449575717,
+          -0.5782682537098461,
+          -0.4955127391265271,
+          -0.5546404381588581,
+          -0.5456826703619059
+        ]
+      },
+      "R3_FREE": {
+        "brier": 0.2011658337405091,
+        "log_loss": 0.5862795868605319,
+        "rank_n": 540,
+        "rank_w": 434,
+        "fixed_n": 528,
+        "fixed_w": 427,
+        "fixed_threshold": 0.672011263856806,
+        "weights": [
+          -0.050063936762642494,
+          1.0131890574664295,
+          -0.5887116964136634,
+          -0.5031267981170311,
+          -0.5610462543327089,
+          -0.5550899978139511
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "Synthetic labels generated from known process; signal regime favors correct specification of offset.",
+    "No real calibration, commercial fitting, independent prospective evidence or production changes.",
+    "Threshold calibration uses only earlier score distribution; evaluation test coverage can differ."
+  ],
+  "can_promote": false
+}
