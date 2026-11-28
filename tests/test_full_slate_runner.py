@@ -902,3 +902,47 @@ def test_default_full_slate_writes_no_identity_resolution_rows(db: psycopg.Conne
         "SELECT count(*) FROM identity_resolution_provenance WHERE prediction_run_id = %s",
         (outcome.prediction_run_id,),
     ).fetchone()[0] == 0
+
+
+def test_historical_a1_replay_matches_persisted_live_runner_with_same_snapshot(db):
+    from sports_edge_tennis.agents.agent1_surface_elo import predict, PredictionRequest
+    from sports_edge_tennis.data.agent1_history import load_agent1_history
+    from sports_edge_tennis.runner.targets import resolve_targets
+    _seed_configs(db)
+    cutoff = _utc(10)
+    target = _insert_scheduled_target(db, ingested_at=_utc(8))
+    edition = _fetchval(db, "SELECT tournament_edition_id FROM matches WHERE match_id=%s",
+                        (target["match_id"],))
+    history_id = _fetchval(db, "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id", (edition,))
+    db.execute(
+        """INSERT INTO match_versions (match_id, player_1_id, player_2_id, match_start_at,
+           tour_scope, competition_tier, surface, round_code, best_of_sets, qualifying_flag,
+           match_status, source_observed_at, as_of, ingested_at)
+           VALUES (%s,%s,%s,%s,'ATP_MAIN','ATP_250','HARD','Q1',3,TRUE,'COMPLETED',%s,%s,%s)""",
+        (history_id,target["player_1_id"],target["player_2_id"],_utc(6),_utc(8),_utc(8),_utc(8)))
+    db.execute(
+        """INSERT INTO match_result_observations (match_id,outcome_status,winner_side,
+           source_observed_at,as_of,ingested_at) VALUES (%s,'COMPLETED',1,%s,%s,%s)""",
+        (history_id,_utc(9),_utc(9),_utc(9)))
+    resolved = resolve_targets(db, match_ids=(target["match_id"],), as_of=cutoff)[0]
+    request = PredictionRequest(resolved.player_1_id, resolved.player_2_id,
+        resolved.surface,resolved.tour_scope,resolved.competition_tier,
+        resolved.best_of_sets,resolved.qualifying_flag,cutoff)
+    history = load_agent1_history(db,cutoff=cutoff,ingested_by=cutoff)
+    expected = predict(request,history,A1_CONFIG)
+    assert expected.diagnostics.eligible_history_match_count == 1
+    outcome = run_full_slate(db,_request(db,match_ids=[target["match_id"]],as_of=cutoff))
+    assert outcome.runner_status == "COMPLETED"
+    actual = db.execute(
+        """SELECT selection_side,win_probability,model_version,feature_version
+           FROM predictions WHERE prediction_run_id=%s AND agent_code=%s""",
+        (outcome.prediction_run_id,A1)).fetchone()
+    assert actual == (expected.selection_side, expected.win_probability,
+                      expected.model_version, expected.feature_version)
+    # A later result correction is unavailable at the original cutoff.
+    db.execute(
+        """INSERT INTO match_result_observations (match_id,outcome_status,winner_side,
+           source_observed_at,as_of,ingested_at) VALUES (%s,'COMPLETED',2,%s,%s,%s)""",
+        (history_id,_utc(11),_utc(11),_utc(11)))
+    regenerated = predict(request,load_agent1_history(db,cutoff=cutoff,ingested_by=cutoff),A1_CONFIG)
+    assert regenerated == expected
