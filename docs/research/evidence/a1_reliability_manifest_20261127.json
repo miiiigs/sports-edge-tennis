@@ -1,0 +1,83 @@
+{
+  "version": "A1_RELIABILITY_MANIFEST_V1",
+  "generated_at": "2026-11-27T07:18:39.621242+00:00",
+  "base_commit": "559df57c225a3c7d2c0321aa860244f89031327e",
+  "integration_reference": "9343a756db496fc0730e773a79ece9c782d91854",
+  "branch": "research/a1-identity-bridge-forward-shadow-20261124",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "provider_calls": false,
+  "new_spend": false,
+  "historical_model_training": false,
+  "agent3_replaced": false,
+  "frozen_thresholds": {
+    "primary": 0.66806,
+    "secondary": 0.648708
+  },
+  "sources": {
+    "population_csv": "docs/research/evidence/a1_selective_population_20261126.csv",
+    "population_csv_sha256": "0b662ad741b6555f4f0a8aa34c248c3ab013f71dd5ef8783df66478cb5fe0d34"
+  },
+  "artifacts": [
+    {
+      "path": "docs/research/evidence/a1_reliability_feature_audit_20261127.json",
+      "bytes": 10886,
+      "sha256": "0ac271314cda3fe0855f4c357d6b8c2590735056e17fcb6a11f2caf5d9a2232a"
+    },
+    {
+      "path": "docs/research/evidence/a1_reliability_actual_20261127.json",
+      "bytes": 18855,
+      "sha256": "1770a76e5e3529a4b444b09ea3db5068d182aa7ed41dd38dabf55d6d63ab23fa"
+    },
+    {
+      "path": "docs/research/evidence/a1_reliability_synthetic_20261127.json",
+      "bytes": 1983,
+      "sha256": "19ebe743cd291d289312b9cca9711d4bfcf4587b558761f219a922d3b5caf3e3"
+    },
+    {
+      "path": "docs/research/evidence/a1_reliability_scores_20261127.csv",
+      "bytes": 541328,
+      "sha256": "47590b6aca4a1895d57cf6a1ef5e870a05def89b0e64f87a82cec1a169a5b825"
+    },
+    {
+      "path": "docs/research/evidence/a1_reliability_risk_coverage_20261127.csv",
+      "bytes": 559901,
+      "sha256": "b941d892f32431cd0decccd2ec1478ebf17371651c2011c7b88ecb9d6bdabafc"
+    },
+    {
+      "path": "docs/research/A1_RELIABILITY_INTELLIGENCE_20261127.md",
+      "bytes": 18673,
+      "sha256": "3c50d09e5ab2cf9468c905b6c7ca6c6bd00782900090cd3ee0d37ea380eff5b2"
+    },
+    {
+      "path": "tests/test_a1_reliability_shadow.py",
+      "bytes": 9462,
+      "sha256": "3b5a08a4653ef83cb97e5dd5eca672de0f434fbcbf17d6ddba26198f3c415745"
+    }
+  ],
+  "code": [
+    {
+      "path": "src/sports_edge_tennis/validation/a1_reliability_shadow.py",
+      "bytes": 47192,
+      "sha256": "8afd6a259c1b977fb2f8bb972d69bd6df2e210dac31421d99a3cb1a434ee2cf2"
+    },
+    {
+      "path": "ops/validation/a1_reliability_research_20261127.py",
+      "bytes": 24211,
+      "sha256": "2e39bd8f14c9ec113788a2cf8a6f94f31eb27cfdda6f32b96642338f9b18f9ef"
+    }
+  ],
+  "hash_normalization": "LF for text artifacts (.json/.csv/.md/.py/.txt/.jsonl)",
+  "validation": {
+    "source_settled_rows": 3223,
+    "excluded_at_or_after_start": 21,
+    "settled_rows": 3202,
+    "feature_count": 34,
+    "r0_n": 3202,
+    "r1_n": 3202,
+    "a2_available": 0,
+    "historical_training_performed": false
+  },
+  "note": "Research only. R0/R1 are fixed rules on development-reused data. R2/R3/R4 are synthetic only because commercial training rights are not established."
+}

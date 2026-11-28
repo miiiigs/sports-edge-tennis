@@ -1,0 +1,74 @@
+{
+  "version": "A1_RELIABILITY_SYNTHETIC_V1",
+  "seed": 20261127,
+  "n": 6000,
+  "split": {
+    "train": 3600,
+    "calibration": 1200,
+    "test": 1200
+  },
+  "a2_train_coverage": 0.8975,
+  "r2": {
+    "model_kind": "R2",
+    "include_a2": false,
+    "train_n": 3600,
+    "calibration_n": 1200,
+    "test_n": 1200,
+    "target_coverage": 0.45,
+    "selected_n": 540,
+    "candidate_accuracy": 0.7055555555555556,
+    "baseline_accuracy": 0.6796296296296296,
+    "calibration": {
+      "status": "OK",
+      "slope": 1.0146106769926095,
+      "intercept": -0.054829103063329825,
+      "n": 1200
+    },
+    "test_brier": 0.20728621722935328,
+    "test_error_auroc": 0.7252875545215811
+  },
+  "r3": {
+    "model_kind": "R3",
+    "include_a2": false,
+    "train_n": 3600,
+    "calibration_n": 1200,
+    "test_n": 1200,
+    "target_coverage": 0.45,
+    "selected_n": 540,
+    "candidate_accuracy": 0.6833333333333333,
+    "baseline_accuracy": 0.6796296296296296,
+    "calibration": {
+      "status": "OK",
+      "slope": 1.0789476549341417,
+      "intercept": -0.06192204191579749,
+      "n": 1200
+    },
+    "test_brier": 0.23681212074303293,
+    "test_error_auroc": 0.6233509253474824
+  },
+  "r3_gate_met": true,
+  "r4": {
+    "model_kind": "R2",
+    "include_a2": true,
+    "train_n": 3600,
+    "calibration_n": 1200,
+    "test_n": 1200,
+    "target_coverage": 0.45,
+    "selected_n": 540,
+    "candidate_accuracy": 0.7277777777777777,
+    "baseline_accuracy": 0.6796296296296296,
+    "calibration": {
+      "status": "OK",
+      "slope": 0.9451440038715596,
+      "intercept": -0.06966776899652344,
+      "n": 1200
+    },
+    "test_brier": 0.1884466316955635,
+    "test_error_auroc": 0.7819108489112645
+  },
+  "note": "Synthetic only. No production or historical outcome data are used for fitting.",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}

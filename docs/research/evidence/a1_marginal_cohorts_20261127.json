@@ -1,0 +1,5882 @@
+{
+  "thresholds": {
+    "development_rows": 2198,
+    "40": {
+      "fraction": 0.4,
+      "development_selections": 879,
+      "threshold": 0.683286
+    },
+    "45": {
+      "fraction": 0.45,
+      "development_selections": 989,
+      "threshold": 0.66806
+    },
+    "50": {
+      "fraction": 0.5,
+      "development_selections": 1099,
+      "threshold": 0.648708
+    }
+  },
+  "cohorts": {
+    "core_40": {
+      "n": 375,
+      "wins": 294,
+      "losses": 81,
+      "accuracy": 0.784,
+      "wilson95": [
+        0.7395817701290739,
+        0.8226587002329966
+      ],
+      "mean_confidence": 0.773041392,
+      "calibration_gap": -0.010958608000000036,
+      "brier": 0.167714720139568,
+      "log_loss": 0.5177758787171326,
+      "mean_min_matches": 90.49866666666667,
+      "median_min_matches": 41.0,
+      "surface_known": 333,
+      "surface_missing": 42,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 50,
+          "wins": 39,
+          "accuracy": 0.78,
+          "wilson95": [
+            0.6475845041874634,
+            0.8724608402978559
+          ]
+        },
+        "CHALLENGER": {
+          "n": 325,
+          "wins": 255,
+          "accuracy": 0.7846153846153846,
+          "wilson95": [
+            0.736734883614412,
+            0.8258462479237317
+          ]
+        }
+      },
+      "atp_share": 0.13333333333333333
+    },
+    "marginal_40_45": {
+      "n": 45,
+      "wins": 27,
+      "losses": 18,
+      "accuracy": 0.6,
+      "wilson95": [
+        0.45451854590351387,
+        0.7297511343499083
+      ],
+      "mean_confidence": 0.6753125555555556,
+      "calibration_gap": 0.0753125555555556,
+      "brier": 0.2457519402964667,
+      "log_loss": 0.6856931215996462,
+      "mean_min_matches": 90.4,
+      "median_min_matches": 47.0,
+      "surface_known": 39,
+      "surface_missing": 6,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 3,
+          "wins": 2,
+          "accuracy": 0.6666666666666666,
+          "wilson95": [
+            0.2076596008020477,
+            0.9385080552796037
+          ]
+        },
+        "CHALLENGER": {
+          "n": 42,
+          "wins": 25,
+          "accuracy": 0.5952380952380952,
+          "wilson95": [
+            0.44494312750039344,
+            0.7295713885251867
+          ]
+        }
+      },
+      "atp_share": 0.06666666666666667
+    },
+    "base_45": {
+      "n": 420,
+      "wins": 321,
+      "losses": 99,
+      "accuracy": 0.7642857142857142,
+      "wilson95": [
+        0.7214114591086732,
+        0.8023692975395736
+      ],
+      "mean_confidence": 0.7625704452380953,
+      "calibration_gap": -0.0017152690476189836,
+      "brier": 0.1760758508706643,
+      "log_loss": 0.5357670118831163,
+      "mean_min_matches": 90.48809523809524,
+      "median_min_matches": 41.0,
+      "surface_known": 372,
+      "surface_missing": 48,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 53,
+          "wins": 41,
+          "accuracy": 0.7735849056603774,
+          "wilson95": [
+            0.6447372974853895,
+            0.8654536898972573
+          ]
+        },
+        "CHALLENGER": {
+          "n": 367,
+          "wins": 280,
+          "accuracy": 0.7629427792915532,
+          "wilson95": [
+            0.7168494875321891,
+            0.8035885471302666
+          ]
+        }
+      },
+      "atp_share": 0.1261904761904762
+    },
+    "marginal_45_50": {
+      "n": 56,
+      "wins": 32,
+      "losses": 24,
+      "accuracy": 0.5714285714285714,
+      "wilson95": [
+        0.4413762073081303,
+        0.6923103731606176
+      ],
+      "mean_confidence": 0.6581711964285715,
+      "calibration_gap": 0.08674262500000007,
+      "brier": 0.251417885023125,
+      "log_loss": 0.696849130495214,
+      "mean_min_matches": 124.41071428571429,
+      "median_min_matches": 77.5,
+      "surface_known": 49,
+      "surface_missing": 7,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 5,
+          "wins": 4,
+          "accuracy": 0.8,
+          "wilson95": [
+            0.37553462976252533,
+            0.9637758913675698
+          ]
+        },
+        "CHALLENGER": {
+          "n": 51,
+          "wins": 28,
+          "accuracy": 0.5490196078431373,
+          "wilson95": [
+            0.41384708550368815,
+            0.6773248145062598
+          ]
+        }
+      },
+      "atp_share": 0.08928571428571429
+    },
+    "base_50": {
+      "n": 476,
+      "wins": 353,
+      "losses": 123,
+      "accuracy": 0.7415966386554622,
+      "wilson95": [
+        0.700446697685282,
+        0.7788782872071672
+      ],
+      "mean_confidence": 0.7502881806722689,
+      "calibration_gap": 0.008691542016806664,
+      "brier": 0.18493961959448318,
+      "log_loss": 0.5547178493668925,
+      "mean_min_matches": 94.47899159663865,
+      "median_min_matches": 43.5,
+      "surface_known": 421,
+      "surface_missing": 55,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 58,
+          "wins": 45,
+          "accuracy": 0.7758620689655172,
+          "wilson95": [
+            0.653388823610813,
+            0.8640633938859026
+          ]
+        },
+        "CHALLENGER": {
+          "n": 418,
+          "wins": 308,
+          "accuracy": 0.7368421052631579,
+          "wilson95": [
+            0.6926087707839945,
+            0.7767618798711866
+          ]
+        }
+      },
+      "atp_share": 0.12184873949579832
+    },
+    "below_50": {
+      "n": 549,
+      "wins": 304,
+      "losses": 245,
+      "accuracy": 0.5537340619307832,
+      "wilson95": [
+        0.5119213394823944,
+        0.5948000343556986
+      ],
+      "mean_confidence": 0.5698117795992714,
+      "calibration_gap": 0.0160777176684882,
+      "brier": 0.24663591904916757,
+      "log_loss": 0.6863974449112257,
+      "mean_min_matches": 108.38979963570128,
+      "median_min_matches": 52.0,
+      "surface_known": 487,
+      "surface_missing": 62,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 48,
+          "wins": 26,
+          "accuracy": 0.5416666666666666,
+          "wilson95": [
+            0.40291074545649797,
+            0.6742475770713254
+          ]
+        },
+        "CHALLENGER": {
+          "n": 501,
+          "wins": 278,
+          "accuracy": 0.5548902195608783,
+          "wilson95": [
+            0.5111186795610629,
+            0.5978264140698755
+          ]
+        }
+      },
+      "atp_share": 0.08743169398907104
+    },
+    "holdout": {
+      "n": 1025,
+      "wins": 657,
+      "losses": 368,
+      "accuracy": 0.6409756097560976,
+      "wilson95": [
+        0.6111317615508076,
+        0.6697667165599648
+      ],
+      "mean_confidence": 0.6536232595121951,
+      "calibration_gap": 0.012647649756097556,
+      "brier": 0.21798475949752877,
+      "log_loss": 0.6252467254194183,
+      "mean_min_matches": 101.92975609756098,
+      "median_min_matches": 47.0,
+      "surface_known": 908,
+      "surface_missing": 117,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 106,
+          "wins": 71,
+          "accuracy": 0.6698113207547169,
+          "wilson95": [
+            0.5757250138573776,
+            0.7520200870044619
+          ]
+        },
+        "CHALLENGER": {
+          "n": 919,
+          "wins": 586,
+          "accuracy": 0.6376496191512514,
+          "wilson95": [
+            0.6060586133063476,
+            0.6680946527631143
+          ]
+        }
+      },
+      "atp_share": 0.10341463414634146
+    }
+  },
+  "retrospective_bands": {
+    "top_40": {
+      "n": 1289,
+      "wins": 1000,
+      "losses": 289,
+      "accuracy": 0.7757951900698216,
+      "wilson95": [
+        0.7522271766391938,
+        0.7977242463671205
+      ],
+      "mean_confidence": 0.7728248844065166,
+      "calibration_gap": -0.0029703056633049174,
+      "brier": 0.1692432424209201,
+      "log_loss": 0.5184452438332962,
+      "mean_min_matches": 101.47013188518231,
+      "median_min_matches": 46.0,
+      "surface_known": 1117,
+      "surface_missing": 172,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 280,
+          "wins": 223,
+          "accuracy": 0.7964285714285714,
+          "wilson95": [
+            0.7454025713741239,
+            0.8394309504436457
+          ]
+        },
+        "CHALLENGER": {
+          "n": 1009,
+          "wins": 777,
+          "accuracy": 0.7700693756194251,
+          "wilson95": [
+            0.7431104608821423,
+            0.7949796767733331
+          ]
+        }
+      },
+      "atp_share": 0.21722265321955003
+    },
+    "band_40_45": {
+      "n": 161,
+      "wins": 107,
+      "losses": 54,
+      "accuracy": 0.6645962732919255,
+      "wilson95": [
+        0.5885846757162543,
+        0.7329363808138909
+      ],
+      "mean_confidence": 0.6718957267080745,
+      "calibration_gap": 0.0072994534161490154,
+      "brier": 0.22356544653670807,
+      "log_loss": 0.6394317776213045,
+      "mean_min_matches": 112.24223602484471,
+      "median_min_matches": 62.0,
+      "surface_known": 142,
+      "surface_missing": 19,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 23,
+          "wins": 17,
+          "accuracy": 0.7391304347826086,
+          "wilson95": [
+            0.5352999516257462,
+            0.8745138395501366
+          ]
+        },
+        "CHALLENGER": {
+          "n": 138,
+          "wins": 90,
+          "accuracy": 0.6521739130434783,
+          "wilson95": [
+            0.5695636217454384,
+            0.7265416238519958
+          ]
+        }
+      },
+      "atp_share": 0.14285714285714285
+    },
+    "band_45_50": {
+      "n": 161,
+      "wins": 90,
+      "losses": 71,
+      "accuracy": 0.5590062111801242,
+      "wilson95": [
+        0.48182385896909463,
+        0.6334384065794478
+      ],
+      "mean_confidence": 0.6537950559006211,
+      "calibration_gap": 0.09478884472049698,
+      "brier": 0.2558609148644099,
+      "log_loss": 0.7061314038810768,
+      "mean_min_matches": 130.9937888198758,
+      "median_min_matches": 86.0,
+      "surface_known": 142,
+      "surface_missing": 19,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 27,
+          "wins": 15,
+          "accuracy": 0.5555555555555556,
+          "wilson95": [
+            0.3731302451322448,
+            0.72414141822977
+          ]
+        },
+        "CHALLENGER": {
+          "n": 134,
+          "wins": 75,
+          "accuracy": 0.5597014925373134,
+          "wilson95": [
+            0.4751485749972079,
+            0.6409268070894905
+          ]
+        }
+      },
+      "atp_share": 0.16770186335403728
+    },
+    "band_below_50": {
+      "n": 1612,
+      "wins": 919,
+      "losses": 693,
+      "accuracy": 0.5700992555831266,
+      "wilson95": [
+        0.545793651899927,
+        0.5940715550275794
+      ],
+      "mean_confidence": 0.5709324274193548,
+      "calibration_gap": 0.0008331718362282192,
+      "brier": 0.2441184405809969,
+      "log_loss": 0.6812901634655686,
+      "mean_min_matches": 119.43858560794045,
+      "median_min_matches": 64.0,
+      "surface_known": 1412,
+      "surface_missing": 200,
+      "by_tier": {
+        "ATP_MAIN": {
+          "n": 247,
+          "wins": 148,
+          "accuracy": 0.5991902834008097,
+          "wilson95": [
+            0.5370065447062832,
+            0.6583359645837225
+          ]
+        },
+        "CHALLENGER": {
+          "n": 1365,
+          "wins": 771,
+          "accuracy": 0.5648351648351648,
+          "wilson95": [
+            0.5383886803025107,
+            0.5909177480346991
+          ]
+        }
+      },
+      "atp_share": 0.1532258064516129
+    },
+    "cutoffs": {
+      "k40": 1289,
+      "k45": 1450,
+      "k50": 1611
+    }
+  },
+  "marginal_pool": {
+    "n": 101,
+    "wins": 59,
+    "losses": 42,
+    "accuracy": 0.5841584158415841,
+    "wilson95": [
+      0.48668116469928946,
+      0.6754684294710318
+    ],
+    "mean_confidence": 0.6658084356435644,
+    "calibration_gap": 0.08165001980198028,
+    "brier": 0.24889345420431683,
+    "log_loss": 0.6918786314823373,
+    "mean_min_matches": 109.25742574257426,
+    "median_min_matches": 60.0,
+    "surface_known": 88,
+    "surface_missing": 13,
+    "by_tier": {
+      "ATP_MAIN": {
+        "n": 8,
+        "wins": 6,
+        "accuracy": 0.75,
+        "wilson95": [
+          0.40927543031016883,
+          0.9285207872478909
+        ]
+      },
+      "CHALLENGER": {
+        "n": 93,
+        "wins": 53,
+        "accuracy": 0.5698924731182796,
+        "wilson95": [
+          0.46847525612254926,
+          0.66576477039409
+        ]
+      }
+    },
+    "atp_share": 0.07920792079207921
+  },
+  "marginal_pool_vs_core": {
+    "difference": -0.1998415841584159,
+    "ci95": [
+      -0.30470487417910275,
+      -0.09830096305594108
+    ]
+  },
+  "marginal_pool_vs_holdout": {
+    "difference": -0.05681719391451345,
+    "ci95": [
+      -0.15845745326704402,
+      0.03924619070580018
+    ]
+  },
+  "factor_screens": {
+    "holdout_all": {
+      "label": "Nov holdout (1,025)",
+      "n": 1025,
+      "errors": 368,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "n_present": 919,
+          "n_absent": 106,
+          "error_rate_present": 0.36235038084874865,
+          "error_rate_absent": 0.330188679245283,
+          "risk_difference": 0.03216170160346565,
+          "risk_difference_ci95": [
+            -0.06672779843171386,
+            0.12023140637529943
+          ],
+          "odds_ratio": 1.1527547537786447,
+          "odds_ratio_ci95": [
+            0.7524624513069035,
+            1.7659931336790042
+          ],
+          "fisher_p": 0.5930664277643911,
+          "fdr_q": 0.6620320806723843
+        },
+        {
+          "factor": "surface_missing",
+          "n_present": 117,
+          "n_absent": 908,
+          "error_rate_present": 0.3418803418803419,
+          "error_rate_absent": 0.36123348017621143,
+          "risk_difference": -0.019353138295869543,
+          "risk_difference_ci95": [
+            -0.10514695779718286,
+            0.07546815312518862
+          ],
+          "odds_ratio": 0.9185936015204308,
+          "odds_ratio_ci95": [
+            0.6125025775212408,
+            1.3776500470726811
+          ],
+          "fisher_p": 0.7588742769509002,
+          "fdr_q": 0.7926020225931623
+        },
+        {
+          "factor": "round_qualifying",
+          "n_present": 301,
+          "n_absent": 724,
+          "error_rate_present": 0.4019933554817276,
+          "error_rate_absent": 0.3411602209944751,
+          "risk_difference": 0.06083313448725247,
+          "risk_difference_ci95": [
+            -0.0035243000246358847,
+            0.126394678497564
+          ],
+          "odds_ratio": 1.2981781376518218,
+          "odds_ratio_ci95": [
+            0.984150411827528,
+            1.7124074296201124
+          ],
+          "fisher_p": 0.07382213666539712,
+          "fdr_q": 0.16522097253684118
+        },
+        {
+          "factor": "round_unknown",
+          "n_present": 54,
+          "n_absent": 971,
+          "error_rate_present": 0.2777777777777778,
+          "error_rate_absent": 0.3635427394438723,
+          "risk_difference": -0.08576496166609449,
+          "risk_difference_ci95": [
+            -0.19192202130306202,
+            0.04867488186457575
+          ],
+          "odds_ratio": 0.6733493135759425,
+          "odds_ratio_ci95": [
+            0.3659866018379284,
+            1.238841246691249
+          ],
+          "fisher_p": 0.2438723517060838,
+          "fdr_q": 0.36974195258664316
+        },
+        {
+          "factor": "any_ambiguous",
+          "n_present": 68,
+          "n_absent": 957,
+          "error_rate_present": 0.39705882352941174,
+          "error_rate_absent": 0.3563218390804598,
+          "risk_difference": 0.04073698444895196,
+          "risk_difference_ci95": [
+            -0.07136650332367662,
+            0.16317747164770474
+          ],
+          "odds_ratio": 1.1896144767899293,
+          "odds_ratio_ci95": [
+            0.7190455841133385,
+            1.968140316351781
+          ],
+          "fisher_p": 0.5145609645625322,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "any_no_history",
+          "n_present": 217,
+          "n_absent": 808,
+          "error_rate_present": 0.39631336405529954,
+          "error_rate_absent": 0.349009900990099,
+          "risk_difference": 0.04730346306520056,
+          "risk_difference_ci95": [
+            -0.023818400073656376,
+            0.1209932290452267
+          ],
+          "odds_ratio": 1.2245141031887825,
+          "odds_ratio_ci95": [
+            0.8998359007675244,
+            1.6663424827007567
+          ],
+          "fisher_p": 0.20296522114118512,
+          "fdr_q": 0.3289436342633
+        },
+        {
+          "factor": "fav_no_history",
+          "n_present": 114,
+          "n_absent": 911,
+          "error_rate_present": 0.5175438596491229,
+          "error_rate_absent": 0.3391877058177827,
+          "risk_difference": 0.17835615383134018,
+          "risk_difference_ci95": [
+            0.08229900798934052,
+            0.2728955598754891
+          ],
+          "odds_ratio": 2.089908796704913,
+          "odds_ratio_ci95": [
+            1.41197405000203,
+            3.0933421039418523
+          ],
+          "fisher_p": 0.0002661445747121037,
+          "fdr_q": 0.0012508795011468873
+        },
+        {
+          "factor": "dog_no_history",
+          "n_present": 124,
+          "n_absent": 901,
+          "error_rate_present": 0.28225806451612906,
+          "error_rate_absent": 0.36958934517203107,
+          "risk_difference": -0.08733128065590201,
+          "risk_difference_ci95": [
+            -0.16590076280478416,
+            0.0029605971407676707
+          ],
+          "odds_ratio": 0.670783142693255,
+          "odds_ratio_ci95": [
+            0.443483932719766,
+            1.0145802166090188
+          ],
+          "fisher_p": 0.05849177830904753,
+          "fdr_q": 0.1527285322514019
+        },
+        {
+          "factor": "history_recovered",
+          "n_present": 986,
+          "n_absent": 39,
+          "error_rate_present": 0.35699797160243407,
+          "error_rate_absent": 0.41025641025641024,
+          "risk_difference": -0.05325843865397617,
+          "risk_difference_ci95": [
+            -0.21155067536887243,
+            0.08948126792175584
+          ],
+          "odds_ratio": 0.7981072555205048,
+          "odds_ratio_ci95": [
+            0.416141813240258,
+            1.5306685630908154
+          ],
+          "fisher_p": 0.5000198389560929,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "fav_recovered",
+          "n_present": 871,
+          "n_absent": 154,
+          "error_rate_present": 0.33983926521239954,
+          "error_rate_absent": 0.4675324675324675,
+          "risk_difference": -0.12769320232006798,
+          "risk_difference_ci95": [
+            -0.21210248799607975,
+            -0.04422339890043521
+          ],
+          "odds_ratio": 0.586280193236715,
+          "odds_ratio_ci95": [
+            0.41471466327375417,
+            0.8288215860715457
+          ],
+          "fisher_p": 0.0026489180662021493,
+          "fdr_q": 0.010280096388217657
+        },
+        {
+          "factor": "dog_recovered",
+          "n_present": 836,
+          "n_absent": 189,
+          "error_rate_present": 0.37200956937799046,
+          "error_rate_absent": 0.30158730158730157,
+          "risk_difference": 0.07042226779068889,
+          "risk_difference_ci95": [
+            -0.005545356660839093,
+            0.139860386186278
+          ],
+          "odds_ratio": 1.3718295739348372,
+          "odds_ratio_ci95": [
+            0.9756176112006698,
+            1.9289487585266183
+          ],
+          "fisher_p": 0.0777591350517969,
+          "fdr_q": 0.1661217885197479
+        },
+        {
+          "factor": "min_matches_lt10",
+          "n_present": 199,
+          "n_absent": 826,
+          "error_rate_present": 0.33668341708542715,
+          "error_rate_absent": 0.3644067796610169,
+          "risk_difference": -0.02772336257558977,
+          "risk_difference_ci95": [
+            -0.09814989969824484,
+            0.04766339202796241
+          ],
+          "odds_ratio": 0.885306553911205,
+          "odds_ratio_ci95": [
+            0.6387832759981668,
+            1.2269696528504337
+          ],
+          "fisher_p": 0.5103869583677584,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "n_present": 80,
+          "n_absent": 945,
+          "error_rate_present": 0.575,
+          "error_rate_absent": 0.34074074074074073,
+          "risk_difference": 0.23425925925925922,
+          "risk_difference_ci95": [
+            0.12069328570547211,
+            0.340862234981979
+          ],
+          "odds_ratio": 2.6176470588235294,
+          "odds_ratio_ci95": [
+            1.64713450914639,
+            4.159997915482015
+          ],
+          "fisher_p": 4.9156453701463546e-05,
+          "fdr_q": 0.0002567059248854207
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "n_present": 157,
+          "n_absent": 868,
+          "error_rate_present": 0.25477707006369427,
+          "error_rate_absent": 0.3778801843317972,
+          "risk_difference": -0.12310311426810294,
+          "risk_difference_ci95": [
+            -0.19297829472531214,
+            -0.04312313582554324
+          ],
+          "odds_ratio": 0.5628517823639775,
+          "odds_ratio_ci95": [
+            0.3832567842696213,
+            0.826605403773977
+          ],
+          "fisher_p": 0.00284343091588999,
+          "fdr_q": 0.010280096388217657
+        },
+        {
+          "factor": "min_surface_lt5",
+          "n_present": 383,
+          "n_absent": 642,
+          "error_rate_present": 0.34464751958224543,
+          "error_rate_absent": 0.367601246105919,
+          "risk_difference": -0.022953726523673557,
+          "risk_difference_ci95": [
+            -0.08248548393500686,
+            0.03803209485037858
+          ],
+          "odds_ratio": 0.9047201026402863,
+          "odds_ratio_ci95": [
+            0.6942105806351799,
+            1.1790636543922057
+          ],
+          "fisher_p": 0.501009548047246,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "n_present": 241,
+          "n_absent": 784,
+          "error_rate_present": 0.42323651452282157,
+          "error_rate_absent": 0.3392857142857143,
+          "risk_difference": 0.08395080023710727,
+          "risk_difference_ci95": [
+            0.014453726879796652,
+            0.15483366571914162
+          ],
+          "odds_ratio": 1.4290041650889815,
+          "odds_ratio_ci95": [
+            1.0637039328008722,
+            1.919756842925892
+          ],
+          "fisher_p": 0.02114335619664364,
+          "fdr_q": 0.06766140173821159
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "n_present": 28,
+          "n_absent": 997,
+          "error_rate_present": 0.5,
+          "error_rate_absent": 0.3550651955867603,
+          "risk_difference": 0.1449348044132397,
+          "risk_difference_ci95": [
+            -0.03134158812353685,
+            0.321023946012457
+          ],
+          "odds_ratio": 1.8163841807909604,
+          "odds_ratio_ci95": [
+            0.8562269618484396,
+            3.8532441037656175
+          ],
+          "fisher_p": 0.16044457345027835,
+          "fdr_q": 0.2693176768629672
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "n_present": 97,
+          "n_absent": 928,
+          "error_rate_present": 0.29896907216494845,
+          "error_rate_absent": 0.36530172413793105,
+          "risk_difference": -0.0663326519729826,
+          "risk_difference_ci95": [
+            -0.15418762803665273,
+            0.035632771659333304
+          ],
+          "odds_ratio": 0.7409769217421481,
+          "odds_ratio_ci95": [
+            0.4702224780820596,
+            1.1676319702833393
+          ],
+          "fisher_p": 0.22149464173546632,
+          "fdr_q": 0.34700827205223056
+        },
+        {
+          "factor": "inactivity_missing",
+          "n_present": 49,
+          "n_absent": 976,
+          "error_rate_present": 0.4897959183673469,
+          "error_rate_absent": 0.3524590163934426,
+          "risk_difference": 0.1373369019739043,
+          "risk_difference_ci95": [
+            -0.0001333613482625562,
+            0.27600483873579124
+          ],
+          "odds_ratio": 1.763720930232558,
+          "odds_ratio_ci95": [
+            0.99216154698828,
+            3.1352873220928665
+          ],
+          "fisher_p": 0.06599378508254974,
+          "fdr_q": 0.1632477841515704
+        },
+        {
+          "factor": "side_changed",
+          "n_present": 199,
+          "n_absent": 826,
+          "error_rate_present": 0.457286432160804,
+          "error_rate_absent": 0.3353510895883777,
+          "risk_difference": 0.12193534257242628,
+          "risk_difference_ci95": [
+            0.04662047841379971,
+            0.1980682102755193
+          ],
+          "odds_ratio": 1.6699759326113117,
+          "odds_ratio_ci95": [
+            1.2198478649236943,
+            2.2862028091310145
+          ],
+          "fisher_p": 0.0017138782336551734,
+          "fdr_q": 0.0073229342710721046
+        },
+        {
+          "factor": "market_available",
+          "n_present": 83,
+          "n_absent": 942,
+          "error_rate_present": 0.40963855421686746,
+          "error_rate_absent": 0.35456475583864117,
+          "risk_difference": 0.05507379837822629,
+          "risk_difference_ci95": [
+            -0.049177323396474903,
+            0.16665867220781255
+          ],
+          "odds_ratio": 1.2631064401808627,
+          "odds_ratio_ci95": [
+            0.7994665509252109,
+            1.9956280564583904
+          ],
+          "fisher_p": 0.3402583512749468,
+          "fdr_q": 0.4846103790885606
+        },
+        {
+          "factor": "market_disagrees",
+          "n_present": 23,
+          "n_absent": 1002,
+          "error_rate_present": 0.8260869565217391,
+          "error_rate_absent": 0.34830339321357284,
+          "risk_difference": 0.4777835633081663,
+          "risk_difference_ci95": [
+            0.2780499837325049,
+            0.5858380866035626
+          ],
+          "odds_ratio": 8.887535816618911,
+          "odds_ratio_ci95": [
+            3.0000565619889703,
+            26.328934558259277
+          ],
+          "fisher_p": 4.656019339668923e-06,
+          "fdr_q": 2.7354113620554923e-05
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "n_present": 294,
+          "n_absent": 731,
+          "error_rate_present": 0.46938775510204084,
+          "error_rate_absent": 0.3146374829001368,
+          "risk_difference": 0.15475027220190402,
+          "risk_difference_ci95": [
+            0.08870375796142595,
+            0.2204881143880852
+          ],
+          "odds_ratio": 1.926923076923077,
+          "odds_ratio_ci95": [
+            1.4604439533042228,
+            2.5423998887311234
+          ],
+          "fisher_p": 3.915345905295179e-06,
+          "fdr_q": 2.6288751078410484e-05
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "n_present": 186,
+          "n_absent": 839,
+          "error_rate_present": 0.16129032258064516,
+          "error_rate_absent": 0.4028605482717521,
+          "risk_difference": -0.24157022569110695,
+          "risk_difference_ci95": [
+            -0.29843944810720163,
+            -0.17358443068975066
+          ],
+          "odds_ratio": 0.28504779244424217,
+          "odds_ratio_ci95": [
+            0.18834631705901256,
+            0.43139810348337143
+          ],
+          "fisher_p": 1.2873297997672494e-10,
+          "fdr_q": 1.5126125147265181e-09
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "n_present": 244,
+          "n_absent": 781,
+          "error_rate_present": 0.3770491803278688,
+          "error_rate_absent": 0.353393085787452,
+          "risk_difference": 0.02365609454041684,
+          "risk_difference_ci95": [
+            -0.0440584850395072,
+            0.09400820165070174
+          ],
+          "odds_ratio": 1.1074561403508771,
+          "odds_ratio_ci95": [
+            0.8224128098642571,
+            1.4912937737476317
+          ],
+          "fisher_p": 0.5408959026661803,
+          "fdr_q": 0.6200514006173286
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "n_present": 326,
+          "n_absent": 699,
+          "error_rate_present": 0.3496932515337423,
+          "error_rate_absent": 0.36337625178826893,
+          "risk_difference": -0.013683000254526623,
+          "risk_difference_ci95": [
+            -0.0752698505910334,
+            0.04993514203144084
+          ],
+          "odds_ratio": 0.9420962709849948,
+          "odds_ratio_ci95": [
+            0.7156571609992706,
+            1.2401823557030507
+          ],
+          "fisher_p": 0.7267316143164885,
+          "fdr_q": 0.7762814971107944
+        },
+        {
+          "factor": "candidate_multi",
+          "n_present": 68,
+          "n_absent": 957,
+          "error_rate_present": 0.39705882352941174,
+          "error_rate_absent": 0.3563218390804598,
+          "risk_difference": 0.04073698444895196,
+          "risk_difference_ci95": [
+            -0.07136650332367662,
+            0.16317747164770474
+          ],
+          "odds_ratio": 1.1896144767899293,
+          "odds_ratio_ci95": [
+            0.7190455841133385,
+            1.968140316351781
+          ],
+          "fisher_p": 0.5145609645625322,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "qualifying",
+          "n_present": 301,
+          "n_absent": 724,
+          "error_rate_present": 0.4019933554817276,
+          "error_rate_absent": 0.3411602209944751,
+          "risk_difference": 0.06083313448725247,
+          "risk_difference_ci95": [
+            -0.0035243000246358847,
+            0.126394678497564
+          ],
+          "odds_ratio": 1.2981781376518218,
+          "odds_ratio_ci95": [
+            0.984150411827528,
+            1.7124074296201124
+          ],
+          "fisher_p": 0.07382213666539712,
+          "fdr_q": 0.16522097253684118
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 0.6204187010869565,
+          "mean_correct": 0.6722218554033486,
+          "smd": -0.49515840476745066,
+          "smd_ci95": [
+            -0.6245614882501765,
+            -0.36575532128472477
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 3.00483386365678e-12
+        },
+        {
+          "factor": "elo_gap",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 90.4677596889518,
+          "mean_correct": 135.57782137875512,
+          "smd": -0.48278428806917084,
+          "smd_ci95": [
+            -0.6120997234696437,
+            -0.35346885266869804
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 3.9638245785035665e-12
+        },
+        {
+          "factor": "abs_elo_gap",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 90.4677596889518,
+          "mean_correct": 135.57782137875512,
+          "smd": -0.48278428806917084,
+          "smd_ci95": [
+            -0.6120997234696437,
+            -0.35346885266869804
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 3.9638245785035665e-12
+        },
+        {
+          "factor": "surface_elo_gap",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 69.48174250772722,
+          "mean_correct": 106.43758119165993,
+          "smd": -0.35148582944281065,
+          "smd_ci95": [
+            -0.48000516571079355,
+            -0.22296649317482778
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 6.508973633210574e-07
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 81.63329697758014,
+          "mean_correct": 117.7079751665205,
+          "smd": -0.38517442651825806,
+          "smd_ci95": [
+            -0.51387455871631,
+            -0.2564742943202061
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 4.2017820811072774e-08
+        },
+        {
+          "factor": "favourite_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 185.52445652173913,
+          "mean_correct": 209.50532724505328,
+          "smd": -0.1335262872602272,
+          "smd_ci95": [
+            -0.26127262197985124,
+            -0.005779952540603123
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.11511999342113723
+        },
+        {
+          "factor": "underdog_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 155.97554347826087,
+          "mean_correct": 143.3820395738204,
+          "smd": 0.07388773096134031,
+          "smd_ci95": [
+            -0.05376784607443462,
+            0.20154330799711523
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.37689743224526334
+        },
+        {
+          "factor": "min_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 98.58152173913044,
+          "mean_correct": 103.80517503805174,
+          "smd": -0.041573952762217155,
+          "smd_ci95": [
+            -0.16920214277999782,
+            0.08605423725556352
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.6147420307235973
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 84.67391304347827,
+          "mean_correct": 96.86910197869102,
+          "smd": -0.11346794259477175,
+          "smd_ci95": [
+            -0.2411779354206945,
+            0.014242050231150993
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.16677847380787222
+        },
+        {
+          "factor": "min_surface_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 38.12228260869565,
+          "mean_correct": 37.143074581430746,
+          "smd": 0.01576278702420769,
+          "smd_ci95": [
+            -0.11185453811653776,
+            0.14338011216495314
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.8262934664056425
+        },
+        {
+          "factor": "inactivity_favourite",
+          "n_error": 349,
+          "n_correct": 652,
+          "mean_error": 18.94877328780862,
+          "mean_correct": 20.292033687547484,
+          "smd": -0.013550323727760978,
+          "smd_ci95": [
+            -0.14354726851477695,
+            0.116446621059255
+          ],
+          "missing_error": 19,
+          "missing_correct": 5,
+          "fdr_q": 0.8381204484929128
+        },
+        {
+          "factor": "inactivity_underdog",
+          "n_error": 362,
+          "n_correct": 637,
+          "mean_error": 22.676991550853476,
+          "mean_correct": 39.9082901447459,
+          "smd": -0.10838772297922375,
+          "smd_ci95": [
+            -0.2374803231487212,
+            0.020704877190273696
+          ],
+          "missing_error": 6,
+          "missing_correct": 20,
+          "fdr_q": 0.18770698958860715
+        },
+        {
+          "factor": "max_inactivity",
+          "n_error": 367,
+          "n_correct": 657,
+          "mean_error": 34.08374862161602,
+          "mean_correct": 52.32344170856852,
+          "smd": -0.09982030998421097,
+          "smd_ci95": [
+            -0.22762034639720785,
+            0.027979726428785892
+          ],
+          "missing_error": 1,
+          "missing_correct": 0,
+          "fdr_q": 0.21899130526585586
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 35.04076086956522,
+          "mean_correct": 38.602739726027394,
+          "smd": -0.14978146210346038,
+          "smd_ci95": [
+            -0.2775615688069699,
+            -0.02200135539995085
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.06766140173821159
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 30.98641304347826,
+          "mean_correct": 27.815829528158297,
+          "smd": 0.13277293828445277,
+          "smd_ci95": [
+            0.005028074970697016,
+            0.26051780159820853
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.11511999342113723
+        },
+        {
+          "factor": "max_delta_matches",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 42.05434782608695,
+          "mean_correct": 44.32115677321157,
+          "smd": -0.10404718206027878,
+          "smd_ci95": [
+            -0.2317421404054269,
+            0.023647776284869318
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.19932684609324894
+        },
+        {
+          "factor": "divergence_favourite",
+          "n_error": 368,
+          "n_correct": 657,
+          "mean_error": 261.8150838611469,
+          "mean_correct": 298.21868312648274,
+          "smd": -0.059279294590261954,
+          "smd_ci95": [
+            -0.18692059264375613,
+            0.06836200346323221
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5013677234403188
+        },
+        {
+          "factor": "market_confidence",
+          "n_error": 34,
+          "n_correct": 49,
+          "mean_error": 0.683074486347264,
+          "mean_correct": 0.7261359201464632,
+          "smd": -0.3728403402272805,
+          "smd_ci95": [
+            -0.8139730578150155,
+            0.06829237736045446
+          ],
+          "missing_error": 334,
+          "missing_correct": 608,
+          "fdr_q": 0.18770698958860715
+        },
+        {
+          "factor": "market_gap",
+          "n_error": 34,
+          "n_correct": 49,
+          "mean_error": -0.05139442752373458,
+          "mean_correct": -0.06577432830972849,
+          "smd": 0.11531864460429822,
+          "smd_ci95": [
+            -0.32250431507345034,
+            0.5531416042820468
+          ],
+          "missing_error": 334,
+          "missing_correct": 608,
+          "fdr_q": 0.6620320806723843
+        }
+      ],
+      "note": "Exploratory factor screen. p-values are unadjusted Fisher exact / normal-approximation values with Benjamini-Hochberg q-values; no factor is confirmatory and no correction is applied to forecasts."
+    },
+    "full_settled": {
+      "label": "3,223 settled",
+      "n": 3223,
+      "errors": 1107,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "n_present": 2646,
+          "n_absent": 577,
+          "error_rate_present": 0.3526077097505669,
+          "error_rate_absent": 0.30155979202772965,
+          "risk_difference": 0.05104791772283723,
+          "risk_difference_ci95": [
+            0.008413606054671237,
+            0.09151004322535672
+          ],
+          "odds_ratio": 1.2614791553435192,
+          "odds_ratio_ci95": [
+            1.0381369272382392,
+            1.5328706817121136
+          ],
+          "fisher_p": 0.02019119450650494,
+          "fdr_q": 0.036499466992528165
+        },
+        {
+          "factor": "surface_missing",
+          "n_present": 410,
+          "n_absent": 2813,
+          "error_rate_present": 0.3024390243902439,
+          "error_rate_absent": 0.34944898684678277,
+          "risk_difference": -0.04700996245653888,
+          "risk_difference_ci95": [
+            -0.09305272125639111,
+            0.0022887684971095723
+          ],
+          "odds_ratio": 0.8071480909731163,
+          "odds_ratio_ci95": [
+            0.6448173605901976,
+            1.010345069129719
+          ],
+          "fisher_p": 0.06615045683842369,
+          "fdr_q": 0.0971584834814348
+        },
+        {
+          "factor": "round_qualifying",
+          "n_present": 564,
+          "n_absent": 2659,
+          "error_rate_present": 0.39184397163120566,
+          "error_rate_absent": 0.3332079729221512,
+          "risk_difference": 0.05863599870905445,
+          "risk_difference_ci95": [
+            0.015234634934702992,
+            0.10317784589707243
+          ],
+          "odds_ratio": 1.2893569552942106,
+          "odds_ratio_ci95": [
+            1.0691201564765516,
+            1.5549621322680753
+          ],
+          "fisher_p": 0.008381980918207983,
+          "fdr_q": 0.01790695923435342
+        },
+        {
+          "factor": "round_unknown",
+          "n_present": 171,
+          "n_absent": 3052,
+          "error_rate_present": 0.2222222222222222,
+          "error_rate_absent": 0.350262123197903,
+          "risk_difference": -0.1280399009756808,
+          "risk_difference_ci95": [
+            -0.18642333648724088,
+            -0.057985448835428346
+          ],
+          "odds_ratio": 0.5300013363624215,
+          "odds_ratio_ci95": [
+            0.3667827322486765,
+            0.7658523475840818
+          ],
+          "fisher_p": 0.000483959984728829,
+          "fdr_q": 0.001197164172750261
+        },
+        {
+          "factor": "any_ambiguous",
+          "n_present": 189,
+          "n_absent": 3034,
+          "error_rate_present": 0.38095238095238093,
+          "error_rate_absent": 0.34113381674357285,
+          "risk_difference": 0.03981856420880808,
+          "risk_difference_ci95": [
+            -0.028553963415129793,
+            0.1127006996925654
+          ],
+          "odds_ratio": 1.1885544407283537,
+          "odds_ratio_ci95": [
+            0.8778495612899445,
+            1.6092297824917432
+          ],
+          "fisher_p": 0.2696275173280221,
+          "fdr_q": 0.32897097915771883
+        },
+        {
+          "factor": "any_no_history",
+          "n_present": 559,
+          "n_absent": 2664,
+          "error_rate_present": 0.38998211091234347,
+          "error_rate_absent": 0.3337087087087087,
+          "risk_difference": 0.05627340220363475,
+          "risk_difference_ci95": [
+            0.012763438427487672,
+            0.10096149669752182
+          ],
+          "odds_ratio": 1.2764350204025083,
+          "odds_ratio_ci95": [
+            1.057594229613346,
+            1.5405590496703212
+          ],
+          "fisher_p": 0.012429231865438822,
+          "fdr_q": 0.023366955907024988
+        },
+        {
+          "factor": "fav_no_history",
+          "n_present": 271,
+          "n_absent": 2952,
+          "error_rate_present": 0.5092250922509225,
+          "error_rate_absent": 0.3282520325203252,
+          "risk_difference": 0.1809730597305973,
+          "risk_difference_ci95": [
+            0.11930815227147791,
+            0.24226713017577442
+          ],
+          "odds_ratio": 2.123373449102633,
+          "odds_ratio_ci95": [
+            1.6532837773628577,
+            2.7271269857530647
+          ],
+          "fisher_p": 4.611146730085125e-09,
+          "fdr_q": 2.167238963140009e-08
+        },
+        {
+          "factor": "dog_no_history",
+          "n_present": 329,
+          "n_absent": 2894,
+          "error_rate_present": 0.2948328267477204,
+          "error_rate_absent": 0.34899792674498964,
+          "risk_difference": -0.05416509999726926,
+          "risk_difference_ci95": [
+            -0.10403192056160787,
+            3.190268360710874e-05
+          ],
+          "odds_ratio": 0.7799078183680437,
+          "odds_ratio_ci95": [
+            0.6079979574985676,
+            1.0004247508562303
+          ],
+          "fisher_p": 0.0501565627514961,
+          "fdr_q": 0.07604382094581667
+        },
+        {
+          "factor": "history_recovered",
+          "n_present": 3078,
+          "n_absent": 145,
+          "error_rate_present": 0.34080571799870046,
+          "error_rate_absent": 0.4,
+          "risk_difference": -0.05919428200129956,
+          "risk_difference_ci95": [
+            -0.14218485234349304,
+            0.018829945939683207
+          ],
+          "odds_ratio": 0.775505174963036,
+          "odds_ratio_ci95": [
+            0.5517041931285529,
+            1.090091907737802
+          ],
+          "fisher_p": 0.15233603492670966,
+          "fdr_q": 0.20456553261586727
+        },
+        {
+          "factor": "fav_recovered",
+          "n_present": 2779,
+          "n_absent": 444,
+          "error_rate_present": 0.3238575026988125,
+          "error_rate_absent": 0.46621621621621623,
+          "risk_difference": -0.1423587135174037,
+          "risk_difference_ci95": [
+            -0.19191193881268037,
+            -0.09317663370589686
+          ],
+          "odds_ratio": 0.5483953074021797,
+          "odds_ratio_ci95": [
+            0.4477864469833973,
+            0.6716090118553357
+          ],
+          "fisher_p": 9.84135917347391e-09,
+          "fdr_q": 4.20494437412067e-08
+        },
+        {
+          "factor": "dog_recovered",
+          "n_present": 2659,
+          "n_absent": 564,
+          "error_rate_present": 0.3512598721323806,
+          "error_rate_absent": 0.3067375886524823,
+          "risk_difference": 0.044522283479898284,
+          "risk_difference_ci95": [
+            0.001368106455089009,
+            0.0855024389490894
+          ],
+          "odds_ratio": 1.22373795761079,
+          "odds_ratio_ci95": [
+            1.0060469144199944,
+            1.4885335538857902
+          ],
+          "fisher_p": 0.04533822153030456,
+          "fdr_q": 0.07347918661807981
+        },
+        {
+          "factor": "min_matches_lt10",
+          "n_present": 471,
+          "n_absent": 2752,
+          "error_rate_present": 0.30148619957537154,
+          "error_rate_absent": 0.35065406976744184,
+          "risk_difference": -0.049167870192070307,
+          "risk_difference_ci95": [
+            -0.09276910494361748,
+            -0.002782710387764266
+          ],
+          "odds_ratio": 0.7992629573050696,
+          "odds_ratio_ci95": [
+            0.6467049834127419,
+            0.9878094205319201
+          ],
+          "fisher_p": 0.040523759572899956,
+          "fdr_q": 0.07054135925652955
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "n_present": 143,
+          "n_absent": 3080,
+          "error_rate_present": 0.6083916083916084,
+          "error_rate_absent": 0.33116883116883117,
+          "risk_difference": 0.2772227772227773,
+          "risk_difference_ci95": [
+            0.19367711085968195,
+            0.3551321473816317
+          ],
+          "odds_ratio": 3.1376050420168067,
+          "odds_ratio_ci95": [
+            2.2241867228637973,
+            4.426141608746641
+          ],
+          "fisher_p": 5.21990535169588e-11,
+          "fdr_q": 3.0666943941213295e-10
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "n_present": 380,
+          "n_absent": 2843,
+          "error_rate_present": 0.21052631578947367,
+          "error_rate_absent": 0.36123812873724936,
+          "risk_difference": -0.1507118129477757,
+          "risk_difference_ci95": [
+            -0.19267955062780207,
+            -0.10357498786632105
+          ],
+          "odds_ratio": 0.4715352158390133,
+          "odds_ratio_ci95": [
+            0.364224778415536,
+            0.6104622006871698
+          ],
+          "fisher_p": 2.4711054230413624e-09,
+          "fdr_q": 1.2904661653660449e-08
+        },
+        {
+          "factor": "min_surface_lt5",
+          "n_present": 992,
+          "n_absent": 2231,
+          "error_rate_present": 0.3336693548387097,
+          "error_rate_absent": 0.34782608695652173,
+          "risk_difference": -0.014156732117812043,
+          "risk_difference_ci95": [
+            -0.04910347887629125,
+            0.02156150282221015
+          ],
+          "odds_ratio": 0.9389183055975794,
+          "odds_ratio_ci95": [
+            0.8015843440707041,
+            1.0997814404774233
+          ],
+          "fisher_p": 0.4453632009613913,
+          "fdr_q": 0.49306297889222833
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "n_present": 562,
+          "n_absent": 2661,
+          "error_rate_present": 0.4092526690391459,
+          "error_rate_absent": 0.32957534761367907,
+          "risk_difference": 0.07967732142546685,
+          "risk_difference_ci95": [
+            0.03586447562528319,
+            0.12441963377686563
+          ],
+          "odds_ratio": 1.409240153315657,
+          "odds_ratio_ci95": [
+            1.1693950421873003,
+            1.6982779454943582
+          ],
+          "fisher_p": 0.00035535333252281184,
+          "fdr_q": 0.0009278670349206754
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "n_present": 145,
+          "n_absent": 3078,
+          "error_rate_present": 0.4206896551724138,
+          "error_rate_absent": 0.3398310591293047,
+          "risk_difference": 0.08085859604310908,
+          "risk_difference_ci95": [
+            0.0017389620630522684,
+            0.1639015740474722
+          ],
+          "odds_ratio": 1.410725666939816,
+          "odds_ratio_ci95": [
+            1.0060851090636678,
+            1.9781098929244236
+          ],
+          "fisher_p": 0.04901221867037073,
+          "fdr_q": 0.07604382094581667
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "n_present": 323,
+          "n_absent": 2900,
+          "error_rate_present": 0.2786377708978328,
+          "error_rate_absent": 0.3506896551724138,
+          "risk_difference": -0.07205188427458098,
+          "risk_difference_ci95": [
+            -0.12135527059872941,
+            -0.01798102603793026
+          ],
+          "odds_ratio": 0.7151809791484675,
+          "odds_ratio_ci95": [
+            0.5542466857666108,
+            0.9228450905904788
+          ],
+          "fisher_p": 0.00947142618027967,
+          "fdr_q": 0.018548209603047688
+        },
+        {
+          "factor": "inactivity_missing",
+          "n_present": 115,
+          "n_absent": 3108,
+          "error_rate_present": 0.3739130434782609,
+          "error_rate_absent": 0.34234234234234234,
+          "risk_difference": 0.03157070113591853,
+          "risk_difference_ci95": [
+            -0.05313486009126242,
+            0.12420853359716942
+          ],
+          "odds_ratio": 1.1472953216374269,
+          "odds_ratio_ci95": [
+            0.7807238426683287,
+            1.6859822681376961
+          ],
+          "fisher_p": 0.48524651726789153,
+          "fdr_q": 0.5068130291464645
+        },
+        {
+          "factor": "side_changed",
+          "n_present": 547,
+          "n_absent": 2676,
+          "error_rate_present": 0.4149908592321755,
+          "error_rate_absent": 0.32884902840059793,
+          "risk_difference": 0.08614183083157756,
+          "risk_difference_ci95": [
+            0.041755007089728555,
+            0.13142225095945978
+          ],
+          "odds_ratio": 1.4477698863636363,
+          "odds_ratio_ci95": [
+            1.1993645299661895,
+            1.7476235051910902
+          ],
+          "fisher_p": 0.000139269551096483,
+          "fdr_q": 0.0004091043063459188
+        },
+        {
+          "factor": "market_available",
+          "n_present": 501,
+          "n_absent": 2722,
+          "error_rate_present": 0.3473053892215569,
+          "error_rate_absent": 0.34276267450404113,
+          "risk_difference": 0.004542714717515772,
+          "risk_difference_ci95": [
+            -0.03968983252251227,
+            0.050736017179774655
+          ],
+          "odds_ratio": 1.0203054170722834,
+          "odds_ratio_ci95": [
+            0.8351686053064868,
+            1.2464826114063707
+          ],
+          "fisher_p": 0.837966346183163,
+          "fdr_q": 0.837966346183163
+        },
+        {
+          "factor": "market_disagrees",
+          "n_present": 108,
+          "n_absent": 3115,
+          "error_rate_present": 0.5925925925925926,
+          "error_rate_absent": 0.3348314606741573,
+          "risk_difference": 0.25776113191843525,
+          "risk_difference_ci95": [
+            0.16198375128070797,
+            0.34720773079512657
+          ],
+          "odds_ratio": 2.8895668090298963,
+          "odds_ratio_ci95": [
+            1.9544837686963503,
+            4.272021327358699
+          ],
+          "fisher_p": 8.278111551580545e-08,
+          "fdr_q": 3.2422603577023803e-07
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "n_present": 830,
+          "n_absent": 2393,
+          "error_rate_present": 0.45903614457831327,
+          "error_rate_absent": 0.3033848725449227,
+          "risk_difference": 0.15565127203339058,
+          "risk_difference_ci95": [
+            0.11715670914464431,
+            0.19417609843563538
+          ],
+          "odds_ratio": 1.9483977249719302,
+          "odds_ratio_ci95": [
+            1.6570496912541508,
+            2.2909715470286045
+          ],
+          "fisher_p": 2.9830713125207208e-12,
+          "fdr_q": 2.336739194807898e-11
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "n_present": 645,
+          "n_absent": 2578,
+          "error_rate_present": 0.16434108527131783,
+          "error_rate_absent": 0.3882854926299457,
+          "risk_difference": -0.2239444073586279,
+          "risk_difference_ci95": [
+            -0.25661053138117945,
+            -0.18814231334419484
+          ],
+          "odds_ratio": 0.3098237569480612,
+          "odds_ratio_ci95": [
+            0.2479436729254699,
+            0.38714744859920436
+          ],
+          "fisher_p": 3.915206572551602e-12,
+          "fdr_q": 2.6287815558560755e-11
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "n_present": 632,
+          "n_absent": 2591,
+          "error_rate_present": 0.3560126582278481,
+          "error_rate_absent": 0.340409108452335,
+          "risk_difference": 0.015603549775513093,
+          "risk_difference_ci95": [
+            -0.025176357727224923,
+            0.05773794067294769
+          ],
+          "odds_ratio": 1.0711778568921426,
+          "odds_ratio_ci95": [
+            0.8929578649261452,
+            1.2849676856711987
+          ],
+          "fisher_p": 0.45530669139409324,
+          "fdr_q": 0.49306297889222833
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "n_present": 1018,
+          "n_absent": 2205,
+          "error_rate_present": 0.33988212180746563,
+          "error_rate_absent": 0.34512471655328797,
+          "risk_difference": -0.005242594745822338,
+          "risk_difference_ci95": [
+            -0.04007222007993512,
+            0.030277573900381077
+          ],
+          "odds_ratio": 0.9769882986045929,
+          "odds_ratio_ci95": [
+            0.8353604029056544,
+            1.1426279391388618
+          ],
+          "fisher_p": 0.7801464141067992,
+          "fdr_q": 0.7971061187612949
+        },
+        {
+          "factor": "candidate_multi",
+          "n_present": 189,
+          "n_absent": 3034,
+          "error_rate_present": 0.38095238095238093,
+          "error_rate_absent": 0.34113381674357285,
+          "risk_difference": 0.03981856420880808,
+          "risk_difference_ci95": [
+            -0.028553963415129793,
+            0.1127006996925654
+          ],
+          "odds_ratio": 1.1885544407283537,
+          "odds_ratio_ci95": [
+            0.8778495612899445,
+            1.6092297824917432
+          ],
+          "fisher_p": 0.2696275173280221,
+          "fdr_q": 0.32897097915771883
+        },
+        {
+          "factor": "qualifying",
+          "n_present": 992,
+          "n_absent": 2231,
+          "error_rate_present": 0.3538306451612903,
+          "error_rate_absent": 0.3388614970865083,
+          "risk_difference": 0.014969148074782002,
+          "risk_difference_ci95": [
+            -0.02031844844274005,
+            0.0508921625370406
+          ],
+          "odds_ratio": 1.0683641631379541,
+          "odds_ratio_ci95": [
+            0.9132110633782543,
+            1.2498775265107465
+          ],
+          "fisher_p": 0.4216642279870792,
+          "fdr_q": 0.4884712178472232
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 0.626534758807588,
+          "mean_correct": 0.6788169125708885,
+          "smd": -0.4943340955218937,
+          "smd_ci95": [
+            -0.5680308759237271,
+            -0.4206373151200603
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 8.343624030236321e-38
+        },
+        {
+          "factor": "elo_gap",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 95.0854779209156,
+          "mean_correct": 142.17544803047628,
+          "smd": -0.4846428507602676,
+          "smd_ci95": [
+            -0.5583012611029269,
+            -0.4109844404176083
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 7.448536022609147e-37
+        },
+        {
+          "factor": "abs_elo_gap",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 95.0854779209156,
+          "mean_correct": 142.17544803047628,
+          "smd": -0.4846428507602676,
+          "smd_ci95": [
+            -0.5583012611029269,
+            -0.4109844404176083
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 7.448536022609147e-37
+        },
+        {
+          "factor": "surface_elo_gap",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 82.4634584514733,
+          "mean_correct": 117.03162913135037,
+          "smd": -0.2973725828695345,
+          "smd_ci95": [
+            -0.37043616051366346,
+            -0.22430900522540553
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 1.7594871964743112e-14
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 101.03642163018046,
+          "mean_correct": 129.02552948150037,
+          "smd": -0.2744173857901507,
+          "smd_ci95": [
+            -0.3474274143945425,
+            -0.2014073571857589
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 1.6432123161180982e-12
+        },
+        {
+          "factor": "favourite_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 203.33062330623306,
+          "mean_correct": 230.86531190926277,
+          "smd": -0.1487949910959983,
+          "smd_ci95": [
+            -0.2215877167710071,
+            -0.0760022654209895
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.00019321817963811655
+        },
+        {
+          "factor": "underdog_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 160.24932249322492,
+          "mean_correct": 155.2618147448015,
+          "smd": 0.029522745021622183,
+          "smd_ci95": [
+            -0.04318286789089393,
+            0.10222835793413829
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.4884712178472232
+        },
+        {
+          "factor": "min_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 107.10117434507679,
+          "mean_correct": 115.27882797731569,
+          "smd": -0.06341627559915075,
+          "smd_ci95": [
+            -0.13613479726477895,
+            0.009302246066477435
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.12448728628791284
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 102.87262872628726,
+          "mean_correct": 117.42296786389414,
+          "smd": -0.12348756741054269,
+          "smd_ci95": [
+            -0.196252080698681,
+            -0.05072305412240438
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.002068720445198768
+        },
+        {
+          "factor": "min_surface_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 45.46973803071364,
+          "mean_correct": 50.79962192816635,
+          "smd": -0.07460860219457656,
+          "smd_ci95": [
+            -0.14733345365583933,
+            -0.0018837507333137743
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.07347918661807981
+        },
+        {
+          "factor": "inactivity_favourite",
+          "n_error": 1074,
+          "n_correct": 2111,
+          "mean_error": 24.115367046151793,
+          "mean_correct": 20.856465093702305,
+          "smd": 0.04109160641043801,
+          "smd_ci95": [
+            -0.032376275924540655,
+            0.11455948874541669
+          ],
+          "missing_error": 33,
+          "missing_correct": 5,
+          "fdr_q": 0.32897097915771883
+        },
+        {
+          "factor": "inactivity_underdog",
+          "n_error": 1096,
+          "n_correct": 2049,
+          "mean_error": 23.241942032180784,
+          "mean_correct": 40.081376078934284,
+          "smd": -0.12305703105503393,
+          "smd_ci95": [
+            -0.1964670153062416,
+            -0.04964704680382627
+          ],
+          "missing_error": 11,
+          "missing_correct": 67,
+          "fdr_q": 0.0022785426508047557
+        },
+        {
+          "factor": "max_inactivity",
+          "n_error": 1106,
+          "n_correct": 2116,
+          "mean_error": 33.923981103652366,
+          "mean_correct": 48.49454865821188,
+          "smd": -0.0972103279937044,
+          "smd_ci95": [
+            -0.16997266462330513,
+            -0.024447991364103666
+          ],
+          "missing_error": 1,
+          "missing_correct": 0,
+          "fdr_q": 0.018047037015850274
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 33.18518518518518,
+          "mean_correct": 36.16068052930057,
+          "smd": -0.13691260563624896,
+          "smd_ci95": [
+            -0.20969143323182443,
+            -0.06413377804067351
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.0006270697849346639
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 30.299909665763323,
+          "mean_correct": 26.88468809073724,
+          "smd": 0.155985045543217,
+          "smd_ci95": [
+            0.08318335012844842,
+            0.22878674095798557
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 8.983603581666573e-05
+        },
+        {
+          "factor": "max_delta_matches",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 40.52574525745258,
+          "mean_correct": 41.50945179584121,
+          "smd": -0.04951877525305798,
+          "smd_ci95": [
+            -0.12223086537098456,
+            0.0231933148648686
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.23754150464126025
+        },
+        {
+          "factor": "divergence_favourite",
+          "n_error": 1107,
+          "n_correct": 2116,
+          "mean_error": 200.59747350865234,
+          "mean_correct": 230.59727109614528,
+          "smd": -0.05887300645836107,
+          "smd_ci95": [
+            -0.13158925148325243,
+            0.013843238566530296
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.15558260317782882
+        },
+        {
+          "factor": "market_confidence",
+          "n_error": 174,
+          "n_correct": 327,
+          "mean_error": 0.6360569288358401,
+          "mean_correct": 0.6900863150679014,
+          "smd": -0.4893855895330146,
+          "smd_ci95": [
+            -0.675780644049372,
+            -0.3029905350166572
+          ],
+          "missing_error": 933,
+          "missing_correct": 1789,
+          "fdr_q": 9.623493496201332e-07
+        },
+        {
+          "factor": "market_gap",
+          "n_error": 174,
+          "n_correct": 327,
+          "mean_error": -0.012879377111702117,
+          "mean_correct": -0.020067064303375414,
+          "smd": 0.06910369008561064,
+          "smd_ci95": [
+            -0.11486162625296086,
+            0.2530690064241821
+          ],
+          "missing_error": 933,
+          "missing_correct": 1789,
+          "fdr_q": 0.49306297889222833
+        }
+      ],
+      "note": "Exploratory factor screen. p-values are unadjusted Fisher exact / normal-approximation values with Benjamini-Hochberg q-values; no factor is confirmatory and no correction is applied to forecasts."
+    },
+    "marginal_pool": {
+      "label": "frozen marginal 40-50 pool (101)",
+      "n": 101,
+      "errors": 42,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "n_present": 93,
+          "n_absent": 8,
+          "error_rate_present": 0.43010752688172044,
+          "error_rate_absent": 0.25,
+          "risk_difference": 0.18010752688172044,
+          "risk_difference_ci95": [
+            -0.17384830337858465,
+            0.3854246556916807
+          ],
+          "odds_ratio": 2.2641509433962264,
+          "odds_ratio_ci95": [
+            0.43391057916733267,
+            11.814368537221338
+          ],
+          "fisher_p": 0.4635427877071549,
+          "fdr_q": 0.7449794802436418
+        },
+        {
+          "factor": "surface_missing",
+          "n_present": 13,
+          "n_absent": 88,
+          "error_rate_present": 0.5384615384615384,
+          "error_rate_absent": 0.3977272727272727,
+          "risk_difference": 0.14073426573426573,
+          "risk_difference_ci95": [
+            -0.1274702739963936,
+            0.38944847961435114
+          ],
+          "odds_ratio": 1.7666666666666666,
+          "odds_ratio_ci95": [
+            0.5477626109804602,
+            5.697926526099546
+          ],
+          "fisher_p": 0.3772298454318511,
+          "fdr_q": 0.7073059601847209
+        },
+        {
+          "factor": "round_qualifying",
+          "n_present": 25,
+          "n_absent": 76,
+          "error_rate_present": 0.36,
+          "error_rate_absent": 0.4342105263157895,
+          "risk_difference": -0.0742105263157895,
+          "risk_difference_ci95": [
+            -0.2674504959738814,
+            0.14738484402392144
+          ],
+          "odds_ratio": 0.7329545454545454,
+          "odds_ratio_ci95": [
+            0.28798799786609774,
+            1.865433176671012
+          ],
+          "fisher_p": 0.6412321984805803,
+          "fdr_q": 0.8244413980464604
+        },
+        {
+          "factor": "round_unknown",
+          "n_present": 3,
+          "n_absent": 98,
+          "error_rate_present": 0.0,
+          "error_rate_absent": 0.42857142857142855,
+          "risk_difference": -0.42857142857142855,
+          "risk_difference_ci95": [
+            -0.5274156369962931,
+            0.14064985794188906
+          ],
+          "odds_ratio": 0.1899159663865546,
+          "odds_ratio_ci95": [
+            0.009552375763921681,
+            3.7758223901497114
+          ],
+          "fisher_p": 0.26396039603960997,
+          "fdr_q": 0.5776986648757637
+        },
+        {
+          "factor": "any_ambiguous",
+          "n_present": 11,
+          "n_absent": 90,
+          "error_rate_present": 0.45454545454545453,
+          "error_rate_absent": 0.4111111111111111,
+          "risk_difference": 0.043434343434343436,
+          "risk_difference_ci95": [
+            -0.2195199896729752,
+            0.3256213524981719
+          ],
+          "odds_ratio": 1.1936936936936937,
+          "odds_ratio_ci95": [
+            0.33896743686477315,
+            4.203662297309525
+          ],
+          "fisher_p": 1.0,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "any_no_history",
+          "n_present": 16,
+          "n_absent": 85,
+          "error_rate_present": 0.4375,
+          "error_rate_absent": 0.4117647058823529,
+          "risk_difference": 0.02573529411764708,
+          "risk_difference_ci95": [
+            -0.20649648193540304,
+            0.2766337918341435
+          ],
+          "odds_ratio": 1.1111111111111112,
+          "odds_ratio_ci95": [
+            0.37806453164642834,
+            3.2654951678703212
+          ],
+          "fisher_p": 0.9999999999999666,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "fav_no_history",
+          "n_present": 9,
+          "n_absent": 92,
+          "error_rate_present": 0.7777777777777778,
+          "error_rate_absent": 0.3804347826086957,
+          "risk_difference": 0.3973429951690821,
+          "risk_difference_ci95": [
+            0.05650024124136549,
+            0.5813012169810565
+          ],
+          "odds_ratio": 5.7,
+          "odds_ratio_ci95": [
+            1.1203157334663962,
+            29.00075311758044
+          ],
+          "fisher_p": 0.031669127628538254,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "dog_no_history",
+          "n_present": 7,
+          "n_absent": 94,
+          "error_rate_present": 0.0,
+          "error_rate_absent": 0.44680851063829785,
+          "risk_difference": -0.44680851063829785,
+          "risk_difference_ci95": [
+            -0.5474301365667823,
+            -0.07958697197833037
+          ],
+          "odds_ratio": 0.08235294117647059,
+          "odds_ratio_ci95": [
+            0.004571666074437221,
+            1.4834869410819989
+          ],
+          "fisher_p": 0.039397929483671254,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "history_recovered",
+          "n_present": 99,
+          "n_absent": 2,
+          "error_rate_present": 0.40404040404040403,
+          "error_rate_absent": 1.0,
+          "risk_difference": -0.595959595959596,
+          "risk_difference_ci95": [
+            -0.6872814318177571,
+            0.06899466576543456
+          ],
+          "odds_ratio": 0.1361344537815126,
+          "odds_ratio_ci95": [
+            0.006367084723727126,
+            2.9106868073120733
+          ],
+          "fisher_p": 0.1704950495049567,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "fav_recovered",
+          "n_present": 90,
+          "n_absent": 11,
+          "error_rate_present": 0.3888888888888889,
+          "error_rate_absent": 0.6363636363636364,
+          "risk_difference": -0.24747474747474746,
+          "risk_difference_ci95": [
+            -0.47943095948045533,
+            0.053373471020864705
+          ],
+          "odds_ratio": 0.36363636363636365,
+          "odds_ratio_ci95": [
+            0.09915031866257305,
+            1.3336457889629758
+          ],
+          "fisher_p": 0.1932004657262611,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "dog_recovered",
+          "n_present": 82,
+          "n_absent": 19,
+          "error_rate_present": 0.45121951219512196,
+          "error_rate_absent": 0.2631578947368421,
+          "risk_difference": 0.18806161745827987,
+          "risk_difference_ci95": [
+            -0.05921757664461025,
+            0.36862348884736573
+          ],
+          "odds_ratio": 2.3022222222222224,
+          "odds_ratio_ci95": [
+            0.7587963576315006,
+            6.98504560174472
+          ],
+          "fisher_p": 0.19652572723794362,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "min_matches_lt10",
+          "n_present": 17,
+          "n_absent": 84,
+          "error_rate_present": 0.29411764705882354,
+          "error_rate_absent": 0.44047619047619047,
+          "risk_difference": -0.14635854341736693,
+          "risk_difference_ci95": [
+            -0.33963454753065114,
+            0.11155831043989328
+          ],
+          "odds_ratio": 0.5292792792792793,
+          "odds_ratio_ci95": [
+            0.1711967643630461,
+            1.6363425822717395
+          ],
+          "fisher_p": 0.295268206492057,
+          "fdr_q": 0.5776986648757637
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "n_present": 6,
+          "n_absent": 95,
+          "error_rate_present": 0.6666666666666666,
+          "error_rate_absent": 0.4,
+          "risk_difference": 0.2666666666666666,
+          "risk_difference_ci95": [
+            -0.11354174580650073,
+            0.5207690114535243
+          ],
+          "odds_ratio": 3.0,
+          "odds_ratio_ci95": [
+            0.5232519775716246,
+            17.2001261070591
+          ],
+          "fisher_p": 0.23040772044802096,
+          "fdr_q": 0.5526389710852952
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "n_present": 14,
+          "n_absent": 87,
+          "error_rate_present": 0.14285714285714285,
+          "error_rate_absent": 0.45977011494252873,
+          "risk_difference": -0.3169129720853859,
+          "risk_difference_ci95": [
+            -0.46326274683384006,
+            -0.04126502799428644
+          ],
+          "odds_ratio": 0.19583333333333333,
+          "odds_ratio_ci95": [
+            0.041350001297791684,
+            0.9274653746260603
+          ],
+          "fisher_p": 0.03853004337994992,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "min_surface_lt5",
+          "n_present": 37,
+          "n_absent": 64,
+          "error_rate_present": 0.3783783783783784,
+          "error_rate_absent": 0.4375,
+          "risk_difference": -0.0591216216216216,
+          "risk_difference_ci95": [
+            -0.2428813680368344,
+            0.13816470319402613
+          ],
+          "odds_ratio": 0.782608695652174,
+          "odds_ratio_ci95": [
+            0.3419953297621309,
+            1.7908910362500994
+          ],
+          "fisher_p": 0.6759995771579157,
+          "fdr_q": 0.8449994714473946
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "n_present": 24,
+          "n_absent": 77,
+          "error_rate_present": 0.5416666666666666,
+          "error_rate_absent": 0.37662337662337664,
+          "risk_difference": 0.16504329004329,
+          "risk_difference_ci95": [
+            -0.05612428111119719,
+            0.3704117223023851
+          ],
+          "odds_ratio": 1.9561128526645768,
+          "odds_ratio_ci95": [
+            0.7749942147987454,
+            4.93729813628764
+          ],
+          "fisher_p": 0.16383210416855687,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "n_present": 2,
+          "n_absent": 99,
+          "error_rate_present": 0.5,
+          "error_rate_absent": 0.41414141414141414,
+          "risk_difference": 0.08585858585858586,
+          "risk_difference_ci95": [
+            -0.3313936573115797,
+            0.5016439710655352
+          ],
+          "odds_ratio": 1.4146341463414633,
+          "odds_ratio_ci95": [
+            0.08598032113701504,
+            23.274974337514042
+          ],
+          "fisher_p": 1.0,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "n_present": 10,
+          "n_absent": 91,
+          "error_rate_present": 0.3,
+          "error_rate_absent": 0.42857142857142855,
+          "risk_difference": -0.12857142857142856,
+          "risk_difference_ci95": [
+            -0.3464172891219607,
+            0.18970996688569253
+          ],
+          "odds_ratio": 0.5714285714285714,
+          "odds_ratio_ci95": [
+            0.1388433726604454,
+            2.3517911297319127
+          ],
+          "fisher_p": 0.5158341990036241,
+          "fdr_q": 0.7737512985054362
+        },
+        {
+          "factor": "inactivity_missing",
+          "n_present": 7,
+          "n_absent": 94,
+          "error_rate_present": 0.42857142857142855,
+          "error_rate_absent": 0.4148936170212766,
+          "risk_difference": 0.013677811550151964,
+          "risk_difference_ci95": [
+            -0.2749331060794884,
+            0.34822605398650625
+          ],
+          "odds_ratio": 1.0576923076923077,
+          "odds_ratio_ci95": [
+            0.2240091031999791,
+            4.994051588844465
+          ],
+          "fisher_p": 1.0,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "side_changed",
+          "n_present": 15,
+          "n_absent": 86,
+          "error_rate_present": 0.6666666666666666,
+          "error_rate_absent": 0.37209302325581395,
+          "risk_difference": 0.2945736434108527,
+          "risk_difference_ci95": [
+            0.023629818111289447,
+            0.49932381291812566
+          ],
+          "odds_ratio": 3.375,
+          "odds_ratio_ci95": [
+            1.058918918906963,
+            10.756843415129108
+          ],
+          "fisher_p": 0.04639737805594861,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "market_available",
+          "n_present": 4,
+          "n_absent": 97,
+          "error_rate_present": 0.5,
+          "error_rate_absent": 0.41237113402061853,
+          "risk_difference": 0.08762886597938147,
+          "risk_difference_ci95": [
+            -0.27619501927133605,
+            0.44968432887877513
+          ],
+          "odds_ratio": 1.425,
+          "odds_ratio_ci95": [
+            0.1926172654818714,
+            10.542279244386414
+          ],
+          "fisher_p": 1.0,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "market_disagrees",
+          "n_present": 2,
+          "n_absent": 99,
+          "error_rate_present": 1.0,
+          "error_rate_absent": 0.40404040404040403,
+          "risk_difference": 0.595959595959596,
+          "risk_difference_ci95": [
+            -0.06899466576543456,
+            0.6872814318177571
+          ],
+          "odds_ratio": 7.345679012345679,
+          "odds_ratio_ci95": [
+            0.3435615255780364,
+            157.05774987938688
+          ],
+          "fisher_p": 0.1704950495049567,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "n_present": 0,
+          "n_absent": 101,
+          "error_rate_present": null,
+          "error_rate_absent": 0.4158415841584158,
+          "risk_difference": null,
+          "risk_difference_ci95": null,
+          "odds_ratio": null,
+          "odds_ratio_ci95": null,
+          "fisher_p": null,
+          "fdr_q": null
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "n_present": 0,
+          "n_absent": 101,
+          "error_rate_present": null,
+          "error_rate_absent": 0.4158415841584158,
+          "risk_difference": null,
+          "risk_difference_ci95": null,
+          "odds_ratio": null,
+          "odds_ratio_ci95": null,
+          "fisher_p": null,
+          "fdr_q": null
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "n_present": 19,
+          "n_absent": 82,
+          "error_rate_present": 0.47368421052631576,
+          "error_rate_absent": 0.4024390243902439,
+          "risk_difference": 0.07124518613607184,
+          "risk_difference_ci95": [
+            -0.1564850893735149,
+            0.3029208626361414
+          ],
+          "odds_ratio": 1.3363636363636364,
+          "odds_ratio_ci95": [
+            0.4902041135028491,
+            3.6431105317207053
+          ],
+          "fisher_p": 0.6120684286954476,
+          "fdr_q": 0.8244413980464604
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "n_present": 44,
+          "n_absent": 57,
+          "error_rate_present": 0.4318181818181818,
+          "error_rate_absent": 0.40350877192982454,
+          "risk_difference": 0.028309409888357284,
+          "risk_difference_ci95": [
+            -0.15876690343069894,
+            0.21556795519797714
+          ],
+          "odds_ratio": 1.1234782608695653,
+          "odds_ratio_ci95": [
+            0.5061262805235841,
+            2.4938507467756117
+          ],
+          "fisher_p": 0.8399084819702437,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "candidate_multi",
+          "n_present": 11,
+          "n_absent": 90,
+          "error_rate_present": 0.45454545454545453,
+          "error_rate_absent": 0.4111111111111111,
+          "risk_difference": 0.043434343434343436,
+          "risk_difference_ci95": [
+            -0.2195199896729752,
+            0.3256213524981719
+          ],
+          "odds_ratio": 1.1936936936936937,
+          "odds_ratio_ci95": [
+            0.33896743686477315,
+            4.203662297309525
+          ],
+          "fisher_p": 1.0,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "qualifying",
+          "n_present": 25,
+          "n_absent": 76,
+          "error_rate_present": 0.36,
+          "error_rate_absent": 0.4342105263157895,
+          "risk_difference": -0.0742105263157895,
+          "risk_difference_ci95": [
+            -0.2674504959738814,
+            0.14738484402392144
+          ],
+          "odds_ratio": 0.7329545454545454,
+          "odds_ratio_ci95": [
+            0.28798799786609774,
+            1.865433176671012
+          ],
+          "fisher_p": 0.6412321984805803,
+          "fdr_q": 0.8244413980464604
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 0.6648548571428572,
+          "mean_correct": 0.6664872542372882,
+          "smd": -0.16018389139543415,
+          "smd_ci95": [
+            -0.5564927795720324,
+            0.23612499678116405
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.7199281882493652
+        },
+        {
+          "factor": "elo_gap",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 119.06269325109915,
+          "mean_correct": 120.32648803179168,
+          "smd": -0.1588960566111206,
+          "smd_ci95": [
+            -0.5551950854879736,
+            0.23740297226573237
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.7199281882493652
+        },
+        {
+          "factor": "abs_elo_gap",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 119.06269325109915,
+          "mean_correct": 120.32648803179168,
+          "smd": -0.1588960566111206,
+          "smd_ci95": [
+            -0.5551950854879736,
+            0.23740297226573237
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.7199281882493652
+        },
+        {
+          "factor": "surface_elo_gap",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 68.38409638316955,
+          "mean_correct": 102.82688356740873,
+          "smd": -0.4324211611177589,
+          "smd_ci95": [
+            -0.8325820683988336,
+            -0.03226025383668418
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 82.8965205824111,
+          "mean_correct": 108.97526483475751,
+          "smd": -0.38298122546584495,
+          "smd_ci95": [
+            -0.7821830616904106,
+            0.01622061075872072
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.3861239428767299
+        },
+        {
+          "factor": "favourite_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 172.21428571428572,
+          "mean_correct": 229.1864406779661,
+          "smd": -0.3173468019302063,
+          "smd_ci95": [
+            -0.7154522805165822,
+            0.08075867665616948
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "underdog_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 212.73809523809524,
+          "mean_correct": 138.5593220338983,
+          "smd": 0.4102822641097612,
+          "smd_ci95": [
+            0.010564916099651323,
+            0.8099996121198711
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.34798033541961454
+        },
+        {
+          "factor": "min_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 125.0,
+          "mean_correct": 98.05084745762711,
+          "smd": 0.21338037615260408,
+          "smd_ci95": [
+            -0.18340501789586594,
+            0.6101657702010741
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5776986648757637
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 76.47619047619048,
+          "mean_correct": 108.47457627118644,
+          "smd": -0.29012728129990917,
+          "smd_ci95": [
+            -0.6878376294650681,
+            0.10758306686524971
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "min_surface_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 46.07142857142857,
+          "mean_correct": 29.728813559322035,
+          "smd": 0.2900559964804933,
+          "smd_ci95": [
+            -0.10765336287949973,
+            0.6877653558404864
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "inactivity_favourite",
+          "n_error": 39,
+          "n_correct": 58,
+          "mean_error": 13.900733877786978,
+          "mean_correct": 33.196051122152774,
+          "smd": -0.11562454966743488,
+          "smd_ci95": [
+            -0.5218211984860024,
+            0.2905720991511327
+          ],
+          "missing_error": 3,
+          "missing_correct": 1,
+          "fdr_q": 0.8216421396078272
+        },
+        {
+          "factor": "inactivity_underdog",
+          "n_error": 42,
+          "n_correct": 56,
+          "mean_error": 17.361351156478726,
+          "mean_correct": 35.50222436386512,
+          "smd": -0.24416316359254722,
+          "smd_ci95": [
+            -0.6456967337995846,
+            0.15737040661449017
+          ],
+          "missing_error": 0,
+          "missing_correct": 3,
+          "fdr_q": 0.5526389710852952
+        },
+        {
+          "factor": "max_inactivity",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 24.610028405155976,
+          "mean_correct": 61.91262026920158,
+          "smd": -0.21199046323293674,
+          "smd_ci95": [
+            -0.6087616888360396,
+            0.18478076237016622
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5776986648757637
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 38.07142857142857,
+          "mean_correct": 44.16949152542373,
+          "smd": -0.2682446781459978,
+          "smd_ci95": [
+            -0.6656627927451326,
+            0.1291734364531371
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 34.76190476190476,
+          "mean_correct": 27.728813559322035,
+          "smd": 0.29794145398924754,
+          "smd_ci95": [
+            -0.0998787439196317,
+            0.6957616518981268
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5202151603357331
+        },
+        {
+          "factor": "max_delta_matches",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 44.666666666666664,
+          "mean_correct": 47.52542372881356,
+          "smd": -0.13510616082378515,
+          "smd_ci95": [
+            -0.5312373375397234,
+            0.2610250158921531
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.7737512985054362
+        },
+        {
+          "factor": "divergence_favourite",
+          "n_error": 42,
+          "n_correct": 59,
+          "mean_error": 340.47138212622565,
+          "mean_correct": 274.17798274748884,
+          "smd": 0.11054391228687348,
+          "smd_ci95": [
+            -0.2854424071825315,
+            0.5065302317562784
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.8216421396078272
+        },
+        {
+          "factor": "market_confidence",
+          "n_error": 2,
+          "n_correct": 2,
+          "mean_error": 0.7000678534306136,
+          "mean_correct": 0.673512185664944,
+          "smd": 0.15768135356997853,
+          "smd_ci95": [
+            -1.8053259798467047,
+            2.1206886869866617
+          ],
+          "missing_error": 40,
+          "missing_correct": 57,
+          "fdr_q": 1.0
+        },
+        {
+          "factor": "market_gap",
+          "n_error": 2,
+          "n_correct": 2,
+          "mean_error": -0.028545353430613596,
+          "mean_correct": -0.0046306856649439565,
+          "smd": -0.14298346058420286,
+          "smd_ci95": [
+            -2.105450224216124,
+            1.8194833030477187
+          ],
+          "missing_error": 40,
+          "missing_correct": 57,
+          "fdr_q": 1.0
+        }
+      ],
+      "note": "Exploratory factor screen. p-values are unadjusted Fisher exact / normal-approximation values with Benjamini-Hochberg q-values; no factor is confirmatory and no correction is applied to forecasts."
+    },
+    "retrospective_bands": {
+      "label": "retrospective 40-50 bands (322)",
+      "n": 322,
+      "errors": 125,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "n_present": 272,
+          "n_absent": 50,
+          "error_rate_present": 0.39338235294117646,
+          "error_rate_absent": 0.36,
+          "risk_difference": 0.033382352941176474,
+          "risk_difference_ci95": [
+            -0.11616222443830287,
+            0.16592615443595496
+          ],
+          "odds_ratio": 1.1528619528619528,
+          "odds_ratio_ci95": [
+            0.6160883928698535,
+            2.1573051817540754
+          ],
+          "fisher_p": 0.7527589259250399,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "surface_missing",
+          "n_present": 38,
+          "n_absent": 284,
+          "error_rate_present": 0.5263157894736842,
+          "error_rate_absent": 0.36971830985915494,
+          "risk_difference": 0.15659747961452924,
+          "risk_difference_ci95": [
+            -0.007541744893023922,
+            0.3150000038732239
+          ],
+          "odds_ratio": 1.8941798941798942,
+          "odds_ratio_ci95": [
+            0.9588248760023432,
+            3.7419945615872687
+          ],
+          "fisher_p": 0.07631505962928754,
+          "fdr_q": 0.329934365687475
+        },
+        {
+          "factor": "round_qualifying",
+          "n_present": 54,
+          "n_absent": 268,
+          "error_rate_present": 0.42592592592592593,
+          "error_rate_absent": 0.3805970149253731,
+          "risk_difference": 0.04532891100055281,
+          "risk_difference_ci95": [
+            -0.09092283880953525,
+            0.1891493348063259
+          ],
+          "odds_ratio": 1.2074636306135358,
+          "odds_ratio_ci95": [
+            0.6672734889428722,
+            2.1849638018201607
+          ],
+          "fisher_p": 0.5436286250493713,
+          "fdr_q": 0.7644777539756783
+        },
+        {
+          "factor": "round_unknown",
+          "n_present": 12,
+          "n_absent": 310,
+          "error_rate_present": 0.08333333333333333,
+          "error_rate_absent": 0.4,
+          "risk_difference": -0.3166666666666667,
+          "risk_difference_ci95": [
+            -0.40476458278576993,
+            -0.04097959639761378
+          ],
+          "odds_ratio": 0.13636363636363635,
+          "odds_ratio_ci95": [
+            0.017385509377929865,
+            1.0695712686980356
+          ],
+          "fisher_p": 0.032703736794731396,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "any_ambiguous",
+          "n_present": 19,
+          "n_absent": 303,
+          "error_rate_present": 0.42105263157894735,
+          "error_rate_absent": 0.38613861386138615,
+          "risk_difference": 0.0349140177175612,
+          "risk_difference_ci95": [
+            -0.16279259237696453,
+            0.2575204747133708
+          ],
+          "odds_ratio": 1.156177156177156,
+          "odds_ratio_ci95": [
+            0.4518051615966238,
+            2.9586771690301226
+          ],
+          "fisher_p": 0.8105314985423419,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "any_no_history",
+          "n_present": 40,
+          "n_absent": 282,
+          "error_rate_present": 0.4,
+          "error_rate_absent": 0.38652482269503546,
+          "risk_difference": 0.013475177304964558,
+          "risk_difference_ci95": [
+            -0.1348502844005269,
+            0.17702269796389
+          ],
+          "odds_ratio": 1.0581039755351682,
+          "odds_ratio_ci95": [
+            0.5379538354805902,
+            2.0811897772661636
+          ],
+          "fisher_p": 0.864155670757911,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "fav_no_history",
+          "n_present": 17,
+          "n_absent": 305,
+          "error_rate_present": 0.6470588235294118,
+          "error_rate_absent": 0.3737704918032787,
+          "risk_difference": 0.2732883317261331,
+          "risk_difference_ci95": [
+            0.03273137568002743,
+            0.46061334446223845
+          ],
+          "odds_ratio": 3.0716374269005846,
+          "odds_ratio_ci95": [
+            1.1060575554083727,
+            8.530258155375035
+          ],
+          "fisher_p": 0.03804201108045473,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "dog_no_history",
+          "n_present": 23,
+          "n_absent": 299,
+          "error_rate_present": 0.21739130434782608,
+          "error_rate_absent": 0.4013377926421405,
+          "risk_difference": -0.1839464882943144,
+          "risk_difference_ci95": [
+            -0.3172505890260685,
+            0.024794335169597864
+          ],
+          "odds_ratio": 0.41435185185185186,
+          "odds_ratio_ci95": [
+            0.14979655103921047,
+            1.1461375842232735
+          ],
+          "fisher_p": 0.11850921801507729,
+          "fdr_q": 0.3855651453271241
+        },
+        {
+          "factor": "history_recovered",
+          "n_present": 311,
+          "n_absent": 11,
+          "error_rate_present": 0.38263665594855306,
+          "error_rate_absent": 0.5454545454545454,
+          "risk_difference": -0.16281788950599235,
+          "risk_difference_ci95": [
+            -0.4102357825337767,
+            0.10821289884083868
+          ],
+          "odds_ratio": 0.5164930555555556,
+          "odds_ratio_ci95": [
+            0.15422559895902838,
+            1.729706859546599
+          ],
+          "fisher_p": 0.34845883265502836,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "fav_recovered",
+          "n_present": 290,
+          "n_absent": 32,
+          "error_rate_present": 0.3724137931034483,
+          "error_rate_absent": 0.53125,
+          "risk_difference": -0.1588362068965517,
+          "risk_difference_ci95": [
+            -0.32763948213450544,
+            0.017381611753368997
+          ],
+          "odds_ratio": 0.5235940530058177,
+          "odds_ratio_ci95": [
+            0.2513198979259055,
+            1.0908437199186058
+          ],
+          "fisher_p": 0.08798249751666,
+          "fdr_q": 0.329934365687475
+        },
+        {
+          "factor": "dog_recovered",
+          "n_present": 270,
+          "n_absent": 52,
+          "error_rate_present": 0.4074074074074074,
+          "error_rate_absent": 0.28846153846153844,
+          "risk_difference": 0.11894586894586895,
+          "risk_difference_ci95": [
+            -0.02688399509275463,
+            0.2397778447105337
+          ],
+          "odds_ratio": 1.6958333333333333,
+          "odds_ratio_ci95": [
+            0.8877958585009783,
+            3.239315285047903
+          ],
+          "fisher_p": 0.12148062200099803,
+          "fdr_q": 0.3855651453271241
+        },
+        {
+          "factor": "min_matches_lt10",
+          "n_present": 47,
+          "n_absent": 275,
+          "error_rate_present": 0.2978723404255319,
+          "error_rate_absent": 0.4036363636363636,
+          "risk_difference": -0.10576402321083173,
+          "risk_difference_ci95": [
+            -0.23175478921268128,
+            0.046891278305556755
+          ],
+          "odds_ratio": 0.6268086268086268,
+          "odds_ratio_ci95": [
+            0.32076034063674025,
+            1.224867930560847
+          ],
+          "fisher_p": 0.19660732281765458,
+          "fdr_q": 0.4915183070441365
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "n_present": 14,
+          "n_absent": 308,
+          "error_rate_present": 0.5714285714285714,
+          "error_rate_absent": 0.37987012987012986,
+          "risk_difference": 0.19155844155844154,
+          "risk_difference_ci95": [
+            -0.06012960654633409,
+            0.412624278461869
+          ],
+          "odds_ratio": 2.1766381766381766,
+          "odds_ratio_ci95": [
+            0.7367984788068609,
+            6.430189377794151
+          ],
+          "fisher_p": 0.16862903500982251,
+          "fdr_q": 0.47426916096512584
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "n_present": 39,
+          "n_absent": 283,
+          "error_rate_present": 0.20512820512820512,
+          "error_rate_absent": 0.4134275618374558,
+          "risk_difference": -0.2082993567092507,
+          "risk_difference_ci95": [
+            -0.32168315090486227,
+            -0.04804425130532006
+          ],
+          "odds_ratio": 0.366142817755721,
+          "odds_ratio_ci95": [
+            0.1624830468177267,
+            0.8250741577026686
+          ],
+          "fisher_p": 0.01368691009306301,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "min_surface_lt5",
+          "n_present": 95,
+          "n_absent": 227,
+          "error_rate_present": 0.4,
+          "error_rate_absent": 0.3832599118942731,
+          "risk_difference": 0.016740088105726914,
+          "risk_difference_ci95": [
+            -0.09635851214512069,
+            0.13424042682053294
+          ],
+          "odds_ratio": 1.0727969348659003,
+          "odds_ratio_ci95": [
+            0.6572379850469017,
+            1.7511058241339184
+          ],
+          "fisher_p": 0.8027807208009694,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "n_present": 57,
+          "n_absent": 265,
+          "error_rate_present": 0.543859649122807,
+          "error_rate_absent": 0.35471698113207545,
+          "risk_difference": 0.1891426679907316,
+          "risk_difference_ci95": [
+            0.048115113538373444,
+            0.3234070119148279
+          ],
+          "odds_ratio": 2.1689852700490997,
+          "odds_ratio_ci95": [
+            1.215881812038732,
+            3.869205917145591
+          ],
+          "fisher_p": 0.010549414493974726,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "n_present": 16,
+          "n_absent": 306,
+          "error_rate_present": 0.3125,
+          "error_rate_absent": 0.39215686274509803,
+          "risk_difference": -0.07965686274509803,
+          "risk_difference_ci95": [
+            -0.25936572540793945,
+            0.1695108344293978
+          ],
+          "odds_ratio": 0.7045454545454546,
+          "odds_ratio_ci95": [
+            0.2388424321928442,
+            2.0782919222656164
+          ],
+          "fisher_p": 0.6069457661892309,
+          "fdr_q": 0.7896447257218657
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "n_present": 34,
+          "n_absent": 288,
+          "error_rate_present": 0.23529411764705882,
+          "error_rate_absent": 0.40625,
+          "risk_difference": -0.17095588235294118,
+          "risk_difference_ci95": [
+            -0.2959413044259177,
+            0.0026939677470375345
+          ],
+          "odds_ratio": 0.44970414201183434,
+          "odds_ratio_ci95": [
+            0.19676567996898567,
+            1.0277900870440226
+          ],
+          "fisher_p": 0.06287684234446503,
+          "fdr_q": 0.31438421172232517
+        },
+        {
+          "factor": "inactivity_missing",
+          "n_present": 15,
+          "n_absent": 307,
+          "error_rate_present": 0.4,
+          "error_rate_absent": 0.38762214983713356,
+          "risk_difference": 0.012377850162866466,
+          "risk_difference_ci95": [
+            -0.19688976862079866,
+            0.2605884232259763
+          ],
+          "odds_ratio": 1.0532212885154062,
+          "odds_ratio_ci95": [
+            0.3655521900374164,
+            3.034519044923549
+          ],
+          "fisher_p": 0.999999999999925,
+          "fdr_q": 0.999999999999925
+        },
+        {
+          "factor": "side_changed",
+          "n_present": 34,
+          "n_absent": 288,
+          "error_rate_present": 0.4411764705882353,
+          "error_rate_absent": 0.3819444444444444,
+          "risk_difference": 0.05923202614379086,
+          "risk_difference_ci95": [
+            -0.10353582073308515,
+            0.232229667631048
+          ],
+          "odds_ratio": 1.277511961722488,
+          "odds_ratio_ci95": [
+            0.623398506258818,
+            2.617967152565589
+          ],
+          "fisher_p": 0.57753346576677,
+          "fdr_q": 0.7875456351365046
+        },
+        {
+          "factor": "market_available",
+          "n_present": 44,
+          "n_absent": 278,
+          "error_rate_present": 0.4090909090909091,
+          "error_rate_absent": 0.38489208633093525,
+          "risk_difference": 0.02419882275997387,
+          "risk_difference_ci95": [
+            -0.1203356474186052,
+            0.181065368571347
+          ],
+          "odds_ratio": 1.1063982746225738,
+          "odds_ratio_ci95": [
+            0.578914428807324,
+            2.114504460719224
+          ],
+          "fisher_p": 0.8679568566739269,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "market_disagrees",
+          "n_present": 9,
+          "n_absent": 313,
+          "error_rate_present": 0.7777777777777778,
+          "error_rate_absent": 0.3769968051118211,
+          "risk_difference": 0.4007809726659567,
+          "risk_difference_ci95": [
+            0.07099459501832522,
+            0.5680320602077004
+          ],
+          "odds_ratio": 5.783898305084746,
+          "odds_ratio_ci95": [
+            1.1818389751981524,
+            28.306292401596615
+          ],
+          "fisher_p": 0.03066775769099583,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "n_present": 0,
+          "n_absent": 322,
+          "error_rate_present": null,
+          "error_rate_absent": 0.38819875776397517,
+          "risk_difference": null,
+          "risk_difference_ci95": null,
+          "odds_ratio": null,
+          "odds_ratio_ci95": null,
+          "fisher_p": null,
+          "fdr_q": null
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "n_present": 0,
+          "n_absent": 322,
+          "error_rate_present": null,
+          "error_rate_absent": 0.38819875776397517,
+          "risk_difference": null,
+          "risk_difference_ci95": null,
+          "odds_ratio": null,
+          "odds_ratio_ci95": null,
+          "fisher_p": null,
+          "fdr_q": null
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "n_present": 39,
+          "n_absent": 283,
+          "error_rate_present": 0.48717948717948717,
+          "error_rate_absent": 0.3745583038869258,
+          "risk_difference": 0.11262118329256138,
+          "risk_difference_ci95": [
+            -0.04672668584671277,
+            0.27294412853455374
+          ],
+          "odds_ratio": 1.586320754716981,
+          "odds_ratio_ci95": [
+            0.8097420141132685,
+            3.1076731761307017
+          ],
+          "fisher_p": 0.21965601933524356,
+          "fdr_q": 0.52023794053084
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "n_present": 103,
+          "n_absent": 219,
+          "error_rate_present": 0.4174757281553398,
+          "error_rate_absent": 0.3744292237442922,
+          "risk_difference": 0.04304650441104757,
+          "risk_difference_ci95": [
+            -0.06888516340279685,
+            0.15745169043120272
+          ],
+          "odds_ratio": 1.1973577235772357,
+          "odds_ratio_ci95": [
+            0.7425721160142646,
+            1.9306751321409967
+          ],
+          "fisher_p": 0.4648555549865791,
+          "fdr_q": 0.6747903217547117
+        },
+        {
+          "factor": "candidate_multi",
+          "n_present": 19,
+          "n_absent": 303,
+          "error_rate_present": 0.42105263157894735,
+          "error_rate_absent": 0.38613861386138615,
+          "risk_difference": 0.0349140177175612,
+          "risk_difference_ci95": [
+            -0.16279259237696453,
+            0.2575204747133708
+          ],
+          "odds_ratio": 1.156177156177156,
+          "odds_ratio_ci95": [
+            0.4518051615966238,
+            2.9586771690301226
+          ],
+          "fisher_p": 0.8105314985423419,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "qualifying",
+          "n_present": 104,
+          "n_absent": 218,
+          "error_rate_present": 0.3942307692307692,
+          "error_rate_absent": 0.3853211009174312,
+          "risk_difference": 0.008909668313338004,
+          "risk_difference_ci95": [
+            -0.10155904356335411,
+            0.12330176107779695
+          ],
+          "odds_ratio": 1.0381708238851095,
+          "odds_ratio_ci95": [
+            0.6432954984065906,
+            1.675433237502731
+          ],
+          "fisher_p": 0.9030468149987179,
+          "fdr_q": 0.9235706062486887
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 0.662201032,
+          "mean_correct": 0.6632542487309645,
+          "smd": -0.1014027042220567,
+          "smd_ci95": [
+            -0.3256632595532616,
+            0.12285785110914817
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "elo_gap",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 116.99607766076178,
+          "mean_correct": 117.80988659502242,
+          "smd": -0.10083159950664497,
+          "smd_ci95": [
+            -0.32509061880860923,
+            0.12342741979531932
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "abs_elo_gap",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 116.99607766076178,
+          "mean_correct": 117.80988659502242,
+          "smd": -0.10083159950664497,
+          "smd_ci95": [
+            -0.32509061880860923,
+            0.12342741979531932
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "surface_elo_gap",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 97.02282101358686,
+          "mean_correct": 107.74605162414521,
+          "smd": -0.1337847728093274,
+          "smd_ci95": [
+            -0.35814659052925774,
+            0.09057704491060292
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5261457925907806
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 107.01266258674008,
+          "mean_correct": 113.49045657555615,
+          "smd": -0.09305509451369878,
+          "smd_ci95": [
+            -0.31729406068060895,
+            0.13118387165321138
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "favourite_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 207.152,
+          "mean_correct": 235.0253807106599,
+          "smd": -0.15234000611585816,
+          "smd_ci95": [
+            -0.3767723881245927,
+            0.07209237589287637
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.4854500998977785
+        },
+        {
+          "factor": "underdog_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 175.656,
+          "mean_correct": 154.1522842639594,
+          "smd": 0.1296855220499919,
+          "smd_ci95": [
+            -0.09466193808452722,
+            0.354032982184511
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5261457925907806
+        },
+        {
+          "factor": "min_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 126.136,
+          "mean_correct": 118.751269035533,
+          "smd": 0.057659438471574766,
+          "smd_ci95": [
+            -0.16650856288264387,
+            0.2818274398257934
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.7896447257218657
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 94.848,
+          "mean_correct": 123.02030456852792,
+          "smd": -0.24836751845504587,
+          "smd_ci95": [
+            -0.47331066891994744,
+            -0.02342436799014433
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "min_surface_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 51.48,
+          "mean_correct": 53.380710659898476,
+          "smd": -0.02629775221037316,
+          "smd_ci95": [
+            -0.25043071890178376,
+            0.19783521448103744
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "inactivity_favourite",
+          "n_error": 120,
+          "n_correct": 196,
+          "mean_error": 20.097069218676214,
+          "mean_correct": 31.247371859831585,
+          "smd": -0.09683153781568594,
+          "smd_ci95": [
+            -0.3241384413348741,
+            0.1304753657035022
+          ],
+          "missing_error": 5,
+          "missing_correct": 1,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "inactivity_underdog",
+          "n_error": 124,
+          "n_correct": 189,
+          "mean_error": 23.333236480221775,
+          "mean_correct": 47.72258765706178,
+          "smd": -0.19965112276516297,
+          "smd_ci95": [
+            -0.42669581127857226,
+            0.027393565748246335
+          ],
+          "missing_error": 1,
+          "missing_correct": 8,
+          "fdr_q": 0.329934365687475
+        },
+        {
+          "factor": "max_inactivity",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 27.688458881133794,
+          "mean_correct": 63.36601221588186,
+          "smd": -0.22715430060379946,
+          "smd_ci95": [
+            -0.45196366413005723,
+            -0.0023449370775416867
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 35.272,
+          "mean_correct": 38.0507614213198,
+          "smd": -0.13046302554411657,
+          "smd_ci95": [
+            -0.3548131746136983,
+            0.09388712352546522
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.5261457925907806
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 32.0,
+          "mean_correct": 26.96446700507614,
+          "smd": 0.22976723142610497,
+          "smd_ci95": [
+            0.004942029176960072,
+            0.4545924336752499
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.26807461137091765
+        },
+        {
+          "factor": "max_delta_matches",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 41.336,
+          "mean_correct": 41.776649746192895,
+          "smd": -0.021680983005158562,
+          "smd_ci95": [
+            -0.24581100212475634,
+            0.20244903611443923
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.9083269430308536
+        },
+        {
+          "factor": "divergence_favourite",
+          "n_error": 125,
+          "n_correct": 197,
+          "mean_error": 264.5867868657188,
+          "mean_correct": 178.94521183889094,
+          "smd": 0.17412117324834006,
+          "smd_ci95": [
+            -0.05040568358500275,
+            0.39864803008168287
+          ],
+          "missing_error": 0,
+          "missing_correct": 0,
+          "fdr_q": 0.3855651453271241
+        },
+        {
+          "factor": "market_confidence",
+          "n_error": 18,
+          "n_correct": 26,
+          "mean_error": 0.6539520582726523,
+          "mean_correct": 0.6846139367771168,
+          "smd": -0.27120316809235084,
+          "smd_ci95": [
+            -0.8748367651493683,
+            0.3324304289646665
+          ],
+          "missing_error": 107,
+          "missing_correct": 171,
+          "fdr_q": 0.6240266222036467
+        },
+        {
+          "factor": "market_gap",
+          "n_error": 18,
+          "n_correct": 26,
+          "mean_error": 0.008233608394014344,
+          "mean_correct": -0.02050028293096298,
+          "smd": 0.25762045629009184,
+          "smd_ci95": [
+            -0.3457533636423557,
+            0.8609942762225393
+          ],
+          "missing_error": 107,
+          "missing_correct": 171,
+          "fdr_q": 0.6240266222036467
+        }
+      ],
+      "note": "Exploratory factor screen. p-values are unadjusted Fisher exact / normal-approximation values with Benjamini-Hochberg q-values; no factor is confirmatory and no correction is applied to forecasts."
+    }
+  },
+  "profiles": {
+    "marginal_40_45_vs_core": {
+      "reference": "core_40",
+      "cohort_n": 45,
+      "reference_n": 375,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "cohort_prevalence": 0.9333333333333333,
+          "reference_prevalence": 0.8666666666666667,
+          "prevalence_difference": 0.06666666666666665,
+          "prevalence_difference_ci95": [
+            -0.049371306665723175,
+            0.1247023197268334
+          ],
+          "odds_ratio": 2.1538461538461537,
+          "odds_ratio_ci95": [
+            0.6432015614413032,
+            7.212440908947041
+          ],
+          "fisher_p": 0.24326133369371405
+        },
+        {
+          "factor": "surface_missing",
+          "cohort_prevalence": 0.13333333333333333,
+          "reference_prevalence": 0.112,
+          "prevalence_difference": 0.02133333333333333,
+          "prevalence_difference_ci95": [
+            -0.058029597175998884,
+            0.1528034953949684
+          ],
+          "odds_ratio": 1.2197802197802199,
+          "odds_ratio_ci95": [
+            0.4873396778280554,
+            3.0530323145410585
+          ],
+          "fisher_p": 0.6234637989937641
+        },
+        {
+          "factor": "round_qualifying",
+          "cohort_prevalence": 0.3111111111111111,
+          "reference_prevalence": 0.264,
+          "prevalence_difference": 0.047111111111111104,
+          "prevalence_difference_ci95": [
+            -0.07782757929966272,
+            0.19860352238299098
+          ],
+          "odds_ratio": 1.2590420332355816,
+          "odds_ratio_ci95": [
+            0.6432410762888476,
+            2.464374400030011
+          ],
+          "fisher_p": 0.48220987150681616
+        },
+        {
+          "factor": "round_unknown",
+          "cohort_prevalence": 0.022222222222222223,
+          "reference_prevalence": 0.06133333333333333,
+          "prevalence_difference": -0.03911111111111111,
+          "prevalence_difference_ci95": [
+            -0.07340947885416785,
+            0.05647488766960623
+          ],
+          "odds_ratio": 0.34782608695652173,
+          "odds_ratio_ci95": [
+            0.04584213659784982,
+            2.6391219028207438
+          ],
+          "fisher_p": 0.4953399576664665
+        },
+        {
+          "factor": "any_ambiguous",
+          "cohort_prevalence": 0.1111111111111111,
+          "reference_prevalence": 0.058666666666666666,
+          "prevalence_difference": 0.05244444444444444,
+          "prevalence_difference_ci95": [
+            -0.016458957290723282,
+            0.17786654012915565
+          ],
+          "odds_ratio": 2.0056818181818183,
+          "odds_ratio_ci95": [
+            0.71991342914231,
+            5.587837916258566
+          ],
+          "fisher_p": 0.19201336580443581
+        },
+        {
+          "factor": "any_no_history",
+          "cohort_prevalence": 0.2222222222222222,
+          "reference_prevalence": 0.21066666666666667,
+          "prevalence_difference": 0.011555555555555541,
+          "prevalence_difference_ci95": [
+            -0.09479475717231706,
+            0.15713652979085324
+          ],
+          "odds_ratio": 1.0705244122965643,
+          "odds_ratio_ci95": [
+            0.5080507226730054,
+            2.2557246081519975
+          ],
+          "fisher_p": 0.8479049058116246
+        },
+        {
+          "factor": "fav_no_history",
+          "cohort_prevalence": 0.15555555555555556,
+          "reference_prevalence": 0.10133333333333333,
+          "prevalence_difference": 0.05422222222222223,
+          "prevalence_difference_ci95": [
+            -0.031239732381893925,
+            0.18915616751820313
+          ],
+          "odds_ratio": 1.6336565096952909,
+          "odds_ratio_ci95": [
+            0.6822821300637054,
+            3.9116275717504254
+          ],
+          "fisher_p": 0.30364355285723366
+        },
+        {
+          "factor": "dog_no_history",
+          "cohort_prevalence": 0.06666666666666667,
+          "reference_prevalence": 0.13333333333333333,
+          "prevalence_difference": -0.06666666666666667,
+          "prevalence_difference_ci95": [
+            -0.12470231972683354,
+            0.04937130666572319
+          ],
+          "odds_ratio": 0.4642857142857143,
+          "odds_ratio_ci95": [
+            0.13864931617803605,
+            1.554722593892921
+          ],
+          "fisher_p": 0.24326133369374564
+        },
+        {
+          "factor": "history_recovered",
+          "cohort_prevalence": 0.9777777777777777,
+          "reference_prevalence": 0.9653333333333334,
+          "prevalence_difference": 0.01244444444444437,
+          "prevalence_difference_ci95": [
+            -0.08208758222070217,
+            0.04240754998626572
+          ],
+          "odds_ratio": 1.580110497237569,
+          "odds_ratio_ci95": [
+            0.2018186011157514,
+            12.371254035441298
+          ],
+          "fisher_p": 0.999999999999838
+        },
+        {
+          "factor": "fav_recovered",
+          "cohort_prevalence": 0.8222222222222222,
+          "reference_prevalence": 0.856,
+          "prevalence_difference": -0.033777777777777795,
+          "prevalence_difference_ci95": [
+            -0.17300847468456665,
+            0.05965305288235813
+          ],
+          "odds_ratio": 0.7780373831775701,
+          "odds_ratio_ci95": [
+            0.3437814140300172,
+            1.7608344864418581
+          ],
+          "fisher_p": 0.5097244643075026
+        },
+        {
+          "factor": "dog_recovered",
+          "cohort_prevalence": 0.8222222222222222,
+          "reference_prevalence": 0.816,
+          "prevalence_difference": 0.00622222222222224,
+          "prevalence_difference_ci95": [
+            -0.13398441615866458,
+            0.10104140669848073
+          ],
+          "odds_ratio": 1.0428921568627452,
+          "odds_ratio_ci95": [
+            0.46504948688159436,
+            2.3387275580904943
+          ],
+          "fisher_p": 0.9999999999996572
+        },
+        {
+          "factor": "min_matches_lt10",
+          "cohort_prevalence": 0.28888888888888886,
+          "reference_prevalence": 0.18133333333333335,
+          "prevalence_difference": 0.10755555555555552,
+          "prevalence_difference_ci95": [
+            -0.011732683706158847,
+            0.2566884181818443
+          ],
+          "odds_ratio": 1.8340992647058822,
+          "odds_ratio_ci95": [
+            0.9143509018674553,
+            3.679025312846789
+          ],
+          "fisher_p": 0.10755354920129123
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "cohort_prevalence": 0.1111111111111111,
+          "reference_prevalence": 0.04533333333333334,
+          "prevalence_difference": 0.06577777777777777,
+          "prevalence_difference_ci95": [
+            -0.0021282291576458084,
+            0.19079693509248122
+          ],
+          "odds_ratio": 2.6323529411764706,
+          "odds_ratio_ci95": [
+            0.9218063510860227,
+            7.517069066357274
+          ],
+          "fisher_p": 0.07358246902932535
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "cohort_prevalence": 0.2222222222222222,
+          "reference_prevalence": 0.15466666666666667,
+          "prevalence_difference": 0.06755555555555554,
+          "prevalence_difference_ci95": [
+            -0.037191408089280356,
+            0.21186813528887843
+          ],
+          "odds_ratio": 1.561576354679803,
+          "odds_ratio_ci95": [
+            0.7328768173248849,
+            3.3273268492733115
+          ],
+          "fisher_p": 0.2822750041365252
+        },
+        {
+          "factor": "min_surface_lt5",
+          "cohort_prevalence": 0.5111111111111111,
+          "reference_prevalence": 0.368,
+          "prevalence_difference": 0.14311111111111108,
+          "prevalence_difference_ci95": [
+            -0.00652746944512117,
+            0.2902217653503105
+          ],
+          "odds_ratio": 1.7954545454545454,
+          "odds_ratio_ci95": [
+            0.9648614015204005,
+            3.3410570883171857
+          ],
+          "fisher_p": 0.07421586248857542
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "cohort_prevalence": 0.3111111111111111,
+          "reference_prevalence": 0.19466666666666665,
+          "prevalence_difference": 0.11644444444444446,
+          "prevalence_difference_ci95": [
+            -0.007134247286362999,
+            0.2665850820910938
+          ],
+          "odds_ratio": 1.8683163941670349,
+          "odds_ratio_ci95": [
+            0.9456513490766563,
+            3.6912189171215957
+          ],
+          "fisher_p": 0.07979613477249241
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "cohort_prevalence": 0.022222222222222223,
+          "reference_prevalence": 0.016,
+          "prevalence_difference": 0.006222222222222223,
+          "prevalence_difference_ci95": [
+            -0.01976503354161581,
+            0.10006604094336526
+          ],
+          "odds_ratio": 1.3977272727272727,
+          "odds_ratio_ci95": [
+            0.16445636459641552,
+            11.879391434438904
+          ],
+          "fisher_p": 0.5503866241331616
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "cohort_prevalence": 0.13333333333333333,
+          "reference_prevalence": 0.10133333333333333,
+          "prevalence_difference": 0.032,
+          "prevalence_difference_ci95": [
+            -0.04681096508486976,
+            0.16316778991100656
+          ],
+          "odds_ratio": 1.3643724696356276,
+          "odds_ratio_ci95": [
+            0.5423044037227742,
+            3.432596569603418
+          ],
+          "fisher_p": 0.4486495761087479
+        },
+        {
+          "factor": "inactivity_missing",
+          "cohort_prevalence": 0.13333333333333333,
+          "reference_prevalence": 0.024,
+          "prevalence_difference": 0.10933333333333334,
+          "prevalence_difference_ci95": [
+            0.03552784216481733,
+            0.23827117342936335
+          ],
+          "odds_ratio": 6.256410256410256,
+          "odds_ratio_ci95": [
+            2.1151812845885374,
+            18.505586060974345
+          ],
+          "fisher_p": 0.0025967115848854767
+        },
+        {
+          "factor": "side_changed",
+          "cohort_prevalence": 0.1111111111111111,
+          "reference_prevalence": 0.050666666666666665,
+          "prevalence_difference": 0.06044444444444444,
+          "prevalence_difference_ci95": [
+            -0.007869719680726292,
+            0.18562425248150202
+          ],
+          "odds_ratio": 2.3421052631578947,
+          "odds_ratio_ci95": [
+            0.8295425676209749,
+            6.612628788229061
+          ],
+          "fisher_p": 0.1614632727840258
+        },
+        {
+          "factor": "market_available",
+          "cohort_prevalence": 0.06666666666666667,
+          "reference_prevalence": 0.088,
+          "prevalence_difference": -0.02133333333333333,
+          "prevalence_difference_ci95": [
+            -0.07612675245273413,
+            0.09324969905421825
+          ],
+          "odds_ratio": 0.7402597402597403,
+          "odds_ratio_ci95": [
+            0.21754892021817396,
+            2.5189023347018193
+          ],
+          "fisher_p": 0.7837520232632289
+        },
+        {
+          "factor": "market_disagrees",
+          "cohort_prevalence": 0.044444444444444446,
+          "reference_prevalence": 0.010666666666666666,
+          "prevalence_difference": 0.03377777777777778,
+          "prevalence_difference_ci95": [
+            -0.002347404977243943,
+            0.13781238665532541
+          ],
+          "odds_ratio": 4.313953488372093,
+          "odds_ratio_ci95": [
+            0.7674820770688678,
+            24.248376940492143
+          ],
+          "fisher_p": 0.12744773991345626
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.0,
+          "prevalence_difference": 0.0,
+          "prevalence_difference_ci95": [
+            -0.010140016968185867,
+            0.07865159873288836
+          ],
+          "odds_ratio": 8.252747252747254,
+          "odds_ratio_ci95": [
+            0.1617930512472115,
+            420.9565039580227
+          ],
+          "fisher_p": 1.0
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.496,
+          "prevalence_difference": -0.496,
+          "prevalence_difference_ci95": [
+            -0.5463877908446899,
+            -0.40263600747045225
+          ],
+          "odds_ratio": 0.011165777921810094,
+          "odds_ratio_ci95": [
+            0.0006828604947312555,
+            0.1825769649308067
+          ],
+          "fisher_p": 7.298449306949659e-13
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "cohort_prevalence": 0.17777777777777778,
+          "reference_prevalence": 0.13066666666666665,
+          "prevalence_difference": 0.04711111111111113,
+          "prevalence_difference_ci95": [
+            -0.04579970108015488,
+            0.18599932201409794
+          ],
+          "odds_ratio": 1.4384997242140098,
+          "odds_ratio_ci95": [
+            0.6328715678394617,
+            3.2696704382344595
+          ],
+          "fisher_p": 0.36191387615954046
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "cohort_prevalence": 0.3333333333333333,
+          "reference_prevalence": 0.32266666666666666,
+          "prevalence_difference": 0.010666666666666658,
+          "prevalence_difference_ci95": [
+            -0.11868087110216077,
+            0.1634999604698424
+          ],
+          "odds_ratio": 1.0495867768595042,
+          "odds_ratio_ci95": [
+            0.5443719361511311,
+            2.023675963068901
+          ],
+          "fisher_p": 0.8676397104275804
+        },
+        {
+          "factor": "candidate_multi",
+          "cohort_prevalence": 0.1111111111111111,
+          "reference_prevalence": 0.058666666666666666,
+          "prevalence_difference": 0.05244444444444444,
+          "prevalence_difference_ci95": [
+            -0.016458957290723282,
+            0.17786654012915565
+          ],
+          "odds_ratio": 2.0056818181818183,
+          "odds_ratio_ci95": [
+            0.71991342914231,
+            5.587837916258566
+          ],
+          "fisher_p": 0.19201336580443581
+        },
+        {
+          "factor": "qualifying",
+          "cohort_prevalence": 0.3111111111111111,
+          "reference_prevalence": 0.264,
+          "prevalence_difference": 0.047111111111111104,
+          "prevalence_difference_ci95": [
+            -0.07782757929966272,
+            0.19860352238299098
+          ],
+          "odds_ratio": 1.2590420332355816,
+          "odds_ratio_ci95": [
+            0.6432410762888476,
+            2.464374400030011
+          ],
+          "fisher_p": 0.48220987150681616
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "cohort_mean": 0.6753125555555556,
+          "reference_mean": 0.773041392,
+          "smd": -1.5648737076353976,
+          "smd_ci95": [
+            -1.8916894734320102,
+            -1.238057941838785
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "elo_gap",
+          "cohort_mean": 127.22792498924261,
+          "reference_mean": 222.01252563283077,
+          "smd": -1.2897929673501718,
+          "smd_ci95": [
+            -1.6110676217182973,
+            -0.9685183129820463
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_elo_gap",
+          "cohort_mean": 127.22792498924261,
+          "reference_mean": 222.01252563283077,
+          "smd": -1.2897929673501718,
+          "smd_ci95": [
+            -1.6110676217182973,
+            -0.9685183129820463
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "surface_elo_gap",
+          "cohort_mean": 102.54103215303044,
+          "reference_mean": 172.3687747728902,
+          "smd": -0.6333411896303015,
+          "smd_ci95": [
+            -0.9455014604345666,
+            -0.32118091882603633
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "cohort_mean": 111.40481240418706,
+          "reference_mean": 175.40403819060657,
+          "smd": -0.6100820202603703,
+          "smd_ci95": [
+            -0.9220303720704358,
+            -0.29813366845030476
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_matches",
+          "cohort_mean": 200.24444444444444,
+          "reference_mean": 222.0,
+          "smd": -0.11782841308984773,
+          "smd_ci95": [
+            -0.4271391524106315,
+            0.191482326230936
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "underdog_matches",
+          "cohort_mean": 147.44444444444446,
+          "reference_mean": 122.776,
+          "smd": 0.1494932034761295,
+          "smd_ci95": [
+            -0.15988010476686743,
+            0.4588665117191264
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_matches",
+          "cohort_mean": 90.4,
+          "reference_mean": 90.49866666666667,
+          "smd": -0.0008023849825200447,
+          "smd_ci95": [
+            -0.3100104778646454,
+            0.3084057078996053
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "cohort_mean": 99.04444444444445,
+          "reference_mean": 104.25866666666667,
+          "smd": -0.04586178531399078,
+          "smd_ci95": [
+            -0.3550854268961399,
+            0.2633618562681584
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_surface_matches",
+          "cohort_mean": 23.11111111111111,
+          "reference_mean": 31.568,
+          "smd": -0.1508653839685493,
+          "smd_ci95": [
+            -0.460241738375081,
+            0.15851097043798237
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "inactivity_favourite",
+          "cohort_mean": 13.61933293010586,
+          "reference_mean": 13.334208072415809,
+          "smd": 0.0063063585291411595,
+          "smd_ci95": [
+            -0.3162162061732572,
+            0.32882892323153956
+          ],
+          "cohort_missing": 4,
+          "reference_missing": 3
+        },
+        {
+          "factor": "inactivity_underdog",
+          "cohort_mean": 32.199458143344636,
+          "reference_mean": 44.850020185597145,
+          "smd": -0.06579285638341999,
+          "smd_ci95": [
+            -0.3816518271260453,
+            0.25006611435920534
+          ],
+          "cohort_missing": 2,
+          "reference_missing": 6
+        },
+        {
+          "factor": "max_inactivity",
+          "cohort_mean": 38.33204832165535,
+          "reference_mean": 50.95215689753206,
+          "smd": -0.06507534152646291,
+          "smd_ci95": [
+            -0.3743147442553112,
+            0.2441640612023854
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "cohort_mean": 38.75555555555555,
+          "reference_mean": 38.898666666666664,
+          "smd": -0.006100574120920007,
+          "smd_ci95": [
+            -0.31530893746028843,
+            0.3031077892184484
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "cohort_mean": 27.4,
+          "reference_mean": 24.954666666666668,
+          "smd": 0.1075493623189125,
+          "smd_ci95": [
+            -0.20174425052533596,
+            0.41684297516316093
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "max_delta_matches",
+          "cohort_mean": 43.977777777777774,
+          "reference_mean": 44.882666666666665,
+          "smd": -0.043332536024521445,
+          "smd_ci95": [
+            -0.3525545094216257,
+            0.26588943737258275
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "divergence_favourite",
+          "cohort_mean": 300.9380249183872,
+          "reference_mean": 299.0025442549792,
+          "smd": 0.0030129669674643007,
+          "smd_ci95": [
+            -0.30619518828487546,
+            0.312221122219804
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "market_confidence",
+          "cohort_mean": 0.6607038448339316,
+          "reference_mean": 0.760986357946177,
+          "smd": -0.9891043157295788,
+          "smd_ci95": [
+            -2.1928864378031916,
+            0.21467780634403388
+          ],
+          "cohort_missing": 42,
+          "reference_missing": 342
+        },
+        {
+          "factor": "market_gap",
+          "cohort_mean": 0.010365821832735081,
+          "reference_mean": 0.006439763265944232,
+          "smd": 0.04357806173914548,
+          "smd_ci95": [
+            -1.1383675536022995,
+            1.2255236770805904
+          ],
+          "cohort_missing": 42,
+          "reference_missing": 342
+        }
+      ]
+    },
+    "marginal_45_50_vs_base_45": {
+      "reference": "base_45",
+      "cohort_n": 56,
+      "reference_n": 420,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "cohort_prevalence": 0.9107142857142857,
+          "reference_prevalence": 0.8738095238095238,
+          "prevalence_difference": 0.036904761904761885,
+          "prevalence_difference_ci95": [
+            -0.07020496312416462,
+            0.09848754341800747
+          ],
+          "odds_ratio": 1.473024523160763,
+          "odds_ratio_ci95": [
+            0.5625568202382176,
+            3.8570348234586853
+          ],
+          "fisher_p": 0.519675837498991
+        },
+        {
+          "factor": "surface_missing",
+          "cohort_prevalence": 0.125,
+          "reference_prevalence": 0.11428571428571428,
+          "prevalence_difference": 0.010714285714285718,
+          "prevalence_difference_ci95": [
+            -0.06096452355626815,
+            0.12519714270047655
+          ],
+          "odds_ratio": 1.1071428571428572,
+          "odds_ratio_ci95": [
+            0.47459617206877197,
+            2.5827543041051495
+          ],
+          "fisher_p": 0.823837984938466
+        },
+        {
+          "factor": "round_qualifying",
+          "cohort_prevalence": 0.19642857142857142,
+          "reference_prevalence": 0.26904761904761904,
+          "prevalence_difference": -0.07261904761904761,
+          "prevalence_difference_ci95": [
+            -0.16676906834919863,
+            0.05584298934164836
+          ],
+          "odds_ratio": 0.664110127826942,
+          "odds_ratio_ci95": [
+            0.3319008067271736,
+            1.3288375711748697
+          ],
+          "fisher_p": 0.3303066909089255
+        },
+        {
+          "factor": "round_unknown",
+          "cohort_prevalence": 0.03571428571428571,
+          "reference_prevalence": 0.05714285714285714,
+          "prevalence_difference": -0.02142857142857143,
+          "prevalence_difference_ci95": [
+            -0.058439698510914864,
+            0.06601262701673447
+          ],
+          "odds_ratio": 0.6111111111111112,
+          "odds_ratio_ci95": [
+            0.1404751864532001,
+            2.6585249648191467
+          ],
+          "fisher_p": 0.755417528494359
+        },
+        {
+          "factor": "any_ambiguous",
+          "cohort_prevalence": 0.10714285714285714,
+          "reference_prevalence": 0.06428571428571428,
+          "prevalence_difference": 0.04285714285714286,
+          "prevalence_difference_ci95": [
+            -0.020579667489669662,
+            0.15219397374580598
+          ],
+          "odds_ratio": 1.7466666666666666,
+          "odds_ratio_ci95": [
+            0.6875927147790906,
+            4.4369935557339595
+          ],
+          "fisher_p": 0.25796500354220375
+        },
+        {
+          "factor": "any_no_history",
+          "cohort_prevalence": 0.10714285714285714,
+          "reference_prevalence": 0.2119047619047619,
+          "prevalence_difference": -0.10476190476190476,
+          "prevalence_difference_ci95": [
+            -0.17541372084281784,
+            0.008766966722684663
+          ],
+          "odds_ratio": 0.4462921348314607,
+          "odds_ratio_ci95": [
+            0.18538398662500122,
+            1.0744006170032452
+          ],
+          "fisher_p": 0.0749331725405834
+        },
+        {
+          "factor": "fav_no_history",
+          "cohort_prevalence": 0.03571428571428571,
+          "reference_prevalence": 0.10714285714285714,
+          "prevalence_difference": -0.07142857142857142,
+          "prevalence_difference_ci95": [
+            -0.11353084854371284,
+            0.01794088063264257
+          ],
+          "odds_ratio": 0.30864197530864196,
+          "odds_ratio_ci95": [
+            0.07277492938082757,
+            1.308965460123365
+          ],
+          "fisher_p": 0.09973120496303821
+        },
+        {
+          "factor": "dog_no_history",
+          "cohort_prevalence": 0.07142857142857142,
+          "reference_prevalence": 0.1261904761904762,
+          "prevalence_difference": -0.05476190476190476,
+          "prevalence_difference_ci95": [
+            -0.11055524178243262,
+            0.047585037841715055
+          ],
+          "odds_ratio": 0.532656023222061,
+          "odds_ratio_ci95": [
+            0.18510170685915744,
+            1.5327921275767766
+          ],
+          "fisher_p": 0.28047576539013863
+        },
+        {
+          "factor": "history_recovered",
+          "cohort_prevalence": 0.9821428571428571,
+          "reference_prevalence": 0.9666666666666667,
+          "prevalence_difference": 0.015476190476190421,
+          "prevalence_difference_ci95": [
+            -0.062282032073244356,
+            0.041796827673752236
+          ],
+          "odds_ratio": 1.896551724137931,
+          "odds_ratio_ci95": [
+            0.24459036733347528,
+            14.705846683759722
+          ],
+          "fisher_p": 0.9999999999997111
+        },
+        {
+          "factor": "fav_recovered",
+          "cohort_prevalence": 0.9464285714285714,
+          "reference_prevalence": 0.8523809523809524,
+          "prevalence_difference": 0.09404761904761905,
+          "prevalence_difference_ci95": [
+            -0.003423999539275302,
+            0.1451899018708628
+          ],
+          "odds_ratio": 3.0595903165735567,
+          "odds_ratio_ci95": [
+            0.9270689460861249,
+            10.097515341001433
+          ],
+          "fisher_p": 0.0612397175466906
+        },
+        {
+          "factor": "dog_recovered",
+          "cohort_prevalence": 0.8035714285714286,
+          "reference_prevalence": 0.8166666666666667,
+          "prevalence_difference": -0.013095238095238049,
+          "prevalence_difference_ci95": [
+            -0.13978244931225361,
+            0.07900059366081355
+          ],
+          "odds_ratio": 0.9183673469387755,
+          "odds_ratio_ci95": [
+            0.45420719799952247,
+            1.856858692768343
+          ],
+          "fisher_p": 0.8545985414670407
+        },
+        {
+          "factor": "min_matches_lt10",
+          "cohort_prevalence": 0.07142857142857142,
+          "reference_prevalence": 0.19285714285714287,
+          "prevalence_difference": -0.12142857142857144,
+          "prevalence_difference_ci95": [
+            -0.18068351909668617,
+            -0.017099141933950804
+          ],
+          "odds_ratio": 0.32193732193732194,
+          "odds_ratio_ci95": [
+            0.1131701401932297,
+            0.9158214267404013
+          ],
+          "fisher_p": 0.02518872345170479
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "cohort_prevalence": 0.017857142857142856,
+          "reference_prevalence": 0.05238095238095238,
+          "prevalence_difference": -0.034523809523809526,
+          "prevalence_difference_ci95": [
+            -0.0640881549418713,
+            0.04405750566775199
+          ],
+          "odds_ratio": 0.32892561983471075,
+          "odds_ratio_ci95": [
+            0.04347042714166326,
+            2.4888658910819483
+          ],
+          "fisher_p": 0.5015110230708223
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "cohort_prevalence": 0.07142857142857142,
+          "reference_prevalence": 0.1619047619047619,
+          "prevalence_difference": -0.09047619047619049,
+          "prevalence_difference_ci95": [
+            -0.14826428708436448,
+            0.012968738785454403
+          ],
+          "odds_ratio": 0.39819004524886875,
+          "odds_ratio_ci95": [
+            0.13939853648739595,
+            1.137424510548088
+          ],
+          "fisher_p": 0.10940595137841799
+        },
+        {
+          "factor": "min_surface_lt5",
+          "cohort_prevalence": 0.25,
+          "reference_prevalence": 0.38333333333333336,
+          "prevalence_difference": -0.13333333333333336,
+          "prevalence_difference_ci95": [
+            -0.23932988916422346,
+            0.0014150769356123527
+          ],
+          "odds_ratio": 0.5362318840579711,
+          "odds_ratio_ci95": [
+            0.2838733212631256,
+            1.0129329244498912
+          ],
+          "fisher_p": 0.055842738175414665
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "cohort_prevalence": 0.17857142857142858,
+          "reference_prevalence": 0.20714285714285716,
+          "prevalence_difference": -0.02857142857142858,
+          "prevalence_difference_ci95": [
+            -0.11734987348357148,
+            0.09656467003427868
+          ],
+          "odds_ratio": 0.8320839580209896,
+          "odds_ratio_ci95": [
+            0.4036331637430666,
+            1.7153291042175145
+          ],
+          "fisher_p": 0.7253178786704068
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "cohort_prevalence": 0.017857142857142856,
+          "reference_prevalence": 0.016666666666666666,
+          "prevalence_difference": 0.0011904761904761897,
+          "prevalence_difference_ci95": [
+            -0.021534344710840196,
+            0.0782676678692754
+          ],
+          "odds_ratio": 1.0727272727272728,
+          "odds_ratio_ci95": [
+            0.12952418264807028,
+            8.884393463262182
+          ],
+          "fisher_p": 0.9999999999998284
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "cohort_prevalence": 0.07142857142857142,
+          "reference_prevalence": 0.10476190476190476,
+          "prevalence_difference": -0.03333333333333334,
+          "prevalence_difference_ci95": [
+            -0.08775076265471429,
+            0.06831915338383125
+          ],
+          "odds_ratio": 0.6573426573426573,
+          "odds_ratio_ci95": [
+            0.2268667090045953,
+            1.9046398259938342
+          ],
+          "fisher_p": 0.6356877267505203
+        },
+        {
+          "factor": "inactivity_missing",
+          "cohort_prevalence": 0.017857142857142856,
+          "reference_prevalence": 0.03571428571428571,
+          "prevalence_difference": -0.017857142857142856,
+          "prevalence_difference_ci95": [
+            -0.04462327622624948,
+            0.06000261609879503
+          ],
+          "odds_ratio": 0.4909090909090909,
+          "odds_ratio_ci95": [
+            0.06359379217677644,
+            3.789548119214014
+          ],
+          "fisher_p": 0.7068546019318745
+        },
+        {
+          "factor": "side_changed",
+          "cohort_prevalence": 0.17857142857142858,
+          "reference_prevalence": 0.05714285714285714,
+          "prevalence_difference": 0.12142857142857144,
+          "prevalence_difference_ci95": [
+            0.03851580396201425,
+            0.24268021363706876
+          ],
+          "odds_ratio": 3.5869565217391304,
+          "odds_ratio_ci95": [
+            1.6143298230921854,
+            7.9700299807396675
+          ],
+          "fisher_p": 0.0031787044844087636
+        },
+        {
+          "factor": "market_available",
+          "cohort_prevalence": 0.017857142857142856,
+          "reference_prevalence": 0.08571428571428572,
+          "prevalence_difference": -0.06785714285714287,
+          "prevalence_difference_ci95": [
+            -0.10186629094729605,
+            0.012166597193755818
+          ],
+          "odds_ratio": 0.19393939393939394,
+          "odds_ratio_ci95": [
+            0.026063980379565876,
+            1.4430830584520993
+          ],
+          "fisher_p": 0.10601467697435335
+        },
+        {
+          "factor": "market_disagrees",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.014285714285714285,
+          "prevalence_difference": -0.014285714285714285,
+          "prevalence_difference_ci95": [
+            -0.03081262439930798,
+            0.05037105231460282
+          ],
+          "odds_ratio": 0.5643294758339006,
+          "odds_ratio_ci95": [
+            0.0313683449647146,
+            10.152520244635179
+          ],
+          "fisher_p": 0.9999999999999041
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.0,
+          "prevalence_difference": 0.0,
+          "prevalence_difference_ci95": [
+            -0.009063433368181315,
+            0.06419393671876342
+          ],
+          "odds_ratio": 7.442477876106195,
+          "odds_ratio_ci95": [
+            0.1462336667920647,
+            378.78060607679356
+          ],
+          "fisher_p": 1.0
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.44285714285714284,
+          "prevalence_difference": -0.44285714285714284,
+          "prevalence_difference_ci95": [
+            -0.49066703668177786,
+            -0.3634299724169278
+          ],
+          "odds_ratio": 0.011127191629694654,
+          "odds_ratio_ci95": [
+            0.0006829819717969394,
+            0.18128500996620545
+          ],
+          "fisher_p": 3.6734691305200243e-13
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "cohort_prevalence": 0.19642857142857142,
+          "reference_prevalence": 0.1357142857142857,
+          "prevalence_difference": 0.06071428571428572,
+          "prevalence_difference_ci95": [
+            -0.029825137298397864,
+            0.18624026727362678
+          ],
+          "odds_ratio": 1.5567251461988305,
+          "odds_ratio_ci95": [
+            0.760824414792995,
+            3.1852200503675037
+          ],
+          "fisher_p": 0.22470956718057444
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "cohort_prevalence": 0.5178571428571429,
+          "reference_prevalence": 0.3238095238095238,
+          "prevalence_difference": 0.19404761904761908,
+          "prevalence_difference_ci95": [
+            0.058206258432306035,
+            0.32666591482098034
+          ],
+          "odds_ratio": 2.2429193899782134,
+          "odds_ratio_ci95": [
+            1.2778561114034017,
+            3.9368183514928794
+          ],
+          "fisher_p": 0.00665070696854265
+        },
+        {
+          "factor": "candidate_multi",
+          "cohort_prevalence": 0.10714285714285714,
+          "reference_prevalence": 0.06428571428571428,
+          "prevalence_difference": 0.04285714285714286,
+          "prevalence_difference_ci95": [
+            -0.020579667489669662,
+            0.15219397374580598
+          ],
+          "odds_ratio": 1.7466666666666666,
+          "odds_ratio_ci95": [
+            0.6875927147790906,
+            4.4369935557339595
+          ],
+          "fisher_p": 0.25796500354220375
+        },
+        {
+          "factor": "qualifying",
+          "cohort_prevalence": 0.19642857142857142,
+          "reference_prevalence": 0.26904761904761904,
+          "prevalence_difference": -0.07261904761904761,
+          "prevalence_difference_ci95": [
+            -0.16676906834919863,
+            0.05584298934164836
+          ],
+          "odds_ratio": 0.664110127826942,
+          "odds_ratio_ci95": [
+            0.3319008067271736,
+            1.3288375711748697
+          ],
+          "fisher_p": 0.3303066909089255
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "cohort_mean": 0.6581711964285715,
+          "reference_mean": 0.7625704452380953,
+          "smd": -1.600746606429058,
+          "smd_ci95": [
+            -1.897535126331103,
+            -1.303958086527013
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "elo_gap",
+          "cohort_mean": 113.8328443911778,
+          "reference_mean": 211.85703270673204,
+          "smd": -1.3185587038797626,
+          "smd_ci95": [
+            -1.6096932124973495,
+            -1.0274241952621757
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_elo_gap",
+          "cohort_mean": 113.8328443911778,
+          "reference_mean": 211.85703270673204,
+          "smd": -1.3185587038797626,
+          "smd_ci95": [
+            -1.6096932124973495,
+            -1.0274241952621757
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "surface_elo_gap",
+          "cohort_mean": 77.22449520864048,
+          "reference_mean": 164.88723092076236,
+          "smd": -0.8077063716114478,
+          "smd_ci95": [
+            -1.0912135083192873,
+            -0.5241992349036082
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "cohort_mean": 87.46389163434897,
+          "reference_mean": 168.54697828491877,
+          "smd": -0.7913311890600065,
+          "smd_ci95": [
+            -1.0746519227869589,
+            -0.5080104553330542
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_matches",
+          "cohort_mean": 209.71428571428572,
+          "reference_mean": 219.66904761904763,
+          "smd": -0.054521287396152494,
+          "smd_ci95": [
+            -0.3333685649926601,
+            0.22432599020035512
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "underdog_matches",
+          "cohort_mean": 187.05357142857142,
+          "reference_mean": 125.41904761904762,
+          "smd": 0.36599823504630613,
+          "smd_ci95": [
+            0.08620485369727937,
+            0.6457916163953329
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_matches",
+          "cohort_mean": 124.41071428571429,
+          "reference_mean": 90.48809523809524,
+          "smd": 0.27563628730446643,
+          "smd_ci95": [
+            -0.003738695710078399,
+            0.5550112703190113
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "cohort_mean": 92.05357142857143,
+          "reference_mean": 103.7,
+          "smd": -0.10426666898288679,
+          "smd_ci95": [
+            -0.38317109295030854,
+            0.174637754984535
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_surface_matches",
+          "cohort_mean": 47.30357142857143,
+          "reference_mean": 30.66190476190476,
+          "smd": 0.29125902059809683,
+          "smd_ci95": [
+            0.011820085911954825,
+            0.5706979552842388
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "inactivity_favourite",
+          "cohort_mean": 34.0911952890038,
+          "reference_mean": 13.362513445697386,
+          "smd": 0.24322516851825948,
+          "smd_ci95": [
+            -0.03631214205698574,
+            0.5227624790935047
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 7
+        },
+        {
+          "factor": "inactivity_underdog",
+          "cohort_mean": 24.23135659608607,
+          "reference_mean": 43.52969453555623,
+          "smd": -0.10574861862471968,
+          "smd_ci95": [
+            -0.38719955350636515,
+            0.17570231625692578
+          ],
+          "cohort_missing": 1,
+          "reference_missing": 8
+        },
+        {
+          "factor": "max_inactivity",
+          "cohort_mean": 52.88435025758846,
+          "reference_mean": 49.60000240725956,
+          "smd": 0.016609493573056376,
+          "smd_ci95": [
+            -0.26221827165737865,
+            0.29543725880349136
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "cohort_mean": 43.94642857142857,
+          "reference_mean": 38.88333333333333,
+          "smd": 0.21829746788935814,
+          "smd_ci95": [
+            -0.06087290918477009,
+            0.4974678449634864
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "cohort_mean": 33.267857142857146,
+          "reference_mean": 25.216666666666665,
+          "smd": 0.3510990990488323,
+          "smd_ci95": [
+            0.07138277092090506,
+            0.6308154271767595
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "max_delta_matches",
+          "cohort_mean": 48.232142857142854,
+          "reference_mean": 44.785714285714285,
+          "smd": 0.16502976126596752,
+          "smd_ci95": [
+            -0.11399300831565584,
+            0.4440525308475909
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "divergence_favourite",
+          "cohort_mean": 302.39442696564095,
+          "reference_mean": 299.2099171832015,
+          "smd": 0.005005044841707127,
+          "smd_ci95": [
+            -0.27382090543685583,
+            0.28383099512027005
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "market_confidence",
+          "cohort_mean": 0.7650485436893204,
+          "reference_mean": 0.7526294818534899,
+          "smd": null,
+          "smd_ci95": null,
+          "cohort_missing": 55,
+          "reference_missing": 384
+        },
+        {
+          "factor": "market_gap",
+          "cohort_mean": -0.09744954368932035,
+          "reference_mean": 0.006766934813176802,
+          "smd": null,
+          "smd_ci95": null,
+          "cohort_missing": 55,
+          "reference_missing": 384
+        }
+      ]
+    },
+    "marginal_pool_vs_core": {
+      "reference": "core_40",
+      "cohort_n": 101,
+      "reference_n": 375,
+      "binary": [
+        {
+          "factor": "tier_challenger",
+          "cohort_prevalence": 0.9207920792079208,
+          "reference_prevalence": 0.8666666666666667,
+          "prevalence_difference": 0.054125412541254136,
+          "prevalence_difference_ci95": [
+            -0.021733605130449044,
+            0.10834482318513101
+          ],
+          "odds_ratio": 1.7884615384615385,
+          "odds_ratio_ci95": [
+            0.8189296006462154,
+            3.905823738734331
+          ],
+          "fisher_p": 0.17077213865971957
+        },
+        {
+          "factor": "surface_missing",
+          "cohort_prevalence": 0.12871287128712872,
+          "reference_prevalence": 0.112,
+          "prevalence_difference": 0.016712871287128714,
+          "prevalence_difference_ci95": [
+            -0.04643391817037487,
+            0.10067632170287318
+          ],
+          "odds_ratio": 1.1712662337662338,
+          "odds_ratio_ci95": [
+            0.6023856444704798,
+            2.2773859286883567
+          ],
+          "fisher_p": 0.6033898099940418
+        },
+        {
+          "factor": "round_qualifying",
+          "cohort_prevalence": 0.24752475247524752,
+          "reference_prevalence": 0.264,
+          "prevalence_difference": -0.01647524752475249,
+          "prevalence_difference_ci95": [
+            -0.10395187781775535,
+            0.08502672102251586
+          ],
+          "odds_ratio": 0.9170653907496013,
+          "odds_ratio_ci95": [
+            0.5524159373431992,
+            1.5224197458087196
+          ],
+          "fisher_p": 0.7991299520403262
+        },
+        {
+          "factor": "round_unknown",
+          "cohort_prevalence": 0.0297029702970297,
+          "reference_prevalence": 0.06133333333333333,
+          "prevalence_difference": -0.03163036303630363,
+          "prevalence_difference_ci95": [
+            -0.06661787411673972,
+            0.02600949349742466
+          ],
+          "odds_ratio": 0.46850044365572313,
+          "odds_ratio_ci95": [
+            0.1377947148567335,
+            1.5928961131333523
+          ],
+          "fisher_p": 0.3225282565818411
+        },
+        {
+          "factor": "any_ambiguous",
+          "cohort_prevalence": 0.10891089108910891,
+          "reference_prevalence": 0.058666666666666666,
+          "prevalence_difference": 0.050244224422442245,
+          "prevalence_difference_ci95": [
+            -0.004751687985085677,
+            0.12840294724361806
+          ],
+          "odds_ratio": 1.961111111111111,
+          "odds_ratio_ci95": [
+            0.9172662265555646,
+            4.192846829829816
+          ],
+          "fisher_p": 0.11899976587228263
+        },
+        {
+          "factor": "any_no_history",
+          "cohort_prevalence": 0.15841584158415842,
+          "reference_prevalence": 0.21066666666666667,
+          "prevalence_difference": -0.05225082508250825,
+          "prevalence_difference_ci95": [
+            -0.12550241489704056,
+            0.03960445922321837
+          ],
+          "odds_ratio": 0.7052866716306776,
+          "odds_ratio_ci95": [
+            0.3913615079234856,
+            1.2710225178229098
+          ],
+          "fisher_p": 0.26503558043439773
+        },
+        {
+          "factor": "fav_no_history",
+          "cohort_prevalence": 0.0891089108910891,
+          "reference_prevalence": 0.10133333333333333,
+          "prevalence_difference": -0.012224422442244226,
+          "prevalence_difference_ci95": [
+            -0.06633368823234181,
+            0.06418982230708031
+          ],
+          "odds_ratio": 0.8675629290617849,
+          "odds_ratio_ci95": [
+            0.4048052596469465,
+            1.8593272146184698
+          ],
+          "fisher_p": 0.8515466218051403
+        },
+        {
+          "factor": "dog_no_history",
+          "cohort_prevalence": 0.06930693069306931,
+          "reference_prevalence": 0.13333333333333333,
+          "prevalence_difference": -0.06402640264026402,
+          "prevalence_difference_ci95": [
+            -0.11602391194792977,
+            0.009581110872881271
+          ],
+          "odds_ratio": 0.48404255319148937,
+          "odds_ratio_ci95": [
+            0.2124243388586059,
+            1.102967741639478
+          ],
+          "fisher_p": 0.08557729892868321
+        },
+        {
+          "factor": "history_recovered",
+          "cohort_prevalence": 0.9801980198019802,
+          "reference_prevalence": 0.9653333333333334,
+          "prevalence_difference": 0.014864686468646804,
+          "prevalence_difference_ci95": [
+            -0.03670117772887211,
+            0.04260220886707031
+          ],
+          "odds_ratio": 1.7776243093922652,
+          "odds_ratio_ci95": [
+            0.394582633641098,
+            8.00833061552459
+          ],
+          "fisher_p": 0.747769488032378
+        },
+        {
+          "factor": "fav_recovered",
+          "cohort_prevalence": 0.8910891089108911,
+          "reference_prevalence": 0.856,
+          "prevalence_difference": 0.03508910891089112,
+          "prevalence_difference_ci95": [
+            -0.047030881817327896,
+            0.09625687680621868
+          ],
+          "odds_ratio": 1.3763806287170772,
+          "odds_ratio_ci95": [
+            0.690904548995097,
+            2.7419469706242454
+          ],
+          "fisher_p": 0.4172568405262326
+        },
+        {
+          "factor": "dog_recovered",
+          "cohort_prevalence": 0.8118811881188119,
+          "reference_prevalence": 0.816,
+          "prevalence_difference": -0.0041188118811880114,
+          "prevalence_difference_ci95": [
+            -0.09834709732335507,
+            0.07283337443698867
+          ],
+          "odds_ratio": 0.9731682146542827,
+          "odds_ratio_ci95": [
+            0.5540760438938406,
+            1.7092534218910524
+          ],
+          "fisher_p": 0.8863352339164904
+        },
+        {
+          "factor": "min_matches_lt10",
+          "cohort_prevalence": 0.16831683168316833,
+          "reference_prevalence": 0.18133333333333335,
+          "prevalence_difference": -0.013016501650165019,
+          "prevalence_difference_ci95": [
+            -0.08675060180837409,
+            0.07898792821996843
+          ],
+          "odds_ratio": 0.9136904761904762,
+          "odds_ratio_ci95": [
+            0.5096848876208832,
+            1.6379341560979293
+          ],
+          "fisher_p": 0.8837582934458822
+        },
+        {
+          "factor": "fav_matches_lt10",
+          "cohort_prevalence": 0.0594059405940594,
+          "reference_prevalence": 0.04533333333333334,
+          "prevalence_difference": 0.014072607260726067,
+          "prevalence_difference_ci95": [
+            -0.027117252090729807,
+            0.08042996782268091
+          ],
+          "odds_ratio": 1.3300309597523219,
+          "odds_ratio_ci95": [
+            0.5103817417431201,
+            3.465998505075888
+          ],
+          "fisher_p": 0.6007772327998203
+        },
+        {
+          "factor": "dog_matches_lt10",
+          "cohort_prevalence": 0.13861386138613863,
+          "reference_prevalence": 0.15466666666666667,
+          "prevalence_difference": -0.01605280528052805,
+          "prevalence_difference_ci95": [
+            -0.08347394344012994,
+            0.071160036637625
+          ],
+          "odds_ratio": 0.8795085216012684,
+          "odds_ratio_ci95": [
+            0.4684209494942453,
+            1.6513677289720616
+          ],
+          "fisher_p": 0.7563355336189012
+        },
+        {
+          "factor": "min_surface_lt5",
+          "cohort_prevalence": 0.36633663366336633,
+          "reference_prevalence": 0.368,
+          "prevalence_difference": -0.0016633663366336648,
+          "prevalence_difference_ci95": [
+            -0.10236514559794513,
+            0.10645692198426283
+          ],
+          "odds_ratio": 0.9928668478260869,
+          "odds_ratio_ci95": [
+            0.6293235576865449,
+            1.5664193171727925
+          ],
+          "fisher_p": 0.9999999999995075
+        },
+        {
+          "factor": "fav_surface_lt5",
+          "cohort_prevalence": 0.2376237623762376,
+          "reference_prevalence": 0.19466666666666665,
+          "prevalence_difference": 0.04295709570957096,
+          "prevalence_difference_ci95": [
+            -0.04131461156084426,
+            0.14175581618514427
+          ],
+          "odds_ratio": 1.2894502757516457,
+          "odds_ratio_ci95": [
+            0.7630227803295354,
+            2.1790725735841248
+          ],
+          "fisher_p": 0.33364910736683606
+        },
+        {
+          "factor": "inactivity_fav_gt90",
+          "cohort_prevalence": 0.019801980198019802,
+          "reference_prevalence": 0.016,
+          "prevalence_difference": 0.003801980198019802,
+          "prevalence_difference_ci95": [
+            -0.019584338820326307,
+            0.054095087053569274
+          ],
+          "odds_ratio": 1.2424242424242424,
+          "odds_ratio_ci95": [
+            0.2469566698341072,
+            6.250562089294352
+          ],
+          "fisher_p": 0.6793772379668452
+        },
+        {
+          "factor": "inactivity_any_gt90",
+          "cohort_prevalence": 0.09900990099009901,
+          "reference_prevalence": 0.10133333333333333,
+          "prevalence_difference": -0.0023234323432343162,
+          "prevalence_difference_ci95": [
+            -0.05862340796063471,
+            0.07605488744289862
+          ],
+          "odds_ratio": 0.9745517640254482,
+          "odds_ratio_ci95": [
+            0.46774056497325817,
+            2.0305083883828043
+          ],
+          "fisher_p": 0.9999999999998556
+        },
+        {
+          "factor": "inactivity_missing",
+          "cohort_prevalence": 0.06930693069306931,
+          "reference_prevalence": 0.024,
+          "prevalence_difference": 0.04530693069306931,
+          "prevalence_difference_ci95": [
+            0.004217590682122491,
+            0.11315185629218769
+          ],
+          "odds_ratio": 3.028368794326241,
+          "odds_ratio_ci95": [
+            1.0992502595100995,
+            8.342975109722692
+          ],
+          "fisher_p": 0.05403684982699676
+        },
+        {
+          "factor": "side_changed",
+          "cohort_prevalence": 0.1485148514851485,
+          "reference_prevalence": 0.050666666666666665,
+          "prevalence_difference": 0.09784818481848184,
+          "prevalence_difference_ci95": [
+            0.035273732150559664,
+            0.18195165397407628
+          ],
+          "odds_ratio": 3.2680538555691556,
+          "odds_ratio_ci95": [
+            1.5959025550323396,
+            6.692248201008739
+          ],
+          "fisher_p": 0.0017589356663112964
+        },
+        {
+          "factor": "market_available",
+          "cohort_prevalence": 0.039603960396039604,
+          "reference_prevalence": 0.088,
+          "prevalence_difference": -0.04839603960396039,
+          "prevalence_difference_ci95": [
+            -0.08926481761408703,
+            0.014474621926466681
+          ],
+          "odds_ratio": 0.42736644798500467,
+          "odds_ratio_ci95": [
+            0.1477842093668428,
+            1.2358700678903363
+          ],
+          "fisher_p": 0.14158998932528302
+        },
+        {
+          "factor": "market_disagrees",
+          "cohort_prevalence": 0.019801980198019802,
+          "reference_prevalence": 0.010666666666666666,
+          "prevalence_difference": 0.009135313531353136,
+          "prevalence_difference_ci95": [
+            -0.012685678299457883,
+            0.05910550383965396
+          ],
+          "odds_ratio": 1.8737373737373737,
+          "odds_ratio_ci95": [
+            0.3382863405889378,
+            10.378461452590612
+          ],
+          "fisher_p": 0.611761835668267
+        },
+        {
+          "factor": "elo_gap_lt50",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.0,
+          "prevalence_difference": 0.0,
+          "prevalence_difference_ci95": [
+            -0.010140016968185867,
+            0.03664064639985608
+          ],
+          "odds_ratio": 3.6995073891625614,
+          "odds_ratio_ci95": [
+            0.0729591263747634,
+            187.5893476597672
+          ],
+          "fisher_p": 1.0
+        },
+        {
+          "factor": "elo_gap_gt200",
+          "cohort_prevalence": 0.0,
+          "reference_prevalence": 0.496,
+          "prevalence_difference": -0.496,
+          "prevalence_difference_ci95": [
+            -0.5463877908446899,
+            -0.4337641736102311
+          ],
+          "odds_ratio": 0.005005348723570042,
+          "odds_ratio_ci95": [
+            0.00030867578614117414,
+            0.08116450000093589
+          ],
+          "fisher_p": 1.1598389261008383e-12
+        },
+        {
+          "factor": "surface_gap_lt25",
+          "cohort_prevalence": 0.18811881188118812,
+          "reference_prevalence": 0.13066666666666665,
+          "prevalence_difference": 0.057452145214521466,
+          "prevalence_difference_ci95": [
+            -0.0171359252555299,
+            0.14970724512305927
+          ],
+          "odds_ratio": 1.5415629666500748,
+          "odds_ratio_ci95": [
+            0.86103474524945,
+            2.759954105520456
+          ],
+          "fisher_p": 0.15082215171941052
+        },
+        {
+          "factor": "divergence_fav_gt100",
+          "cohort_prevalence": 0.43564356435643564,
+          "reference_prevalence": 0.32266666666666666,
+          "prevalence_difference": 0.11297689768976898,
+          "prevalence_difference_ci95": [
+            0.00826878663119171,
+            0.22031029045941158
+          ],
+          "odds_ratio": 1.620414673046252,
+          "odds_ratio_ci95": [
+            1.0342899093782432,
+            2.538692187572478
+          ],
+          "fisher_p": 0.04482160699984785
+        },
+        {
+          "factor": "candidate_multi",
+          "cohort_prevalence": 0.10891089108910891,
+          "reference_prevalence": 0.058666666666666666,
+          "prevalence_difference": 0.050244224422442245,
+          "prevalence_difference_ci95": [
+            -0.004751687985085677,
+            0.12840294724361806
+          ],
+          "odds_ratio": 1.961111111111111,
+          "odds_ratio_ci95": [
+            0.9172662265555646,
+            4.192846829829816
+          ],
+          "fisher_p": 0.11899976587228263
+        },
+        {
+          "factor": "qualifying",
+          "cohort_prevalence": 0.24752475247524752,
+          "reference_prevalence": 0.264,
+          "prevalence_difference": -0.01647524752475249,
+          "prevalence_difference_ci95": [
+            -0.10395187781775535,
+            0.08502672102251586
+          ],
+          "odds_ratio": 0.9170653907496013,
+          "odds_ratio_ci95": [
+            0.5524159373431992,
+            1.5224197458087196
+          ],
+          "fisher_p": 0.7991299520403262
+        }
+      ],
+      "continuous": [
+        {
+          "factor": "confidence",
+          "cohort_mean": 0.6658084356435644,
+          "reference_mean": 0.773041392,
+          "smd": -1.8231694200781454,
+          "smd_ci95": [
+            -2.071545638160713,
+            -1.5747932019955775
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "elo_gap",
+          "cohort_mean": 119.80094960813736,
+          "reference_mean": 222.01252563283077,
+          "smd": -1.4792116526555714,
+          "smd_ci95": [
+            -1.718183001993543,
+            -1.2402403033176
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_elo_gap",
+          "cohort_mean": 119.80094960813736,
+          "reference_mean": 222.01252563283077,
+          "smd": -1.4792116526555714,
+          "smd_ci95": [
+            -1.718183001993543,
+            -1.2402403033176
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "surface_elo_gap",
+          "cohort_mean": 88.50414038188353,
+          "reference_mean": 172.3687747728902,
+          "smd": -0.7854702337041509,
+          "smd_ci95": [
+            -1.0107870630308518,
+            -0.5601534043774501
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "abs_surface_elo_gap",
+          "cohort_mean": 98.13063851199959,
+          "reference_mean": 175.40403819060657,
+          "smd": -0.7658009506702576,
+          "smd_ci95": [
+            -0.9908443945357658,
+            -0.5407575068047493
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_matches",
+          "cohort_mean": 205.4950495049505,
+          "reference_mean": 222.0,
+          "smd": -0.09044408118689494,
+          "smd_ci95": [
+            -0.3102420428760163,
+            0.12935388050222646
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "underdog_matches",
+          "cohort_mean": 169.40594059405942,
+          "reference_mean": 122.776,
+          "smd": 0.2767467698782703,
+          "smd_ci95": [
+            0.05632176491783375,
+            0.49717177483870684
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_matches",
+          "cohort_mean": 109.25742574257426,
+          "reference_mean": 90.49866666666667,
+          "smd": 0.15211777033222304,
+          "smd_ci95": [
+            -0.06781746665807578,
+            0.3720530073225219
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "favourite_surface_matches",
+          "cohort_mean": 95.16831683168317,
+          "reference_mean": 104.25866666666667,
+          "smd": -0.0813820574841211,
+          "smd_ci95": [
+            -0.3011657258201297,
+            0.13840161085188746
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "min_surface_matches",
+          "cohort_mean": 36.524752475247524,
+          "reference_mean": 31.568,
+          "smd": 0.08642513316754237,
+          "smd_ci95": [
+            -0.13336630357952095,
+            0.3062165699146057
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "inactivity_favourite",
+          "cohort_mean": 25.438140065139724,
+          "reference_mean": 13.334208072415809,
+          "smd": 0.14181734293407505,
+          "smd_ci95": [
+            -0.08181525135867504,
+            0.36544993722682517
+          ],
+          "cohort_missing": 4,
+          "reference_missing": 3
+        },
+        {
+          "factor": "inactivity_underdog",
+          "cohort_mean": 27.72756441784238,
+          "reference_mean": 44.850020185597145,
+          "smd": -0.09383952411803226,
+          "smd_ci95": [
+            -0.3166516301764275,
+            0.128972581940363
+          ],
+          "cohort_missing": 3,
+          "reference_missing": 6
+        },
+        {
+          "factor": "max_inactivity",
+          "cohort_mean": 46.40065137524203,
+          "reference_mean": 50.95215689753206,
+          "smd": -0.023018413407597638,
+          "smd_ci95": [
+            -0.24274614026360342,
+            0.19670931344840814
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_favourite",
+          "cohort_mean": 41.633663366336634,
+          "reference_mean": 38.898666666666664,
+          "smd": 0.11776556681513645,
+          "smd_ci95": [
+            -0.10208460553120915,
+            0.337615739161482
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "delta_matches_underdog",
+          "cohort_mean": 30.653465346534652,
+          "reference_mean": 24.954666666666668,
+          "smd": 0.24820725464184606,
+          "smd_ci95": [
+            0.027919423552725503,
+            0.46849508573096665
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "max_delta_matches",
+          "cohort_mean": 46.336633663366335,
+          "reference_mean": 44.882666666666665,
+          "smd": 0.06955176859826782,
+          "smd_ci95": [
+            -0.15021550773767828,
+            0.2893190449342139
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "divergence_favourite",
+          "cohort_mean": 301.74553496438926,
+          "reference_mean": 299.0025442549792,
+          "smd": 0.004311117229961547,
+          "smd_ci95": [
+            -0.21541191509505966,
+            0.22403414955498277
+          ],
+          "cohort_missing": 0,
+          "reference_missing": 0
+        },
+        {
+          "factor": "market_confidence",
+          "cohort_mean": 0.6867900195477787,
+          "reference_mean": 0.760986357946177,
+          "smd": -0.7339707390201067,
+          "smd_ci95": [
+            -1.7850359165579224,
+            0.317094438517709
+          ],
+          "cohort_missing": 97,
+          "reference_missing": 342
+        },
+        {
+          "factor": "market_gap",
+          "cohort_mean": -0.016588019547778776,
+          "reference_mean": 0.006439763265944232,
+          "smd": -0.25533127438045883,
+          "smd_ci95": [
+            -1.2946372334434364,
+            0.7839746846825189
+          ],
+          "cohort_missing": 97,
+          "reference_missing": 342
+        }
+      ]
+    }
+  },
+  "missingness": {
+    "n": 3223,
+    "counts": {
+      "round_code_unknown": 171,
+      "surface_missing": 410,
+      "market_missing_or_ineligible": 2722,
+      "market_quoted_any_age": 1610,
+      "market_eligible_pre_forecast_0_24h": 501,
+      "inactivity_favourite_missing": 38,
+      "inactivity_underdog_missing": 78,
+      "any_ambiguous_slot": 189,
+      "any_no_history_slot": 559
+    },
+    "shares": {
+      "round_code_unknown": 0.05305615885820664,
+      "surface_missing": 0.1272106732857586,
+      "market_missing_or_ineligible": 0.8445547626434998,
+      "market_quoted_any_age": 0.499534595097735,
+      "market_eligible_pre_forecast_0_24h": 0.15544523735650015,
+      "inactivity_favourite_missing": 0.01179025752404592,
+      "inactivity_underdog_missing": 0.024201054917778467,
+      "any_ambiguous_slot": 0.058641017685386286,
+      "any_no_history_slot": 0.17344089357741235
+    }
+  },
+  "notes": [
+    "The frozen cohorts use the development-period thresholds exactly; no November outcome enters the thresholds.",
+    "The retrospective bands are descriptive ranks inside the 3,223-row corrected ranking and are not a policy.",
+    "Marginal samples are small (45 and 56 selections). Every factor test is exploratory."
+  ],
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}

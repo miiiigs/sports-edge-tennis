@@ -1,0 +1,838 @@
+{
+  "agent2_specialist": {
+    "agent3_gate_relaxed": false,
+    "architecture": {
+      "agent_code": "AGENT_2_HIERARCHICAL_MARKOV",
+      "not_implemented": {
+        "opponent_strength": true,
+        "recency": true,
+        "uncertainty": true
+      },
+      "not_implemented_note": "Recency/inactivity weighting, opponent-strength adjustment and explicit statistical uncertainty are not present in the inspected Agent 2 implementation. They are candidate extensions, not claims.",
+      "present": {
+        "deterministic_surface_resolution": true,
+        "minimum_prior_return_points": 250,
+        "minimum_prior_service_points": 250,
+        "minimum_prior_usable_matches": 5,
+        "one_sided_history_abstains": true,
+        "pit_state_gate": true,
+        "scoring_rules_versioned": true,
+        "shrinkage_constants": {
+          "k_return_overall": "348.87619155831686",
+          "k_return_surface": "193.2713757201798",
+          "k_serve_overall": "142.64921751742673",
+          "k_serve_surface": "207.4613530571349"
+        },
+        "surface_and_tour_shrinkage": true
+      },
+      "source_tokens": {
+        "opponent_strength": false,
+        "recency": false,
+        "uncertainty": false
+      },
+      "version": "AGENT2_SPECIALIST_AUDIT_V1"
+    },
+    "categories": [
+      {
+        "a1": {
+          "accuracy": 0.5853658536585366,
+          "brier": 0.243999038631695,
+          "log_loss": 0.6805445954955679,
+          "n": 82
+        },
+        "a2": {
+          "accuracy": 0.6585365853658537,
+          "brier": 0.23412136132749994,
+          "log_loss": 0.6598417797212248,
+          "n": 82
+        },
+        "available": true,
+        "category": "WELL_SUPPORTED_BOTH",
+        "description": "Both players have at least 10 prior matches and 500 serve and return points.",
+        "disagreement": {
+          "a1_only_correct": 9,
+          "a2_only_correct": 15,
+          "mcnemar_exact": {
+            "b": 9,
+            "c": 15,
+            "p_value": 0.30745625495910645
+          }
+        },
+        "gate": {
+          "brier_ci_excludes_zero_in_a2_favour": false,
+          "minimum_direction_count": 10,
+          "minimum_fixtures": 100
+        },
+        "n": 82,
+        "paired": {
+          "accuracy_improvement_95": [
+            -0.18292682926829273,
+            0.03689024390244016
+          ],
+          "brier_improvement_95": [
+            -0.015326875233783201,
+            0.035533018210642704
+          ],
+          "n": 82
+        },
+        "verdict": "INSUFFICIENT_EVIDENCE"
+      },
+      {
+        "a1": {
+          "accuracy": 0.5875486381322957,
+          "brier": 0.23449474923431915,
+          "log_loss": 0.6587835974328644,
+          "n": 257
+        },
+        "a2": {
+          "accuracy": 0.5992217898832685,
+          "brier": 0.23611286268092227,
+          "log_loss": 0.6617376566472918,
+          "n": 257
+        },
+        "available": true,
+        "category": "MINIMUM_SUPPORTED",
+        "description": "Both players clear the production Agent 2 minimum history gate.",
+        "disagreement": {
+          "a1_only_correct": 40,
+          "a2_only_correct": 43,
+          "mcnemar_exact": {
+            "b": 40,
+            "c": 43,
+            "p_value": 0.8264047244491933
+          }
+        },
+        "gate": {
+          "brier_ci_excludes_zero_in_a2_favour": false,
+          "minimum_direction_count": 10,
+          "minimum_fixtures": 100
+        },
+        "n": 257,
+        "paired": {
+          "accuracy_improvement_95": [
+            -0.08171206225680938,
+            0.05836575875486383
+          ],
+          "brier_improvement_95": [
+            -0.02055957568154883,
+            0.016268603225619283
+          ],
+          "n": 257
+        },
+        "verdict": "INSUFFICIENT_EVIDENCE"
+      },
+      {
+        "a1": {
+          "accuracy": 0.6245059288537549,
+          "brier": 0.22018216539177088,
+          "log_loss": 0.6309164312907258,
+          "n": 253
+        },
+        "a2": {
+          "accuracy": 0.6047430830039525,
+          "brier": 0.23590293360071538,
+          "log_loss": 0.6617789708369078,
+          "n": 253
+        },
+        "available": true,
+        "category": "SUBSTANTIAL_DISAGREEMENT",
+        "description": "Agent 1 and Agent 2 differ by at least 0.10 on participant-1 probability.",
+        "disagreement": {
+          "a1_only_correct": 57,
+          "a2_only_correct": 52,
+          "mcnemar_exact": {
+            "b": 57,
+            "c": 52,
+            "p_value": 0.701811182064683
+          }
+        },
+        "gate": {
+          "brier_ci_excludes_zero_in_a2_favour": false,
+          "minimum_direction_count": 10,
+          "minimum_fixtures": 100
+        },
+        "n": 253,
+        "paired": {
+          "accuracy_improvement_95": [
+            -0.06324110671936756,
+            0.09881422924901184
+          ],
+          "brier_improvement_95": [
+            -0.04021306351744327,
+            0.009380028614529162
+          ],
+          "n": 253
+        },
+        "verdict": "INSUFFICIENT_EVIDENCE"
+      },
+      {
+        "a1": {
+          "accuracy": 0.4857142857142857,
+          "brier": 0.25562835333397144,
+          "log_loss": 0.7043917980984614,
+          "n": 35
+        },
+        "a2": {
+          "accuracy": 0.6857142857142857,
+          "brier": 0.23212895137551434,
+          "log_loss": 0.6569013061252946,
+          "n": 35
+        },
+        "available": true,
+        "category": "WELL_SUPPORTED_AND_DISAGREEMENT",
+        "description": "Well-supported history and at least 0.10 Agent 1/Agent 2 disagreement.",
+        "disagreement": {
+          "a1_only_correct": 5,
+          "a2_only_correct": 12,
+          "mcnemar_exact": {
+            "b": 5,
+            "c": 12,
+            "p_value": 0.143463134765625
+          }
+        },
+        "gate": {
+          "brier_ci_excludes_zero_in_a2_favour": false,
+          "minimum_direction_count": 10,
+          "minimum_fixtures": 100
+        },
+        "n": 35,
+        "paired": {
+          "accuracy_improvement_95": [
+            -0.4007142857142856,
+            0.02857142857142858
+          ],
+          "brier_improvement_95": [
+            -0.030420446819061416,
+            0.07876498766203933
+          ],
+          "n": 35
+        },
+        "verdict": "INSUFFICIENT_EVIDENCE"
+      }
+    ],
+    "grand_slam_bo5_coordination": "PR_389",
+    "limitations": [
+      "An unavailable category is not evidence against Agent 2; it is a coverage limit.",
+      "Categories were defined before the measured comparison.",
+      "The specialist gate requires a paired Brier interval entirely in Agent 2's favour; a point estimate alone is not enough.",
+      "Agent 3 support is never relaxed to increase participation."
+    ],
+    "provider_calls": 0,
+    "version": "AGENT2_SPECIALIST_AUDIT_V1"
+  },
+  "agent2_support_rows": 599,
+  "cohorts": {
+    "all": {
+      "a1": {
+        "accuracy": 0.6460767946577629,
+        "brier": 0.21614995003721701,
+        "coverage": 1.0,
+        "covered": 599,
+        "eligible": 599,
+        "log_loss": 0.6213000795998556
+      },
+      "a2": {
+        "accuracy": 0.6030042918454935,
+        "brier": 0.2342402607153691,
+        "coverage": 0.7779632721202003,
+        "covered": 466,
+        "eligible": 599,
+        "log_loss": 0.6579704226132433
+      },
+      "bootstrap_a1_vs_manager": {
+        "accuracy_improvement_95": [
+          -0.011811023622047334,
+          0.03149606299212593
+        ],
+        "brier_improvement_95": [
+          -0.01098225462544708,
+          0.006757569779884787
+        ],
+        "n": 254,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "bootstrap_manager_corrected_vs_original": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.013761467889908285
+        ],
+        "brier_improvement_95": [
+          -0.017623480658237566,
+          -0.003076661869973538
+        ],
+        "n": 218,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "manager_corrected": {
+        "accuracy": 0.7047244094488189,
+        "brier": 0.1989339752922815,
+        "coverage": 0.4240400667779633,
+        "covered": 254,
+        "eligible": 599,
+        "log_loss": 0.5825502254355183
+      },
+      "manager_original": {
+        "accuracy": 0.6784452296819788,
+        "brier": 0.212589895738,
+        "coverage": 0.4724540901502504,
+        "covered": 283,
+        "eligible": 599,
+        "log_loss": 0.6138753483248831
+      },
+      "paired_a1_vs_manager": {
+        "accuracy_difference": 0.007874015748031496,
+        "correct_changed_to_incorrect": 5,
+        "incorrect_changed_to_correct": 3,
+        "left_correct": 181,
+        "left_only_correct": 5,
+        "mcnemar_exact": {
+          "b": 5,
+          "c": 3,
+          "n": 8,
+          "p_value": 0.7265625
+        },
+        "right_correct": 179,
+        "right_only_correct": 3,
+        "shared": 254,
+        "side_flips": 8
+      },
+      "paired_manager_corrected_vs_original": {
+        "accuracy_difference": 0.0045871559633027525,
+        "correct_changed_to_incorrect": 1,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 156,
+        "left_only_correct": 1,
+        "mcnemar_exact": {
+          "b": 1,
+          "c": 0,
+          "n": 1,
+          "p_value": 1.0
+        },
+        "right_correct": 155,
+        "right_only_correct": 0,
+        "shared": 218,
+        "side_flips": 1
+      },
+      "settled": 599
+    },
+    "atp_main": {
+      "a1": {
+        "accuracy": 0.6470588235294118,
+        "brier": 0.22311962704091176,
+        "coverage": 1.0,
+        "covered": 68,
+        "eligible": 68,
+        "log_loss": 0.6347419333129071
+      },
+      "a2": {
+        "accuracy": 0.5161290322580645,
+        "brier": 0.23560096732322583,
+        "coverage": 0.45588235294117646,
+        "covered": 31,
+        "eligible": 68,
+        "log_loss": 0.6576882030868605
+      },
+      "bootstrap_a1_vs_manager": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.0
+        ],
+        "brier_improvement_95": [
+          -0.036027293761047664,
+          0.03907420545503745
+        ],
+        "n": 16,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "bootstrap_manager_corrected_vs_original": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.0
+        ],
+        "brier_improvement_95": [
+          -0.0077179176105112044,
+          0.021506429696963304
+        ],
+        "n": 15,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "manager_corrected": {
+        "accuracy": 0.75,
+        "brier": 0.19150167044343752,
+        "coverage": 0.23529411764705882,
+        "covered": 16,
+        "eligible": 68,
+        "log_loss": 0.562921944139871
+      },
+      "manager_original": {
+        "accuracy": 0.6875,
+        "brier": 0.20037488030839062,
+        "coverage": 0.23529411764705882,
+        "covered": 16,
+        "eligible": 68,
+        "log_loss": 0.5771214282806514
+      },
+      "paired_a1_vs_manager": {
+        "accuracy_difference": 0.0,
+        "correct_changed_to_incorrect": 0,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 12,
+        "left_only_correct": 0,
+        "mcnemar_exact": {
+          "b": 0,
+          "c": 0,
+          "n": 0,
+          "p_value": 1.0
+        },
+        "right_correct": 12,
+        "right_only_correct": 0,
+        "shared": 16,
+        "side_flips": 0
+      },
+      "paired_manager_corrected_vs_original": {
+        "accuracy_difference": 0.0,
+        "correct_changed_to_incorrect": 0,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 11,
+        "left_only_correct": 0,
+        "mcnemar_exact": {
+          "b": 0,
+          "c": 0,
+          "n": 0,
+          "p_value": 1.0
+        },
+        "right_correct": 11,
+        "right_only_correct": 0,
+        "shared": 15,
+        "side_flips": 0
+      },
+      "settled": 68
+    },
+    "challenger": {
+      "a1": {
+        "accuracy": 0.6459510357815442,
+        "brier": 0.21525741136254425,
+        "coverage": 1.0,
+        "covered": 531,
+        "eligible": 531,
+        "log_loss": 0.6195787122693702
+      },
+      "a2": {
+        "accuracy": 0.6091954022988506,
+        "brier": 0.234143290819177,
+        "coverage": 0.8192090395480226,
+        "covered": 435,
+        "eligible": 531,
+        "log_loss": 0.6579905348093763
+      },
+      "bootstrap_a1_vs_manager": {
+        "accuracy_improvement_95": [
+          -0.01680672268907557,
+          0.03361344537815125
+        ],
+        "brier_improvement_95": [
+          -0.011562689027561104,
+          0.007119005667150793
+        ],
+        "n": 238,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "bootstrap_manager_corrected_vs_original": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.014778325123152802
+        ],
+        "brier_improvement_95": [
+          -0.019619399228596658,
+          -0.004221469325104085
+        ],
+        "n": 203,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "manager_corrected": {
+        "accuracy": 0.7016806722689075,
+        "brier": 0.19943362603842227,
+        "coverage": 0.448210922787194,
+        "covered": 238,
+        "eligible": 531,
+        "log_loss": 0.5838697737579149
+      },
+      "manager_original": {
+        "accuracy": 0.6779026217228464,
+        "brier": 0.2133218816813474,
+        "coverage": 0.5028248587570622,
+        "covered": 267,
+        "eligible": 531,
+        "log_loss": 0.616077830424912
+      },
+      "paired_a1_vs_manager": {
+        "accuracy_difference": 0.008403361344537815,
+        "correct_changed_to_incorrect": 5,
+        "incorrect_changed_to_correct": 3,
+        "left_correct": 169,
+        "left_only_correct": 5,
+        "mcnemar_exact": {
+          "b": 5,
+          "c": 3,
+          "n": 8,
+          "p_value": 0.7265625
+        },
+        "right_correct": 167,
+        "right_only_correct": 3,
+        "shared": 238,
+        "side_flips": 8
+      },
+      "paired_manager_corrected_vs_original": {
+        "accuracy_difference": 0.0049261083743842365,
+        "correct_changed_to_incorrect": 1,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 145,
+        "left_only_correct": 1,
+        "mcnemar_exact": {
+          "b": 1,
+          "c": 0,
+          "n": 1,
+          "p_value": 1.0
+        },
+        "right_correct": 144,
+        "right_only_correct": 0,
+        "shared": 203,
+        "side_flips": 1
+      },
+      "settled": 531
+    },
+    "main_draw": {
+      "a1": {
+        "accuracy": 0.6487523992322457,
+        "brier": 0.21642742796646064,
+        "coverage": 1.0,
+        "covered": 521,
+        "eligible": 521,
+        "log_loss": 0.6222409213318395
+      },
+      "a2": {
+        "accuracy": 0.6144578313253012,
+        "brier": 0.23213836646182892,
+        "coverage": 0.7965451055662188,
+        "covered": 415,
+        "eligible": 521,
+        "log_loss": 0.6532472830480308
+      },
+      "bootstrap_a1_vs_manager": {
+        "accuracy_improvement_95": [
+          -0.013333333333333308,
+          0.03111111111111109
+        ],
+        "brier_improvement_95": [
+          -0.010632280222084626,
+          0.007671714795815907
+        ],
+        "n": 225,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "bootstrap_manager_corrected_vs_original": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.015625
+        ],
+        "brier_improvement_95": [
+          -0.019244620291248217,
+          -0.004468245739752844
+        ],
+        "n": 192,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "manager_corrected": {
+        "accuracy": 0.7066666666666667,
+        "brier": 0.19869038580434112,
+        "coverage": 0.43186180422264875,
+        "covered": 225,
+        "eligible": 521,
+        "log_loss": 0.582060958311451
+      },
+      "manager_original": {
+        "accuracy": 0.6827309236947792,
+        "brier": 0.2127292414068996,
+        "coverage": 0.4779270633397313,
+        "covered": 249,
+        "eligible": 521,
+        "log_loss": 0.6146567342738574
+      },
+      "paired_a1_vs_manager": {
+        "accuracy_difference": 0.008888888888888889,
+        "correct_changed_to_incorrect": 4,
+        "incorrect_changed_to_correct": 2,
+        "left_correct": 161,
+        "left_only_correct": 4,
+        "mcnemar_exact": {
+          "b": 4,
+          "c": 2,
+          "n": 6,
+          "p_value": 0.6875
+        },
+        "right_correct": 159,
+        "right_only_correct": 2,
+        "shared": 225,
+        "side_flips": 6
+      },
+      "paired_manager_corrected_vs_original": {
+        "accuracy_difference": 0.005208333333333333,
+        "correct_changed_to_incorrect": 1,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 138,
+        "left_only_correct": 1,
+        "mcnemar_exact": {
+          "b": 1,
+          "c": 0,
+          "n": 1,
+          "p_value": 1.0
+        },
+        "right_correct": 137,
+        "right_only_correct": 0,
+        "shared": 192,
+        "side_flips": 1
+      },
+      "settled": 521
+    },
+    "qualifying": {
+      "a1": {
+        "accuracy": 0.6282051282051282,
+        "brier": 0.21429653976624358,
+        "coverage": 1.0,
+        "covered": 78,
+        "eligible": 78,
+        "log_loss": 0.6150157393131408
+      },
+      "a2": {
+        "accuracy": 0.5098039215686274,
+        "brier": 0.2513439100333922,
+        "coverage": 0.6538461538461539,
+        "covered": 51,
+        "eligible": 78,
+        "log_loss": 0.6964038131929161
+      },
+      "bootstrap_a1_vs_manager": {
+        "accuracy_improvement_95": [
+          -0.10344827586206895,
+          0.10344827586206895
+        ],
+        "brier_improvement_95": [
+          -0.03777197002129591,
+          0.02793281817635383
+        ],
+        "n": 29,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "bootstrap_manager_corrected_vs_original": {
+        "accuracy_improvement_95": [
+          0.0,
+          0.0
+        ],
+        "brier_improvement_95": [
+          -0.027112932603064445,
+          0.02170823551750408
+        ],
+        "n": 26,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "manager_corrected": {
+        "accuracy": 0.6896551724137931,
+        "brier": 0.20082389373319828,
+        "coverage": 0.3717948717948718,
+        "covered": 29,
+        "eligible": 78,
+        "log_loss": 0.5863462634670733
+      },
+      "manager_original": {
+        "accuracy": 0.6470588235294118,
+        "brier": 0.21156939363341176,
+        "coverage": 0.4358974358974359,
+        "covered": 34,
+        "eligible": 78,
+        "log_loss": 0.6081528453456316
+      },
+      "paired_a1_vs_manager": {
+        "accuracy_difference": 0.0,
+        "correct_changed_to_incorrect": 1,
+        "incorrect_changed_to_correct": 1,
+        "left_correct": 20,
+        "left_only_correct": 1,
+        "mcnemar_exact": {
+          "b": 1,
+          "c": 1,
+          "n": 2,
+          "p_value": 1.0
+        },
+        "right_correct": 20,
+        "right_only_correct": 1,
+        "shared": 29,
+        "side_flips": 2
+      },
+      "paired_manager_corrected_vs_original": {
+        "accuracy_difference": 0.0,
+        "correct_changed_to_incorrect": 0,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 18,
+        "left_only_correct": 0,
+        "mcnemar_exact": {
+          "b": 0,
+          "c": 0,
+          "n": 0,
+          "p_value": 1.0
+        },
+        "right_correct": 18,
+        "right_only_correct": 0,
+        "shared": 26,
+        "side_flips": 0
+      },
+      "settled": 78
+    }
+  },
+  "manager_reconciliation": {
+    "arms": [
+      "a1_p1",
+      "a2_p1",
+      "manager_corrected_p1",
+      "manager_original_p1",
+      "a1_original_p1"
+    ],
+    "averaging": {
+      "a1": {
+        "accuracy": 0.6266094420600858,
+        "brier": 0.22245348663378325,
+        "coverage": 1.0,
+        "covered": 466,
+        "eligible": 466,
+        "log_loss": 0.6343731750348413
+      },
+      "a2": {
+        "accuracy": 0.6030042918454935,
+        "brier": 0.2342402607153691,
+        "coverage": 1.0,
+        "covered": 466,
+        "eligible": 466,
+        "log_loss": 0.6579704226132433
+      },
+      "available": true,
+      "average": {
+        "accuracy": 0.6072961373390557,
+        "brier": 0.22146665311355954,
+        "coverage": 1.0,
+        "covered": 466,
+        "eligible": 466,
+        "log_loss": 0.6314582675699066
+      },
+      "mean_abs_a1_a2_difference": 0.1312134313304721,
+      "n": 466,
+      "paired": {
+        "accuracy_difference": 0.023605150214592276,
+        "correct_changed_to_incorrect": 72,
+        "incorrect_changed_to_correct": 61,
+        "left_correct": 292,
+        "left_only_correct": 72,
+        "mcnemar_exact": {
+          "b": 72,
+          "c": 61,
+          "n": 133,
+          "p_value": 0.38595875434107846
+        },
+        "right_correct": 281,
+        "right_only_correct": 61,
+        "shared": 466,
+        "side_flips": 133
+      },
+      "paired_average_vs_a1": {
+        "accuracy_difference": 0.019313304721030045,
+        "correct_changed_to_incorrect": 38,
+        "incorrect_changed_to_correct": 29,
+        "left_correct": 292,
+        "left_only_correct": 38,
+        "mcnemar_exact": {
+          "b": 38,
+          "c": 29,
+          "n": 67,
+          "p_value": 0.3284320626971899
+        },
+        "right_correct": 283,
+        "right_only_correct": 29,
+        "shared": 466,
+        "side_flips": 67
+      },
+      "paired_average_vs_a1_bootstrap": {
+        "accuracy_improvement_95": [
+          -0.012875536480686733,
+          0.05364806866952798
+        ],
+        "brier_improvement_95": [
+          -0.005720795776294344,
+          0.007616347264464734
+        ],
+        "n": 466,
+        "note": "Positive Brier improvement means the left arm scored worse."
+      },
+      "sharpness_a1_mean_abs_deviation": 0.15416752575107295,
+      "sharpness_average_mean_abs_deviation": 0.129076919527897
+    },
+    "difference": {
+      "corrected_only_not_in_original": 36,
+      "explanation": "Common support is the intersection of all covered arms. On a corrected-Manager selection the A1/A2 mean arms always cover, so the binding constraint is the original Manager arm (R2). Corrected-Manager selections absent from R2 leave support.",
+      "intersection_identity": true,
+      "manager_corrected_minus_common_support": 36,
+      "original_only_not_in_corrected": 65,
+      "unexplained_common_support_entries": 0,
+      "union": 319
+    },
+    "matches_published": {
+      "common_support": true,
+      "manager_abstained": true,
+      "manager_corrected_retained": true,
+      "manager_original_retained": true,
+      "settled_eligible": true
+    },
+    "measured": {
+      "common_support": 218,
+      "manager_abstained": 345,
+      "manager_corrected_retained": 254,
+      "manager_original_retained": 283,
+      "settled_eligible": 599
+    },
+    "paired": {
+      "corrected_vs_original": {
+        "accuracy_difference": 0.0045871559633027525,
+        "correct_changed_to_incorrect": 1,
+        "incorrect_changed_to_correct": 0,
+        "left_correct": 156,
+        "left_only_correct": 1,
+        "mcnemar_exact": {
+          "b": 1,
+          "c": 0,
+          "n": 1,
+          "p_value": 1.0
+        },
+        "right_correct": 155,
+        "right_only_correct": 0,
+        "shared": 218,
+        "side_flips": 1
+      }
+    },
+    "production_rule_changed": false,
+    "published": {
+      "common_support": 218,
+      "manager_abstained": 345,
+      "manager_corrected_retained": 254,
+      "manager_original_retained": 283,
+      "settled_eligible": 599
+    },
+    "version": "MANAGER_C_COHORT_RECONCILIATION_V1"
+  },
+  "measured_at": "2026-11-27T03:59:08.174480+00:00",
+  "production_rule_changed": false,
+  "provider_calls": 0,
+  "published_counts": {
+    "common_support": 218,
+    "manager_abstained": 345,
+    "manager_corrected_retained": 254,
+    "manager_original_retained": 283,
+    "settled_eligible": 599
+  }
+}

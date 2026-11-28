@@ -234,20 +234,37 @@ def _seed_historical_identity(db: psycopg.Connection, name: str) -> int:
         "INSERT INTO players (canonical_name, status) VALUES ('Historical Opponent', 'ACTIVE') RETURNING player_id"
     ).fetchone()[0]
     db.execute(
-        "INSERT INTO player_source_ids (player_id, source_system, source_player_id) VALUES (%s, 'SACKMANN', 'hist-player')",
-        (player_id,),
+        """
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, 'SACKMANN', 'hist-player', %s)
+        """,
+        (player_id, visible_at),
     )
     db.execute(
-        "INSERT INTO player_source_ids (player_id, source_system, source_player_id) VALUES (%s, 'SACKMANN', 'hist-opponent')",
-        (opponent_id,),
+        """
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, 'SACKMANN', 'hist-opponent', %s)
+        """,
+        (opponent_id, visible_at),
     )
     db.execute(
         """
         INSERT INTO player_aliases (
-            player_id, source_system, alias, normalized_alias, first_observed_at, last_observed_at
-        ) VALUES (%s, 'TENNIS_DATA', %s, %s, %s, %s)
+            player_id, source_system, alias, normalized_alias,
+            first_observed_at, last_observed_at, created_at, updated_at
+        ) VALUES (%s, 'TENNIS_DATA', %s, %s, %s, %s, %s, %s)
         """,
-        (player_id, name, normalize_person_lookup(name), visible_at, visible_at),
+        (
+            player_id,
+            name,
+            normalize_person_lookup(name),
+            visible_at,
+            visible_at,
+            visible_at,
+            visible_at,
+        ),
     )
     tournament_id = db.execute(
         """

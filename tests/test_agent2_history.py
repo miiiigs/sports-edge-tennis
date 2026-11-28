@@ -29,6 +29,9 @@ def _utc(year: int, month: int, day: int, hour: int = 0, minute: int = 0, second
     return datetime(year, month, day, hour, minute, second, tzinfo=UTC)
 
 
+_EARLY = _utc(2024, 1, 1)
+
+
 def _insert_player(conn: psycopg.Connection, name: str) -> int:
     return conn.execute(
         "INSERT INTO players (canonical_name, status) VALUES (%s, 'ACTIVE') RETURNING player_id",
@@ -45,10 +48,11 @@ def _insert_source_id(
 ) -> None:
     conn.execute(
         """
-        INSERT INTO player_source_ids (player_id, source_system, source_player_id)
-        VALUES (%s, %s, %s)
+        INSERT INTO player_source_ids
+            (player_id, source_system, source_player_id, created_at)
+        VALUES (%s, %s, %s, %s)
         """,
-        (player_id, source_system, source_player_id),
+        (player_id, source_system, source_player_id, _EARLY),
     )
 
 
@@ -61,10 +65,21 @@ def _insert_alias(
 ) -> None:
     conn.execute(
         """
-        INSERT INTO player_aliases (player_id, source_system, alias, normalized_alias)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO player_aliases (
+            player_id, source_system, alias, normalized_alias,
+            first_observed_at, created_at, updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (player_id, source_system, alias, normalize_person_lookup(alias)),
+        (
+            player_id,
+            source_system,
+            alias,
+            normalize_person_lookup(alias),
+            _EARLY,
+            _EARLY,
+            _EARLY,
+        ),
     )
 
 
@@ -548,7 +563,7 @@ def test_resolver_covers_reviewed_2026_grand_slam_matrix_and_fails_closed_after(
 
     # Unsupported future seasons still fail closed.
     for name, round_code, best_of, qualifying in (
-        ("Australian Open", "R32", 5, False),
+        ("Australian Open", "Q1", 3, True),
         ("Roland Garros", "Q1", 3, True),
         ("Wimbledon", "SF", 5, False),
         ("US Open", "Q1", 3, True),

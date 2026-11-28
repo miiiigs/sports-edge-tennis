@@ -1,0 +1,18 @@
+# Prepared example only - NOT applied to any Railway service.
+#
+# The independent monitor must not run inside `tennis-live-runner`. Deploy this
+# as a separate service with the same image, a persistent volume mounted at
+# /data, and the secret environment variables described in
+# ops/monitoring/healthchecks.env.example.
+#
+# Railway cron runs in UTC and skips a scheduled execution when the previous
+# deployment is still active. The monitor is short-lived and must always exit.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "python -m pip install ."
+
+[deploy]
+startCommand = "python ops/validation/monitoring_cycle.py --slot $TENNIS_MONITOR_SLOT --receipt /data/receipts/$TENNIS_MONITOR_SLOT.json --stream LIVE_RUNNER --state-path /data/monitoring-state.json"
+cronSchedule = "*/15 * * * *"
+restartPolicyType = "NEVER"

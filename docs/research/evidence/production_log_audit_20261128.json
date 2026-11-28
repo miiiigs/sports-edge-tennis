@@ -1,0 +1,3800 @@
+{
+  "classification": "PRODUCTION_LOG_OBSERVATION_NOT_INDEPENDENT",
+  "source": "Railway production tennis-live-runner filtered deploy logs",
+  "window_start_utc": "2026-11-25T00:00:00Z",
+  "window_end_utc": "2026-11-28T12:50:00Z",
+  "slot_basis": "UTC log hour, not authoritative scheduler invocation identifier",
+  "query_result_counts": {
+    "LIVE_BATCH_START": 85,
+    "LIVE_BATCH_SUCCESS": 85,
+    "TENNIS_FROZEN_PROSPECTIVE_HEARTBEAT": 85,
+    "SLATE_UNAVAILABLE": 68,
+    "MANAGER_DAILY_EVIDENCE": 501
+  },
+  "metrics": {
+    "expected_slots": 85,
+    "observed_start_slots": 85,
+    "observed_completion_slots": 85,
+    "partial_slots": 65,
+    "complete_reported_slots": 20,
+    "successful_slate_attempts": 187,
+    "failed_slate_attempts": 68,
+    "unavailable_lines": 68,
+    "shadow_records": 62,
+    "verified_persistent_heartbeat_slots": 0
+  },
+  "manager_daily_manila": [
+    {
+      "at": "2026-11-28T12:03:07.145771338Z",
+      "day": "2026-11-21",
+      "picks": 4,
+      "won": 2,
+      "lost": 2,
+      "void": 0,
+      "pending": 0,
+      "scored": 4
+    },
+    {
+      "at": "2026-11-28T12:03:07.145775768Z",
+      "day": "2026-11-22",
+      "picks": 8,
+      "won": 5,
+      "lost": 2,
+      "void": 1,
+      "pending": 0,
+      "scored": 7
+    },
+    {
+      "at": "2026-11-28T12:03:07.145779148Z",
+      "day": "2026-11-23",
+      "picks": 21,
+      "won": 10,
+      "lost": 8,
+      "void": 3,
+      "pending": 0,
+      "scored": 18
+    },
+    {
+      "at": "2026-11-28T12:03:07.145782978Z",
+      "day": "2026-11-24",
+      "picks": 9,
+      "won": 7,
+      "lost": 2,
+      "void": 0,
+      "pending": 0,
+      "scored": 9
+    },
+    {
+      "at": "2026-11-28T12:03:07.145786358Z",
+      "day": "2026-11-25",
+      "picks": 5,
+      "won": 2,
+      "lost": 1,
+      "void": 2,
+      "pending": 0,
+      "scored": 3
+    },
+    {
+      "at": "2026-11-28T12:03:07.145789598Z",
+      "day": "2026-11-26",
+      "picks": 5,
+      "won": 2,
+      "lost": 3,
+      "void": 0,
+      "pending": 0,
+      "scored": 5
+    },
+    {
+      "at": "2026-11-28T12:03:07.145793398Z",
+      "day": "2026-11-27",
+      "picks": 7,
+      "won": 3,
+      "lost": 3,
+      "void": 1,
+      "pending": 0,
+      "scored": 6
+    }
+  ],
+  "manager_total": {
+    "picks": 59,
+    "won": 31,
+    "lost": 21,
+    "void": 7,
+    "pending": 0
+  },
+  "slots": [
+    {
+      "slot": "2026-11-25T00:00:00Z",
+      "starts": [
+        "2026-11-25T00:01:29.385201639Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T00:02:17.703232700Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 392,
+          "targets": 39,
+          "consensus": 5,
+          "price_candidates": 53,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 32,
+          "oddspapi_events": 11,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 4,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T00:02:17.703228450Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T00:02:12.795777755Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T01:00:00Z",
+      "starts": [
+        "2026-11-25T01:03:43.153246664Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T01:04:25.926602597Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 394,
+          "targets": 37,
+          "consensus": 7,
+          "price_candidates": 55,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 7,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 4,
+          "close_finalized": 50,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T01:04:25.926598607Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 2,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T01:04:17.900233399Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T02:00:00Z",
+      "starts": [
+        "2026-11-25T02:04:12.694283849Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T02:05:34.376289939Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 408,
+          "targets": 51,
+          "consensus": 8,
+          "price_candidates": 54,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 28,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T02:05:34.376286179Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T02:05:30.077046399Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T03:00:00Z",
+      "starts": [
+        "2026-11-25T03:02:29.509926320Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T03:03:51.821761251Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 416,
+          "targets": 51,
+          "consensus": 9,
+          "price_candidates": 55,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 103,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T03:03:51.821758171Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 3,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T03:03:47.291196966Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T04:00:00Z",
+      "starts": [
+        "2026-11-25T04:02:18.376778312Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T04:03:41.658519992Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 419,
+          "targets": 50,
+          "consensus": 8,
+          "price_candidates": 53,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T04:03:41.658516832Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T04:03:37.720815691Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T05:00:00Z",
+      "starts": [
+        "2026-11-25T05:01:27.133506894Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T05:02:51.211817937Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 421,
+          "targets": 50,
+          "consensus": 8,
+          "price_candidates": 52,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 59,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T05:02:51.211812777Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T05:02:47.916896297Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T06:00:00Z",
+      "starts": [
+        "2026-11-25T06:03:07.661904919Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T06:04:24.518597457Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 425,
+          "targets": 51,
+          "consensus": 8,
+          "price_candidates": 52,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 35,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T06:04:24.518593627Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-25T06:04:20.402890592Z",
+          "date": "2026-11-27",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-25T07:00:00Z",
+      "starts": [
+        "2026-11-25T07:04:49.710123798Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T07:06:12.170867989Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 430,
+          "targets": 26,
+          "consensus": 4,
+          "price_candidates": 51,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T07:06:12.170865209Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T08:00:00Z",
+      "starts": [
+        "2026-11-25T08:03:47.635693894Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T08:05:44.165693927Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 432,
+          "targets": 53,
+          "consensus": 8,
+          "price_candidates": 53,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 7,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 4,
+          "close_finalized": 16,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T08:05:44.165690667Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 2,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T09:00:00Z",
+      "starts": [
+        "2026-11-25T09:03:59.621203325Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T09:06:53.854785390Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 432,
+          "targets": 48,
+          "consensus": 8,
+          "price_candidates": 53,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T09:06:53.854782400Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T10:00:00Z",
+      "starts": [
+        "2026-11-25T10:05:09.991912690Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T10:07:02.442265506Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 438,
+          "targets": 43,
+          "consensus": 8,
+          "price_candidates": 49,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 61,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T10:07:02.442261526Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T11:00:00Z",
+      "starts": [
+        "2026-11-25T11:04:59.051781582Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T11:06:49.795128371Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 439,
+          "targets": 41,
+          "consensus": 8,
+          "price_candidates": 48,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 34,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T11:06:49.795121541Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T12:00:00Z",
+      "starts": [
+        "2026-11-25T12:03:35.350571546Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T12:05:25.467814410Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 449,
+          "targets": 41,
+          "consensus": 7,
+          "price_candidates": 43,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 91,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T12:05:25.467811200Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 2,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T13:00:00Z",
+      "starts": [
+        "2026-11-25T13:02:50.888367786Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T13:05:03.400998838Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 451,
+          "targets": 41,
+          "consensus": 7,
+          "price_candidates": 43,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 10,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 66,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T13:05:03.400993858Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T14:00:00Z",
+      "starts": [
+        "2026-11-25T14:02:20.506636031Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T14:03:37.859445746Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 483,
+          "targets": 12,
+          "consensus": 2,
+          "price_candidates": 42,
+          "bets": 0,
+          "offered_requests": 3,
+          "offered_quotes": 6,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 1,
+          "close_finalized": 40,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T14:03:37.859442396Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T15:00:00Z",
+      "starts": [
+        "2026-11-25T15:04:34.657676658Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T15:05:50.045078051Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 488,
+          "targets": 14,
+          "consensus": 2,
+          "price_candidates": 43,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 16,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 2,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T15:05:50.045073041Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T16:00:00Z",
+      "starts": [
+        "2026-11-25T16:02:47.754818404Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T16:04:50.019075518Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 502,
+          "targets": 44,
+          "consensus": 6,
+          "price_candidates": 47,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T16:04:50.019072169Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 4,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T17:00:00Z",
+      "starts": [
+        "2026-11-25T17:03:08.358781288Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T17:05:14.137860832Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 503,
+          "targets": 43,
+          "consensus": 6,
+          "price_candidates": 46,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 26,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T17:05:14.137856722Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T18:00:00Z",
+      "starts": [
+        "2026-11-25T18:01:49.618648706Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T18:04:14.153263093Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 546,
+          "targets": 39,
+          "consensus": 5,
+          "price_candidates": 44,
+          "bets": 0,
+          "offered_requests": 1,
+          "offered_quotes": 0,
+          "oddspapi_events": 0,
+          "oddspapi_exact": 0,
+          "oddspapi_conflict": 0,
+          "close_finalized": 47,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T18:04:14.153259453Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T19:00:00Z",
+      "starts": [
+        "2026-11-25T19:03:25.201421115Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T19:05:24.635687031Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 547,
+          "targets": 38,
+          "consensus": 5,
+          "price_candidates": 43,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 19,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T19:05:24.635682821Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T20:00:00Z",
+      "starts": [
+        "2026-11-25T20:03:02.639739294Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T20:05:01.213377095Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 616,
+          "targets": 39,
+          "consensus": 5,
+          "price_candidates": 43,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 143,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T20:05:01.213373045Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T21:00:00Z",
+      "starts": [
+        "2026-11-25T21:02:38.077113129Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T21:04:01.053442961Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 617,
+          "targets": 31,
+          "consensus": 5,
+          "price_candidates": 39,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 21,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T21:04:01.053436781Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T22:00:00Z",
+      "starts": [
+        "2026-11-25T22:04:57.570676259Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T22:06:56.577160214Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 637,
+          "targets": 42,
+          "consensus": 5,
+          "price_candidates": 42,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T22:06:56.577157164Z",
+          "status": "CAPTURED",
+          "attempted": 3,
+          "successful": 3,
+          "failed": 0,
+          "records_logged": 3,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-25T23:00:00Z",
+      "starts": [
+        "2026-11-25T23:03:21.872981278Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-25T23:04:56.140173602Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 645,
+          "targets": 41,
+          "consensus": 5,
+          "price_candidates": 42,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-25T23:04:56.140162742Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-26T00:00:00Z",
+      "starts": [
+        "2026-11-26T00:00:51.149141180Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T00:01:32.383143580Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 282,
+          "targets": 35,
+          "consensus": 5,
+          "price_candidates": 41,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T00:01:32.383138330Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T00:01:28.234175217Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T01:00:00Z",
+      "starts": [
+        "2026-11-26T01:04:29.876861732Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T01:05:16.720896307Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 289,
+          "targets": 33,
+          "consensus": 5,
+          "price_candidates": 41,
+          "bets": 2,
+          "offered_requests": 4,
+          "offered_quotes": 54,
+          "oddspapi_events": 10,
+          "oddspapi_exact": 9,
+          "oddspapi_conflict": 0,
+          "close_finalized": 22,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T01:05:16.720886498Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T01:05:11.447250366Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T02:00:00Z",
+      "starts": [
+        "2026-11-26T02:03:24.326277969Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T02:04:48.096842494Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 291,
+          "targets": 37,
+          "consensus": 4,
+          "price_candidates": 40,
+          "bets": 2,
+          "offered_requests": 4,
+          "offered_quotes": 42,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T02:04:48.096839554Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T02:04:43.451736770Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T03:00:00Z",
+      "starts": [
+        "2026-11-26T03:02:13.837091071Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T03:03:35.007602534Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 291,
+          "targets": 36,
+          "consensus": 4,
+          "price_candidates": 39,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 42,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 74,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T03:03:35.007596624Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T03:03:30.413993932Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T04:00:00Z",
+      "starts": [
+        "2026-11-26T04:02:23.170734740Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T04:03:44.830635505Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 293,
+          "targets": 35,
+          "consensus": 4,
+          "price_candidates": 37,
+          "bets": 2,
+          "offered_requests": 4,
+          "offered_quotes": 42,
+          "oddspapi_events": 7,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T04:03:44.830632805Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T04:03:40.037040202Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T05:00:00Z",
+      "starts": [
+        "2026-11-26T05:03:50.356285754Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T05:05:06.949331872Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 297,
+          "targets": 35,
+          "consensus": 3,
+          "price_candidates": 36,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 82,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T05:05:06.949327292Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T05:05:02.884787691Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T06:00:00Z",
+      "starts": [
+        "2026-11-26T06:02:45.663860102Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T06:04:06.801385250Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 298,
+          "targets": 35,
+          "consensus": 3,
+          "price_candidates": 35,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 64,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T06:04:06.801381440Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T06:04:02.167077435Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T07:00:00Z",
+      "starts": [
+        "2026-11-26T07:04:22.241474929Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T07:05:45.925613953Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 303,
+          "targets": 29,
+          "consensus": 3,
+          "price_candidates": 35,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 23,
+          "clv_calculated": 9
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T07:05:45.925610813Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T07:05:44.744963187Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T08:00:00Z",
+      "starts": [
+        "2026-11-26T08:02:18.590464402Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T08:03:35.063376319Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 305,
+          "targets": 33,
+          "consensus": 5,
+          "price_candidates": 38,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 6,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T08:03:35.063372659Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 3,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T08:03:30.775845522Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T09:00:00Z",
+      "starts": [
+        "2026-11-26T09:02:52.882398621Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T09:05:18.783015705Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 309,
+          "targets": 35,
+          "consensus": 6,
+          "price_candidates": 40,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 70,
+          "oddspapi_events": 14,
+          "oddspapi_exact": 12,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T09:05:18.783011305Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T09:05:12.661209359Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T10:00:00Z",
+      "starts": [
+        "2026-11-26T10:04:56.441055216Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T10:06:18.525540133Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 309,
+          "targets": 32,
+          "consensus": 6,
+          "price_candidates": 36,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 70,
+          "oddspapi_events": 14,
+          "oddspapi_exact": 12,
+          "oddspapi_conflict": 0,
+          "close_finalized": 30,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T10:06:18.525537453Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T10:06:13.594564062Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T11:00:00Z",
+      "starts": [
+        "2026-11-26T11:02:03.658922001Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T11:03:29.635069567Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 311,
+          "targets": 29,
+          "consensus": 6,
+          "price_candidates": 33,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 68,
+          "oddspapi_events": 14,
+          "oddspapi_exact": 12,
+          "oddspapi_conflict": 0,
+          "close_finalized": 128,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T11:03:29.635064027Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T11:03:24.706030356Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T12:00:00Z",
+      "starts": [
+        "2026-11-26T12:00:41.019157180Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T12:02:10.756080541Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 319,
+          "targets": 30,
+          "consensus": 5,
+          "price_candidates": 33,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 64,
+          "oddspapi_events": 13,
+          "oddspapi_exact": 11,
+          "oddspapi_conflict": 0,
+          "close_finalized": 21,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T12:02:10.756075211Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 4,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T12:02:06.105704602Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T13:00:00Z",
+      "starts": [
+        "2026-11-26T13:04:33.730568751Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T13:06:01.321950279Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 319,
+          "targets": 30,
+          "consensus": 5,
+          "price_candidates": 31,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 52,
+          "oddspapi_events": 11,
+          "oddspapi_exact": 10,
+          "oddspapi_conflict": 0,
+          "close_finalized": 117,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T13:06:01.321945279Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T13:06:01.320582174Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T14:00:00Z",
+      "starts": [
+        "2026-11-26T14:02:40.664871024Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T14:04:03.819156788Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 342,
+          "targets": 12,
+          "consensus": 3,
+          "price_candidates": 31,
+          "bets": 0,
+          "offered_requests": 3,
+          "offered_quotes": 18,
+          "oddspapi_events": 3,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 71,
+          "clv_calculated": 11
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T14:04:03.819150509Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T14:03:59.807073856Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T15:00:00Z",
+      "starts": [
+        "2026-11-26T15:02:21.349656649Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T15:03:46.124103171Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 342,
+          "targets": 9,
+          "consensus": 2,
+          "price_candidates": 28,
+          "bets": 0,
+          "offered_requests": 3,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T15:03:46.124099641Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T15:03:42.573726656Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T16:00:00Z",
+      "starts": [
+        "2026-11-26T16:00:33.994973741Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T16:02:08.544081401Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 360,
+          "targets": 30,
+          "consensus": 6,
+          "price_candidates": 33,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 28,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 5,
+          "oddspapi_conflict": 0,
+          "close_finalized": 74,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T16:02:08.544077211Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 5,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T16:02:08.541725034Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T17:00:00Z",
+      "starts": [
+        "2026-11-26T17:00:46.378080944Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T17:02:17.436916224Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 363,
+          "targets": 28,
+          "consensus": 6,
+          "price_candidates": 31,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 3,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 71,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T17:02:17.436913454Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T17:02:15.739563835Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T18:00:00Z",
+      "starts": [
+        "2026-11-26T18:03:36.721022124Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T18:05:06.056757536Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 392,
+          "targets": 27,
+          "consensus": 7,
+          "price_candidates": 31,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 18,
+          "oddspapi_events": 3,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T18:05:06.056751036Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 2,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T18:05:01.820064486Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T19:00:00Z",
+      "starts": [
+        "2026-11-26T19:02:15.847458165Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T19:03:33.303583518Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 393,
+          "targets": 25,
+          "consensus": 6,
+          "price_candidates": 29,
+          "bets": 0,
+          "offered_requests": 1,
+          "offered_quotes": 0,
+          "oddspapi_events": 0,
+          "oddspapi_exact": 0,
+          "oddspapi_conflict": 0,
+          "close_finalized": 40,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T19:03:33.303577088Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T19:03:32.036848409Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T20:00:00Z",
+      "starts": [
+        "2026-11-26T20:02:03.216182604Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T20:03:39.088513730Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 394,
+          "targets": 25,
+          "consensus": 6,
+          "price_candidates": 26,
+          "bets": 0,
+          "offered_requests": 1,
+          "offered_quotes": 0,
+          "oddspapi_events": 0,
+          "oddspapi_exact": 0,
+          "oddspapi_conflict": 0,
+          "close_finalized": 100,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T20:03:39.086430008Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-26T20:03:39.086398179Z",
+          "date": "2026-11-28",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-26T21:00:00Z",
+      "starts": [
+        "2026-11-26T21:03:24.233505139Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T21:04:50.046649676Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 425,
+          "targets": 3,
+          "consensus": 0,
+          "price_candidates": 25,
+          "bets": 0,
+          "offered_requests": 0,
+          "offered_quotes": 0,
+          "oddspapi_events": 0,
+          "oddspapi_exact": 0,
+          "oddspapi_conflict": 0,
+          "close_finalized": 42,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T21:04:50.046646416Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-26T22:00:00Z",
+      "starts": [
+        "2026-11-26T22:01:06.175952206Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T22:02:38.058884500Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 427,
+          "targets": 27,
+          "consensus": 6,
+          "price_candidates": 28,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 28,
+          "oddspapi_events": 5,
+          "oddspapi_exact": 5,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T22:02:38.058875811Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 3,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-26T23:00:00Z",
+      "starts": [
+        "2026-11-26T23:03:02.072027175Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-26T23:04:29.021608212Z",
+          "slates": 3,
+          "failed_slates": 0,
+          "fixtures": 431,
+          "targets": 27,
+          "consensus": 6,
+          "price_candidates": 28,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 42,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 48,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-26T23:04:29.021604932Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": []
+    },
+    {
+      "slot": "2026-11-27T00:00:00Z",
+      "starts": [
+        "2026-11-27T00:04:05.344652224Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T00:04:48.996240133Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 146,
+          "targets": 27,
+          "consensus": 6,
+          "price_candidates": 27,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 60,
+          "oddspapi_events": 12,
+          "oddspapi_exact": 11,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T00:04:48.996230983Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T00:04:44.212070260Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T01:00:00Z",
+      "starts": [
+        "2026-11-27T01:01:52.187675401Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T01:02:37.898923921Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 148,
+          "targets": 25,
+          "consensus": 6,
+          "price_candidates": 27,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 60,
+          "oddspapi_events": 12,
+          "oddspapi_exact": 11,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T01:02:37.898920282Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T01:02:31.125271618Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T02:00:00Z",
+      "starts": [
+        "2026-11-27T02:02:46.898184190Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T02:03:29.618799665Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 151,
+          "targets": 26,
+          "consensus": 6,
+          "price_candidates": 28,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 48,
+          "oddspapi_events": 10,
+          "oddspapi_exact": 9,
+          "oddspapi_conflict": 0,
+          "close_finalized": 43,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T02:03:29.618796235Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T02:03:25.233407930Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T03:00:00Z",
+      "starts": [
+        "2026-11-27T03:02:46.932935495Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T03:03:32.704762112Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 163,
+          "targets": 24,
+          "consensus": 4,
+          "price_candidates": 26,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 38,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 62,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T03:03:32.704758382Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T03:03:28.294714669Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T04:00:00Z",
+      "starts": [
+        "2026-11-27T04:04:18.210410831Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T04:05:35.835245688Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 165,
+          "targets": 23,
+          "consensus": 5,
+          "price_candidates": 26,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 38,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T04:05:35.835241548Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T04:05:31.271607608Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T05:00:00Z",
+      "starts": [
+        "2026-11-27T05:02:20.265362301Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T05:03:47.872802113Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 165,
+          "targets": 23,
+          "consensus": 5,
+          "price_candidates": 25,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 38,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 73,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T05:03:47.872798553Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T05:03:43.401522712Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T06:00:00Z",
+      "starts": [
+        "2026-11-27T06:03:23.167838457Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T06:04:43.795982893Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 167,
+          "targets": 23,
+          "consensus": 5,
+          "price_candidates": 24,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 38,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 70,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T06:04:43.795979393Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T06:04:43.794702826Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T07:00:00Z",
+      "starts": [
+        "2026-11-27T07:03:48.535570001Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T07:04:34.530584046Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 168,
+          "targets": 21,
+          "consensus": 4,
+          "price_candidates": 23,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 36,
+          "oddspapi_events": 8,
+          "oddspapi_exact": 7,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T07:04:34.530581086Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T07:04:30.916830750Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T08:00:00Z",
+      "starts": [
+        "2026-11-27T08:00:38.899087176Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T08:02:03.705845665Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 170,
+          "targets": 24,
+          "consensus": 5,
+          "price_candidates": 24,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 46,
+          "oddspapi_events": 10,
+          "oddspapi_exact": 9,
+          "oddspapi_conflict": 0,
+          "close_finalized": 22,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T08:02:03.705841955Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T08:01:58.854869347Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T09:00:00Z",
+      "starts": [
+        "2026-11-27T09:03:50.150409903Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T09:06:06.570595441Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 170,
+          "targets": 22,
+          "consensus": 3,
+          "price_candidates": 24,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 10,
+          "oddspapi_events": 3,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T09:06:06.570588661Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T09:06:02.910954092Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T10:00:00Z",
+      "starts": [
+        "2026-11-27T10:04:54.631572001Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T10:06:10.319901904Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 170,
+          "targets": 18,
+          "consensus": 2,
+          "price_candidates": 22,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 32,
+          "oddspapi_events": 6,
+          "oddspapi_exact": 6,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T10:06:10.319898244Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T10:06:06.265636526Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T11:00:00Z",
+      "starts": [
+        "2026-11-27T11:04:28.445328701Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T11:05:48.037179399Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 170,
+          "targets": 16,
+          "consensus": 2,
+          "price_candidates": 22,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 10,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 90,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T11:05:48.037175709Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T11:05:44.287854793Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T12:00:00Z",
+      "starts": [
+        "2026-11-27T12:03:15.358712409Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T12:04:39.601231729Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 176,
+          "targets": 15,
+          "consensus": 2,
+          "price_candidates": 19,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 17,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T12:04:39.601228039Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T12:04:35.854541557Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T13:00:00Z",
+      "starts": [
+        "2026-11-27T13:03:40.643728576Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T13:04:57.638045215Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 177,
+          "targets": 13,
+          "consensus": 2,
+          "price_candidates": 17,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 91,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T13:04:57.638041845Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T13:04:53.878980777Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T14:00:00Z",
+      "starts": [
+        "2026-11-27T14:01:55.961400676Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T14:02:46.094692322Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 193,
+          "targets": 8,
+          "consensus": 1,
+          "price_candidates": 16,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 6,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 40,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T14:02:46.094689262Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T14:02:42.543518798Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T15:00:00Z",
+      "starts": [
+        "2026-11-27T15:03:24.013856113Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T15:04:05.278743723Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 196,
+          "targets": 10,
+          "consensus": 1,
+          "price_candidates": 16,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 6,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 58,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T15:04:05.278739843Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T15:04:01.736093731Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T16:00:00Z",
+      "starts": [
+        "2026-11-27T16:03:56.750136655Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T16:05:25.685950605Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 206,
+          "targets": 17,
+          "consensus": 3,
+          "price_candidates": 18,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 19,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T16:05:25.685947355Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 4,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T16:05:22.114716371Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T17:00:00Z",
+      "starts": [
+        "2026-11-27T17:01:10.349331857Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T17:02:37.313222648Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 206,
+          "targets": 16,
+          "consensus": 3,
+          "price_candidates": 17,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T17:02:37.313219559Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T17:02:33.741641706Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T18:00:00Z",
+      "starts": [
+        "2026-11-27T18:03:37.247514396Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T18:04:54.619661290Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 219,
+          "targets": 15,
+          "consensus": 3,
+          "price_candidates": 17,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 1,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T18:04:54.619658150Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T18:04:51.145348224Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T19:00:00Z",
+      "starts": [
+        "2026-11-27T19:04:34.283673289Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T19:06:03.505158942Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 219,
+          "targets": 14,
+          "consensus": 3,
+          "price_candidates": 16,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 24,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 19,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T19:06:03.505153152Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T19:06:03.503769028Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T20:00:00Z",
+      "starts": [
+        "2026-11-27T20:04:53.509586305Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T20:06:18.092750747Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 230,
+          "targets": 14,
+          "consensus": 3,
+          "price_candidates": 17,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 12,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 21,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T20:06:18.092743707Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T20:06:14.664871840Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T21:00:00Z",
+      "starts": [
+        "2026-11-27T21:00:55.009248417Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T21:01:36.815368722Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 234,
+          "targets": 2,
+          "consensus": 0,
+          "price_candidates": 15,
+          "bets": 0,
+          "offered_requests": 0,
+          "offered_quotes": 0,
+          "oddspapi_events": 0,
+          "oddspapi_exact": 0,
+          "oddspapi_conflict": 0,
+          "close_finalized": 21,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T21:01:36.815362102Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T21:01:36.815375052Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T22:00:00Z",
+      "starts": [
+        "2026-11-27T22:02:41.262120690Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T22:03:56.179203231Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 235,
+          "targets": 13,
+          "consensus": 2,
+          "price_candidates": 14,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 20,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 22,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T22:03:56.179200401Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T22:03:52.120409916Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-27T23:00:00Z",
+      "starts": [
+        "2026-11-27T23:05:02.919340220Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-27T23:06:20.498361898Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 236,
+          "targets": 13,
+          "consensus": 2,
+          "price_candidates": 14,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 10,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 45,
+          "clv_calculated": 17
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-27T23:06:20.498356718Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-27T23:06:17.078364635Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T00:00:00Z",
+      "starts": [
+        "2026-11-28T00:04:54.932564303Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T00:05:40.118404878Z",
+          "slates": 1,
+          "failed_slates": 2,
+          "fixtures": 73,
+          "targets": 13,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 10,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T00:05:40.118401608Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T00:05:39.180095988Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        },
+        {
+          "at": "2026-11-28T00:05:39.180101578Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T01:00:00Z",
+      "starts": [
+        "2026-11-28T01:04:15.699710316Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T01:04:56.932977365Z",
+          "slates": 1,
+          "failed_slates": 2,
+          "fixtures": 73,
+          "targets": 12,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 10,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 36,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T01:04:56.932972265Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T01:04:53.505424815Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        },
+        {
+          "at": "2026-11-28T01:04:53.627008124Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T02:00:00Z",
+      "starts": [
+        "2026-11-28T02:03:13.882731661Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T02:03:56.129235466Z",
+          "slates": 1,
+          "failed_slates": 2,
+          "fixtures": 74,
+          "targets": 13,
+          "consensus": 3,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 14,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T02:03:56.129229796Z",
+          "status": "CAPTURED",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T02:03:52.577861587Z",
+          "date": "2026-11-29",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        },
+        {
+          "at": "2026-11-28T02:03:52.626939418Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T03:00:00Z",
+      "starts": [
+        "2026-11-28T03:04:30.512160262Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T03:05:17.986807755Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 78,
+          "targets": 12,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 12,
+          "oddspapi_events": 4,
+          "oddspapi_exact": 4,
+          "oddspapi_conflict": 0,
+          "close_finalized": 22,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T03:05:17.986803565Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T03:05:17.193522743Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T04:00:00Z",
+      "starts": [
+        "2026-11-28T04:02:00.348071539Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T04:02:36.126997971Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 78,
+          "targets": 12,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 3,
+          "offered_quotes": 6,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T04:02:36.126994741Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 1,
+          "successful": 1,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T04:02:32.880223945Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T05:00:00Z",
+      "starts": [
+        "2026-11-28T05:01:39.278614414Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T05:02:50.698814781Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 79,
+          "targets": 11,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 8,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 16,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T05:02:50.698810781Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T05:02:47.423790922Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T06:00:00Z",
+      "starts": [
+        "2026-11-28T06:02:04.836560266Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T06:03:26.270226281Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 79,
+          "targets": 11,
+          "consensus": 2,
+          "price_candidates": 13,
+          "bets": 1,
+          "offered_requests": 4,
+          "offered_quotes": 8,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T06:03:26.270222921Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T06:03:22.887092161Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T07:00:00Z",
+      "starts": [
+        "2026-11-28T07:00:47.620591634Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T07:02:00.838470412Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 80,
+          "targets": 11,
+          "consensus": 2,
+          "price_candidates": 12,
+          "bets": 1,
+          "offered_requests": 5,
+          "offered_quotes": 10,
+          "oddspapi_events": 3,
+          "oddspapi_exact": 3,
+          "oddspapi_conflict": 0,
+          "close_finalized": 40,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T07:02:00.838466422Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T07:01:56.100689704Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T08:00:00Z",
+      "starts": [
+        "2026-11-28T08:00:46.250504484Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T08:01:59.989417792Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 80,
+          "targets": 9,
+          "consensus": 2,
+          "price_candidates": 11,
+          "bets": 1,
+          "offered_requests": 5,
+          "offered_quotes": 6,
+          "oddspapi_events": 2,
+          "oddspapi_exact": 2,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T08:01:59.989413132Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T08:01:54.598259583Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T09:00:00Z",
+      "starts": [
+        "2026-11-28T09:00:46.904107779Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T09:03:12.053284484Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 80,
+          "targets": 9,
+          "consensus": 2,
+          "price_candidates": 11,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 2,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T09:03:12.052108695Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T09:03:12.052062346Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T10:00:00Z",
+      "starts": [
+        "2026-11-28T10:00:56.145808300Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T10:02:07.246033350Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 82,
+          "targets": 8,
+          "consensus": 3,
+          "price_candidates": 10,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 2,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 30,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T10:02:07.246029000Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T10:02:04.164716116Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T11:00:00Z",
+      "starts": [
+        "2026-11-28T11:05:02.301173911Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T11:06:14.196361852Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 85,
+          "targets": 8,
+          "consensus": 3,
+          "price_candidates": 11,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 2,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 0,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T11:06:14.196358112Z",
+          "status": "CAPTURED",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 1,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T11:06:11.167515579Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    },
+    {
+      "slot": "2026-11-28T12:00:00Z",
+      "starts": [
+        "2026-11-28T12:01:47.234327521Z"
+      ],
+      "completions": [
+        {
+          "at": "2026-11-28T12:03:04.870656515Z",
+          "slates": 2,
+          "failed_slates": 1,
+          "fixtures": 86,
+          "targets": 8,
+          "consensus": 3,
+          "price_candidates": 9,
+          "bets": 0,
+          "offered_requests": 4,
+          "offered_quotes": 2,
+          "oddspapi_events": 1,
+          "oddspapi_exact": 1,
+          "oddspapi_conflict": 0,
+          "close_finalized": 36,
+          "clv_calculated": 0
+        }
+      ],
+      "heartbeats": [
+        {
+          "at": "2026-11-28T12:03:04.870652495Z",
+          "status": "NO_FUTURE_FIRST_ISSUES",
+          "attempted": 2,
+          "successful": 2,
+          "failed": 0,
+          "records_logged": 0,
+          "persistent_storage_verified": false
+        }
+      ],
+      "unavailable": [
+        {
+          "at": "2026-11-28T12:03:01.684955122Z",
+          "date": "2026-11-30",
+          "code": "LIVE_PILOT_API_TENNIS_FAILED",
+          "shape": "NULL",
+          "diagnostic": "UNCLASSIFIED"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Repeated polling counts are attempts, not unique fixtures or selections.",
+    "No independent database reconciliation or persistent archival verification.",
+    "Null result shape is unavailable, not verified empty; cause unknown.",
+    "No current-day completed daily Manager row included."
+  ],
+  "can_promote": false
+}

@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 CACHE_TABLE = "oddspapi_event_identity_cache"
+HISTORY_TABLE = "oddspapi_event_identity_history"
 DEFAULT_MAX_IDENTITY_AGE = timedelta(hours=24)
 DEFAULT_MAX_START_DRIFT = timedelta(minutes=30)
 
@@ -97,36 +98,31 @@ def load_cached_identity(conn, *, match_id: int) -> OddspapiCachedIdentity | Non
     )
 
 
-def upsert_cached_identity(conn, identity: OddspapiCachedIdentity) -> None:
-    if identity.resolution_status != RESOLUTION_EXACT:
-        raise ValueError("only EXACT identities may be cached")
-    if not identity.oddspapi_event_id:
-        raise ValueError("cached identity requires a provider event id")
+def _history_table_present(conn) -> bool:
+    """History is optional until migration 0024 is applied.
+
+    Fail-open: cache behaviour must not depend on the history table existing.
+    """
+    row = conn.execute(
+        f"SELECT to_regclass('public.{HISTORY_TABLE}') IS NOT NULL"
+    ).fetchone()
+    return bool(row and row[0])
+
+
+def _record_identity_history(conn, identity: OddspapiCachedIdentity, event_type: str) -> None:
+    if event_type not in ("UPSERTED", "INVALIDATED"):
+        raise ValueError("unsupported identity history event_type")
+    if not _history_table_present(conn):
+        return
     conn.execute(
         f"""
-        INSERT INTO {CACHE_TABLE} (
-            canonical_match_id,
-            sportradar_event_id,
-            oddspapi_event_id,
-            betradar_id,
-            oddspapi_tournament_id,
-            player_orientation,
-            resolution_status,
-            scheduled_start,
-            resolved_at,
-            last_verified_at
+        INSERT INTO {HISTORY_TABLE} (
+            canonical_match_id, sportradar_event_id, oddspapi_event_id,
+            betradar_id, oddspapi_tournament_id, player_orientation,
+            resolution_status, scheduled_start, resolved_at, last_verified_at,
+            event_type
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ON CONFLICT (canonical_match_id) DO UPDATE SET
-            sportradar_event_id = EXCLUDED.sportradar_event_id,
-            oddspapi_event_id = EXCLUDED.oddspapi_event_id,
-            betradar_id = EXCLUDED.betradar_id,
-            oddspapi_tournament_id = EXCLUDED.oddspapi_tournament_id,
-            player_orientation = EXCLUDED.player_orientation,
-            resolution_status = EXCLUDED.resolution_status,
-            scheduled_start = EXCLUDED.scheduled_start,
-            resolved_at = EXCLUDED.resolved_at,
-            last_verified_at = EXCLUDED.last_verified_at
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             identity.canonical_match_id,
@@ -139,15 +135,73 @@ def upsert_cached_identity(conn, identity: OddspapiCachedIdentity) -> None:
             identity.scheduled_start,
             identity.resolved_at,
             identity.last_verified_at,
+            event_type,
         ),
     )
 
 
-def invalidate_cached_identity(conn, *, match_id: int) -> None:
-    conn.execute(
-        f"DELETE FROM {CACHE_TABLE} WHERE canonical_match_id = %s",
-        (match_id,),
-    )
+def upsert_cached_identity(conn, identity: OddspapiCachedIdentity) -> None:
+    if identity.resolution_status != RESOLUTION_EXACT:
+        raise ValueError("only EXACT identities may be cached")
+    if not identity.oddspapi_event_id:
+        raise ValueError("cached identity requires a provider event id")
+    # History and cache must move together: a recorded identity that never
+    # reached the cache (or a cache row with no history) would be false
+    # evidence. psycopg nests this as a savepoint when already in a transaction.
+    with conn.transaction():
+        _record_identity_history(conn, identity, "UPSERTED")
+        conn.execute(
+            f"""
+            INSERT INTO {CACHE_TABLE} (
+                canonical_match_id,
+                sportradar_event_id,
+                oddspapi_event_id,
+                betradar_id,
+                oddspapi_tournament_id,
+                player_orientation,
+                resolution_status,
+                scheduled_start,
+                resolved_at,
+                last_verified_at
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (canonical_match_id) DO UPDATE SET
+                sportradar_event_id = EXCLUDED.sportradar_event_id,
+                oddspapi_event_id = EXCLUDED.oddspapi_event_id,
+                betradar_id = EXCLUDED.betradar_id,
+                oddspapi_tournament_id = EXCLUDED.oddspapi_tournament_id,
+                player_orientation = EXCLUDED.player_orientation,
+                resolution_status = EXCLUDED.resolution_status,
+                scheduled_start = EXCLUDED.scheduled_start,
+                resolved_at = EXCLUDED.resolved_at,
+                last_verified_at = EXCLUDED.last_verified_at
+            """,
+            (
+                identity.canonical_match_id,
+                identity.sportradar_event_id,
+                identity.oddspapi_event_id,
+                identity.betradar_id,
+                identity.oddspapi_tournament_id,
+                identity.player_orientation,
+                identity.resolution_status,
+                identity.scheduled_start,
+                identity.resolved_at,
+                identity.last_verified_at,
+            ),
+        )
+
+
+def invalidate_cached_identity(
+    conn, *, match_id: int, cached: OddspapiCachedIdentity | None = None
+) -> None:
+    identity = cached if cached is not None else load_cached_identity(conn, match_id=match_id)
+    with conn.transaction():
+        if identity is not None:
+            _record_identity_history(conn, identity, "INVALIDATED")
+        conn.execute(
+            f"DELETE FROM {CACHE_TABLE} WHERE canonical_match_id = %s",
+            (match_id,),
+        )
 
 
 def partition_cached_identities(
@@ -156,11 +210,15 @@ def partition_cached_identities(
     candidates: list[tuple[int, str | None, datetime | None]],
     now: datetime,
     max_identity_age: timedelta = DEFAULT_MAX_IDENTITY_AGE,
+    invalidate_stale: bool = True,
 ) -> tuple[dict[int, OddspapiCachedIdentity], list[int]]:
     """Return (warm_identity_by_match, cold_match_ids).
 
     ``candidates`` are ``(match_id, sportradar_event_id, scheduled_start)``.
     Warm means a cached identity passed every invalidation rule.
+
+    ``invalidate_stale=False`` makes this a read-only audit: stale identities
+    are reported cold but left in place. The live runtime keeps the default.
     """
     warm: dict[int, OddspapiCachedIdentity] = {}
     cold: list[int] = []
@@ -177,7 +235,8 @@ def partition_cached_identities(
             max_identity_age=max_identity_age,
         )
         if reason is not None:
-            invalidate_cached_identity(conn, match_id=match_id)
+            if invalidate_stale:
+                invalidate_cached_identity(conn, match_id=match_id, cached=cached)
             cold.append(match_id)
             continue
         warm[match_id] = cached
@@ -186,6 +245,7 @@ def partition_cached_identities(
 
 __all__ = [
     "CACHE_TABLE",
+    "HISTORY_TABLE",
     "DEFAULT_MAX_IDENTITY_AGE",
     "DEFAULT_MAX_START_DRIFT",
     "RESOLUTION_CONFLICT",

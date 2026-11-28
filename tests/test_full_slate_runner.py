@@ -60,6 +60,7 @@ def _insert_scheduled_target(
     match_status: str = "SCHEDULED",
     source_observed_at: datetime | None = None,
     as_of: datetime | None = None,
+    ingested_at: datetime | None = None,
 ) -> dict:
     version_as_of = as_of or _utc(8, 0)
     version_source = source_observed_at or version_as_of
@@ -85,9 +86,9 @@ def _insert_scheduled_target(
         INSERT INTO match_versions (
             match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
             surface, round_code, best_of_sets, qualifying_flag, match_status,
-            source_observed_at, as_of
+            source_observed_at, as_of, ingested_at
         )
-        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'ATP_250', %s, %s, %s, %s, %s, %s, %s, COALESCE(%s, now()))
         RETURNING match_version_id
         """,
         (
@@ -102,6 +103,7 @@ def _insert_scheduled_target(
             match_status,
             version_source,
             version_as_of,
+            ingested_at,
         ),
     )
     return {"match_id": match_id, "match_version_id": match_version_id, "player_1_id": p1, "player_2_id": p2}
@@ -200,6 +202,95 @@ def test_valid_one_target_full_slate(db: psycopg.Connection):
     assert run[1] is not None
 
 
+def _insert_bo5_australian_open_target(conn: psycopg.Connection) -> dict:
+    p1 = _insert_player(conn, "AO Player One")
+    p2 = _insert_player(conn, "AO Player Two")
+    tournament_id = _fetchval(
+        conn,
+        "INSERT INTO tournaments (canonical_name, tour_scope, competition_tier) "
+        "VALUES ('Australian Open', 'ATP_MAIN', 'GRAND_SLAM') RETURNING tournament_id",
+    )
+    edition_id = _fetchval(
+        conn,
+        "INSERT INTO tournament_editions (tournament_id, season_year, edition_name, surface, start_date) "
+        "VALUES (%s, 2027, 'Australian Open 2027', 'HARD', '2027-01-18') "
+        "RETURNING tournament_edition_id",
+        (tournament_id,),
+    )
+    match_id = _fetchval(
+        conn,
+        "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id",
+        (edition_id,),
+    )
+    # The fixture is a January 2027 event observed in November 2026. The run is
+    # a genuine real-clock pre-match run, not a future-dated simulation, so the
+    # production `created_at >= as_of` guard stays fully enforced.
+    version_as_of = datetime(2026, 11, 20, 8, 0, tzinfo=timezone.utc)
+    match_version_id = _fetchval(
+        conn,
+        """
+        INSERT INTO match_versions (
+            match_id, player_1_id, player_2_id, match_start_at, tour_scope, competition_tier,
+            surface, round_code, best_of_sets, qualifying_flag, match_status,
+            source_observed_at, as_of, ingested_at
+        )
+        VALUES (%s, %s, %s, %s, 'ATP_MAIN', 'GRAND_SLAM', 'HARD', 'R128', 5, FALSE,
+                'SCHEDULED', %s, %s, %s)
+        RETURNING match_version_id
+        """,
+        (
+            match_id,
+            p1,
+            p2,
+            datetime(2027, 1, 18, 10, 0, tzinfo=timezone.utc),
+            version_as_of,
+            version_as_of,
+            version_as_of,
+        ),
+    )
+    return {"match_id": match_id, "match_version_id": match_version_id}
+
+
+def test_bo5_australian_open_target_runs_full_slate_and_keeps_format(
+    db: psycopg.Connection,
+):
+    from sports_edge_tennis.agents.agent2_hierarchical_markov import ScoringRuleVersion
+    from sports_edge_tennis.data.agent2_history import resolve_scoring_rule
+
+    _seed_configs(db)
+    target = _insert_bo5_australian_open_target(db)
+    outcome = run_full_slate(
+        db,
+        _request(
+            db,
+            match_ids=[target["match_id"]],
+            as_of=datetime(2026, 11, 20, 9, 0, tzinfo=timezone.utc),
+        ),
+        # Deterministic clock, still in the real past; no future-date bypass.
+        clock=lambda: datetime(2026, 11, 20, 9, 1, tzinfo=timezone.utc),
+    )
+    assert outcome.runner_status == "COMPLETED"
+    assert outcome.target_count == 1
+    assert outcome.manager_result_count == 1
+
+    format_row = db.execute(
+        "SELECT best_of_sets, round_code, qualifying_flag FROM match_versions "
+        "WHERE match_version_id=%s",
+        (target["match_version_id"],),
+    ).fetchone()
+    assert format_row == (5, "R128", False)
+    resolved = resolve_scoring_rule(
+        canonical_tournament_name="Australian Open",
+        season_year=2027,
+        tour_scope="ATP_MAIN",
+        competition_tier="GRAND_SLAM",
+        round_code="R128",
+        best_of_sets=5,
+        qualifying_flag=False,
+    )
+    assert resolved.scoring_rule_version is ScoringRuleVersion.BO5_DECIDER_TB10_AT_6_6
+
+
 def test_multi_target_full_slate(db: psycopg.Connection):
     _seed_configs(db)
     t1 = _insert_scheduled_target(db)
@@ -220,6 +311,49 @@ def test_unknown_surface_still_completes(db: psycopg.Connection):
     assert outcome.runner_status == "COMPLETED"
     assert outcome.prediction_result_count == 3
     assert outcome.manager_result_count == 1
+
+
+def test_full_slate_persists_request_time_agent1_snapshot(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+    assert outcome.runner_status == "COMPLETED"
+
+    rows = db.execute(
+        """
+        SELECT s.match_version_id, s.player_1_id, s.player_2_id,
+               s.identity_complete, s.surface_known, s.main_draw_verified,
+               s.player_1_overall_match_count, s.player_2_overall_match_count,
+               s.player_1_surface_match_count, s.player_2_surface_match_count,
+               s.rating_uncertainty, s.rating_uncertainty_source,
+               s.model_version, s.feature_version, s.agent_config_version_id,
+               p.prediction_run_id, p.model_version, p.feature_version
+        FROM prediction_feature_snapshots s
+        JOIN predictions p ON p.prediction_id = s.prediction_id
+        WHERE p.prediction_run_id = %s AND s.agent_code = 'AGENT_1_SURFACE_ELO'
+        """,
+        (outcome.prediction_run_id,),
+    ).fetchall()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row[0] == target["match_version_id"]
+    assert (row[1], row[2]) == (target["player_1_id"], target["player_2_id"])
+    # No prior history exists in this fixture: history completeness is false,
+    # but the surface is known and the fixture is a main draw.
+    assert row[3] is False and row[4] is True and row[5] is True
+    assert (row[6], row[7]) == (0, 0)
+    assert (row[8], row[9]) == (0, 0)
+    assert row[10] is None and row[11] is None
+    assert row[12] == A1_CONFIG.model_version
+    assert row[13] == A1_CONFIG.feature_version
+    assert row[14] == db.execute(
+        "SELECT agent_config_version_id FROM agent_config_versions "
+        "WHERE agent_code = %s AND config_version = %s",
+        (A1, A1_CONFIG.config_version),
+    ).fetchone()[0]
+    # Snapshot metadata agrees with the immutable prediction row it binds.
+    assert (row[12], row[13]) == (row[16], row[17])
+    assert row[15] == outcome.prediction_run_id
 
 
 def test_agent_exception_fails_run(db: psycopg.Connection, monkeypatch):
@@ -723,3 +857,92 @@ def test_strict_manager_policy_v2_is_supported_by_full_slate_preflight(db: psyco
     assert outcome.prediction_run_id > 0
     assert outcome.target_count == 1
     assert outcome.prediction_result_count == 3
+
+
+def test_opt_in_identity_resolution_persistence_matches_predictions(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db, ingested_at=_utc(8, 0))
+    base = _request(db, match_ids=[target["match_id"]])
+    request = base.__class__(
+        match_ids=base.match_ids,
+        as_of=base.as_of,
+        agent_config_refs=base.agent_config_refs,
+        manager_policy_version_id=base.manager_policy_version_id,
+        persist_identity_resolutions=True,
+    )
+    outcome = run_full_slate(db, request)
+
+    assert outcome.runner_status == "COMPLETED"
+    rows = db.execute(
+        """
+        SELECT match_id, match_version_id, original_player_id, model_player_id,
+               resolution_method, reference_policy, capture_source
+        FROM identity_resolution_provenance
+        WHERE prediction_run_id = %s
+        ORDER BY original_player_id
+        """,
+        (outcome.prediction_run_id,),
+    ).fetchall()
+    assert len(rows) == 2
+    assert {row[2] for row in rows} == {target["player_1_id"], target["player_2_id"]}
+    assert all(row[5] == "identity_reference_pit_v3" for row in rows)
+    assert all(row[6] == "LIVE_RUNTIME" for row in rows)
+    assert db.execute(
+        "SELECT count(*) FROM predictions WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 3
+
+
+def test_default_full_slate_writes_no_identity_resolution_rows(db: psycopg.Connection):
+    _seed_configs(db)
+    target = _insert_scheduled_target(db)
+    outcome = run_full_slate(db, _request(db, match_ids=[target["match_id"]]))
+    assert outcome.runner_status == "COMPLETED"
+    assert db.execute(
+        "SELECT count(*) FROM identity_resolution_provenance WHERE prediction_run_id = %s",
+        (outcome.prediction_run_id,),
+    ).fetchone()[0] == 0
+
+
+def test_historical_a1_replay_matches_persisted_live_runner_with_same_snapshot(db):
+    from sports_edge_tennis.agents.agent1_surface_elo import predict, PredictionRequest
+    from sports_edge_tennis.data.agent1_history import load_agent1_history
+    from sports_edge_tennis.runner.targets import resolve_targets
+    _seed_configs(db)
+    cutoff = _utc(10)
+    target = _insert_scheduled_target(db, ingested_at=_utc(8))
+    edition = _fetchval(db, "SELECT tournament_edition_id FROM matches WHERE match_id=%s",
+                        (target["match_id"],))
+    history_id = _fetchval(db, "INSERT INTO matches (tournament_edition_id) VALUES (%s) RETURNING match_id", (edition,))
+    db.execute(
+        """INSERT INTO match_versions (match_id, player_1_id, player_2_id, match_start_at,
+           tour_scope, competition_tier, surface, round_code, best_of_sets, qualifying_flag,
+           match_status, source_observed_at, as_of, ingested_at)
+           VALUES (%s,%s,%s,%s,'ATP_MAIN','ATP_250','HARD','Q1',3,TRUE,'COMPLETED',%s,%s,%s)""",
+        (history_id,target["player_1_id"],target["player_2_id"],_utc(6),_utc(8),_utc(8),_utc(8)))
+    db.execute(
+        """INSERT INTO match_result_observations (match_id,outcome_status,winner_side,
+           source_observed_at,as_of,ingested_at) VALUES (%s,'COMPLETED',1,%s,%s,%s)""",
+        (history_id,_utc(9),_utc(9),_utc(9)))
+    resolved = resolve_targets(db, match_ids=(target["match_id"],), as_of=cutoff)[0]
+    request = PredictionRequest(resolved.player_1_id, resolved.player_2_id,
+        resolved.surface,resolved.tour_scope,resolved.competition_tier,
+        resolved.best_of_sets,resolved.qualifying_flag,cutoff)
+    history = load_agent1_history(db,cutoff=cutoff,ingested_by=cutoff)
+    expected = predict(request,history,A1_CONFIG)
+    assert expected.diagnostics.eligible_history_match_count == 1
+    outcome = run_full_slate(db,_request(db,match_ids=[target["match_id"]],as_of=cutoff))
+    assert outcome.runner_status == "COMPLETED"
+    actual = db.execute(
+        """SELECT selection_side,win_probability,model_version,feature_version
+           FROM predictions WHERE prediction_run_id=%s AND agent_code=%s""",
+        (outcome.prediction_run_id,A1)).fetchone()
+    assert actual == (expected.selection_side, expected.win_probability,
+                      expected.model_version, expected.feature_version)
+    # A later result correction is unavailable at the original cutoff.
+    db.execute(
+        """INSERT INTO match_result_observations (match_id,outcome_status,winner_side,
+           source_observed_at,as_of,ingested_at) VALUES (%s,'COMPLETED',2,%s,%s,%s)""",
+        (history_id,_utc(11),_utc(11),_utc(11)))
+    regenerated = predict(request,load_agent1_history(db,cutoff=cutoff,ingested_by=cutoff),A1_CONFIG)
+    assert regenerated == expected

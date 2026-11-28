@@ -1,0 +1,287 @@
+{
+  "version": "A1_TOP800_FOUR_WAY_CALIBRATION_AUDIT_V1",
+  "classification": "CORRECTED_RETROSPECTIVE_RESEARCH",
+  "can_promote": false,
+  "production_changed": false,
+  "source_commit": "0d36a878e6c05eb9ab012b146d521ee60abd6db8",
+  "source_blobs": {
+    "top800": "0f81aefca2f259d540245f1cf920a4a77d2d8267",
+    "reconciliation": "51a1cc52bde7a4d925913873a9f4f10dc209bf85"
+  },
+  "model_version": "agent1_surface_elo_v1",
+  "feature_version": "agent1_surface_elo_inputs_v1",
+  "evaluation_cutoff": "2026-11-25T07:20:00Z",
+  "eligible_settled_internal": 3223,
+  "baseline_note": "E3 original is reconstructed unbridged replay, not original stored production forecasts.",
+  "four_way_wins": {
+    "A": 596,
+    "B": 589,
+    "C": 646,
+    "D": 655
+  },
+  "four_way_accuracy": {
+    "A": 0.745,
+    "B": 0.73625,
+    "C": 0.8075,
+    "D": 0.81875
+  },
+  "four_way_note": "B and C use group-level counterfactual winner counts from reconciliation artifact; A and D recalculated from individual rows.",
+  "common": {
+    "original": {
+      "n": 509,
+      "wins": 413,
+      "losses": 96,
+      "accuracy": 0.8113948919449901,
+      "mean_confidence": 0.8577391100196465,
+      "expected_wins": 436.5892070000001,
+      "calibration_gap": -0.046344218074656385,
+      "brier": 0.15745001700477215,
+      "log_loss": 0.5070295478378828
+    },
+    "corrected": {
+      "n": 509,
+      "wins": 413,
+      "losses": 96,
+      "accuracy": 0.8113948919449901,
+      "mean_confidence": 0.8282039548133592,
+      "expected_wins": 421.55581299999983,
+      "calibration_gap": -0.01680906286836903,
+      "brier": 0.1504974401619234,
+      "log_loss": 0.47665036652617115
+    },
+    "winner_changes": 0,
+    "probability_changes": 495
+  },
+  "removed": {
+    "n": 291,
+    "wins": 183,
+    "losses": 108,
+    "accuracy": 0.6288659793814433,
+    "mean_confidence": 0.8234626804123709,
+    "expected_wins": 239.62763999999993,
+    "calibration_gap": -0.19459670103092763,
+    "brier": 0.2741696132999246,
+    "log_loss": 0.7840523984871116
+  },
+  "added": {
+    "n": 291,
+    "wins": 242,
+    "losses": 49,
+    "accuracy": 0.8316151202749141,
+    "mean_confidence": 0.7874233917525775,
+    "expected_wins": 229.14020700000003,
+    "calibration_gap": 0.04419172852233666,
+    "brier": 0.1382985566396254,
+    "log_loss": 0.4465863427666
+  },
+  "original": {
+    "overall": {
+      "n": 800,
+      "wins": 596,
+      "losses": 204,
+      "accuracy": 0.745,
+      "mean_confidence": 0.8452710587500007,
+      "expected_wins": 676.2168470000006,
+      "calibration_gap": -0.10027105875000075,
+      "brier": 0.19990677015713362,
+      "log_loss": 0.6077966097615406
+    },
+    "tour": {
+      "ATP_MAIN": {
+        "n": 201,
+        "wins": 161,
+        "losses": 40,
+        "accuracy": 0.8009950248756219,
+        "mean_confidence": 0.8580173184079596,
+        "expected_wins": 172.46148099999988,
+        "calibration_gap": -0.057022293532337676,
+        "brier": 0.16139888151582585,
+        "log_loss": 0.5140605678884437
+      },
+      "CHALLENGER": {
+        "n": 599,
+        "wins": 435,
+        "losses": 164,
+        "accuracy": 0.7262103505843072,
+        "mean_confidence": 0.8409939332220369,
+        "expected_wins": 503.7553660000001,
+        "calibration_gap": -0.1147835826377297,
+        "brier": 0.21282844898334904,
+        "log_loss": 0.6392506071179548
+      }
+    },
+    "confidence_bands": {
+      "0.7-0.8": {
+        "n": 192,
+        "wins": 144,
+        "losses": 48,
+        "accuracy": 0.75,
+        "mean_confidence": 0.7850960052083332,
+        "expected_wins": 150.738433,
+        "calibration_gap": -0.035096005208333225,
+        "brier": 0.188242232147078,
+        "log_loss": 0.5643883090319464
+      },
+      "0.8-0.9": {
+        "n": 469,
+        "wins": 338,
+        "losses": 131,
+        "accuracy": 0.720682302771855,
+        "mean_confidence": 0.8443573752665248,
+        "expected_wins": 396.0036090000001,
+        "calibration_gap": -0.1236750724946698,
+        "brier": 0.2164379318481472,
+        "log_loss": 0.643759149459184
+      },
+      "0.9-1": {
+        "n": 139,
+        "wins": 114,
+        "losses": 25,
+        "accuracy": 0.8201438848920863,
+        "mean_confidence": 0.9314734172661877,
+        "expected_wins": 129.4748050000001,
+        "calibration_gap": -0.11132953237410137,
+        "brier": 0.16024113321357553,
+        "log_loss": 0.5464150458902224
+      }
+    },
+    "retrospective_rank_prefix": {
+      "0.1": {
+        "n": 322,
+        "wins": 250,
+        "losses": 72,
+        "accuracy": 0.7763975155279503,
+        "mean_confidence": 0.899721136645963,
+        "expected_wins": 289.7102060000001,
+        "calibration_gap": -0.12332362111801265,
+        "brier": 0.1885058719037454,
+        "log_loss": 0.6007538776378919,
+        "actual_internal_coverage": 0.099906919019547,
+        "boundary_confidence": 0.852305,
+        "boundary_tie_visible": false
+      },
+      "0.2": {
+        "n": 644,
+        "wins": 484,
+        "losses": 160,
+        "accuracy": 0.7515527950310559,
+        "mean_confidence": 0.8605474642857144,
+        "expected_wins": 554.192567,
+        "calibration_gap": -0.1089946692546585,
+        "brier": 0.19819030223325618,
+        "log_loss": 0.6079026748833493,
+        "actual_internal_coverage": 0.199813838039094,
+        "boundary_confidence": 0.795293,
+        "boundary_tie_visible": false
+      }
+    }
+  },
+  "corrected": {
+    "overall": {
+      "n": 800,
+      "wins": 655,
+      "losses": 145,
+      "accuracy": 0.81875,
+      "mean_confidence": 0.8133700250000001,
+      "expected_wins": 650.6960200000001,
+      "calibration_gap": 0.00537997499999987,
+      "brier": 0.1460600962806874,
+      "log_loss": 0.4657145778836273
+    },
+    "tour": {
+      "ATP_MAIN": {
+        "n": 193,
+        "wins": 164,
+        "losses": 29,
+        "accuracy": 0.8497409326424871,
+        "mean_confidence": 0.822214409326425,
+        "expected_wins": 158.68738100000002,
+        "calibration_gap": 0.02752652331606209,
+        "brier": 0.12307578421711397,
+        "log_loss": 0.4054991741119834
+      },
+      "CHALLENGER": {
+        "n": 607,
+        "wins": 491,
+        "losses": 116,
+        "accuracy": 0.8088962108731467,
+        "mean_confidence": 0.8105578896210878,
+        "expected_wins": 492.0086390000003,
+        "calibration_gap": -0.0016616787479410977,
+        "brier": 0.15336812301589284,
+        "log_loss": 0.48486049704001416
+      }
+    },
+    "confidence_bands": {
+      "0.7-0.8": {
+        "n": 380,
+        "wins": 294,
+        "losses": 86,
+        "accuracy": 0.7736842105263158,
+        "mean_confidence": 0.766184289473684,
+        "expected_wins": 291.1500299999999,
+        "calibration_gap": 0.007499921052631753,
+        "brier": 0.17481610556181054,
+        "log_loss": 0.5340509209258772
+      },
+      "0.8-0.9": {
+        "n": 354,
+        "wins": 301,
+        "losses": 53,
+        "accuracy": 0.8502824858757062,
+        "mean_confidence": 0.8419456129943511,
+        "expected_wins": 298.0487470000003,
+        "calibration_gap": 0.008336872881355095,
+        "brier": 0.12667241893299147,
+        "log_loss": 0.420151130260495
+      },
+      "0.9-1": {
+        "n": 66,
+        "wins": 60,
+        "losses": 6,
+        "accuracy": 0.9090909090909091,
+        "mean_confidence": 0.9317764090909093,
+        "expected_wins": 61.49724300000001,
+        "calibration_gap": -0.022685500000000247,
+        "brier": 0.08448364558762121,
+        "log_loss": 0.31664867034625693
+      }
+    },
+    "retrospective_rank_prefix": {
+      "0.1": {
+        "n": 322,
+        "wins": 284,
+        "losses": 38,
+        "accuracy": 0.8819875776397516,
+        "mean_confidence": 0.8699278913043483,
+        "expected_wins": 280.1167810000002,
+        "calibration_gap": 0.012059686335403219,
+        "brier": 0.1052917698114006,
+        "log_loss": 0.36854675658724556,
+        "actual_internal_coverage": 0.099906919019547,
+        "boundary_confidence": 0.820345,
+        "boundary_tie_visible": false
+      },
+      "0.2": {
+        "n": 644,
+        "wins": 539,
+        "losses": 105,
+        "accuracy": 0.8369565217391305,
+        "mean_confidence": 0.8292441739130445,
+        "expected_wins": 534.0332480000006,
+        "calibration_gap": 0.007712347826085986,
+        "brier": 0.13524027413457762,
+        "log_loss": 0.44058710180337446,
+        "actual_internal_coverage": 0.199813838039094,
+        "boundary_confidence": 0.759853,
+        "boundary_tie_visible": false
+      }
+    }
+  },
+  "limitations": [
+    "Rank prefixes use floor(coverage * 3223) and the committed rank order; not deployable chronological thresholds.",
+    "30/40/50/75% require complete ranked rows; 100% overall metrics available in source reconciliation but no row-level confidence bands here.",
+    "Independent official fixture coverage, bookmaker benchmarks and prospective validation are not established.",
+    "No provider calls or database replay."
+  ]
+}

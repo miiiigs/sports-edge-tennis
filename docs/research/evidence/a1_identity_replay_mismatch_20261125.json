@@ -1,0 +1,70 @@
+{
+  "version": "A1_IDENTITY_PROVENANCE_AUDIT_V1",
+  "generated_at": "2026-11-25T12:13:09.441339+00:00",
+  "since": "2026-09-10T00:00:00+00:00",
+  "targets": 3780,
+  "settled": 3272,
+  "can_promote": false,
+  "production_changed": false,
+  "surface_status": {
+    "LIVE": 3200,
+    "CURRENT_EDITION": 93,
+    "UNRESOLVED": 371,
+    "HISTORICAL_TOURNAMENT": 19,
+    "HISTORICAL_TOURNAMENT_NORMALIZED": 97
+  },
+  "mismatch": {
+    "population": 3780,
+    "fidelity": {
+      "n": 3780,
+      "exact": 0.9277777777777778,
+      "within_005": 0.946031746031746
+    },
+    "history_ingest_visibility": {
+      "cutoffs": [
+        {
+          "as_of": "2026-09-10T01:03:19.543076+00:00",
+          "visible_result_observations": 117713,
+          "ingested_after_cutoff": 0,
+          "share_ingested_after_cutoff": 0.0
+        },
+        {
+          "as_of": "2026-10-19T07:01:48.274711+00:00",
+          "visible_result_observations": 132673,
+          "ingested_after_cutoff": 0,
+          "share_ingested_after_cutoff": 0.0
+        },
+        {
+          "as_of": "2026-11-25T12:04:46.116807+00:00",
+          "visible_result_observations": 134713,
+          "ingested_after_cutoff": 0,
+          "share_ingested_after_cutoff": 0.0
+        }
+      ]
+    },
+    "mismatch_by_mechanism": {
+      "surface_fallback_resolution": {
+        "targets": 209,
+        "mismatches": 95,
+        "mismatch_rate": 0.45454545454545453
+      },
+      "target_identity_bridged": {
+        "targets": 3138,
+        "mismatches": 139,
+        "mismatch_rate": 0.04429572976418101
+      },
+      "unexplained": {
+        "targets": 62,
+        "mismatches": 16,
+        "mismatch_rate": 0.25806451612903225
+      },
+      "unknown_surface": {
+        "targets": 371,
+        "mismatches": 23,
+        "mismatch_rate": 0.06199460916442048
+      }
+    },
+    "total_mismatches": 273
+  },
+  "connection_attempts": 1
+}

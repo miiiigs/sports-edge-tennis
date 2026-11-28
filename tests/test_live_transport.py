@@ -92,6 +92,7 @@ def test_api_tennis_draw_request_and_surface_payload(fake_get):
         "tournament_key": "1214",
         "tournament_season": "2026",
         "include_qualification": "1",
+        "timezone": "UTC",
     }
     assert received_at == CLOCK
     assert result["tournament"]["tournament_surface"] == "Hard"

@@ -149,3 +149,68 @@ def test_source_identifiers_must_not_use_name_only_fuzzy_guesses():
     x=Reference(" ", "ATP_MAIN","MAIN","SINGLES",MATCH,MATCH-timedelta(hours=1))
     with pytest.raises(ValueError,match="empty official fixture ID"):
         x.validate()
+
+
+def test_daily_waterfall_preserves_unmatched_and_zero_complete_days():
+    refs = [fixture("a"), fixture("b", tour="CHALLENGER"),
+            fixture("q", stage="QUALIFYING")]
+    r = audit(manifest(), refs, {"a": original(99)},
+              aligned_picks={99: (MATCH-timedelta(hours=1), "MANAGER_CONSENSUS")})
+    w = r["daily_waterfall"]
+    days = {(x["day_utc"], x["tour"]): x for x in w["daily"]}
+    assert len(days) == 14
+    a = days[("2026-11-18", "ATP_MAIN")]
+    assert a["official_main_draw_total"] == 1
+    assert a["official_knowable_total"] == 1
+    assert a["aligned_pick_coverage_lower_bound"] == 1
+    assert a["observed_counts"]["reason_OUT_OF_SCOPE"] == 1
+    b = days[("2026-11-18", "CHALLENGER")]
+    assert b["observed_counts"]["reason_NO_EXACT_PROVIDER_MAPPING"] == 1
+    assert b["aligned_pick_coverage_lower_bound"] == 0
+    assert days[("2026-11-15", "ATP_MAIN")]["official_main_draw_total"] == 0
+    assert a["settlement_wlpv"] is None
+    assert len(w["fixtures"]) == 3
+
+
+def test_daily_incomplete_or_missing_publication_denominator_unknown():
+    for m, ref in [(manifest(complete=False), fixture()),
+                   (manifest(), fixture(published=False))]:
+        r = audit(m, [ref], {})
+        a = next(x for x in r["daily_waterfall"]["daily"]
+                 if x["day_utc"] == "2026-11-18" and x["tour"] == "ATP_MAIN")
+        assert a["official_knowable_total"] is None
+        assert a["aligned_pick_coverage_lower_bound"] is None
+        assert r["official_eligible_singles_total_if_source_complete"] is None
+
+
+def test_reject_multiple_official_ids_for_one_internal_match():
+    with pytest.raises(ValueError, match="multiple official fixtures"):
+        audit(manifest(), [fixture("a"), fixture("b")],
+              {"a": original(99), "b": original(99)})
+
+
+def test_licence_and_completeness_flags_not_truthy_strings():
+    with pytest.raises(ValueError, match="commercial data rights"):
+        audit(manifest(approved="false"), [fixture()], {})
+    with pytest.raises(ValueError, match="completeness must be a boolean"):
+        audit(manifest(complete="false"), [fixture()], {})
+
+
+def test_change_feed_does_not_infer_void_or_rewrite_original():
+    from sports_edge_tennis.validation.official_census_waterfall import reconcile_changes
+    previous = {"a": "old", "b": "old", "c": "old", "e": "old"}
+    current = {"a": "new", "c": "old", "d": "new"}
+    rows = {r["source_match_id"]: r for r in
+            reconcile_changes(previous, current, current_complete=True, explicit_removed=["e"])}
+    assert rows["a"]["status"] == "RESCHEDULED"
+    assert rows["a"]["previous_start"] == "old"
+    assert rows["a"]["current_start"] == "new"
+    assert rows["b"]["status"] == "ABSENT_COMPLETE_SNAPSHOT"
+    assert rows["c"]["status"] == "UNCHANGED"
+    assert rows["d"]["status"] == "CREATED_OR_NEWLY_OBSERVED"
+    assert rows["e"]["status"] == "EXPLICIT_REMOVAL"
+    assert not any(r["void_inferred"] for r in rows.values())
+    assert previous["a"] == "old"
+    assert reconcile_changes({"a": "old"}, {})[0]["status"] == "UNKNOWN_INCOMPLETE_SNAPSHOT"
+    with pytest.raises(ValueError, match="contradictory"):
+        reconcile_changes(previous, current, explicit_removed=["a"])

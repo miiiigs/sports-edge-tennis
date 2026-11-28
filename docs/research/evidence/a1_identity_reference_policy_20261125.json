@@ -1,0 +1,98 @@
+{
+  "version": "A1_IDENTITY_PROVENANCE_AUDIT_V1",
+  "generated_at": "2026-11-25T11:00:58.084430+00:00",
+  "since": "2026-09-10T00:00:00+00:00",
+  "targets": 3778,
+  "settled": 3271,
+  "can_promote": false,
+  "production_changed": false,
+  "reference_policy": {
+    "targets": 3778,
+    "affected_targets": 0,
+    "policies": {
+      "permissive": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        },
+        "replay_fidelity": {
+          "n": 0
+        }
+      },
+      "strict": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        },
+        "replay_fidelity": {
+          "n": 0
+        }
+      },
+      "strict_alias_refresh_gate": {
+        "mapped_players": 6556,
+        "methods": {
+          "ALIAS": 6550,
+          "NO_HISTORICAL_CANDIDATE": 765,
+          "AMBIGUOUS": 225,
+          "PERSISTED_BRIDGE": 6,
+          "HISTORICAL_ID": 5
+        },
+        "affected_metrics": {
+          "n": 0
+        },
+        "replay_fidelity": {
+          "n": 0
+        }
+      }
+    },
+    "strict_vs_permissive": {
+      "changed_player_mappings": 0,
+      "examples": [],
+      "affected_targets": 0,
+      "paired": null,
+      "forecast_effect": {
+        "compared_targets": 0,
+        "changed_probabilities": 0,
+        "max_abs_probability_delta": 0.0,
+        "mean_abs_probability_delta": 0.0,
+        "paired": null
+      }
+    },
+    "strict_alias_refresh_gate_vs_permissive": {
+      "changed_player_mappings": 0,
+      "examples": [],
+      "forecast_effect": {
+        "compared_targets": 0,
+        "changed_probabilities": 0,
+        "max_abs_probability_delta": 0.0,
+        "mean_abs_probability_delta": 0.0,
+        "paired": null
+      }
+    },
+    "experiment_status": "COMPLETE",
+    "measurement_basis": "Zero changed player mappings between permissive and each strict policy means no target resolution changed, so no replayed probability can move. The affected population is empty by construction and the forecast effect is exactly zero. The committed mapping census (3,778 targets, 6,556 player resolutions per policy) is the empirical measurement; this block records its forecasting consequence.",
+    "policy_version_measured": "identity_reference_pit_v2",
+    "replay_fidelity_reference": {
+      "source": "docs/research/evidence/a1_identity_replay_mismatch_20261125.json",
+      "targets": 3780,
+      "exact": 0.9278,
+      "within_005": 0.946,
+      "note": "Same replay harness on the adjacent 3,780-target population. Policy mapping differences are zero, so this fidelity is unchanged by the strict gates."
+    }
+  },
+  "connection_attempts": 1
+}

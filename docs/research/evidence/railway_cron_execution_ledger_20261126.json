@@ -1,0 +1,73 @@
+{
+  "version": "RAILWAY_CRON_EXECUTION_LEDGER_20261126_V1",
+  "source": "railway cron list --service tennis-live-runner --environment production --limit 500 --json",
+  "mode": "READ_ONLY_RAILWAY_CLI",
+  "checked_at": "2026-11-26T12:00:00Z",
+  "service": "tennis-live-runner",
+  "environment": "production",
+  "cron_schedule": "0 * * * *",
+  "boundary_executions": {
+    "last_healthy_before_gap": {
+      "execution_id": "7a508e3d-84df-4ec1-ad99-96218572f1a4",
+      "deployment_id": "49ac64b1-42f4-4bbe-9c21-1176d53a3fcd",
+      "slot": "2026-11-12T22:00:00Z",
+      "started_at": "2026-11-12T22:04:21.769Z",
+      "completed_at": "2026-11-12T22:06:34.989Z",
+      "duration_seconds": 133,
+      "status": "EXITED"
+    },
+    "last_attempt_before_gap": {
+      "execution_id": "bd8ccdd3-e4c4-4f0e-840e-1eac619ce6b0",
+      "deployment_id": "49ac64b1-42f4-4bbe-9c21-1176d53a3fcd",
+      "slot": "2026-11-12T23:00:00Z",
+      "started_at": "2026-11-12T23:01:09.120Z",
+      "completed_at": "2026-11-12T23:01:24.416Z",
+      "duration_seconds": 15,
+      "status": "CRASHED",
+      "application_note": "All three slates returned SLATE_UNAVAILABLE; LIVE_BATCH_FAILED_NO_SUCCESSFUL_SLATES; production lock released 23:01:21.412Z; exit code 2."
+    },
+    "first_attempt_after_recovery_deploy": {
+      "execution_id": "32b15457-dd1b-4682-9733-dae570ec3506",
+      "deployment_id": "0ec94e4d-efc8-40c0-b154-619d086728d6",
+      "started_at": "2026-11-16T23:05:12.349Z",
+      "completed_at": "2026-11-16T23:05:43.075Z",
+      "duration_seconds": 30,
+      "status": "CRASHED",
+      "application_note": "Provider still unavailable; not a scheduler test."
+    },
+    "first_healthy_after_recovery": {
+      "execution_id": "74eb6036-c0f4-478f-83b0-5b45cf2be09f",
+      "deployment_id": "2162826d-4900-4d48-adcb-84bd0f697828",
+      "slot": "2026-11-17T00:00:00Z",
+      "started_at": "2026-11-17T00:01:21.039Z",
+      "completed_at": "2026-11-17T00:03:37.865Z",
+      "duration_seconds": 136,
+      "status": "EXITED"
+    }
+  },
+  "gap": {
+    "first_missed_slot": "2026-11-13T00:00:00Z",
+    "last_missed_slot": "2026-11-16T22:00:00Z",
+    "missed_hourly_slots": 95,
+    "execution_records_during_gap": 0
+  },
+  "cpu_usage": {
+    "source": "railway metrics --service tennis-live-runner --since 2026-11-12T20:00:00Z --until 2026-11-17T02:00:00Z --raw --cpu --json",
+    "nonzero_hours": [
+      "2026-11-12T20:00:00Z",
+      "2026-11-12T21:00:00Z",
+      "2026-11-12T22:00:00Z",
+      "2026-11-12T23:00:00Z",
+      "2026-11-16T23:00:00Z",
+      "2026-11-17T00:00:00Z",
+      "2026-11-17T01:00:00Z"
+    ],
+    "zero_hours": "Every hourly CPU_USAGE point from 2026-11-13T00:00:00Z through 2026-11-16T22:00:00Z is exactly 0."
+  },
+  "skipped_execution_assessment": {
+    "documented_condition": "Railway skips a new cron run only when the previous execution is still running.",
+    "condition_met": false,
+    "reason": "The previous execution completed at 2026-11-12T23:01:24Z, 107 minutes before the first missed slot; CPU was zero throughout the gap.",
+    "conclusion": "The documented skipped-execution behaviour does not explain the incident. Railway stopped creating execution records after a non-zero run; a manual redeploy restored execution. The platform-side trigger cause remains unexposed."
+  }
+}

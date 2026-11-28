@@ -1,0 +1,237 @@
+{
+  "version": "A1_IDENTITY_BRIDGE_PROSPECTIVE_READINESS_V1",
+  "generated_at": "2026-11-26T06:13:06.800357+00:00",
+  "pr": 388,
+  "mission": "December off-season identity-correction completion",
+  "can_promote": false,
+  "production_changed": false,
+  "activation_state": "NOT_ELIGIBLE",
+  "workstreams": {
+    "reference_policy_experiment": {
+      "status": "COMPLETE_UNDER_V2_REMEASUREMENT_REQUIRED_UNDER_V3",
+      "mapping_differences_vs_permissive": 0,
+      "player_resolutions_per_policy": 6556,
+      "targets": 3778,
+      "forecast_effect": {
+        "affected_targets": 0,
+        "changed_probabilities": 0,
+        "max_abs_probability_delta": 0.0
+      },
+      "evidence": "docs/research/evidence/a1_identity_reference_policy_20261125.json",
+      "limitation": "Measured before migration 0025. The version-table resolver is a new policy (v3) and must be re-measured on production before any claim."
+    },
+    "pit_reference_limitations": {
+      "status": "IMPLEMENTED_NOT_APPLIED",
+      "objects": [
+        "player_name_versions",
+        "player_alias_versions",
+        "player_aliases linkage immutability guard",
+        "identity_resolution_provenance"
+      ],
+      "migration": "db/migrations/0025_identity_provenance_v2.up.sql",
+      "applied_to_production": false,
+      "limitation": "0025 requires 0023/0024 from integration PR #392 to be applied first. No production migration was run."
+    },
+    "runtime_resolution_persistence": {
+      "status": "IMPLEMENTED_TESTED_INACTIVE_TRANSACTIONAL",
+      "writer": "sports_edge_tennis.data.identity_runtime.persist_identity_resolutions",
+      "reader": "sports_edge_tennis.data.identity_runtime.load_identity_resolutions",
+      "captured_fields": [
+        "prediction_run_id",
+        "match_id",
+        "match_version_id",
+        "predicted_at",
+        "original_player_id",
+        "model_player_id",
+        "resolution_method",
+        "evidence",
+        "name_source",
+        "candidate_count",
+        "matched_alias",
+        "bridge_event_id",
+        "visible_from",
+        "reference_policy",
+        "reference_sha256",
+        "record_sha256",
+        "source_record_sha256",
+        "capture_source"
+      ],
+      "default_runtime_behaviour": "unchanged; no observer or runner passes observations yet",
+      "limitation": "The opt-in path resolves provenance and writes it in the same transaction as predictions. It is default-off; no live rollout is claimed.",
+      "transactional_with_predictions": true,
+      "opt_in_field": "FullSlateRunRequestV1.persist_identity_resolutions",
+      "default_enabled": false
+    },
+    "replay_discrepancy": {
+      "status": "EXPLAINED_REMAINDER_FAIL_CLOSED",
+      "targets": 3780,
+      "exact": 0.9278,
+      "within_005": 0.946,
+      "total_mismatches": 273,
+      "late_ingest_mismatches": 0,
+      "largest_share": "target identity reconstruction (50.9% of mismatches)",
+      "unexplained_share": 0.059,
+      "top_case_audit": {
+        "cases": 30,
+        "target_ids_changed_at_as_of": 30,
+        "is_first_issued": 0,
+        "both_players_changed": 24,
+        "replay_side_flips": 18
+      },
+      "evidence": [
+        "docs/research/evidence/a1_identity_replay_mismatch_20261125.json",
+        "docs/research/evidence/a1_identity_replay_mismatch_cases_20261126.json"
+      ],
+      "limitation": "Exact production request ids were never persisted, so a re-issue replay must reconstruct them. The durable table closes this for future runs only."
+    },
+    "first_issued_shadow_capture": {
+      "status": "ACTIVE_ARCHIVE_NOT_INDEPENDENT_RECEIPT",
+      "committed_first_issued_records": 2,
+      "quarantined_52_target_records": 52,
+      "independent_collector_receipt": false,
+      "integration": [
+        "archive replay into identity_resolution_provenance via validation.a1_identity_capture_integration",
+        "completed-run discovery with archive idempotency"
+      ],
+      "evidence": [
+        "docs/research/evidence/a1_identity_bridge_forward_capture_2603_20261125.jsonl",
+        "docs/research/evidence/a1_identity_bridge_forward_capture_2548_quarantined_20261124.jsonl"
+      ],
+      "pre_outcome_17_records_not_independently_receipted": 17,
+      "admissible_records_with_independent_receipt": 0
+    },
+    "shadow_non_interference": {
+      "status": "VERIFIED_BY_REGRESSION_TEST",
+      "guarantees": [
+        "observer sets default_transaction_read_only=on",
+        "statement guard rejects INSERT/UPDATE/DELETE",
+        "prediction, decision, Manager, publication and settlement row counts are unchanged",
+        "observer records outcome_included=false and production_changed=false"
+      ],
+      "limitation": "Local PostgreSQL regression only; must also pass CI on the pushed head."
+    },
+    "manager_interaction": {
+      "status": "COMPLETE_BOUNDED",
+      "population": 3271,
+      "excluded_not_safely_settled": 507,
+      "manager_decisions_changed": 861,
+      "consensus_original": 546,
+      "consensus_counterfactual": 631,
+      "accuracy_original": 0.6391941391941391,
+      "accuracy_counterfactual": 0.6608557844690967,
+      "unpaired_delta": 0.02166164527495751,
+      "unpaired_ci95": [
+        -0.03299322547933991,
+        0.07631651602925493
+      ],
+      "ci_includes_zero": true,
+      "shared_picks_same_side": 255,
+      "shared_picks_total": 255,
+      "limitation": "Selection sets differ; this is coverage interaction, not a paired improvement."
+    },
+    "legacy_75pct_claim": {
+      "status": "RETIRED_UNREPRODUCIBLE",
+      "verdict": "UNREPRODUCIBLE",
+      "recommendation": "RETIRE",
+      "largest_reproducible_cohort": 3375,
+      "largest_reproducible_accuracy": 0.6252,
+      "shortfall_vs_75pct": 0.1248,
+      "evidence": "docs/research/evidence/legacy_75pct_claim_audit_20261125.json"
+    },
+    "historical_population_reconciliation": {
+      "status": "COMPLETE_EXPLANATORY",
+      "classification": "HISTORICAL_DEVELOPMENT_REUSE_NOT_UNTOUCHED_VALIDATION",
+      "freeze": {
+        "E1_cutoff": "2026-11-24T08:10:00Z",
+        "E2_cutoff": "2026-11-24T09:00:00Z",
+        "E3_cutoff": "2026-11-25T07:20:00Z",
+        "E2_targets": 3725,
+        "E2_settled": 3201,
+        "E3_targets": 3776,
+        "E3_settled": 3223,
+        "E1_reconstructed": 3152
+      },
+      "top800_accounting_identity": "655 = 413 + 242; 596 = 413 + 183; difference = 59",
+      "evidence": "docs/research/evidence/a1_historical_reconciliation_20261126.json",
+      "sha256": "261687b6387687149fa7e6fca58258e88214b83811e2d48846f60c0b735b760f",
+      "limitation": "Historical outcomes have been inspected repeatedly. This is development reuse, not untouched validation."
+    }
+  },
+  "activation_gates": [
+    {
+      "gate": "minimum_200_settled_first_issued_bridged_selections",
+      "required": 200,
+      "observed": 2,
+      "met": false
+    },
+    {
+      "gate": "minimum_30_calendar_days_genuine_future_captures",
+      "required_days": 30,
+      "observed_days": 2,
+      "met": false
+    },
+    {
+      "gate": "independent_wall_clock_collector_receipt",
+      "required": true,
+      "met": false
+    },
+    {
+      "gate": "paired_brier_interval_entirely_below_zero",
+      "met": false,
+      "reason": "forward sample too small"
+    },
+    {
+      "gate": "paired_log_loss_interval_entirely_below_zero",
+      "met": false,
+      "reason": "forward sample too small"
+    },
+    {
+      "gate": "no_atp_degradation",
+      "met": false,
+      "reason": "forward ATP sample is zero; ATP remains unresolved, not pooled away"
+    },
+    {
+      "gate": "equal_count_and_frozen_coverage_model_picks_comparison",
+      "met": false,
+      "reason": "requires the settled forward sample"
+    },
+    {
+      "gate": "new_agent_1_config_version",
+      "met": false
+    },
+    {
+      "gate": "owner_approval",
+      "met": false
+    }
+  ],
+  "release_requirements": [
+    "Merge integration PR #392 first so migrations 0023 and 0024 are in the applied chain.",
+    "Apply 0025 through the reviewed migration process; verify up/down and cumulative schema parity in PostgreSQL CI.",
+    "Re-run the reference-policy audit under identity_reference_pit_v3 on production and publish the new mapping/forecast effect file.",
+    "Persist runtime identity resolutions in the same transaction as activated predictions; backfill is not permitted.",
+    "Run the shadow capture on a schedule with an independent, externally timestamped archive receipt.",
+    "Accumulate at least 200 settled first-issued bridged selections over at least 30 calendar days.",
+    "Report paired Brier and log-loss intervals (candidate minus baseline) entirely below zero.",
+    "Report equal-count and frozen-coverage Model Picks comparisons with overlap and ATP safety.",
+    "Create a new Agent 1 configuration version; do not reuse agent1_surface_elo_v1.",
+    "Record owner approval and a rollback plan before activation."
+  ],
+  "pr392_reconciled": true,
+  "pr392_head": "af6e09bef019ef3a5cc67273ad08094ee0b8a8a0",
+  "merge_commit": "2a44627",
+  "migration_chain_0023_0025": {
+    "verified": true,
+    "applied_to_production": false,
+    "evidence": "docs/research/evidence/a1_combined_migration_order_20261126.json",
+    "sha256": "7f8ec9704a039402a55397be35c927b247867184297c1c656278b53e90ba59c6"
+  },
+  "forward_quarantine": {
+    "manifest": "docs/research/evidence/a1_forward_quarantine_manifest_20261126.json",
+    "sha256": "d7e32114b3d35083b875cb730dfdb8574a1d2fda45aae40dfa6e683e1f858af7",
+    "quarantined_reissued_targets": 52,
+    "pre_outcome_records_not_independently_receipted": 17,
+    "admissible_records_with_independent_receipt": 0
+  },
+  "candidate_freeze_manifest": "docs/research/evidence/a1_candidate_freeze_manifest_20261126.json",
+  "scientific_freeze_recommendation": "NOT_READY_FOR_ACTIVATION_FREEZE; READY_FOR_REVIEW_OF_HISTORICAL_EXPLANATION_ONLY"
+}

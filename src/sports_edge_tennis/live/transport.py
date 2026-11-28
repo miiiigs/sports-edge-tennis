@@ -8,14 +8,30 @@ included in an exception message or persisted by this module.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from typing import Any
 
 import requests
 
-
 API_TENNIS_BASE_URL = "https://api.api-tennis.com/tennis/"
 PINNAPI_BASE_URL = "https://pinnapi.com"
+
+# API-Tennis documents Europe/Berlin as the default response timezone. The
+# scheduled-fixture parser stores naive event_date/event_time as UTC, so every
+# request that feeds it must explicitly ask for UTC. A non-UTC request would
+# silently shift kickoff times by one or two hours (and differently across DST).
+API_TENNIS_REQUEST_TIMEZONE = "UTC"
+
+
+def _require_utc_request_timezone(value: str) -> str:
+    normalized = str(value).strip()
+    if normalized.upper() != API_TENNIS_REQUEST_TIMEZONE:
+        raise ValueError(
+            "API-Tennis fixture/draw requests must use UTC because the parser "
+            "stores event_date/event_time as UTC"
+        )
+    return API_TENNIS_REQUEST_TIMEZONE
+
 
 DEFAULT_TIMEOUT = 10.0
 
@@ -37,7 +53,7 @@ class TransportError(RuntimeError):
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def api_tennis_failure_category(payload: Any) -> str:
@@ -98,6 +114,7 @@ def fetch_api_tennis_fixtures(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = API_TENNIS_BASE_URL,
     clock: callable | None = None,
+    source_timezone: str = API_TENNIS_REQUEST_TIMEZONE,
 ) -> tuple[datetime, list[dict[str, Any]]]:
     clock = clock or _utc_now
     date_str = slate_date.isoformat()
@@ -106,7 +123,7 @@ def fetch_api_tennis_fixtures(
         "APIkey": api_key,
         "date_start": date_str,
         "date_stop": date_str,
-        "timezone": "UTC",
+        "timezone": _require_utc_request_timezone(source_timezone),
     }
     try:
         resp = requests.get(base_url, params=params, timeout=timeout)
@@ -147,6 +164,7 @@ def fetch_api_tennis_draw(
     timeout: float = DEFAULT_TIMEOUT,
     base_url: str = API_TENNIS_BASE_URL,
     clock: callable | None = None,
+    source_timezone: str = API_TENNIS_REQUEST_TIMEZONE,
 ) -> tuple[datetime, dict[str, Any]]:
     """Fetch one tournament draw for authoritative tournament surface metadata."""
     clock = clock or _utc_now
@@ -156,6 +174,9 @@ def fetch_api_tennis_draw(
         "tournament_key": str(tournament_key),
         "tournament_season": str(tournament_season),
         "include_qualification": "1",
+        # The draw endpoint has the same Europe/Berlin default. Ask for UTC so
+        # any time-bearing draw field cannot be mixed with fixture UTC clocks.
+        "timezone": _require_utc_request_timezone(source_timezone),
     }
     try:
         resp = requests.get(base_url, params=params, timeout=timeout)

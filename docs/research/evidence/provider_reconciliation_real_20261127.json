@@ -1,0 +1,632 @@
+{
+  "api_tennis_entitlement": {
+    "billable_calls_made_by_this_probe": 0,
+    "entitlement_established": true,
+    "evidence_reference": "docs/research/evidence/api_tennis_odds_entitlement_real_20261126.json",
+    "may_make_billable_requests": false,
+    "quota_established": false,
+    "status": "ENTITLEMENT_ONLY"
+  },
+  "balanced_160_target": {
+    "ATP_MAIN": {
+      "eligible": 0,
+      "shortfall": 80
+    },
+    "CHALLENGER": {
+      "eligible": 23,
+      "shortfall": 57
+    },
+    "requested_per_tour": 80,
+    "substituted_from_other_competition": false,
+    "targets_are_targets_not_achievements": true
+  },
+  "bookmaker_availability": {
+    "PINNACLE": {
+      "first": "2026-09-09 16:23:24.027773+00:00",
+      "last": "2026-11-27 04:05:34.755223+00:00",
+      "matches": 1392,
+      "quotes": 27526
+    },
+    "PNCL": {
+      "first": "2026-09-09 11:32:16.108528+00:00",
+      "last": "2026-10-10 21:00:45.748812+00:00",
+      "matches": 624,
+      "quotes": 4132
+    }
+  },
+  "bookmaker_overlap_same_match": [],
+  "catalogue_diagnostics": {
+    "alert_codes": {},
+    "fixtures": 525,
+    "fixtures_with_alerts": 0,
+    "severity": {}
+  },
+  "coverage": {
+    "as_of": null,
+    "attribution_version": "MARKET_OBSERVATION_ATTRIBUTION_V1",
+    "limitations": [
+      "Raw responses are counted per provider poll, not per unique fixture.",
+      "Duplicate observations are identical payload content under distinct response keys; normalized duplicate rows cannot exist because of the snapshot uniqueness guard.",
+      "Rejection reasons are derived from stored lineage; the normalizer's transient per-group result is not persisted.",
+      "Original-time qualification uses the first stored Agent 1 lock per match."
+    ],
+    "provider_calls": 0,
+    "providers": {
+      "API_TENNIS": {
+        "bookmakers_with_two_sided_market": 13,
+        "duplicate_payload_responses": 5764,
+        "extracted_winner_observations": 22507,
+        "first_normalized_ingested_at": "2026-09-09 11:32:16.253150+00:00",
+        "first_normalized_observation_at": "2026-09-09 11:32:16.108528+00:00",
+        "first_received_at": "2026-09-09 11:32:16.108528+00:00",
+        "fixtures_with_two_sided_market": 1327,
+        "last_normalized_ingested_at": "2026-10-10 21:00:47.554855+00:00",
+        "last_normalized_observation_at": "2026-10-10 21:00:45.748812+00:00",
+        "last_received_at": "2026-10-10 21:00:45.748812+00:00",
+        "mapping_rows": 16484,
+        "normalized_bookmakers": 13,
+        "normalized_by_bookmaker": [
+          {
+            "bookmaker_code": "1XBET",
+            "fixtures": 1179,
+            "normalization_class": "OFFERED",
+            "quotes": 19800
+          },
+          {
+            "bookmaker_code": "BETANO",
+            "fixtures": 791,
+            "normalization_class": "OFFERED",
+            "quotes": 14166
+          },
+          {
+            "bookmaker_code": "BETVICTOR",
+            "fixtures": 807,
+            "normalization_class": "OFFERED",
+            "quotes": 13326
+          },
+          {
+            "bookmaker_code": "MARATHON",
+            "fixtures": 712,
+            "normalization_class": "OFFERED",
+            "quotes": 12550
+          },
+          {
+            "bookmaker_code": "BETFAIR",
+            "fixtures": 665,
+            "normalization_class": "OFFERED",
+            "quotes": 11112
+          },
+          {
+            "bookmaker_code": "SBO",
+            "fixtures": 906,
+            "normalization_class": "OFFERED",
+            "quotes": 10776
+          },
+          {
+            "bookmaker_code": "BET365",
+            "fixtures": 703,
+            "normalization_class": "OFFERED",
+            "quotes": 10402
+          },
+          {
+            "bookmaker_code": "PNCL",
+            "fixtures": 624,
+            "normalization_class": "OFFERED",
+            "quotes": 4132
+          },
+          {
+            "bookmaker_code": "WILLIAMHILL",
+            "fixtures": 433,
+            "normalization_class": "OFFERED",
+            "quotes": 2354
+          },
+          {
+            "bookmaker_code": "SUPERBET",
+            "fixtures": 60,
+            "normalization_class": "OFFERED",
+            "quotes": 1280
+          },
+          {
+            "bookmaker_code": "888SPORT",
+            "fixtures": 32,
+            "normalization_class": "OFFERED",
+            "quotes": 766
+          },
+          {
+            "bookmaker_code": "UNIBET",
+            "fixtures": 29,
+            "normalization_class": "OFFERED",
+            "quotes": 506
+          },
+          {
+            "bookmaker_code": "10BET",
+            "fixtures": 1,
+            "normalization_class": "OFFERED",
+            "quotes": 2
+          }
+        ],
+        "normalized_fixtures": 1327,
+        "normalized_quotes": 101172,
+        "original_time_qualified_comparisons": 0,
+        "raw_fixtures": 1335,
+        "raw_historical_shape": 0,
+        "raw_live_shape": 0,
+        "raw_provider_market_map_shape": 22509,
+        "raw_responses": 22515,
+        "rejected_observations": 3040,
+        "rejection_reasons": {
+          "CANONICAL_START_PASSED": 2036,
+          "NORMALIZED": 19475,
+          "NO_COMMON_BOOKMAKER_ACROSS_SIDES": 930,
+          "NO_HOME_AWAY_MARKET": 6,
+          "OTHER_REJECTED": 68
+        },
+        "unique_mapped_fixtures": 16484,
+        "valid_two_sided_markets": 50586
+      },
+      "ODDSPAPI": {
+        "bookmakers_with_two_sided_market": 4,
+        "duplicate_payload_responses": 2170,
+        "extracted_winner_observations": 11352,
+        "first_normalized_ingested_at": "2026-09-24 08:07:40.636935+00:00",
+        "first_normalized_observation_at": "2026-09-23 17:21:19.645000+00:00",
+        "first_received_at": "2026-09-24 08:07:40.587438+00:00",
+        "fixtures_with_two_sided_market": 522,
+        "last_normalized_ingested_at": "2026-11-27 04:05:35.175497+00:00",
+        "last_normalized_observation_at": "2026-11-27 04:05:34.755223+00:00",
+        "last_received_at": "2026-11-27 04:05:34.755223+00:00",
+        "mapping_rows": 529,
+        "normalized_bookmakers": 4,
+        "normalized_by_bookmaker": [
+          {
+            "bookmaker_code": "PINNACLE",
+            "fixtures": 519,
+            "normalization_class": "SHARP",
+            "quotes": 7416
+          },
+          {
+            "bookmaker_code": "BET365",
+            "fixtures": 482,
+            "normalization_class": "OFFERED",
+            "quotes": 6374
+          },
+          {
+            "bookmaker_code": "1XBET",
+            "fixtures": 425,
+            "normalization_class": "OFFERED",
+            "quotes": 6180
+          },
+          {
+            "bookmaker_code": "UNIBET",
+            "fixtures": 198,
+            "normalization_class": "OFFERED",
+            "quotes": 2530
+          }
+        ],
+        "normalized_fixtures": 522,
+        "normalized_quotes": 22500,
+        "original_time_qualified_comparisons": 0,
+        "raw_fixtures": 525,
+        "raw_historical_shape": 0,
+        "raw_live_shape": 11352,
+        "raw_provider_market_map_shape": 0,
+        "raw_responses": 11352,
+        "rejected_observations": 102,
+        "rejection_reasons": {
+          "NORMALIZED": 11250,
+          "OTHER_REJECTED": 25,
+          "PROVIDER_START_PASSED": 77
+        },
+        "unique_mapped_fixtures": 529,
+        "valid_two_sided_markets": 10865
+      },
+      "PINNAPI": {
+        "bookmakers_with_two_sided_market": 1,
+        "duplicate_payload_responses": 0,
+        "extracted_winner_observations": 0,
+        "first_normalized_ingested_at": "2026-09-09 16:23:24.339575+00:00",
+        "first_normalized_observation_at": "2026-09-09 16:23:24.027773+00:00",
+        "first_received_at": "2026-09-09 11:12:03.918877+00:00",
+        "fixtures_with_two_sided_market": 875,
+        "last_normalized_ingested_at": "2026-10-01 19:05:41.287386+00:00",
+        "last_normalized_observation_at": "2026-10-01 19:05:28.798063+00:00",
+        "last_received_at": "2026-10-01 19:05:28.798063+00:00",
+        "mapping_rows": 880,
+        "normalized_bookmakers": 1,
+        "normalized_by_bookmaker": [
+          {
+            "bookmaker_code": "PINNACLE",
+            "fixtures": 875,
+            "normalization_class": "SHARP",
+            "quotes": 20110
+          }
+        ],
+        "normalized_fixtures": 875,
+        "normalized_quotes": 20110,
+        "original_time_qualified_comparisons": 0,
+        "raw_fixtures": 3480,
+        "raw_historical_shape": 0,
+        "raw_live_shape": 0,
+        "raw_provider_market_map_shape": 0,
+        "raw_responses": 43322,
+        "rejected_observations": 33267,
+        "rejection_reasons": {
+          "NORMALIZED": 10055,
+          "NO_LIVE_BOOKMAKER_PAYLOAD": 1307,
+          "NO_PIT_MATCH_VERSION": 232,
+          "UNMATCHED_EVENT": 31728
+        },
+        "unique_mapped_fixtures": 880,
+        "valid_two_sided_markets": 10055
+      },
+      "SACKMANN": {
+        "duplicate_payload_responses": 0,
+        "extracted_winner_observations": 0,
+        "fixtures_with_two_sided_market": 0,
+        "mapping_rows": 117713,
+        "normalized_bookmakers": 0,
+        "normalized_fixtures": 0,
+        "normalized_quotes": 0,
+        "original_time_qualified_comparisons": 0,
+        "raw_fixtures": 0,
+        "raw_historical_shape": 0,
+        "raw_live_shape": 0,
+        "raw_responses": 0,
+        "rejected_observations": 0,
+        "rejection_reasons": {},
+        "unique_mapped_fixtures": 117713,
+        "valid_two_sided_markets": 0
+      },
+      "SPORTRADAR": {
+        "duplicate_payload_responses": 0,
+        "extracted_winner_observations": 0,
+        "fixtures_with_two_sided_market": 0,
+        "mapping_rows": 906,
+        "normalized_bookmakers": 0,
+        "normalized_fixtures": 0,
+        "normalized_quotes": 0,
+        "original_time_qualified_comparisons": 0,
+        "raw_fixtures": 0,
+        "raw_historical_shape": 0,
+        "raw_live_shape": 0,
+        "raw_responses": 0,
+        "rejected_observations": 0,
+        "rejection_reasons": {},
+        "unique_mapped_fixtures": 906,
+        "valid_two_sided_markets": 0
+      }
+    },
+    "version": "COMMERCIAL_PROVIDER_COVERAGE_V1"
+  },
+  "delay": {
+    "batch_schedule_wait": {
+      "max": 277220.672268,
+      "mean": 55946.251941622606,
+      "min": 0.001808,
+      "n": 522,
+      "p50": 39554.467055,
+      "p90": 136686.917407
+    },
+    "bookmaker_discovery_after_price": 49,
+    "cause_attribution_note": "Components are measured, non-negative stage waits. They can overlap when identity discovery happens inside the same run as the price. Residual is the unexplained remainder, not a provider excuse.",
+    "diagnostic_identity_discovery_delta": {
+      "max": 309718.092675,
+      "mean": 68017.83875508512,
+      "min": 36.042015,
+      "n": 141,
+      "p50": 46819.669563,
+      "p90": 183435.817933
+    },
+    "diagnostic_scheduling_delta": {
+      "max": 277220.672268,
+      "mean": 55946.251941622606,
+      "min": 0.001808,
+      "n": 522,
+      "p50": 39554.467055,
+      "p90": 136686.917407
+    },
+    "fixtures": 522,
+    "fixtures_with_positive_issue_to_price": 522,
+    "fixtures_with_price_before_issue": 0,
+    "issue_to_first_price": {
+      "max": 277259.379241,
+      "mean": 56002.57855248851,
+      "min": 38.70898,
+      "n": 522,
+      "p50": 39591.622016,
+      "p90": 136723.930691
+    },
+    "issue_to_persisted": {
+      "max": 277260.199057,
+      "mean": 56353.541013643684,
+      "min": 39.773168,
+      "n": 522,
+      "p50": 39614.427668000004,
+      "p90": 136725.00427889999
+    },
+    "limitations": [
+      "Actual competitive start is not persisted in the current schema; it is reported as NOT_STORED rather than inferred from a result timestamp.",
+      "Provider fixture updatedAt is the provider's last fixture change, not the price observation time.",
+      "Stage waits can overlap when discovery and price capture occur in one run.",
+      "Budget pressure is measured from the request ledger separately; it is not attributed per fixture."
+    ],
+    "missing_actual_competitive_start": 522,
+    "observed_after_scheduled_start": 94,
+    "persistence_wait": {
+      "max": 53181.150572,
+      "mean": 350.9624611551724,
+      "min": 0.013327,
+      "n": 522,
+      "p50": 1.1623165,
+      "p90": 2.639281600000001
+    },
+    "post_identity_provider_wait": {
+      "max": 3529.374886,
+      "mean": 49.68610364176246,
+      "min": 2.297845,
+      "n": 522,
+      "p50": 40.563373,
+      "p90": 51.131511
+    },
+    "provider_start_minus_scheduled_start": {
+      "max": 180000.0,
+      "mean": 18225.862068965518,
+      "min": -80400.0,
+      "n": 522,
+      "p50": 0.0,
+      "p90": 90000.0
+    },
+    "residual_wait": {
+      "max": 2.9103830456733704e-11,
+      "mean": 6.5518301724791e-13,
+      "min": 0.0,
+      "n": 522,
+      "p50": 0.0,
+      "p90": 0.0
+    },
+    "stage_component_medians_share_of_positive_lag": {
+      "batch_schedule_wait_seconds": 0.998946219658813,
+      "persistence_wait_seconds": 2.9354248967824015e-05,
+      "post_identity_provider_wait_seconds": 0.0010244260922190388,
+      "residual_wait_seconds": 0.0,
+      "within_batch_identity_wait_seconds": 0.0
+    },
+    "version": "ACQUISITION_DELAY_DECOMPOSITION_V1",
+    "within_batch_identity_wait": {
+      "max": 132.377963,
+      "mean": 6.640507224137931,
+      "min": 0.0,
+      "n": 522,
+      "p50": 0.0,
+      "p90": 35.64813220000002
+    }
+  },
+  "delay_fixture_sample": [
+    {
+      "batch_schedule_wait_seconds": 155599.794488,
+      "bookmaker_discovery_after_price": false,
+      "first_price_classification": "LIVE_OBSERVED",
+      "identity_discovery_wait_seconds": null,
+      "issue_before_price": true,
+      "issue_to_first_price_seconds": 155636.545813,
+      "issue_to_persisted_seconds": 155636.597245,
+      "match_id": 130865,
+      "observation_age_at_last_update_seconds": 747.320011,
+      "observed_after_scheduled_start": true,
+      "persistence_wait_seconds": 0.051432,
+      "post_identity_provider_wait_seconds": 36.751325,
+      "prediction_locked_at": "2026-09-23 14:05:33.794060+00:00",
+      "price_change_age_seconds": 6270.635011,
+      "price_observed_to_persisted_seconds": 0.051432,
+      "price_observed_to_received_seconds": 0.0,
+      "price_received_to_persisted_seconds": 0.051432,
+      "provider_code": "ODDSPAPI",
+      "provider_start_to_scheduled_start_seconds": 94200.0,
+      "provider_wait_seconds": 36.751325,
+      "residual_wait_seconds": 0.0,
+      "scheduled_start_at": "2026-09-24 08:00:00+00:00",
+      "scheduling_wait_seconds": 155599.794488,
+      "unavailable_clocks": [
+        "first_bookmaker_fixture_discovered_at",
+        "actual_competitive_start_at"
+      ],
+      "within_batch_identity_wait_seconds": 0.0
+    },
+    {
+      "batch_schedule_wait_seconds": 10657.866228,
+      "bookmaker_discovery_after_price": false,
+      "first_price_classification": "LIVE_OBSERVED",
+      "identity_discovery_wait_seconds": null,
+      "issue_before_price": true,
+      "issue_to_first_price_seconds": 11780.445802,
+      "issue_to_persisted_seconds": 64961.596374,
+      "match_id": 130866,
+      "observation_age_at_last_update_seconds": -52743.364,
+      "observed_after_scheduled_start": false,
+      "persistence_wait_seconds": 53181.150572,
+      "post_identity_provider_wait_seconds": 1122.579574,
+      "prediction_locked_at": "2026-09-23 14:05:33.794060+00:00",
+      "price_change_age_seconds": -52833.484,
+      "price_observed_to_persisted_seconds": 53181.150572,
+      "price_observed_to_received_seconds": 53180.936438,
+      "price_received_to_persisted_seconds": 0.214134,
+      "provider_code": "ODDSPAPI",
+      "provider_start_to_scheduled_start_seconds": 8400.0,
+      "provider_wait_seconds": 1122.579574,
+      "residual_wait_seconds": 0.0,
+      "scheduled_start_at": "2026-09-24 08:30:00+00:00",
+      "scheduling_wait_seconds": 10657.866228,
+      "unavailable_clocks": [
+        "first_bookmaker_fixture_discovered_at",
+        "actual_competitive_start_at"
+      ],
+      "within_batch_identity_wait_seconds": 0.0
+    },
+    {
+      "batch_schedule_wait_seconds": 155599.794488,
+      "bookmaker_discovery_after_price": false,
+      "first_price_classification": "LIVE_OBSERVED",
+      "identity_discovery_wait_seconds": null,
+      "issue_before_price": true,
+      "issue_to_first_price_seconds": 155636.545813,
+      "issue_to_persisted_seconds": 155636.917288,
+      "match_id": 130867,
+      "observation_age_at_last_update_seconds": 1711.611011,
+      "observed_after_scheduled_start": true,
+      "persistence_wait_seconds": 0.371475,
+      "post_identity_provider_wait_seconds": 36.751325,
+      "prediction_locked_at": "2026-09-23 14:05:33.794060+00:00",
+      "price_change_age_seconds": 4447.323011,
+      "price_observed_to_persisted_seconds": 0.371475,
+      "price_observed_to_received_seconds": 0.0,
+      "price_received_to_persisted_seconds": 0.371475,
+      "provider_code": "ODDSPAPI",
+      "provider_start_to_scheduled_start_seconds": 99600.0,
+      "provider_wait_seconds": 36.751325,
+      "residual_wait_seconds": 0.0,
+      "scheduled_start_at": "2026-09-24 08:30:00+00:00",
+      "scheduling_wait_seconds": 155599.794488,
+      "unavailable_clocks": [
+        "first_bookmaker_fixture_discovered_at",
+        "actual_competitive_start_at"
+      ],
+      "within_batch_identity_wait_seconds": 0.0
+    },
+    {
+      "batch_schedule_wait_seconds": 25115.069916,
+      "bookmaker_discovery_after_price": false,
+      "first_price_classification": "LIVE_OBSERVED",
+      "identity_discovery_wait_seconds": null,
+      "issue_before_price": true,
+      "issue_to_first_price_seconds": 25135.448802,
+      "issue_to_persisted_seconds": 64961.663983,
+      "match_id": 130868,
+      "observation_age_at_last_update_seconds": 15899.94,
+      "observed_after_scheduled_start": false,
+      "persistence_wait_seconds": 39826.215181,
+      "post_identity_provider_wait_seconds": 20.378886,
+      "prediction_locked_at": "2026-09-23 14:05:33.794060+00:00",
+      "price_change_age_seconds": -35243.612,
+      "price_observed_to_persisted_seconds": 39826.215181,
+      "price_observed_to_received_seconds": 39825.933438,
+      "price_received_to_persisted_seconds": 0.281743,
+      "provider_code": "ODDSPAPI",
+      "provider_start_to_scheduled_start_seconds": 25200.0,
+      "provider_wait_seconds": 20.378886,
+      "residual_wait_seconds": 0.0,
+      "scheduled_start_at": "2026-09-24 08:30:00+00:00",
+      "scheduling_wait_seconds": 25115.069916,
+      "unavailable_clocks": [
+        "first_bookmaker_fixture_discovered_at",
+        "actual_competitive_start_at"
+      ],
+      "within_batch_identity_wait_seconds": 0.0
+    },
+    {
+      "batch_schedule_wait_seconds": 25115.069916,
+      "bookmaker_discovery_after_price": false,
+      "first_price_classification": "LIVE_OBSERVED",
+      "identity_discovery_wait_seconds": null,
+      "issue_before_price": true,
+      "issue_to_first_price_seconds": 28644.444802,
+      "issue_to_persisted_seconds": 64961.431737,
+      "match_id": 130869,
+      "observation_age_at_last_update_seconds": -35190.692,
+      "observed_after_scheduled_start": false,
+      "persistence_wait_seconds": 36316.986935,
+      "post_identity_provider_wait_seconds": 3529.374886,
+      "prediction_locked_at": "2026-09-23 14:05:33.794060+00:00",
+      "price_change_age_seconds": -31095.925,
+      "price_observed_to_persisted_seconds": 36316.986935,
+      "price_observed_to_received_seconds": 36316.937438,
+      "price_received_to_persisted_seconds": 0.049497,
+      "provider_code": "ODDSPAPI",
+      "provider_start_to_scheduled_start_seconds": 0.0,
+      "provider_wait_seconds": 3529.374886,
+      "residual_wait_seconds": 0.0,
+      "scheduled_start_at": "2026-09-24 08:30:00+00:00",
+      "scheduling_wait_seconds": 25115.069916,
+      "unavailable_clocks": [
+        "first_bookmaker_fixture_discovered_at",
+        "actual_competitive_start_at"
+      ],
+      "within_batch_identity_wait_seconds": 0.0
+    }
+  ],
+  "fixture_metadata": {
+    "api_tennis_external_id_note": "No API-Tennis external id field exists in the stored OddsPapi payload.",
+    "fixtures": 525,
+    "with_betradar_external_id": 525,
+    "with_status_id": 525,
+    "with_true_start_time": 525,
+    "with_updated_at": 525
+  },
+  "identity_cache": {
+    "orientations": {
+      "DIRECT": 144
+    },
+    "rows": 144,
+    "statuses": {
+      "EXACT": 144
+    },
+    "tournaments": 27
+  },
+  "measured_at": "2026-11-27T04:10:43.112660+00:00",
+  "pinnacle_availability": {
+    "current_api_tennis_quota_unproven": true,
+    "current_oddspapi_plan_includes_pinnacle": true,
+    "note": "Pinnacle is present in the stored OddsPapi plan as mapping 'pinnacle+30' and has current normalized prices. API-Tennis PNCL is historical; its current entitlement is unproven.",
+    "source_system_availability": {
+      "PINNACLE": {
+        "first": "2026-09-09 16:23:24.027773+00:00",
+        "last": "2026-11-27 04:05:34.755223+00:00",
+        "matches": 1392,
+        "quotes": 27526
+      },
+      "PNCL": {
+        "first": "2026-09-09 11:32:16.108528+00:00",
+        "last": "2026-10-10 21:00:45.748812+00:00",
+        "matches": 624,
+        "quotes": 4132
+      }
+    }
+  },
+  "provider_calls": 0,
+  "provider_overlap": {
+    "matches_with_both_normalized_books": 0,
+    "matches_with_both_provider_ids": 514
+  },
+  "provider_start_drift": {
+    "ODDSPAPI": {
+      "exact_tie": 22,
+      "matched": 525,
+      "max_minutes": "40.0000000000000000",
+      "median_minutes": -20.0,
+      "min_minutes": "-1690.0000000000000000",
+      "provider_earlier": 493,
+      "provider_later": 10,
+      "within_30": 330,
+      "within_60": 431
+    }
+  },
+  "tournament_editions": {
+    "cached_oddspapi_missing_end_date": 27,
+    "cached_oddspapi_tournament_editions": 27,
+    "canonical_editions": 2579,
+    "missing_end_date": 360,
+    "tournament_source_ids_by_provider": {
+      "API_TENNIS": 310,
+      "SACKMANN": 2289,
+      "SPORTRADAR": 66
+    }
+  },
+  "upcoming_cohort": {
+    "by_tour": {
+      "CHALLENGER": 23
+    },
+    "window_end": "2026-12-11T04:10:43.112660+00:00",
+    "window_start": "2026-11-27T04:10:43.112660+00:00",
+    "with_api_tennis_mapping": 23,
+    "with_oddspapi_mapping": 7
+  }
+}

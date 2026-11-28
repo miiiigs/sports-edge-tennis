@@ -1,0 +1,280 @@
+{
+  "version": "JANUARY_2027_SCOPE_20261127_V1",
+  "verified_as_of_utc": "2026-11-27T03:40:00+00:00",
+  "time_basis": "TOURNAMENT_LOCAL_DATE",
+  "utc_conversion_required": true,
+  "entries_published": false,
+  "draws_published": false,
+  "fixtures": [],
+  "scope": {
+    "supported_tours": ["ATP_MAIN", "CHALLENGER"],
+    "supported_draw_stages": ["MAIN_DRAW", "QUALIFYING"],
+    "supported_gender": "MEN",
+    "supported_discipline": "SINGLES",
+    "forecast_enabled_draw_stages": ["MAIN_DRAW"],
+    "classification_only_draw_stages": ["QUALIFYING"]
+  },
+  "sources": {
+    "S1": {
+      "title": "Australian Open 2027 - What's On",
+      "url": "https://ausopen.com/whats-on",
+      "retrieved_utc": "2026-11-27T03:35:00+00:00",
+      "claims": [
+        "AO 2027 runs 10-31 January 2027.",
+        "Opening Week is Sunday 10 January to Saturday 16 January and includes qualifying.",
+        "Main Draw Week One is Sunday 17 January to Sunday 24 January.",
+        "Main Draw Week Two is Monday 25 January to Sunday 31 January."
+      ]
+    },
+    "S2": {
+      "title": "ATP Tour 2027 calendar",
+      "url": "https://www.atptour.com/-/media/files/calendar-pdfs/2026/2027-atp-tour-calendar-14-january-2026-updated.pdf",
+      "retrieved_utc": "2026-11-27T03:36:00+00:00",
+      "claims": [
+        "United Cup starts 1 January 2027 (Perth/Sydney, team event, hard).",
+        "Brisbane International and Bank of China Hong Kong Tennis Open are ATP 250 hard-court events in the week commencing 4 January 2027.",
+        "Adelaide International and ASB Classic are ATP 250 hard-court events in the week commencing 11 January 2027.",
+        "The Australian Open is a hard-court Grand Slam with a 128 singles draw starting 17 January 2027."
+      ]
+    },
+    "S3": {
+      "title": "ATP Challenger calendar 2026-27",
+      "url": "https://www.atptour.com/-/media/files/calendar-pdfs/2026/2026-27-atp-challenger-calendar-as-of-15-november-2026.pdf",
+      "retrieved_utc": "2026-11-27T03:37:00+00:00",
+      "claims": [
+        "Canberra Challenger 125 is scheduled in the week commencing 5 January 2027.",
+        "Australian Open Qualifying is listed as a 128 draw in the week commencing 12 January 2027."
+      ]
+    },
+    "S4": {
+      "title": "ATP Tour results archive (reference only; no scraping)",
+      "url": "https://www.atptour.com/en/scores/results-archive",
+      "retrieved_utc": null,
+      "claims": [
+        "Reference for later official verification of completed results. Not used to create entries or fixtures in this specification."
+      ]
+    },
+    "S5": {
+      "title": "Australian Open official scoring / format guidance (general Grand Slam and AO rules)",
+      "url": "https://ausopen.com/",
+      "retrieved_utc": null,
+      "claims": [
+        "Men's Grand Slam main-draw singles is best-of-five; qualifying is best-of-three.",
+        "The AO deciding set uses a 10-point tiebreak at 6-6.",
+        "The edition-specific 2027 rulebook was not located at this checkpoint."
+      ],
+      "limitation": "General AO/Grand Slam format only. Edition-specific 2027 confirmation remains an owner action."
+    }
+  },
+  "competitions": [
+    {
+      "key": "UNITED_CUP_2027",
+      "name": "United Cup",
+      "tour_scope": "UNITED_CUP",
+      "competition_tier": "UNITED_CUP",
+      "surface": "HARD",
+      "city": "Perth / Sydney",
+      "scheduled_start": "2027-01-01",
+      "scheduled_end": "2027-01-10",
+      "singles_eligible": false,
+      "format_status": "NOT_APPLICABLE",
+      "best_of_sets": null,
+      "draw_size": null,
+      "source_ids": ["S2"],
+      "exclusion_reason": "Mixed national team event. Outside men's ATP/Challenger singles scope."
+    },
+    {
+      "key": "BRISBANE_INTERNATIONAL_2027",
+      "name": "Brisbane International",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "ATP_250",
+      "surface": "HARD",
+      "city": "Brisbane",
+      "scheduled_start": "2027-01-04",
+      "scheduled_end": "2027-01-10",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_ATP_250_BO3",
+      "best_of_sets": 3,
+      "draw_size": 32,
+      "source_ids": ["S2"],
+      "end_date_status": "ATP_CALENDAR_WEEK",
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED"
+    },
+    {
+      "key": "HONG_KONG_TENNIS_OPEN_2027",
+      "name": "Bank of China Hong Kong Tennis Open",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "ATP_250",
+      "surface": "HARD",
+      "city": "Hong Kong",
+      "scheduled_start": "2027-01-04",
+      "scheduled_end": "2027-01-10",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_ATP_250_BO3",
+      "best_of_sets": 3,
+      "draw_size": 28,
+      "source_ids": ["S2"],
+      "end_date_status": "ATP_CALENDAR_WEEK",
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED"
+    },
+    {
+      "key": "ADELAIDE_INTERNATIONAL_2027",
+      "name": "Adelaide International",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "ATP_250",
+      "surface": "HARD",
+      "city": "Adelaide",
+      "scheduled_start": "2027-01-11",
+      "scheduled_end": "2027-01-16",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_ATP_250_BO3",
+      "best_of_sets": 3,
+      "draw_size": 28,
+      "source_ids": ["S2"],
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED"
+    },
+    {
+      "key": "ASB_CLASSIC_2027",
+      "name": "ASB Classic",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "ATP_250",
+      "surface": "HARD",
+      "city": "Auckland",
+      "scheduled_start": "2027-01-11",
+      "scheduled_end": "2027-01-16",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_ATP_250_BO3",
+      "best_of_sets": 3,
+      "draw_size": 28,
+      "source_ids": ["S2"],
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED"
+    },
+    {
+      "key": "AUSTRALIAN_OPEN_2027",
+      "name": "Australian Open 2027",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "GRAND_SLAM",
+      "surface": "HARD",
+      "city": "Melbourne",
+      "scheduled_start": "2027-01-17",
+      "scheduled_end": "2027-01-31",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_GRAND_SLAM_BO5_MAIN_DRAW",
+      "best_of_sets": 5,
+      "draw_size": 128,
+      "deciding_set_rule": "TB10_AT_6_6",
+      "source_ids": ["S1", "S2", "S5"],
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED",
+      "edition_rulebook_2027_status": "NOT_LOCATED",
+      "carry_forward_assumption": "General AO/Grand Slam format; owner confirmation required if no 2027 edition rulebook is published."
+    },
+    {
+      "key": "AUSTRALIAN_OPEN_QUALIFYING_2027",
+      "name": "Australian Open 2027 Qualifying",
+      "tour_scope": "ATP_MAIN",
+      "competition_tier": "GRAND_SLAM_QUALIFYING",
+      "surface": "HARD",
+      "city": "Melbourne",
+      "scheduled_start": "2027-01-10",
+      "scheduled_end": "2027-01-16",
+      "listed_week_start": "2027-01-12",
+      "exact_first_match_utc": null,
+      "exact_first_match_status": "UNKNOWN_PENDING_OFFICIAL_ORDER_OF_PLAY",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_GRAND_SLAM_QUALIFYING_BO3",
+      "best_of_sets": 3,
+      "draw_size": 128,
+      "source_ids": ["S1", "S3", "S5"],
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED",
+      "forecast_enabled": false,
+      "classification_only_reason": "Qualifying is classified and kept separate. Agent 2 has no Grand Slam qualifying scoring rule, so qualifying forecasting is not enabled."
+    },
+    {
+      "key": "CANBERRA_CHALLENGER_2027",
+      "name": "Canberra Challenger 125",
+      "tour_scope": "CHALLENGER",
+      "competition_tier": "CHALLENGER_125",
+      "surface": "HARD",
+      "city": "Canberra",
+      "scheduled_start": "2027-01-05",
+      "scheduled_end": "2027-01-09",
+      "singles_eligible": true,
+      "format_status": "VERIFIED_CHALLENGER_BO3",
+      "best_of_sets": 3,
+      "draw_size": null,
+      "source_ids": ["S3"],
+      "entry_list_status": "NOT_PUBLISHED",
+      "draw_status": "NOT_PUBLISHED"
+    }
+  ],
+  "unsupported_competitions": [
+    {
+      "key": "DAVIS_CUP_2027",
+      "name": "Davis Cup",
+      "reason": "National team event; not ATP/Challenger singles.",
+      "source_ids": ["S2"]
+    },
+    {
+      "key": "LAVER_CUP_2027",
+      "name": "Laver Cup",
+      "reason": "Team exhibition; not ATP/Challenger singles.",
+      "source_ids": ["S2"]
+    },
+    {
+      "key": "NEXT_GEN_ATP_FINALS_2027",
+      "name": "Next Gen ATP Finals",
+      "reason": "Special-format invitation event; outside the supported singles scope.",
+      "source_ids": ["S2"]
+    },
+    {
+      "key": "KOOYONG_CLASSIC_2027",
+      "name": "Kooyong Classic",
+      "reason": "Exhibition; no ATP ranking points and no official ATP/Challenger singles eligibility.",
+      "source_ids": [],
+      "verification_status": "NOT_VERIFIED_NOT_IN_ATP_CALENDAR"
+    },
+    {
+      "key": "ITF_JUNIOR_WHEELCHAIR_DOUBLES_MIXED_2027",
+      "name": "ITF, junior, wheelchair, doubles and mixed events",
+      "reason": "Outside men's ATP/Challenger singles scope.",
+      "source_ids": [],
+      "verification_status": "SCOPE_EXCLUSION_ONLY"
+    }
+  ],
+  "operational_requirements": {
+    "preserve_main_draw_and_qualifying_separation": true,
+    "preserve_best_of_three_and_five": true,
+    "preserve_deciding_set_tiebreak_rule": true,
+    "preserve_utc_timestamps": true,
+    "preserve_original_and_revised_scheduled_start": true,
+    "preserve_actual_competitive_start": true,
+    "preserve_participant_replacements": true,
+    "preserve_lucky_losers_and_withdrawals": true,
+    "preserve_cancellations": true,
+    "distinguish_official_and_bookmaker_settlement": true
+  },
+  "readiness_gate": {
+    "readiness_must_precede_first_eligible_fixture": true,
+    "first_eligible_competition_keys": [
+      "BRISBANE_INTERNATIONAL_2027",
+      "HONG_KONG_TENNIS_OPEN_2027",
+      "CANBERRA_CHALLENGER_2027"
+    ],
+    "first_eligible_date": "2027-01-04",
+    "ao_qualifying_classification_must_precede": "2027-01-10",
+    "owner_approval_status": "NOT_REQUESTED",
+    "api_tennis_draw_entitlement_status": "UNVERIFIED_NO_PROVIDER_CALL"
+  },
+  "explicit_non_claims": [
+    "No 2027 entry list, seeding, draw, qualifying field, lucky loser or schedule has been published here.",
+    "No fixture is created by this specification.",
+    "No edition-specific 2027 Grand Slam rulebook was located.",
+    "No provider call was made and no entitlement is asserted."
+  ]
+}

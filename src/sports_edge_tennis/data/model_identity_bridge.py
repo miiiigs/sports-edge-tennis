@@ -90,8 +90,10 @@ def resolve_active_bridge(
             EXISTS (
                 SELECT 1
                 FROM player_source_ids psi
+                LEFT JOIN ingest_runs ing ON ing.ingest_run_id = psi.ingest_run_id
                 WHERE psi.player_id = e.historical_player_id
                   AND psi.source_system <> ALL(%s)
+                  AND COALESCE(ing.finished_at, ing.started_at, psi.created_at) <= %s
             ) AS target_has_historical_identity
         FROM model_identity_bridge_events e
         WHERE e.live_player_id = %s
@@ -99,7 +101,7 @@ def resolve_active_bridge(
         ORDER BY e.activated_at DESC, e.model_identity_bridge_event_id DESC
         LIMIT 1
         """,
-        (list(LIVE_FIXTURE_SOURCE_SYSTEMS), live_player_id, as_of),
+        (list(LIVE_FIXTURE_SOURCE_SYSTEMS), as_of, live_player_id, as_of),
     ).fetchone()
     if row is None or str(row[0]) != "BRIDGE" or row[1] is None or not bool(row[2]):
         return None

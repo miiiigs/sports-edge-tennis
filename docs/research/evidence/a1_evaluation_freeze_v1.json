@@ -1,0 +1,66 @@
+{
+  "version": "A1_EVALUATION_FREEZE_V1",
+  "anchor_commit": "d930faac1e070b758a5c8c552347c4282eb8371b",
+  "classification": "RESEARCH_SOURCE_INTEGRITY_ONLY",
+  "candidate_thresholds": {
+    "B": "0.668060",
+    "D": "0.648708"
+  },
+  "model_version": "agent1_surface_elo_v1",
+  "feature_version": "agent1_surface_elo_inputs_v1",
+  "config_version": "agent1_surface_elo_config_v1",
+  "probability_rounding_decimals": 6,
+  "selection_tolerance": "0.000000000001",
+  "tie_side": 1,
+  "eligible_competitions": [
+    "ATP_MAIN",
+    "CHALLENGER"
+  ],
+  "target_main_draw_only": true,
+  "minimum_scheduled_start_lead_minutes": 30,
+  "coverage_denominator": "independent eligible fixtures including missing forecasts",
+  "sporting_accuracy_outcomes": [
+    "COMPLETED"
+  ],
+  "void_and_unresolved_separate": true,
+  "bookmaker_evidence_classes": [
+    "ORIGINAL_TIME",
+    "RETROSPECTIVE_PROVIDER_HISTORY",
+    "CLOSING_BENCHMARK"
+  ],
+  "minimum_calendar_days": 30,
+  "internal_preliminary_settled": 200,
+  "operational_checkpoints": [
+    25,
+    50,
+    100
+  ],
+  "first_meaningful_checkpoint": 300,
+  "subsequent_checkpoints": [
+    600,
+    1000,
+    1500,
+    2000
+  ],
+  "git_blob_sha1": {
+    "src/sports_edge_tennis/agents/agent1_surface_elo.py": "063b9d0907a55166ef8f21b58e23d628374a8830",
+    "src/sports_edge_tennis/data/agent1_history.py": "2ed852a7b4a64211adcb274a3aaae5189c24d73f",
+    "src/sports_edge_tennis/data/model_identity.py": "1fdffad2ebfd043671ce172d0858f1efe6d2e69f",
+    "src/sports_edge_tennis/validation/a1_selective_performance.py": "afe4f7f7d6f723cd030cb51d2c2f9c6eb72e9409",
+    "src/sports_edge_tennis/validation/prospective_policy_registry.py": "623b7d051caf21e268034510fd2c5d5146e0431c",
+    "src/sports_edge_tennis/validation/forward_evidence_settlement.py": "052fa086cd0134983d20ad9a52373e31b4f63975",
+    "src/sports_edge_tennis/validation/paired_qualification_audit.py": "bbd3e378bc61e74b4b416fd96a107350e31d1eb2",
+    "src/sports_edge_tennis/validation/forward_original_collector.py": "5245930f21c62ef271f19d31b2cd9f5a2498eabb",
+    "src/sports_edge_tennis/validation/competitor_scientific_benchmark.py": "7f97e42c07f7a7328b683ceacebe463d6b9dc9a1",
+    "docs/research/evidence/a1_selective_population_20261126.csv": "59b7be92c47b68f58b783254d46480cd4518a428",
+    "docs/research/evidence/a1_selective_performance_20261126.json": "967fbc26579d8a33b351bb397ca40de063418217",
+    "docs/research/evidence/a1_reliability_scores_20261127.csv": "e4825f00f53eecea55fd836fd35dd3ae61f12821"
+  },
+  "limitations": [
+    "Source-file freeze is not a complete executable artifact or independently authenticated manifest.",
+    "Historical result and identity lineage, commercial authorization and actual corrected runtime are not established.",
+    "No independent eligible census or qualified market/competitor sample certified.",
+    "Future changes require versioned review and new comparative evidence, not silent replacement of V1."
+  ],
+  "can_promote": false
+}

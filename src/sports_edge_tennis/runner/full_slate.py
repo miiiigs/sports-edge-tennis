@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 
 import psycopg
@@ -13,6 +14,7 @@ from sports_edge_tennis.agents.agent1_surface_elo import (
     DEFAULT_CONFIG as AGENT1_DEFAULT_CONFIG,
     predict_from_replay as predict_agent1,
     replay_history as replay_agent1_history,
+    resolved_player_states as agent1_resolved_player_states,
 )
 from sports_edge_tennis.agents.agent2_hierarchical_markov import (
     DEFAULT_CONFIG as AGENT2_DEFAULT_CONFIG,
@@ -25,6 +27,11 @@ from sports_edge_tennis.agents.agent3_intransitivity import (
 from sports_edge_tennis.data.a3_support_diagnostics import (
     build_a3_support_diagnostic,
     record_a3_support_diagnostic,
+)
+from sports_edge_tennis.data.feature_snapshots import Agent1FeatureContext
+from sports_edge_tennis.data.identity_runtime import (
+    CAPTURE_SOURCE_LIVE,
+    IdentityResolutionObservation,
 )
 from sports_edge_tennis.data.prediction_persistence import (
     PredictiveAgentMatrixPrediction,
@@ -66,7 +73,10 @@ from sports_edge_tennis.runner.persistence import (
     persisted_counts,
     resolve_agent_config,
 )
-from sports_edge_tennis.runner.targets import resolve_targets
+from sports_edge_tennis.runner.targets import (
+    resolve_target_with_identity_provenance,
+    resolve_targets,
+)
 
 
 DEFAULT_CONFIGS = {
@@ -78,6 +88,41 @@ DEFAULT_CONFIGS = {
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _identity_resolution_observations(
+    *,
+    prediction_run_id: int,
+    as_of: datetime,
+    provenance: dict[int, tuple[ResolvedTargetV1, dict]],
+) -> list[IdentityResolutionObservation]:
+    """Build exact runtime observations from the opt-in provenance pass."""
+    observations: list[IdentityResolutionObservation] = []
+    for match_id in sorted(provenance):
+        target, resolved = provenance[match_id]
+        for live_player_id, resolved_identity in sorted(resolved.items()):
+            resolution = resolved_identity.resolution
+            observations.append(
+                IdentityResolutionObservation(
+                    prediction_run_id=prediction_run_id,
+                    match_id=match_id,
+                    match_version_id=target.match_version_id,
+                    predicted_at=as_of,
+                    original_player_id=int(live_player_id),
+                    model_player_id=int(resolution.resolved_player_id),
+                    method=resolution.method,
+                    evidence=resolution.evidence,
+                    name_source=resolution.name_source,
+                    candidate_count=int(resolution.candidate_count),
+                    matched_alias=resolution.matched_alias,
+                    bridge_event_id=resolution.bridge_event_id,
+                    visible_from=resolution.visible_from,
+                    reference_policy=resolved_identity.reference.policy_version,
+                    reference_sha256=resolved_identity.reference.sha256,
+                    capture_source=CAPTURE_SOURCE_LIVE,
+                )
+            )
+    return observations
 
 
 def _diagnostic_value(result, key: str) -> str:
@@ -132,12 +177,16 @@ def run_full_slate(
     clock = clock or _utc_now
     execution_now = clock()
 
-    targets, configs = _preflight(conn, request, execution_now)
+    targets, configs, identity_provenance = _preflight(conn, request, execution_now)
 
     run_id = create_prediction_run(conn, request=request, started_at=execution_now)
 
     try:
         matrix = _execute_matrix(conn, targets, configs, request.as_of)
+        # Preserve research provenance on every agent row. Live requests keep
+        # experiment_id=None, with no change to their forecasting methodology.
+        if request.experiment_id is not None:
+            matrix = [replace(row, experiment_id=request.experiment_id) for row in matrix]
     except Exception as exc:
         return _fail_run(conn, run_id, request.as_of, clock, "AGENT_EXECUTION", exc)
 
@@ -155,6 +204,12 @@ def run_full_slate(
             rows=matrix,
             prediction_finalized_at=finalized_at,
             ended_at=ended_at,
+            require_agent1_features=True,
+            identity_resolution_observations=_identity_resolution_observations(
+                prediction_run_id=run_id,
+                as_of=request.as_of,
+                provenance=identity_provenance,
+            ),
         )
     except Exception as exc:
         try:
@@ -180,7 +235,11 @@ def _preflight(
     conn: psycopg.Connection,
     request: FullSlateRunRequestV1,
     execution_now: datetime,
-) -> tuple[list[ResolvedTargetV1], dict[str, ResolvedAgentConfigV1]]:
+) -> tuple[
+    list[ResolvedTargetV1],
+    dict[str, ResolvedAgentConfigV1],
+    dict[int, tuple[ResolvedTargetV1, dict]],
+]:
     if not isinstance(request.as_of, datetime) or request.as_of.tzinfo is None:
         raise RunnerRequestError("request.as_of must be timezone-aware")
     if request.as_of > execution_now:
@@ -199,6 +258,16 @@ def _preflight(
         )
 
     targets = resolve_targets(conn, match_ids=request.match_ids, as_of=request.as_of)
+    identity_provenance: dict[int, tuple[ResolvedTargetV1, dict]] = {}
+    if request.persist_identity_resolutions:
+        identity_provenance = {}
+        targets = []
+        for match_id in request.match_ids:
+            target, resolved = resolve_target_with_identity_provenance(
+                conn, match_id=match_id, as_of=request.as_of
+            )
+            targets.append(target)
+            identity_provenance[match_id] = (target, resolved)
 
     configs: dict[str, ResolvedAgentConfigV1] = {}
     for ref in request.agent_config_refs:
@@ -223,7 +292,7 @@ def _preflight(
 
     _validate_lineage(conn, request)
 
-    return targets, configs
+    return targets, configs, identity_provenance
 
 
 def _validate_lineage(conn: psycopg.Connection, request: FullSlateRunRequestV1) -> None:
@@ -274,6 +343,20 @@ def _execute_matrix(
 
 def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPrediction:
     request = build_agent1_request(target, as_of)
+    # Bind the evidence to the states this request resolves, before anything can
+    # advance the replay to a later boundary.
+    player_1_state, player_2_state = agent1_resolved_player_states(
+        request, replay, AGENT1_DEFAULT_CONFIG
+    )
+    features = Agent1FeatureContext(
+        player_1=player_1_state,
+        player_2=player_2_state,
+        surface=target.surface,
+        qualifying_flag=target.qualifying_flag,
+        model_version=config.model_version,
+        feature_version=config.feature_version,
+        as_of=as_of,
+    )
     result = predict_agent1(request, replay, config=AGENT1_DEFAULT_CONFIG)
     adapted = adapt_agent1_result(result, config=AGENT1_DEFAULT_CONFIG)
     _validate_result(adapted, AGENT_1, config, as_of)
@@ -281,6 +364,8 @@ def _run_agent1(target, replay, config, as_of) -> PredictiveAgentMatrixPredictio
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
+        agent1_features=features,
     )
 
 
@@ -293,6 +378,7 @@ def _run_agent2(target, snapshot, config, as_of) -> PredictiveAgentMatrixPredict
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
     )
 
 
@@ -319,6 +405,7 @@ def _run_agent3(
         match_id=target.match_id,
         agent_config_version_id=config.agent_config_version_id,
         result=adapted,
+        match_version_id=target.match_version_id,
     )
 
 

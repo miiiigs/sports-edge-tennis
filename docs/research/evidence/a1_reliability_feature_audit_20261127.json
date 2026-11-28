@@ -1,0 +1,359 @@
+{
+  "version": "A1_RELIABILITY_FEATURE_AUDIT_V1",
+  "source_settled_rows": 3223,
+  "excluded_at_or_after_start": 21,
+  "settled_rows": 3202,
+  "feature_contract": {
+    "version": "A1_RELIABILITY_FEATURES_V1",
+    "features": [
+      {
+        "name": "prediction_id",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "prediction row identity",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "match_id",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "prediction row identity",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "prediction_as_of",
+        "dtype": "iso8601",
+        "required": true,
+        "pit_rule": "original issue timestamp",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "match_start_at",
+        "dtype": "iso8601",
+        "required": true,
+        "pit_rule": "scheduled start; capture must precede it",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "feature_as_of",
+        "dtype": "iso8601",
+        "required": true,
+        "pit_rule": "must be <= prediction_as_of",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "a1_probability_p1",
+        "dtype": "float",
+        "required": true,
+        "pit_rule": "original Agent 1 probability",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "a1_selected_side",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "original selected side",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "effective_rating_gap_abs",
+        "dtype": "float",
+        "required": true,
+        "pit_rule": "PIT effective ratings",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "surface_rating_gap_abs",
+        "dtype": "float",
+        "required": true,
+        "pit_rule": "PIT surface ratings",
+        "missing_policy": "neutral 0.5 point if unavailable"
+      },
+      {
+        "name": "surface_rating_missing",
+        "dtype": "bool",
+        "required": true,
+        "pit_rule": "PIT surface ratings",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "rating_divergence_favourite",
+        "dtype": "float",
+        "required": true,
+        "pit_rule": "PIT overall vs surface",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "favourite_overall_matches",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT prior matches",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "underdog_overall_matches",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT prior matches",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "min_overall_matches",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT prior matches",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "favourite_surface_matches",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT prior surface matches",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "min_surface_matches",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT prior surface matches",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "inactivity_favourite_days",
+        "dtype": "float",
+        "required": false,
+        "pit_rule": "PIT last visible match",
+        "missing_policy": "neutral 0.5 point"
+      },
+      {
+        "name": "inactivity_underdog_days",
+        "dtype": "float",
+        "required": false,
+        "pit_rule": "PIT last visible match",
+        "missing_policy": "neutral 0.5 point"
+      },
+      {
+        "name": "identity_method_favourite",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "as-of resolution",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "identity_candidate_count_favourite",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "as-of resolution",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "identity_any_unresolved",
+        "dtype": "bool",
+        "required": true,
+        "pit_rule": "as-of resolution",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "identity_any_bridged",
+        "dtype": "bool",
+        "required": true,
+        "pit_rule": "as-of resolution",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "recovered_matches_favourite",
+        "dtype": "int",
+        "required": true,
+        "pit_rule": "PIT corrected minus original",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "forecast_probability_delta_abs",
+        "dtype": "float",
+        "required": true,
+        "pit_rule": "original vs alternative replay",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "forecast_side_changed",
+        "dtype": "bool",
+        "required": true,
+        "pit_rule": "original vs alternative replay",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "surface_transition_state",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "PIT prior observed surfaces",
+        "missing_policy": "neutral 0.5 point"
+      },
+      {
+        "name": "tour",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "fixture context",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "surface",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "fixture context",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "round",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "fixture context",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "qualifying",
+        "dtype": "bool",
+        "required": true,
+        "pit_rule": "fixture context",
+        "missing_policy": "reject"
+      },
+      {
+        "name": "a2_status",
+        "dtype": "category",
+        "required": true,
+        "pit_rule": "specialist availability",
+        "missing_policy": "R1 ignores; R4 requires PRESENT"
+      },
+      {
+        "name": "a2_selected_side",
+        "dtype": "int",
+        "required": false,
+        "pit_rule": "PIT Agent 2 selected side",
+        "missing_policy": "R4 requires PRESENT"
+      },
+      {
+        "name": "a2_probability_favourite",
+        "dtype": "float",
+        "required": false,
+        "pit_rule": "PIT Agent 2 probability",
+        "missing_policy": "R4 requires PRESENT"
+      },
+      {
+        "name": "a2_agrees",
+        "dtype": "bool",
+        "required": false,
+        "pit_rule": "PIT Agent 2 vs Agent 1 side",
+        "missing_policy": "R4 requires PRESENT"
+      }
+    ],
+    "outcome_keys_rejected": [
+      "correct",
+      "correct_corrected",
+      "correct_original",
+      "outcome",
+      "outcome_status",
+      "result",
+      "result_as_of",
+      "result_observed_at",
+      "score",
+      "scoreline",
+      "settled_at",
+      "winner",
+      "winner_side",
+      "y"
+    ]
+  },
+  "availability_counts": {
+    "original_agent1_confidence": 3202,
+    "overall_rating_separation": 3202,
+    "surface_rating_separation": 2954,
+    "overall_surface_rating_divergence": 2954,
+    "historical_match_counts": 3202,
+    "recent_match_counts_90d": 0,
+    "surface_specific_experience": 3202,
+    "identity_resolution_method": 3202,
+    "identity_candidate_count": 3202,
+    "historical_completeness_recovered_matches": 3202,
+    "inactivity_favourite": 3164,
+    "inactivity_underdog": 3125,
+    "surface_transitions": 0,
+    "forecast_stability_alternative_rating": 3202,
+    "agent2_specialist_support": 0,
+    "tournament_context": 3202
+  },
+  "availability_share": {
+    "original_agent1_confidence": 1.0,
+    "overall_rating_separation": 1.0,
+    "surface_rating_separation": 0.9225484072454716,
+    "overall_surface_rating_divergence": 0.9225484072454716,
+    "historical_match_counts": 1.0,
+    "recent_match_counts_90d": 0.0,
+    "surface_specific_experience": 1.0,
+    "identity_resolution_method": 1.0,
+    "identity_candidate_count": 1.0,
+    "historical_completeness_recovered_matches": 1.0,
+    "inactivity_favourite": 0.9881324172392255,
+    "inactivity_underdog": 0.9759525296689568,
+    "surface_transitions": 0.0,
+    "forecast_stability_alternative_rating": 1.0,
+    "agent2_specialist_support": 0.0,
+    "tournament_context": 1.0
+  },
+  "missingness": {
+    "surface_rating_missing": 248,
+    "inactivity_favourite_missing": 38,
+    "inactivity_underdog_missing": 77,
+    "a2_missing": 3202,
+    "surface_transition_available_in_export": 0,
+    "recent_match_count_available_in_export": 0
+  },
+  "favourite_history_bands": {
+    "5-9": 44,
+    "0-4": 99,
+    "20-49": 420,
+    "50-99": 400,
+    "100+": 2107,
+    "10-19": 132
+  },
+  "identity_methods": {
+    "ALIAS": 2851,
+    "NO_HISTORICAL_CANDIDATE": 268,
+    "AMBIGUOUS": 81,
+    "PERSISTED_BRIDGE": 2
+  },
+  "surface_transition_states_in_export": {
+    "UNKNOWN": 3202
+  },
+  "tournament_context": {
+    "surface_missing": 402,
+    "round_unknown": 171,
+    "qualifying": 992
+  },
+  "genuinely_pit_observable": [
+    "original Agent 1 probability and selected side",
+    "overall and surface effective ratings at issue",
+    "overall, surface and recovered match counts at issue",
+    "identity resolution method, candidate count and bridged flag at issue",
+    "inactivity since the last visible rating-corpus match",
+    "original vs identity-bridged probability delta and side change",
+    "tour, surface, round and qualifying context"
+  ],
+  "not_available_in_the_frozen_export": [
+    "recent match counts in a fixed 90-day window",
+    "per-fixture surface transition state (available only in the local result-history extract)",
+    "Agent 2 specialist support and disagreement",
+    "decimal bookmaker prices"
+  ],
+  "prior_confirmed_findings": {
+    "pooled_marginal": "59/101 (58.42%)",
+    "marginal_errors_with_favourite_20_plus": "37/42",
+    "favourite_0_4_accuracy": "33.3% (99 fixtures)",
+    "favourite_no_observable_history_accuracy": "8.3% (36 fixtures)",
+    "shrinkage_candidate": "NOT_JUSTIFIED",
+    "individual_marginal_factors_surviving_multiplicity": 0
+  },
+  "note": "Availability is measured on the frozen 3,223 settled export. A2 and recent counts are absent from that export; they are not inferred.",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}

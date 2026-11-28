@@ -1,0 +1,55 @@
+{
+  "agent1": {
+    "bo3_probability": "0.887214",
+    "bo5_probability": "0.887214",
+    "delta": "0.000000",
+    "format_dependent": false,
+    "reason": "A1 validates best_of_sets but its Elo expectation and probability use rating and surface only."
+  },
+  "agent2": {
+    "bo3_probability": "0.6465911619592050823901339175",
+    "bo5_probability": "0.6814968606019011186621248455",
+    "conversion_count": 1,
+    "delta": "0.0349056986426960362719909280",
+    "format_dependent": true,
+    "reason": "The serve-based Markov engine resolves games, tiebreaks, sets and the match in one model; changing the scoring rule changes match length once."
+  },
+  "conclusion": [
+    "Agent 1 is inherently format-insensitive by design, not because history is absent.",
+    "Agent 2 is format-sensitive only through its single Markov scoring-rule conversion.",
+    "Manager is a probability aggregator and does not duplicate the Agent 2 conversion.",
+    "Correcting AO history from BO3 to BO5 cannot move Agent 1 because A1 never reads the value in its probability path."
+  ],
+  "counterfactual": {
+    "agent2_serve_probabilities": {
+      "player_1": "0.65",
+      "player_2": "0.62"
+    },
+    "as_of": "2027-01-19T00:00:00+00:00",
+    "changed_field": "best_of_sets",
+    "held_constant": [
+      "players",
+      "ratings/history",
+      "surface",
+      "prediction_cutoff",
+      "model_configuration"
+    ]
+  },
+  "independent_set_reference": {
+    "bo3": 0.648,
+    "bo5": 0.68256,
+    "note": "Mathematical reference only, not an Agent implementation requirement.",
+    "set_win_probability": 0.6
+  },
+  "manager": {
+    "bo3_consensus": "0.65886372065306836079671130583333333333333333333333",
+    "bo5_consensus": "0.67049895353396703955404161516666666666666666666667",
+    "delta": "0.01163523288089867875733030933",
+    "delta_equals_mean_effect": true,
+    "mean_effect": "0.01163523288089867875733030933",
+    "reason": "Manager takes the unweighted mean of active agent probabilities and applies no match-format conversion.",
+    "second_format_adjustment": false
+  },
+  "mode": "OFFLINE_DETERMINISTIC_NO_DB_NO_PROVIDER",
+  "version": "AO_MATCH_FORMAT_DEPENDENCY_MATRIX_20261126_V1"
+}

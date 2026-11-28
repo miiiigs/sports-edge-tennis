@@ -1,0 +1,49 @@
+{
+  "version": "MANAGER_C_FROZEN_ENVELOPE_ATTESTATION_V1",
+  "subject": "sha256 of private pr386_envelope.json bytes",
+  "envelope_file_sha256": "bb54892acf5b661f72eab47c7abdcd5d78e6868520071476f308364283c8c74c",
+  "envelope_sha256_field": "c627c67508e914b2f8891d204ec6833e19489f5ce7a1fb202279e2e0e4e54ff1",
+  "freeze_boundary_utc": "2026-11-25T00:00:00Z",
+  "obtained_at_utc": "2026-11-24T09:11:35Z",
+  "tsa_url": "http://timestamp.digicert.com",
+  "signature_verified": true,
+  "signature_verification_note": "RFC3161 imprint, TSTInfo and CMS signature verified locally: only the embedded responder certificate (index 2) verifies; the root and intermediate correctly fail. Root-chain trust to the TSA published root is not asserted here; the archived token permits independent re-verification.",
+  "gen_time_utc": "2026-11-24T09:11:36Z",
+  "tsa_policy": "2.16.840.1.114412.7.1",
+  "serial_number": 146241616333821963169077461163193517453,
+  "message_imprint_hex": "bb54892acf5b661f72eab47c7abdcd5d78e6868520071476f308364283c8c74c",
+  "token_sha256": "1d27027d824ee1c0ec9513c08019730bb737dfe67ec949cd9189d5c8572278ab",
+  "token_path": "manager_c_frozen_envelope_20261125.tsr",
+  "tsa_certificates": [
+    {
+      "subject": "CN=DigiCert Trusted Root G4,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "issuer": "CN=DigiCert Assured ID Root CA,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "not_before": "2022-08-01T00:00:00+00:00",
+      "not_after": "2031-11-09T23:59:59+00:00",
+      "sha256": "33846b545a49c9be4903c60e01713c1bd4e4ef31ea65cd95d69e62794f30b941",
+      "extended_key_usage": null
+    },
+    {
+      "subject": "CN=DigiCert Trusted G4 TimeStamping RSA4096 SHA256 2025 CA1,O=DigiCert\\, Inc.,C=US",
+      "issuer": "CN=DigiCert Trusted Root G4,OU=www.digicert.com,O=DigiCert Inc,C=US",
+      "not_before": "2025-05-07T00:00:00+00:00",
+      "not_after": "2038-01-14T23:59:59+00:00",
+      "sha256": "ca0b1554ecd901ea19dcad8749e9f2648c8d6dfcea1add9d2c2109415bb82ccd",
+      "extended_key_usage": [
+        "1.3.6.1.5.5.7.3.8"
+      ]
+    },
+    {
+      "subject": "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1,O=DigiCert\\, Inc.,C=US",
+      "issuer": "CN=DigiCert Trusted G4 TimeStamping RSA4096 SHA256 2025 CA1,O=DigiCert\\, Inc.,C=US",
+      "not_before": "2026-08-05T00:00:00+00:00",
+      "not_after": "2037-11-04T23:59:59+00:00",
+      "sha256": "2da09da7f4131f9fe72db6c5e6e9c9656755af043f1ea742cc0d2120e141ebfc",
+      "extended_key_usage": [
+        "1.3.6.1.5.5.7.3.8"
+      ]
+    }
+  ],
+  "verified_signer_subject": "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2026 1,O=DigiCert\\, Inc.,C=US",
+  "verified_signer_certificate_index": 2
+}

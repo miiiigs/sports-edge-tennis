@@ -1,0 +1,18 @@
+{
+  "status": "OFFLINE_GIT_BLOB_VERIFIED_DB_CENSUS_NOT_RUN",
+  "central_commit": "9343a756db496fc0730e773a79ece9c782d91854",
+  "ledger_blob": "02d4b62fad541ee236c78a85a130b3dd97967e47",
+  "ledger_sha256": "cbbb0056f82939ccdfde12e8a41de95ac9f2b8e17ab1da23feaf7591f2cdcfa9",
+  "bytes": 1207849,
+  "unique_matches": 16104,
+  "late_mapping": 48,
+  "earlier_e3_matches": 16105,
+  "e3_cutoff": "2026-11-25T07:20:00Z",
+  "later_cutoff": null,
+  "discrepant_match_id": null,
+  "supplier_counts": null,
+  "missing_ingest_refs": null,
+  "cutoff_mismatches": null,
+  "provider_calls": 0,
+  "can_promote": false
+}

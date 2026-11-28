@@ -1,0 +1,11 @@
+# Chronology and evaluation integrity acceptance - 28 November 2026
+
+This round extends Brian's priority 1 and priority 3, not a new model project. The clean integration checkpoint 714a07e passed 3,047 PostgreSQL tests (run 46098940392). New tests are not represented as passed until their exact-head CI completes.
+
+The existing A1 production loader uses as_of and source_observed_at, but its ingested_by guard is opt-in; production calls it without that extra guard. The core Elo replay orders by result visibility, not tournament match number, and does not by itself validate actual start precision, ingestion time, or source version uniqueness. These are concrete limitations for strict historical reconstruction, not evidence of measured leakage in the real corpus.
+
+The new inactive chronology audit compares exact visible source-version inventories and full forecast outputs before and after future-information destruction, excludes target outcomes, future/late ingestion and ambiguous start precision, chooses latest visible revision, rejects inconsistent chronology and preserves existing production calculation. Synthetic unit cases cover late arrivals, same-day later rounds, result corrections, date-only values, and equal probability with unequal source lineage. The PostgreSQL regression compares the actual full-slate persisted A1 output with a historical replay on the same synthetic database snapshot and checks invariance after a subsequent result correction. No claim of historical/live parity on real production snapshots yet.
+
+The separate A1_EVALUATION_FREEZE_V1 JSON pins exact Git blob identities for historical population, core model, loader, identity resolution, selection, archive, settlement, bookmaker and competitor evaluation. Its test rejects source drift. Legitimate changes need a separately versioned reviewed protocol and comparable results; do not rewrite the V1 record. This is a repository integrity tripwire, not cryptographic external authentication or full runtime/data lineage. It does not forbid routine rating updates using a frozen methodology. Both B and D thresholds remain unchanged.
+
+No provider calls, commercial model fitting, production activation or new spend. Actual read-only database execution and API credentials are unavailable in this environment. Preserve can_promote=false.

@@ -1,0 +1,275 @@
+{
+  "classification": "DEVELOPMENT_REUSED_NO_FIT_NOT_PROSPECTIVE",
+  "sources": [
+    "59b7be92c47b68f58b783254d46480cd4518a428",
+    "e4825f00f53eecea55fd836fd35dd3ae61f12821"
+  ],
+  "rows": 3202,
+  "development_n": 2179,
+  "november_n": 1023,
+  "original_score_reproduction_mismatches": 0,
+  "method": "Reuse exact frozen V1 risk points (already corrected-favourite oriented); corrected confidence minus 0.005*risk, clipped at 0.5. No coefficient tuning or model fitting.",
+  "equal_coverage": {
+    "0.40": {
+      "baseline": {
+        "n": 1280,
+        "w": 991,
+        "accuracy": 0.77421875
+      },
+      "candidate": {
+        "n": 1280,
+        "w": 992,
+        "accuracy": 0.775
+      },
+      "retained": 1243,
+      "removed": {
+        "n": 37,
+        "w": 24,
+        "accuracy": 0.6486486486486487
+      },
+      "added": {
+        "n": 37,
+        "w": 25,
+        "accuracy": 0.6756756756756757
+      },
+      "net_wins": 1
+    },
+    "0.45": {
+      "baseline": {
+        "n": 1440,
+        "w": 1096,
+        "accuracy": 0.7611111111111111
+      },
+      "candidate": {
+        "n": 1440,
+        "w": 1099,
+        "accuracy": 0.7631944444444444
+      },
+      "retained": 1410,
+      "removed": {
+        "n": 30,
+        "w": 15,
+        "accuracy": 0.5
+      },
+      "added": {
+        "n": 30,
+        "w": 18,
+        "accuracy": 0.6
+      },
+      "net_wins": 3
+    },
+    "0.50": {
+      "baseline": {
+        "n": 1601,
+        "w": 1188,
+        "accuracy": 0.7420362273579013
+      },
+      "candidate": {
+        "n": 1601,
+        "w": 1191,
+        "accuracy": 0.7439100562148657
+      },
+      "retained": 1567,
+      "removed": {
+        "n": 34,
+        "w": 20,
+        "accuracy": 0.5882352941176471
+      },
+      "added": {
+        "n": 34,
+        "w": 23,
+        "accuracy": 0.6764705882352942
+      },
+      "net_wins": 3
+    }
+  },
+  "november_equal_coverage": {
+    "0.40": {
+      "baseline": {
+        "n": 409,
+        "w": 313,
+        "accuracy": 0.7652811735941321
+      },
+      "candidate": {
+        "n": 409,
+        "w": 314,
+        "accuracy": 0.7677261613691931
+      },
+      "retained": 396,
+      "removed": {
+        "n": 13,
+        "w": 7,
+        "accuracy": 0.5384615384615384
+      },
+      "added": {
+        "n": 13,
+        "w": 8,
+        "accuracy": 0.6153846153846154
+      },
+      "net_wins": 1
+    },
+    "0.45": {
+      "baseline": {
+        "n": 460,
+        "w": 345,
+        "accuracy": 0.75
+      },
+      "candidate": {
+        "n": 460,
+        "w": 344,
+        "accuracy": 0.7478260869565218
+      },
+      "retained": 448,
+      "removed": {
+        "n": 12,
+        "w": 6,
+        "accuracy": 0.5
+      },
+      "added": {
+        "n": 12,
+        "w": 5,
+        "accuracy": 0.4166666666666667
+      },
+      "net_wins": -1
+    },
+    "0.50": {
+      "baseline": {
+        "n": 511,
+        "w": 373,
+        "accuracy": 0.7299412915851272
+      },
+      "candidate": {
+        "n": 511,
+        "w": 373,
+        "accuracy": 0.7299412915851272
+      },
+      "retained": 502,
+      "removed": {
+        "n": 9,
+        "w": 5,
+        "accuracy": 0.5555555555555556
+      },
+      "added": {
+        "n": 9,
+        "w": 5,
+        "accuracy": 0.5555555555555556
+      },
+      "net_wins": 0
+    }
+  },
+  "development_threshold_november": {
+    "0.40": {
+      "baseline_threshold": 0.683141,
+      "reliability_threshold": 0.674954,
+      "dev_n": 2179,
+      "nov_n": 1023,
+      "comparison": {
+        "baseline": {
+          "n": 373,
+          "w": 292,
+          "accuracy": 0.7828418230563002
+        },
+        "candidate": {
+          "n": 358,
+          "w": 281,
+          "accuracy": 0.7849162011173184
+        },
+        "retained": 353,
+        "removed": {
+          "n": 20,
+          "w": 14,
+          "accuracy": 0.7
+        },
+        "added": {
+          "n": 5,
+          "w": 3,
+          "accuracy": 0.6
+        },
+        "net_wins": -11
+      },
+      "baseline_coverage": 0.364613880742913,
+      "reliability_coverage": 0.34995112414467255
+    },
+    "0.45": {
+      "baseline_threshold": 0.668011,
+      "reliability_threshold": 0.6593089999999999,
+      "dev_n": 2179,
+      "nov_n": 1023,
+      "comparison": {
+        "baseline": {
+          "n": 419,
+          "w": 320,
+          "accuracy": 0.7637231503579952
+        },
+        "candidate": {
+          "n": 404,
+          "w": 311,
+          "accuracy": 0.7698019801980198
+        },
+        "retained": 398,
+        "removed": {
+          "n": 21,
+          "w": 13,
+          "accuracy": 0.6190476190476191
+        },
+        "added": {
+          "n": 6,
+          "w": 4,
+          "accuracy": 0.6666666666666666
+        },
+        "net_wins": -9
+      },
+      "baseline_coverage": 0.4095796676441838,
+      "reliability_coverage": 0.3949169110459433
+    },
+    "0.50": {
+      "baseline_threshold": 0.648708,
+      "reliability_threshold": 0.639824,
+      "dev_n": 2179,
+      "nov_n": 1023,
+      "comparison": {
+        "baseline": {
+          "n": 474,
+          "w": 351,
+          "accuracy": 0.740506329113924
+        },
+        "candidate": {
+          "n": 464,
+          "w": 346,
+          "accuracy": 0.7456896551724138
+        },
+        "retained": 453,
+        "removed": {
+          "n": 21,
+          "w": 12,
+          "accuracy": 0.5714285714285714
+        },
+        "added": {
+          "n": 11,
+          "w": 7,
+          "accuracy": 0.6363636363636364
+        },
+        "net_wins": -5
+      },
+      "baseline_coverage": 0.4633431085043988,
+      "reliability_coverage": 0.45356793743890517
+    }
+  },
+  "curves": {
+    "confidence": {
+      "aurc_discrete_mean": 0.2415034917509422,
+      "aug_rc_discrete_mean": 0.14166524591711685
+    },
+    "reliability": {
+      "aurc_discrete_mean": 0.24099775706293575,
+      "aug_rc_discrete_mean": 0.1412964687513779
+    }
+  },
+  "limitations": [
+    "All source rows development-reused. Feature availability at original issue is not independently authenticated.",
+    "Earlier calibration threshold applied to November is retrospective, not genuinely prospective.",
+    "Alternative threshold calibration does not modify frozen B/D.",
+    "No Agent2 information, training rights, independent receipt or actual-start validation."
+  ],
+  "can_promote": false
+}

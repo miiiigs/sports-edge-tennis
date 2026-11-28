@@ -1,0 +1,719 @@
+{
+  "version": "A1_RELIABILITY_ACTUAL_V1",
+  "n": 3202,
+  "target_coverages": [
+    0.4,
+    0.45,
+    0.5
+  ],
+  "r0_r1": {
+    "R0_original_confidence": {
+      "ranking": "confidence",
+      "points": {
+        "0.40": {
+          "n": 1280,
+          "wins": 926,
+          "errors": 354,
+          "accuracy": 0.7234375,
+          "error_rate": 0.27656250000000004,
+          "wilson95": [
+            0.698292309751544,
+            0.7472455688315526
+          ],
+          "mean_confidence": 0.8042984734375,
+          "mean_reliability": 0.8243252840909091,
+          "mean_risk_points": 1.932421875,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 282,
+              "wins": 213,
+              "accuracy": 0.7553191489361702
+            },
+            "CHALLENGER": {
+              "n": 998,
+              "wins": 713,
+              "accuracy": 0.7144288577154309
+            }
+          }
+        },
+        "0.45": {
+          "n": 1440,
+          "wins": 1033,
+          "errors": 407,
+          "accuracy": 0.7173611111111111,
+          "error_rate": 0.2826388888888889,
+          "wilson95": [
+            0.6935496702307793,
+            0.7400159378044038
+          ],
+          "mean_confidence": 0.7924305111111111,
+          "mean_reliability": 0.8245896464646465,
+          "mean_risk_points": 1.929513888888889,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 310,
+              "wins": 233,
+              "accuracy": 0.7516129032258064
+            },
+            "CHALLENGER": {
+              "n": 1130,
+              "wins": 800,
+              "accuracy": 0.7079646017699115
+            }
+          }
+        },
+        "0.50": {
+          "n": 1601,
+          "wins": 1127,
+          "errors": 474,
+          "accuracy": 0.7039350405996252,
+          "error_rate": 0.2960649594003748,
+          "wilson95": [
+            0.6811062522981823,
+            0.7257875230407549
+          ],
+          "mean_confidence": 0.7807952042473454,
+          "mean_reliability": 0.824229174947476,
+          "mean_risk_points": 1.933479075577764,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 340,
+              "wins": 256,
+              "accuracy": 0.7529411764705882
+            },
+            "CHALLENGER": {
+              "n": 1261,
+              "wins": 871,
+              "accuracy": 0.6907216494845361
+            }
+          }
+        }
+      },
+      "risk_coverage": {
+        "n": 3202,
+        "errors": 1193,
+        "aurc": 0.29362159298500845,
+        "augrc_paper": 0.16174263157668878
+      }
+    },
+    "R1_reliability_adjusted": {
+      "ranking": "selection_score",
+      "points": {
+        "0.40": {
+          "n": 1280,
+          "wins": 928,
+          "errors": 352,
+          "accuracy": 0.725,
+          "error_rate": 0.275,
+          "wilson95": [
+            0.6998928714010518,
+            0.7487606566826258
+          ],
+          "mean_confidence": 0.80398110390625,
+          "mean_reliability": 0.8346235795454545,
+          "mean_risk_points": 1.819140625,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 284,
+              "wins": 215,
+              "accuracy": 0.7570422535211268
+            },
+            "CHALLENGER": {
+              "n": 996,
+              "wins": 713,
+              "accuracy": 0.7158634538152611
+            }
+          }
+        },
+        "0.45": {
+          "n": 1440,
+          "wins": 1038,
+          "errors": 402,
+          "accuracy": 0.7208333333333333,
+          "error_rate": 0.2791666666666667,
+          "wilson95": [
+            0.6970997046908544,
+            0.7433918715238045
+          ],
+          "mean_confidence": 0.7921906201388889,
+          "mean_reliability": 0.8324810606060606,
+          "mean_risk_points": 1.8427083333333334,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 312,
+              "wins": 235,
+              "accuracy": 0.7532051282051282
+            },
+            "CHALLENGER": {
+              "n": 1128,
+              "wins": 803,
+              "accuracy": 0.7118794326241135
+            }
+          }
+        },
+        "0.50": {
+          "n": 1601,
+          "wins": 1132,
+          "errors": 469,
+          "accuracy": 0.7070580886945659,
+          "error_rate": 0.2929419113054341,
+          "wilson95": [
+            0.6842905284139195,
+            0.728834392029749
+          ],
+          "mean_confidence": 0.7806241648969394,
+          "mean_reliability": 0.8318664471069218,
+          "mean_risk_points": 1.8494690818238602,
+          "by_tour": {
+            "ATP_MAIN": {
+              "n": 341,
+              "wins": 256,
+              "accuracy": 0.750733137829912
+            },
+            "CHALLENGER": {
+              "n": 1260,
+              "wins": 876,
+              "accuracy": 0.6952380952380952
+            }
+          }
+        }
+      },
+      "risk_coverage": {
+        "n": 3202,
+        "errors": 1193,
+        "aurc": 0.28975396508254947,
+        "augrc_paper": 0.1608046442709721
+      }
+    }
+  },
+  "set_differences": {
+    "0.40": {
+      "retained": {
+        "n": 1249,
+        "wins": 909,
+        "accuracy": 0.7277822257806245
+      },
+      "removed": {
+        "n": 31,
+        "wins": 17,
+        "accuracy": 0.5483870967741935
+      },
+      "added": {
+        "n": 31,
+        "wins": 19,
+        "accuracy": 0.6129032258064516
+      },
+      "retained_n": 1249,
+      "removed_n": 31,
+      "added_n": 31
+    },
+    "0.45": {
+      "retained": {
+        "n": 1411,
+        "wins": 1018,
+        "accuracy": 0.7214741318214033
+      },
+      "removed": {
+        "n": 29,
+        "wins": 15,
+        "accuracy": 0.5172413793103449
+      },
+      "added": {
+        "n": 29,
+        "wins": 20,
+        "accuracy": 0.6896551724137931
+      },
+      "retained_n": 1411,
+      "removed_n": 29,
+      "added_n": 29
+    },
+    "0.50": {
+      "retained": {
+        "n": 1572,
+        "wins": 1113,
+        "accuracy": 0.7080152671755725
+      },
+      "removed": {
+        "n": 29,
+        "wins": 14,
+        "accuracy": 0.4827586206896552
+      },
+      "added": {
+        "n": 29,
+        "wins": 19,
+        "accuracy": 0.6551724137931034
+      },
+      "retained_n": 1572,
+      "removed_n": 29,
+      "added_n": 29
+    }
+  },
+  "paired_cluster_cis": {
+    "player": {
+      "status": "RESEARCH_ONLY_CLUSTER_BOOTSTRAP",
+      "clusters": 720,
+      "reps": 2000,
+      "seed": 20261127,
+      "cluster_key": "player_cluster",
+      "differences_candidate_minus_baseline": {
+        "0.40": {
+          "median": 0.0008176614881438837,
+          "ci95": [
+            -0.005921539600296066,
+            0.007662835249042099
+          ]
+        },
+        "0.45": {
+          "median": 0.002722940776038074,
+          "ci95": [
+            -0.0033178500331784155,
+            0.008444757213230125
+          ]
+        },
+        "0.50": {
+          "median": 0.003209242618742003,
+          "ci95": [
+            -0.0024737167594310883,
+            0.008507853403141419
+          ]
+        }
+      }
+    },
+    "tournament_proxy": {
+      "status": "RESEARCH_ONLY_CLUSTER_BOOTSTRAP",
+      "clusters": 239,
+      "reps": 2000,
+      "seed": 20261128,
+      "cluster_key": "tournament_proxy",
+      "differences_candidate_minus_baseline": {
+        "0.40": {
+          "median": 0.0008097165991902688,
+          "ci95": [
+            -0.005468750000000022,
+            0.0072727272727273196
+          ]
+        },
+        "0.45": {
+          "median": 0.002844950213371278,
+          "ci95": [
+            -0.003079291762894565,
+            0.008496176720475757
+          ]
+        },
+        "0.50": {
+          "median": 0.0035190615835777317,
+          "ci95": [
+            -0.002452483139178452,
+            0.008795669824086638
+          ]
+        }
+      }
+    }
+  },
+  "error_detection_auroc": {
+    "risk_points": 0.5759989519083654,
+    "one_minus_reliability_score": 0.5759989519083654
+  },
+  "tier_calibration": {
+    "HIGH": {
+      "n": 1817,
+      "errors": 583,
+      "error_rate": 0.3208585580627408,
+      "accuracy": 0.6791414419372592,
+      "mean_confidence": 0.7006766747385801,
+      "mean_reliability": 0.9201981287837094
+    },
+    "MEDIUM": {
+      "n": 1112,
+      "errors": 476,
+      "error_rate": 0.42805755395683454,
+      "accuracy": 0.5719424460431655,
+      "mean_confidence": 0.6601026285971223,
+      "mean_reliability": 0.6704954218443427
+    },
+    "LOW": {
+      "n": 273,
+      "errors": 134,
+      "error_rate": 0.4908424908424908,
+      "accuracy": 0.5091575091575091,
+      "mean_confidence": 0.6298848131868132,
+      "mean_reliability": 0.39110889110889113
+    }
+  },
+  "chronological_walk_forward": {
+    "weeks": {
+      "2026-W41": {
+        "R0_0.40": {
+          "n": 87,
+          "wins": 63,
+          "accuracy": 0.7241379310344828,
+          "threshold": 0.707628
+        },
+        "R1_0.40": {
+          "n": 88,
+          "wins": 64,
+          "accuracy": 0.7272727272727273,
+          "threshold": 0.699892
+        },
+        "R0_0.45": {
+          "n": 97,
+          "wins": 72,
+          "accuracy": 0.7422680412371134,
+          "threshold": 0.691976
+        },
+        "R1_0.45": {
+          "n": 98,
+          "wins": 73,
+          "accuracy": 0.7448979591836735,
+          "threshold": 0.682433
+        },
+        "R0_0.50": {
+          "n": 107,
+          "wins": 77,
+          "accuracy": 0.719626168224299,
+          "threshold": 0.669636
+        },
+        "R1_0.50": {
+          "n": 108,
+          "wins": 79,
+          "accuracy": 0.7314814814814815,
+          "threshold": 0.661817
+        }
+      },
+      "2026-W42": {
+        "R0_0.40": {
+          "n": 119,
+          "wins": 84,
+          "accuracy": 0.7058823529411765,
+          "threshold": 0.707628
+        },
+        "R1_0.40": {
+          "n": 115,
+          "wins": 83,
+          "accuracy": 0.7217391304347827,
+          "threshold": 0.699893
+        },
+        "R0_0.45": {
+          "n": 132,
+          "wins": 91,
+          "accuracy": 0.6893939393939394,
+          "threshold": 0.691959
+        },
+        "R1_0.45": {
+          "n": 131,
+          "wins": 91,
+          "accuracy": 0.6946564885496184,
+          "threshold": 0.682433
+        },
+        "R0_0.50": {
+          "n": 155,
+          "wins": 105,
+          "accuracy": 0.6774193548387096,
+          "threshold": 0.6686
+        },
+        "R1_0.50": {
+          "n": 151,
+          "wins": 103,
+          "accuracy": 0.6821192052980133,
+          "threshold": 0.661585
+        }
+      },
+      "2026-W43": {
+        "R0_0.40": {
+          "n": 136,
+          "wins": 97,
+          "accuracy": 0.7132352941176471,
+          "threshold": 0.706998
+        },
+        "R1_0.40": {
+          "n": 136,
+          "wins": 95,
+          "accuracy": 0.6985294117647058,
+          "threshold": 0.699025
+        },
+        "R0_0.45": {
+          "n": 152,
+          "wins": 106,
+          "accuracy": 0.6973684210526315,
+          "threshold": 0.688939
+        },
+        "R1_0.45": {
+          "n": 151,
+          "wins": 104,
+          "accuracy": 0.6887417218543046,
+          "threshold": 0.680678
+        },
+        "R0_0.50": {
+          "n": 165,
+          "wins": 112,
+          "accuracy": 0.6787878787878788,
+          "threshold": 0.668552
+        },
+        "R1_0.50": {
+          "n": 167,
+          "wins": 114,
+          "accuracy": 0.6826347305389222,
+          "threshold": 0.6607759999999999
+        }
+      },
+      "2026-W44": {
+        "R0_0.40": {
+          "n": 137,
+          "wins": 94,
+          "accuracy": 0.6861313868613139,
+          "threshold": 0.707085
+        },
+        "R1_0.40": {
+          "n": 135,
+          "wins": 94,
+          "accuracy": 0.6962962962962963,
+          "threshold": 0.699369
+        },
+        "R0_0.45": {
+          "n": 148,
+          "wins": 102,
+          "accuracy": 0.6891891891891891,
+          "threshold": 0.689314
+        },
+        "R1_0.45": {
+          "n": 152,
+          "wins": 106,
+          "accuracy": 0.6973684210526315,
+          "threshold": 0.680678
+        },
+        "R0_0.50": {
+          "n": 164,
+          "wins": 112,
+          "accuracy": 0.6829268292682927,
+          "threshold": 0.667687
+        },
+        "R1_0.50": {
+          "n": 156,
+          "wins": 108,
+          "accuracy": 0.6923076923076923,
+          "threshold": 0.660668
+        }
+      },
+      "2026-W45": {
+        "R0_0.40": {
+          "n": 144,
+          "wins": 109,
+          "accuracy": 0.7569444444444444,
+          "threshold": 0.710629
+        },
+        "R1_0.40": {
+          "n": 139,
+          "wins": 105,
+          "accuracy": 0.7553956834532374,
+          "threshold": 0.700264
+        },
+        "R0_0.45": {
+          "n": 158,
+          "wins": 118,
+          "accuracy": 0.7468354430379747,
+          "threshold": 0.691959
+        },
+        "R1_0.45": {
+          "n": 155,
+          "wins": 117,
+          "accuracy": 0.7548387096774194,
+          "threshold": 0.6830609999999999
+        },
+        "R0_0.50": {
+          "n": 177,
+          "wins": 132,
+          "accuracy": 0.7457627118644068,
+          "threshold": 0.669705
+        },
+        "R1_0.50": {
+          "n": 175,
+          "wins": 132,
+          "accuracy": 0.7542857142857143,
+          "threshold": 0.661022
+        }
+      },
+      "2026-W46": {
+        "R0_0.40": {
+          "n": 104,
+          "wins": 74,
+          "accuracy": 0.7115384615384616,
+          "threshold": 0.711778
+        },
+        "R1_0.40": {
+          "n": 102,
+          "wins": 72,
+          "accuracy": 0.7058823529411765,
+          "threshold": 0.700213
+        },
+        "R0_0.45": {
+          "n": 115,
+          "wins": 80,
+          "accuracy": 0.6956521739130435,
+          "threshold": 0.691976
+        },
+        "R1_0.45": {
+          "n": 114,
+          "wins": 81,
+          "accuracy": 0.7105263157894737,
+          "threshold": 0.682892
+        },
+        "R0_0.50": {
+          "n": 130,
+          "wins": 86,
+          "accuracy": 0.6615384615384615,
+          "threshold": 0.669856
+        },
+        "R1_0.50": {
+          "n": 128,
+          "wins": 85,
+          "accuracy": 0.6640625,
+          "threshold": 0.661193
+        }
+      },
+      "2026-W47": {
+        "R0_0.40": {
+          "n": 79,
+          "wins": 59,
+          "accuracy": 0.7468354430379747,
+          "threshold": 0.712205
+        },
+        "R1_0.40": {
+          "n": 76,
+          "wins": 57,
+          "accuracy": 0.75,
+          "threshold": 0.700931
+        },
+        "R0_0.45": {
+          "n": 92,
+          "wins": 69,
+          "accuracy": 0.75,
+          "threshold": 0.69291
+        },
+        "R1_0.45": {
+          "n": 88,
+          "wins": 67,
+          "accuracy": 0.7613636363636364,
+          "threshold": 0.683627
+        },
+        "R0_0.50": {
+          "n": 106,
+          "wins": 78,
+          "accuracy": 0.7358490566037735,
+          "threshold": 0.670668
+        },
+        "R1_0.50": {
+          "n": 100,
+          "wins": 76,
+          "accuracy": 0.76,
+          "threshold": 0.662198
+        }
+      },
+      "2026-W48": {
+        "R0_0.40": {
+          "n": 30,
+          "wins": 17,
+          "accuracy": 0.5666666666666667,
+          "threshold": 0.70799
+        },
+        "R1_0.40": {
+          "n": 30,
+          "wins": 18,
+          "accuracy": 0.6,
+          "threshold": 0.698604
+        },
+        "R0_0.45": {
+          "n": 36,
+          "wins": 21,
+          "accuracy": 0.5833333333333334,
+          "threshold": 0.68939
+        },
+        "R1_0.45": {
+          "n": 33,
+          "wins": 19,
+          "accuracy": 0.5757575757575758,
+          "threshold": 0.679803
+        },
+        "R0_0.50": {
+          "n": 39,
+          "wins": 23,
+          "accuracy": 0.5897435897435898,
+          "threshold": 0.6686
+        },
+        "R1_0.50": {
+          "n": 39,
+          "wins": 23,
+          "accuracy": 0.5897435897435898,
+          "threshold": 0.6584180000000001
+        }
+      }
+    },
+    "initial_weeks": 4,
+    "status": "DEVELOPMENT_REUSED_WALK_FORWARD",
+    "aggregate": {
+      "R0": {
+        "0.40": {
+          "n": 836,
+          "wins": 597,
+          "accuracy": 0.7141148325358851,
+          "achieved_coverage": 0.3941537010843942
+        },
+        "0.45": {
+          "n": 930,
+          "wins": 659,
+          "accuracy": 0.7086021505376344,
+          "achieved_coverage": 0.43847241867043846
+        },
+        "0.50": {
+          "n": 1043,
+          "wins": 725,
+          "accuracy": 0.6951102588686481,
+          "achieved_coverage": 0.49174917491749176
+        }
+      },
+      "R1": {
+        "0.40": {
+          "n": 821,
+          "wins": 588,
+          "accuracy": 0.7161997563946407,
+          "achieved_coverage": 0.3870815652993871
+        },
+        "0.45": {
+          "n": 922,
+          "wins": 658,
+          "accuracy": 0.7136659436008677,
+          "achieved_coverage": 0.4347006129184347
+        },
+        "0.50": {
+          "n": 1024,
+          "wins": 720,
+          "accuracy": 0.703125,
+          "achieved_coverage": 0.4827911362564828
+        }
+      }
+    }
+  },
+  "market_context": {
+    "eligible": 495,
+    "rule": "0 <= market_age_hours <= 24 in the frozen export",
+    "by_tour": {
+      "ATP_MAIN": {
+        "n": 68,
+        "mean_market_probability": 0.5730292738370331,
+        "mean_implied_decimal_odds": 2.3464046873663054,
+        "note": "1/p is an implied price, not a quoted decimal price"
+      },
+      "CHALLENGER": {
+        "n": 427,
+        "mean_market_probability": 0.5150009106221053,
+        "mean_implied_decimal_odds": 2.538802340432949,
+        "note": "1/p is an implied price, not a quoted decimal price"
+      }
+    }
+  },
+  "classification": "AUTHORIZED_DEVELOPMENT_REUSED_NOT_INDEPENDENT",
+  "note": "R0/R1 are fixed, pre-registered rules evaluated on the previously examined 3,223 settled population. This is not independent prospective evidence. R1 preserves the original Agent 1 probability and winner; it only ranks.",
+  "can_promote": false,
+  "production_changed": false,
+  "database_writes": false,
+  "research_only": true
+}
