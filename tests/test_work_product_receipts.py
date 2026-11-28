@@ -84,7 +84,7 @@ def _forecast_rows(expected: int = 1, persisted: int = 1):
     target_rows = [(index + 1,) for index in range(expected)]
     return (
         ("COMPLETED", WINDOW_END - timedelta(hours=3),
-         WINDOW_END - timedelta(hours=2), None),
+         WINDOW_END - timedelta(hours=2), "EXP-1"),
         target_rows,
         (start,),
         (3 if persisted else 2,),
@@ -239,3 +239,13 @@ def test_publish_writes_the_monitoring_receipt(tmp_path):
     assert "TENNIS_MONITORING_RECEIPT_V1" in payload
     assert "ALL_REQUIRED" not in payload  # the receipt is evidence, not an assessment
     assert result["receipt_sha256"]
+
+
+@pytest.mark.parametrize("wrong", [None, "EXP-OTHER"])
+def test_monitoring_requires_exact_experiment_scope(wrong):
+    collected = _publisher(_healthy()).collect(_scope(experiment_id=wrong))
+    check = next(item for item in collected["checks"]
+                 if item["stage"] == "FORECAST_GENERATION")
+    assert check["status"] == STATUS_UNVERIFIED
+    assert check["detail"] == "SCOPE_EXPERIMENT_DOES_NOT_MATCH_RUN"
+    assert collected["success"] is False
