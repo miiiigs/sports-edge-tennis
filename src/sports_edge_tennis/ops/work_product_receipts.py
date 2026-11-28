@@ -346,6 +346,16 @@ class WorkProductReceiptPublisher:
                 "ZERO_DISCOVERY_ROWS_WITHOUT_ACKNOWLEDGEMENT",
                 extra={"run_count": run_count, "rejected": rejected},
             )
+        if rejected:
+            return StageCheck(
+                STAGE_FIXTURE_DISCOVERY,
+                STATUS_PARTIAL,
+                int(expected),
+                int(persisted),
+                "INGEST_RUN_ROWS",
+                "DISCOVERY_REJECTED_ROWS_REQUIRE_RECONCILIATION",
+                extra={"rejected": rejected, "run_count": run_count},
+            )
         if int(expected) != int(persisted):
             return StageCheck(
                 STAGE_FIXTURE_DISCOVERY,
@@ -645,6 +655,9 @@ class WorkProductReceiptPublisher:
                 AND d.decision_status = 'BET'
             ), visible AS (
               SELECT b.decision_id, r.match_result_observation_id,
+                     r.as_of AS result_as_of,
+                     r.source_observed_at AS result_observed_at,
+                     r.ingested_at AS result_ingested_at,
                      ROW_NUMBER() OVER (
                        PARTITION BY b.decision_id
                        ORDER BY r.as_of DESC, r.source_observed_at DESC,
@@ -653,12 +666,16 @@ class WorkProductReceiptPublisher:
               FROM bet b
               JOIN match_result_observations r ON r.match_id = b.match_id
               WHERE r.ingested_at <= %(cutoff)s AND r.as_of <= %(cutoff)s
+                AND r.source_observed_at <= %(cutoff)s
             )
             SELECT COUNT(*) AS expected,
                    COUNT(*) FILTER (
                      WHERE ds.settlement_status IN
                        ('WON','LOST','VOID','PUSH','CANCELLED')
                        AND ds.settled_at IS NOT NULL
+                       AND ds.settled_at <= %(cutoff)s
+                       AND ds.settled_at >= GREATEST(
+                         v.result_as_of, v.result_observed_at, v.result_ingested_at)
                    ) AS persisted,
                    COUNT(*) FILTER (
                      WHERE ds.match_result_observation_id

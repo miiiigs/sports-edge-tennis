@@ -184,8 +184,8 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
           winner_side, source_observed_at, as_of, ingested_at)
         VALUES (%s,'COMPLETED',1,%s,%s,%s) RETURNING match_result_observation_id
         """,
-        (target["match_id"], now + timedelta(days=1), now + timedelta(days=1),
-         now + timedelta(days=1)),
+        (target["match_id"], start + timedelta(hours=2), start + timedelta(hours=2),
+         start + timedelta(hours=2)),
     )
     db.execute(
         """
@@ -193,7 +193,7 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
           settlement_status, settled_at)
         VALUES (%s,%s,'WON',%s)
         """,
-        (decision, result, now + timedelta(days=1)),
+        (decision, result, start + timedelta(hours=3)),
     )
     store = OriginalReceiptStore(tmp_path / "monitoring-test.sqlite")
     receipt = dispatch_archive(db, "EXP-1", target["match_id"], store.receive)
@@ -202,7 +202,7 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
     record_expected_fixture(db, "EXP-1", target["match_id"],
                             expected_at=now, source_bytes=b"synthetic census")
 
-    cutoff = now + timedelta(days=2)
+    cutoff = start + timedelta(hours=4)
     scope = ReceiptScope(
         slot=now,
         window_start=now - timedelta(hours=2),
@@ -293,6 +293,12 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         loop_agents,
     )
     assert collected["record"].eligible_fixture_count == 1
+    # The result was visible at this earlier cutoff, but the settlement was not.
+    earlier = publisher.collect(replace(scope, cutoff=start + timedelta(hours=2, minutes=30)))
+    official = next(c for c in earlier["checks"] if c["stage"] == "OFFICIAL_SETTLEMENT")
+    assert official["status"] == "PARTIAL"
+    assert official["expected_rows"] == 1 and official["persisted_rows"] == 0
+    assert "OFFICIAL_SETTLEMENT" in earlier["missing_stages"]
     assert collected["independent_archive_qualified"] is False
     assert collected["eligible_for_activation_evidence"] is False
     assessment = evaluate_run(

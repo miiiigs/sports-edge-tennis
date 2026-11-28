@@ -249,3 +249,12 @@ def test_monitoring_requires_exact_experiment_scope(wrong):
     assert check["status"] == STATUS_UNVERIFIED
     assert check["detail"] == "SCOPE_EXPERIMENT_DOES_NOT_MATCH_RUN"
     assert collected["success"] is False
+
+
+def test_rejected_discovery_rows_cannot_be_hidden_by_matching_insert_counts():
+    healthy = _healthy()
+    healthy._responses["ingest_runs ir"] = (1, 1, 0, 1, 1)
+    collected = _publisher(healthy).collect(_scope())
+    assert collected["success"] is False
+    check = next(c for c in collected["checks"] if c["stage"] == "FIXTURE_DISCOVERY")
+    assert check["detail"] == "DISCOVERY_REJECTED_ROWS_REQUIRE_RECONCILIATION"
