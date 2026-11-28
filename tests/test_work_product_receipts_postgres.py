@@ -267,6 +267,13 @@ def test_publisher_verifies_real_rows_and_only_then_succeeds(db: psycopg.Connect
         """,
         (run_id, target["match_id"], picked_start),
     ).fetchone()[0]
+    assert len(diag) == 3
+    assert all(row[3] == "EXP-1" for row in diag)
+    assert loop_agents == 3
+    # An unscoped or different experiment cannot claim the same run.
+    for wrong in (None, "EXP-OTHER"):
+        refused = publisher.collect(replace(scope, experiment_id=wrong))
+        assert "FORECAST_GENERATION" in refused["missing_stages"]
     assert collected["success"] is True, (
         [
             (

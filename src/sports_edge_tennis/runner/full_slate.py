@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timezone
 
 import psycopg
@@ -182,6 +183,10 @@ def run_full_slate(
 
     try:
         matrix = _execute_matrix(conn, targets, configs, request.as_of)
+        # Preserve research provenance on every agent row. Live requests keep
+        # experiment_id=None, with no change to their forecasting methodology.
+        if request.experiment_id is not None:
+            matrix = [replace(row, experiment_id=request.experiment_id) for row in matrix]
     except Exception as exc:
         return _fail_run(conn, run_id, request.as_of, clock, "AGENT_EXECUTION", exc)
 

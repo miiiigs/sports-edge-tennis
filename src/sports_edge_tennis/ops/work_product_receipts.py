@@ -411,10 +411,7 @@ class WorkProductReceiptPublisher:
                 "PREDICTION_RUN_NOT_FOUND",
             )
         run_status, run_as_of, finalized_at, run_experiment = run_row
-        if run_experiment is not None and scope.experiment_id not in (
-            None,
-            run_experiment,
-        ):
+        if scope.experiment_id != run_experiment:
             return StageCheck(
                 STAGE_FORECAST_GENERATION,
                 STATUS_UNVERIFIED,
@@ -452,9 +449,7 @@ class WorkProductReceiptPublisher:
                   AND match_id = %(match_id)s
                   AND prediction_locked_at
                       <= %(start)s::timestamptz - interval '30 minutes'
-                  AND (%(experiment)s::text IS NULL
-                       OR experiment_id
-                          IS NOT DISTINCT FROM %(experiment)s::text)
+                  AND experiment_id IS NOT DISTINCT FROM %(experiment)s::text
                 """,
                 {
                     "run_id": run_id,
@@ -473,16 +468,6 @@ class WorkProductReceiptPublisher:
                 int(persisted),
                 "PREDICTION_RUN_ROWS",
                 f"RUN_STATUS_{run_status}",
-                extra={"run_id": run_id},
-            )
-        if experiment is None and run_experiment is not None:
-            return StageCheck(
-                STAGE_FORECAST_GENERATION,
-                STATUS_UNVERIFIED,
-                int(expected),
-                int(persisted),
-                "PREDICTION_RUN_ROWS",
-                "EXPERIMENT_RUN_REQUIRES_EXPLICIT_SCOPE",
                 extra={"run_id": run_id},
             )
         if int(expected) != int(persisted):
