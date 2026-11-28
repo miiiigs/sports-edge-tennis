@@ -26,7 +26,7 @@ def _bytes(value):
 
 def persist_corrected_rehearsal(conn, *, run_id, match_id, request,
                                 scheduled_start, history, identity_map,
-                                other_agents):
+                                other_agents, runtime_evidence=None):
     """Execute and atomically persist three explicitly synthetic decisions.
 
     The anchor must be an existing completed synthetic research run with a
@@ -83,6 +83,12 @@ def persist_corrected_rehearsal(conn, *, run_id, match_id, request,
             "SELECT clock_timestamp()").fetchone()[0]
         if not request.as_of <= issued <= scheduled_start - timedelta(minutes=30):
             raise EvidenceConflict("rehearsal completion missed cutoff")
+        if runtime_evidence is not None:
+            # This remains synthetic; the input-binding record is not an
+            # independent receipt or commercial authorization.
+            result["isolated_runtime_evidence"] = runtime_evidence
+            result.pop("evidence_sha256")
+            result["evidence_sha256"] = digest(_bytes(result))
         feature = _bytes(result).decode()
         for candidate, version in zip(("B", "C", "D"), versions):
             policy = POLICIES[candidate]
