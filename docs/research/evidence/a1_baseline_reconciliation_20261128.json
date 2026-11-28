@@ -1,0 +1,519 @@
+{
+  "classification": "DEVELOPMENT_REUSED_NOT_PROSPECTIVE",
+  "can_promote": false,
+  "source_blobs": [
+    "59b7be92c47b68f58b783254d46480cd4518a428",
+    "e4825f00f53eecea55fd836fd35dd3ae61f12821"
+  ],
+  "source_head": "727689dd7b50457699010df6504c1c5bad9d6a44",
+  "counts": {
+    "full": 3223,
+    "reliability": 3202,
+    "overlap": 3202,
+    "full_only": 21,
+    "reliability_only": 0,
+    "strict": 3202,
+    "strict_membership_exact": true
+  },
+  "reliability_vs_unbridged_mismatch": {
+    "prediction_id": 0,
+    "probability": 0,
+    "side": 0,
+    "settlement_correctness": 0,
+    "confidence": 0,
+    "date": 0,
+    "tour": 0
+  },
+  "identity_bridge": {
+    "changed_p": 3130,
+    "changed_side": 545,
+    "changed_correctness": 545,
+    "stored_vs_unbridged_probability_diff": 1076
+  },
+  "points": {
+    "0.4": {
+      "original_full": {
+        "n": 1289,
+        "w": 934,
+        "l": 355
+      },
+      "corrected_full": {
+        "n": 1289,
+        "w": 1000,
+        "l": 289
+      },
+      "original_strict": {
+        "n": 1280,
+        "w": 926,
+        "l": 354
+      },
+      "corrected_strict": {
+        "n": 1280,
+        "w": 991,
+        "l": 289
+      },
+      "r0": {
+        "n": 1280,
+        "w": 926,
+        "l": 354
+      },
+      "r1": {
+        "n": 1280,
+        "w": 928,
+        "l": 352
+      }
+    },
+    "0.45": {
+      "original_full": {
+        "n": 1450,
+        "w": 1039,
+        "l": 411
+      },
+      "corrected_full": {
+        "n": 1450,
+        "w": 1107,
+        "l": 343
+      },
+      "original_strict": {
+        "n": 1440,
+        "w": 1033,
+        "l": 407
+      },
+      "corrected_strict": {
+        "n": 1440,
+        "w": 1096,
+        "l": 344
+      },
+      "r0": {
+        "n": 1440,
+        "w": 1033,
+        "l": 407
+      },
+      "r1": {
+        "n": 1440,
+        "w": 1038,
+        "l": 402
+      }
+    },
+    "0.5": {
+      "original_full": {
+        "n": 1611,
+        "w": 1135,
+        "l": 476
+      },
+      "corrected_full": {
+        "n": 1611,
+        "w": 1197,
+        "l": 414
+      },
+      "original_strict": {
+        "n": 1601,
+        "w": 1127,
+        "l": 474
+      },
+      "corrected_strict": {
+        "n": 1601,
+        "w": 1188,
+        "l": 413
+      },
+      "r0": {
+        "n": 1601,
+        "w": 1127,
+        "l": 474
+      },
+      "r1": {
+        "n": 1601,
+        "w": 1132,
+        "l": 469
+      }
+    }
+  },
+  "replacement": {
+    "0.4": {
+      "retained": {
+        "n": 1249,
+        "w": 909,
+        "l": 340
+      },
+      "removed": {
+        "n": 31,
+        "w": 17,
+        "l": 14
+      },
+      "added": {
+        "n": 31,
+        "w": 19,
+        "l": 12
+      },
+      "net_wins": 2,
+      "removed_breakdown": {
+        "ATP_MAIN": {
+          "n": 4,
+          "w": 3,
+          "l": 1
+        },
+        "CHALLENGER": {
+          "n": 27,
+          "w": 14,
+          "l": 13
+        },
+        "DEVELOPMENT": {
+          "n": 19,
+          "w": 11,
+          "l": 8
+        },
+        "NOVEMBER": {
+          "n": 12,
+          "w": 6,
+          "l": 6
+        }
+      },
+      "added_breakdown": {
+        "ATP_MAIN": {
+          "n": 6,
+          "w": 5,
+          "l": 1
+        },
+        "CHALLENGER": {
+          "n": 25,
+          "w": 14,
+          "l": 11
+        },
+        "DEVELOPMENT": {
+          "n": 26,
+          "w": 16,
+          "l": 10
+        },
+        "NOVEMBER": {
+          "n": 5,
+          "w": 3,
+          "l": 2
+        }
+      }
+    },
+    "0.45": {
+      "retained": {
+        "n": 1411,
+        "w": 1018,
+        "l": 393
+      },
+      "removed": {
+        "n": 29,
+        "w": 15,
+        "l": 14
+      },
+      "added": {
+        "n": 29,
+        "w": 20,
+        "l": 9
+      },
+      "net_wins": 5,
+      "removed_breakdown": {
+        "ATP_MAIN": {
+          "n": 6,
+          "w": 4,
+          "l": 2
+        },
+        "CHALLENGER": {
+          "n": 23,
+          "w": 11,
+          "l": 12
+        },
+        "DEVELOPMENT": {
+          "n": 13,
+          "w": 7,
+          "l": 6
+        },
+        "NOVEMBER": {
+          "n": 16,
+          "w": 8,
+          "l": 8
+        }
+      },
+      "added_breakdown": {
+        "ATP_MAIN": {
+          "n": 8,
+          "w": 6,
+          "l": 2
+        },
+        "CHALLENGER": {
+          "n": 21,
+          "w": 14,
+          "l": 7
+        },
+        "DEVELOPMENT": {
+          "n": 24,
+          "w": 16,
+          "l": 8
+        },
+        "NOVEMBER": {
+          "n": 5,
+          "w": 4,
+          "l": 1
+        }
+      }
+    },
+    "0.5": {
+      "retained": {
+        "n": 1572,
+        "w": 1113,
+        "l": 459
+      },
+      "removed": {
+        "n": 29,
+        "w": 14,
+        "l": 15
+      },
+      "added": {
+        "n": 29,
+        "w": 19,
+        "l": 10
+      },
+      "net_wins": 5,
+      "removed_breakdown": {
+        "ATP_MAIN": {
+          "n": 2,
+          "w": 1,
+          "l": 1
+        },
+        "CHALLENGER": {
+          "n": 27,
+          "w": 13,
+          "l": 14
+        },
+        "DEVELOPMENT": {
+          "n": 16,
+          "w": 6,
+          "l": 10
+        },
+        "NOVEMBER": {
+          "n": 13,
+          "w": 8,
+          "l": 5
+        }
+      },
+      "added_breakdown": {
+        "ATP_MAIN": {
+          "n": 3,
+          "w": 1,
+          "l": 2
+        },
+        "CHALLENGER": {
+          "n": 26,
+          "w": 18,
+          "l": 8
+        },
+        "DEVELOPMENT": {
+          "n": 23,
+          "w": 14,
+          "l": 9
+        },
+        "NOVEMBER": {
+          "n": 6,
+          "w": 5,
+          "l": 1
+        }
+      }
+    }
+  },
+  "marginal": {
+    "november_n": 1025,
+    "n": 101,
+    "groups": {
+      "all": {
+        "experienced": {
+          "n": 92,
+          "w": 55,
+          "l": 37
+        },
+        "limited": {
+          "n": 9,
+          "w": 4,
+          "l": 5
+        }
+      },
+      "upper": {
+        "experienced": {
+          "n": 39,
+          "w": 25,
+          "l": 14
+        },
+        "limited": {
+          "n": 6,
+          "w": 2,
+          "l": 4
+        }
+      },
+      "lower": {
+        "experienced": {
+          "n": 53,
+          "w": 30,
+          "l": 23
+        },
+        "limited": {
+          "n": 3,
+          "w": 2,
+          "l": 1
+        }
+      },
+      "ATP": {
+        "experienced": {
+          "n": 8,
+          "w": 6,
+          "l": 2
+        },
+        "limited": {
+          "n": 0,
+          "w": 0,
+          "l": 0
+        }
+      },
+      "CH": {
+        "experienced": {
+          "n": 84,
+          "w": 49,
+          "l": 35
+        },
+        "limited": {
+          "n": 9,
+          "w": 4,
+          "l": 5
+        }
+      }
+    }
+  },
+  "late_ids": [
+    {
+      "match_id": 117905,
+      "prediction_id": 5656,
+      "as_of": "2026-09-12T19:02:54.149198+00:00",
+      "scheduled_start": "2026-09-12T18:20:00+00:00"
+    },
+    {
+      "match_id": 130350,
+      "prediction_id": 12232,
+      "as_of": "2026-09-15T09:05:10.788902+00:00",
+      "scheduled_start": "2026-09-15T09:05:00+00:00"
+    },
+    {
+      "match_id": 117983,
+      "prediction_id": 12415,
+      "as_of": "2026-09-15T11:05:07.423788+00:00",
+      "scheduled_start": "2026-09-15T11:05:00+00:00"
+    },
+    {
+      "match_id": 130853,
+      "prediction_id": 33664,
+      "as_of": "2026-09-23T14:00:30.546942+00:00",
+      "scheduled_start": "2026-09-23T14:00:00+00:00"
+    },
+    {
+      "match_id": 130854,
+      "prediction_id": 33799,
+      "as_of": "2026-09-23T15:00:49.499216+00:00",
+      "scheduled_start": "2026-09-23T15:00:00+00:00"
+    },
+    {
+      "match_id": 130856,
+      "prediction_id": 34171,
+      "as_of": "2026-09-23T18:04:13.295169+00:00",
+      "scheduled_start": "2026-09-23T18:00:00+00:00"
+    },
+    {
+      "match_id": 130857,
+      "prediction_id": 34174,
+      "as_of": "2026-09-23T18:04:13.295169+00:00",
+      "scheduled_start": "2026-09-23T18:00:00+00:00"
+    },
+    {
+      "match_id": 130874,
+      "prediction_id": 36250,
+      "as_of": "2026-09-24T18:02:47.860571+00:00",
+      "scheduled_start": "2026-09-24T18:00:00+00:00"
+    },
+    {
+      "match_id": 130875,
+      "prediction_id": 36292,
+      "as_of": "2026-09-24T19:02:20.609518+00:00",
+      "scheduled_start": "2026-09-24T19:00:00+00:00"
+    },
+    {
+      "match_id": 131036,
+      "prediction_id": 38383,
+      "as_of": "2026-09-26T11:02:01.198017+00:00",
+      "scheduled_start": "2026-09-26T11:00:00+00:00"
+    },
+    {
+      "match_id": 132770,
+      "prediction_id": 108034,
+      "as_of": "2026-10-27T15:05:03.605204+00:00",
+      "scheduled_start": "2026-10-27T15:05:00+00:00"
+    },
+    {
+      "match_id": 132771,
+      "prediction_id": 108037,
+      "as_of": "2026-10-27T15:05:03.605204+00:00",
+      "scheduled_start": "2026-10-27T15:05:00+00:00"
+    },
+    {
+      "match_id": 132877,
+      "prediction_id": 111181,
+      "as_of": "2026-10-29T16:05:06.924294+00:00",
+      "scheduled_start": "2026-10-29T16:05:00+00:00"
+    },
+    {
+      "match_id": 132880,
+      "prediction_id": 111190,
+      "as_of": "2026-10-29T16:05:06.924294+00:00",
+      "scheduled_start": "2026-10-29T16:05:00+00:00"
+    },
+    {
+      "match_id": 132894,
+      "prediction_id": 111208,
+      "as_of": "2026-10-29T16:05:06.924294+00:00",
+      "scheduled_start": "2026-10-29T16:05:00+00:00"
+    },
+    {
+      "match_id": 132901,
+      "prediction_id": 111223,
+      "as_of": "2026-10-29T16:05:06.924294+00:00",
+      "scheduled_start": "2026-10-29T16:05:00+00:00"
+    },
+    {
+      "match_id": 132902,
+      "prediction_id": 111226,
+      "as_of": "2026-10-29T16:05:06.924294+00:00",
+      "scheduled_start": "2026-10-29T16:05:00+00:00"
+    },
+    {
+      "match_id": 132933,
+      "prediction_id": 113959,
+      "as_of": "2026-10-31T19:05:03.311423+00:00",
+      "scheduled_start": "2026-10-31T19:05:00+00:00"
+    },
+    {
+      "match_id": 132952,
+      "prediction_id": 113962,
+      "as_of": "2026-10-31T19:05:03.311423+00:00",
+      "scheduled_start": "2026-10-31T19:05:00+00:00"
+    },
+    {
+      "match_id": 133587,
+      "prediction_id": 144862,
+      "as_of": "2026-11-10T22:05:08.880664+00:00",
+      "scheduled_start": "2026-11-10T22:05:00+00:00"
+    },
+    {
+      "match_id": 133609,
+      "prediction_id": 145096,
+      "as_of": "2026-11-11T00:05:08.924188+00:00",
+      "scheduled_start": "2026-11-11T00:05:00+00:00"
+    }
+  ],
+  "limitations": [
+    "Settlement compared via exported winner correctness, not independent result observation revisions.",
+    "Original means unbridged reconstructed replay, not necessarily stored production probability.",
+    "Strict excludes scheduled-start violations only; identity correction and features development-reused.",
+    "No training, provider request or production activation."
+  ]
+}
