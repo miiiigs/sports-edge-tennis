@@ -41,7 +41,9 @@ def test_destroy_future_results_late_arrivals_and_target():
 
 def test_date_only_and_impossible_result_do_not_become_training_rows():
     rows = [evidence(1, precision="TOURNAMENT_DATE_ONLY"),
-            evidence(2, start=T-timedelta(hours=1), observed=T-timedelta(hours=2)),
+            replace(evidence(2, start=T-timedelta(hours=1), observed=T-timedelta(hours=2)),
+                    version_visible_at=T-timedelta(hours=3),
+                    version_ingested_at=T-timedelta(hours=3)),
             evidence(3)]
     accepted, rejected = strict_history(rows, cutoff=T, target_match_id=99)
     assert [x.observation.match_id for x in accepted] == [3]
@@ -85,3 +87,12 @@ def test_duplicate_source_pair_and_naive_timestamps_rejected():
     with pytest.raises(ValueError, match="visibility"):
         strict_history([replace(row, result_ingested_at=T.replace(tzinfo=None))],
                        cutoff=T, target_match_id=99)
+
+
+def test_latest_visible_result_with_incompatible_version_does_not_resurrect_prior():
+    original = evidence(1)
+    corrected = replace(evidence(1, observed=T-timedelta(hours=1), revision=20),
+                        version_visible_at=T-timedelta(minutes=10))
+    rows, excluded = strict_history([original, corrected], cutoff=T, target_match_id=99)
+    assert rows == []
+    assert excluded == {"VERSION_AFTER_RESULT": 1}

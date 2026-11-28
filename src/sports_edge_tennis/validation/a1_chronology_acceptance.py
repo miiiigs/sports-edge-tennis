@@ -56,8 +56,6 @@ def strict_history(rows: Iterable[HistoryEvidence], *, cutoff, target_match_id):
             reason = "TARGET_RESULT"
         elif any(t > cutoff for t in timestamps):
             reason = "NOT_VISIBLE_AT_CUTOFF"
-        elif row.version_visible_at > obs.as_of:
-            reason = "VERSION_AFTER_RESULT"
         else:
             reason = None
         if reason:
@@ -73,7 +71,9 @@ def strict_history(rows: Iterable[HistoryEvidence], *, cutoff, target_match_id):
     accepted = []
     for _, row in selected.values():
         obs = row.observation
-        if row.start_precision != "EXACT" or not _aware(obs.match_start_at):
+        if row.version_visible_at > obs.as_of:
+            reason = "VERSION_AFTER_RESULT"
+        elif row.start_precision != "EXACT" or not _aware(obs.match_start_at):
             reason = "UNVERIFIED_START_PRECISION"
         elif obs.match_start_at >= obs.source_observed_at:
             reason = "RESULT_AT_OR_BEFORE_START"
